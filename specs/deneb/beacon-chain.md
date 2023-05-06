@@ -68,7 +68,7 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**4)` (= 16) |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**10)` (= 1024) | hardfork independent fixed theoretical limit |
 
 ## Configuration
 
@@ -96,7 +96,7 @@ class BeaconBlockBody(Container):
     # Execution
     execution_payload: ExecutionPayload  # [Modified in Deneb]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in Deneb]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]  # [New in Deneb]
 ```
 
 #### `ExecutionPayload`
