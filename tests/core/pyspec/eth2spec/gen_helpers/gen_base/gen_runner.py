@@ -40,7 +40,7 @@ TIME_THRESHOLD_TO_PRINT = 1.0  # seconds
 MODE_SINGLE_PROCESS = 'MODE_SINGLE_PROCESS'
 MODE_MULTIPROCESSING = 'MODE_MULTIPROCESSING'
 
-GENERATOR_MODE = MODE_SINGLE_PROCESS
+GENERATOR_MODE = MODE_MULTIPROCESSING
 
 
 @dataclass
@@ -330,7 +330,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     else:
         # If no written_part, the only file was incomplete_tag_file. Clear the existing case_dir folder.
         if not written_part:
-            print(f"test case {case_dir} did not produce any written_part")
+            print(f"[Error] test case {case_dir} did not produce any written_part")
             shutil.rmtree(case_dir)
             result = -1
         else:
@@ -384,6 +384,7 @@ def output_part(case_dir, log_file, out_kind: str, name: str, fn: Callable[[Path
 
 def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml):
     result = test_case.case_fn()
+    written_part = False
     for (name, out_kind, data) in result:
         written_part = True
         if out_kind == "meta":
