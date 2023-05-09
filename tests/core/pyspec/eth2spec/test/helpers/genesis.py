@@ -5,7 +5,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -49,11 +49,14 @@ def get_sample_genesis_execution_payload_header(spec,
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
     deposit_receipts_trie_root = None
+    exits_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_eip6110(spec):
         deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_eip7002(spec):
+        exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
@@ -61,6 +64,7 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_trie_root,
         withdrawals_trie_root,
         deposit_receipts_trie_root,
+        exits_trie_root,
     )
     return payload_header
 
