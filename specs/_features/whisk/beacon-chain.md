@@ -484,7 +484,6 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
-    print("get_beacon_proposer_index", state.latest_block_header.slot, state.slot)
-    # assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
+    assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
 ```
