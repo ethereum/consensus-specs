@@ -183,7 +183,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(state, block.body)
+    process_blob_kzg_commitments(block.body)
 ```
 
 #### Modified `process_operations`
