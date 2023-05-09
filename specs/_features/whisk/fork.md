@@ -1,14 +1,24 @@
+# Whisk -- Fork Logic
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-  - [Fork](#fork)
+- [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to WHISK](#fork-to-whisk)
+- [Fork to Whisk](#fork-to-whisk)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
-### Fork
+## Introduction
+
+This document describes the process of Whisk upgrade.
+
 
 ```
 """
@@ -34,7 +44,7 @@ Warning: this configuration is not definitive.
 | `WHISK_FORK_VERSION` | `Version('0x05000000')` |
 | `WHISK_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to WHISK
+## Fork to Whisk
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == WHISK_FORK_EPOCH`, an irregular state change is made to upgrade to Whisk. `WHISK_FORK_EPOCH` must be a multiple of `WHISK_RUN_DURATION_IN_EPOCHS`.
 
