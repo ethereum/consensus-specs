@@ -11,7 +11,6 @@ import sys
 import json
 from typing import Iterable, AnyStr, Any, Callable
 import traceback
-import multiprocessing
 from collections import namedtuple
 
 from ruamel.yaml import (
@@ -28,19 +27,17 @@ from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
+from .settings import (
+    GENERATOR_MODE,
+    MODE_MULTIPROCESSING,
+    MODE_SINGLE_PROCESS,
+    NUM_PROCESS,
+    TIME_THRESHOLD_TO_PRINT,
+)
 
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
-
-
-TIME_THRESHOLD_TO_PRINT = 1.0  # seconds
-
-# Generator mode setting
-MODE_SINGLE_PROCESS = 'MODE_SINGLE_PROCESS'
-MODE_MULTIPROCESSING = 'MODE_MULTIPROCESSING'
-
-GENERATOR_MODE = MODE_MULTIPROCESSING
 
 
 @dataclass
@@ -243,8 +240,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 all_test_case_params.append(item)
 
     if GENERATOR_MODE == MODE_MULTIPROCESSING:
-        num_process = multiprocessing.cpu_count() // 2 - 1
-        with Pool(processes=num_process) as pool:
+        with Pool(processes=NUM_PROCESS) as pool:
             results = pool.map(worker_function, iter(all_test_case_params))
 
         for result in results:
