@@ -164,8 +164,8 @@ The `subnet_id` for the `signed_sidecar` is calculated with:
 - Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
 
 ```python
-def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> uint64:
-    return uint64(blob_index % BLOB_SIDECAR_SUBNET_COUNT)
+def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> SubnetID:
+    return SubnetID(blob_index % BLOB_SIDECAR_SUBNET_COUNT)
 ```
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
