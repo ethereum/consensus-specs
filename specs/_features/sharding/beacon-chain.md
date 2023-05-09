@@ -236,8 +236,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     verify_builder_block_bid(state, block)
     process_sharded_data(state, block)
-    if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block, EXECUTION_ENGINE)
+    process_execution_payload(state, block, EXECUTION_ENGINE)
 
     if not is_builder_block_slot(block.slot):
         process_randao(state, block.body)
