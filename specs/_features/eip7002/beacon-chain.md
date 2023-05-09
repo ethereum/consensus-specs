@@ -256,6 +256,13 @@ def process_execution_layer_exit(state: BeaconState, execution_layer_exit: Execu
     # Verify the validator has been active long enough
     if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
         return
+    # Verify withdrawal credentials
+    is_correct_source_address = (
+        validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        and validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
+    )
+    if not is_correct_source_address:
+        return
 
     # Initiate exit
     initiate_validator_exit(state, execution_layer_exit.validator_index)
