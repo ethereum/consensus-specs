@@ -1,4 +1,4 @@
-# EIP-6110 Light Client -- Sync Protocol
+# EIP-7002 Light Client -- Sync Protocol
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This upgrade updates light client data to include the EIP-6110 changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to EIP-6110.
+This upgrade updates light client data to include the EIP-7002 changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to EIP-7002.
 
 Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
@@ -32,7 +32,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 def get_lc_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    if epoch >= EIP6110_FORK_EPOCH:
+    if epoch >= EIP7002_FORK_EPOCH:
         execution_header = ExecutionPayloadHeader(
             parent_hash=header.execution.parent_hash,
             fee_recipient=header.execution.fee_recipient,
@@ -49,32 +49,12 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
             block_hash=header.execution.block_hash,
             transactions_root=header.execution.transactions_root,
             withdrawals_root=header.execution.withdrawals_root,
-            deposit_receipts_root=header.execution.deposit_receipts_root,
+            exits_root=header.execution.exits_root,
         )
         return hash_tree_root(execution_header)
 
     if epoch >= DENEB_FORK_EPOCH:
         return hash_tree_root(header.execution)
-
-    if epoch >= CAPELLA_FORK_EPOCH:
-        execution_header = capella.ExecutionPayloadHeader(
-            parent_hash=header.execution.parent_hash,
-            fee_recipient=header.execution.fee_recipient,
-            state_root=header.execution.state_root,
-            receipts_root=header.execution.receipts_root,
-            logs_bloom=header.execution.logs_bloom,
-            prev_randao=header.execution.prev_randao,
-            block_number=header.execution.block_number,
-            gas_limit=header.execution.gas_limit,
-            gas_used=header.execution.gas_used,
-            timestamp=header.execution.timestamp,
-            extra_data=header.execution.extra_data,
-            base_fee_per_gas=header.execution.base_fee_per_gas,
-            block_hash=header.execution.block_hash,
-            transactions_root=header.execution.transactions_root,
-            withdrawals_root=header.execution.withdrawals_root,
-        )
-        return hash_tree_root(execution_header)
 
     return Root()
 ```
@@ -85,9 +65,9 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in EIP-6110]
-    if epoch < EIP6110_FORK_EPOCH:
-        if header.execution.deposit_receipts_root != Root():
+    # [New in EIP-7002]
+    if epoch < EIP7002_FORK_EPOCH:
+        if header.execution.exits_root != Root():
             return False
 
     if epoch < DENEB_FORK_EPOCH:
