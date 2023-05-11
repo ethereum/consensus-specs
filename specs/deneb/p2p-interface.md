@@ -43,7 +43,7 @@ The specification of these changes continues in the same format as the network s
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
-| `MAX_BLOBS_PER_BLOCK`                    | `2**4` (= 16)                     | Maximum number of blobs in a single request, to be always <= `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `MAX_BLOBS_PER_BLOCK`                    | `2**2` (= 4)                     | Maximum number of blobs in a single request, can never exceed `MAX_BLOB_COMMITMENTS_PER_BLOCK` limit |
 | `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK`      | Maximum number of blob sidecars in a single request                 |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars |
 
