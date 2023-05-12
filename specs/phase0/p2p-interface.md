@@ -335,6 +335,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
+*Note*: WIP! Don't implement this as-is!
 - _[IGNORE]_ `aggregate.data.target.root` is a known checkpoint root, i.e., `aggregate.data.target.root` is a key in `store.known_checkpoints`.
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
