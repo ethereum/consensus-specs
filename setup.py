@@ -1182,7 +1182,7 @@ setup(
     cmdclass=commands,
     python_requires=">=3.9, <4",
     extras_require={
-        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
+        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist", "python-snappy==0.6.1"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
         "generator": ["python-snappy==0.6.1", "filelock"],
         "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
