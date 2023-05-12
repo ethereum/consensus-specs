@@ -30,11 +30,15 @@ def get_state_from_json_file(spec, file_path):
     return get_ssz_object_from_json_file(spec.BeaconState, file_path)
 
 
-def get_state_from_ssz_encoded(spec, file_path, is_snappy=False):
+def get_ssz_object_from_ssz_encoded(container, file_path, is_snappy=True):
     state_bytes = load_file(Path(file_path), mode='rb')
     if is_snappy:
         state_bytes = decompress(state_bytes)
-    return spec.BeaconState.decode_bytes(state_bytes)
+    return container.decode_bytes(state_bytes)
+
+
+def get_state_from_ssz_encoded(spec, file_path, is_snappy=True):
+    return get_ssz_object_from_ssz_encoded(spec.BeaconState, file_path, is_snappy=is_snappy)
 
 
 def output_ssz_to_file(output_dir, value, dump_yaml_fn):
