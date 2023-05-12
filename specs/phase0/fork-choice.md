@@ -116,6 +116,7 @@ class Store(object):
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
+    known_checkpoints: Set[Root]
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
 ```
@@ -156,6 +157,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        known_checkpoints=set(),
         unrealized_justifications={anchor_root: justified_checkpoint}
     )
 ```
@@ -200,6 +202,19 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     """
     epoch_first_slot = compute_start_slot_at_epoch(epoch)
     return get_ancestor(store, root, epoch_first_slot)
+```
+
+#### `add_known_checkpoint`
+
+```python
+def add_known_checkpoint(store: Store, root: Root) -> Root:
+    """
+    Add the previous checkpoint root in the chain of block ``root`` to ``known_checkpoints``
+    """
+    block = store.blocks[root]
+    block_epoch = compute_epoch_at_slot(block.slot)
+    checkpoint_root = get_checkpoint_block(store, root, block_epoch)
+    store.known_checkpoints.add(checkpoint_root)
 ```
 
 #### `get_weight`
@@ -525,7 +540,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         block.parent_root,
         store.finalized_checkpoint.epoch,
     )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
@@ -535,6 +550,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.blocks[block_root] = block
     # Add new state for this block to the store
     store.block_states[block_root] = state
+    # Add known checkpoint block to the store
+    add_known_checkpoint(store, block_root)
 
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
