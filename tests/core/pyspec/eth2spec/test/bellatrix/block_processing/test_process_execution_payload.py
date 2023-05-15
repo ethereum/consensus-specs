@@ -29,10 +29,10 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
-        def notify_new_payload(self, payload) -> bool:
+        def notify_new_payload(self, new_payload_request) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
-            assert payload == execution_payload
+            assert new_payload_request.execution_payload == execution_payload
             return execution_valid
 
     if not valid:

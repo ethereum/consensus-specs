@@ -578,7 +578,7 @@ def get_pow_chain_head() -> PowBlock:
 
 class NoopExecutionEngine(ExecutionEngine):
 
-    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,

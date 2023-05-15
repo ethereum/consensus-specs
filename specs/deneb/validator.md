@@ -98,8 +98,8 @@ def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
                                        blobs: Sequence[Blob],
                                        blob_kzg_commitments: Sequence[KZGCommitment],
                                        blob_kzg_proofs: Sequence[KZGProof]) -> None:
-    # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-    assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
+    # TODO: can we just remove it?
+    # assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
 
     # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
     assert len(blob_kzg_commitments) == len(blobs) == len(blob_kzg_proofs)
