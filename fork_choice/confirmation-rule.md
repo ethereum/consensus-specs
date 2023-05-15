@@ -42,40 +42,46 @@ This section specifies an algorithm to determine whether a block is confirmed. T
 ### Helper Functions
 
 
-```python
-def get_full_committee_at_slot(state: BeaconState, slot: Slot) -> Sequence[ValidatorIndex]:
-    epoch = compute_epoch_at_slot(slot)
-    validator_indexes = []  # type: List[ValidatorIndex]
-    for i in get_committee_count_per_slot(state, epoch):
-        validator_indexes.append(get_beacon_committee(state, slot, i))
+##### `get_committee_weight_between_slots`
 
-    return validator_indexes
-```
 
 ```python
-def get_committee_weight_between_slots(state: BeaconState, from_slot: Slot, to_slot: Slot) -> Gwei:
-    validator_index_set = set()
-    for slot in range(from_slot, to_slot + 1):
-        validator_index_set.add(set(get_full_committee_at_slot(state, Slot(slot))))
+def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot: Slot) -> Gwei:
+    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both).
+    Uses the justified state to compute committee weights.
+    """
 
-    total_weight = Gwei(0)
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    total_active_balance = get_total_active_balance(state)
 
-    for validator_index in validator_index_set:
-        total_weight += state.validators[validator_index].effective_balance
+    # If an entire epoch is covered by the range, return the total active balance
+    start_epoch = compute_epoch_at_slot(start_slot)
+    end_epoch = compute_epoch_at_slot(end_slot)
+    if end_epoch > start_epoch + 1:
+        return total_active_balance
 
-    return total_weight
+    # A range that does not span any full epoch needs pro-rata calculation
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    num_committees = 0
+    # First, calculate the weight from the end epoch
+    epoch_boundary_slot = compute_start_slot_at_epoch(end_epoch)
+    num_committees += end_slot - epoch_boundary_slot + 1
+    # Next, calculate the weight from the previous epoch
+    # Each committee from the previous epoch only contributes a pro-rated weight
+    # NOTE: using float arithmetic here. is that allowed here in spec? probably yes, since this is not consensus code.
+    multiplier = (SLOTS_PER_EPOCH - end_slot - 1) / SLOTS_PER_EPOCH
+    num_committees += (epoch_boundary_slot - start_slot) * multiplier
+    return num_committees * committee_weight
 ```
+
 
 ```python
 def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
-
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
+    maximum_support = int(get_committee_weight_between_slots(Slot(parent_block.slot + 1), current_slot))
     proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
 
     # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold/100 =>
@@ -103,7 +109,7 @@ def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
 def get_future_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
-    return get_committee_weight_between_slots(state, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
+    return get_committee_weight_between_slots(Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 ```
 
 
@@ -267,38 +273,6 @@ This under the assumption that the adversary is willing to get as much stake as 
 prevent a block from being confirmed.
 
 ### Helper Functions
-
-
-##### `get_committee_weight`
-
-```python
-def get_committee_weight(store: Store, start_slot: Slot, end_slot: Slot) -> Gwei:
-    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both).
-    Uses the justified state to compute committee weights.
-    """
-
-    justified_state = store.checkpoint_states[store.justified_checkpoint]
-    total_active_balance = get_total_active_balance(state)
-
-    # If an entire epoch is covered by the range, return the total active balance
-    start_epoch = compute_epoch_at_slot(start_slot)
-    end_epoch = compute_epoch_at_slot(end_slot)
-    if end_epoch > start_epoch + 1:
-        return total_active_balance
-
-    # A range that does not span any full epoch needs pro-rata calculation
-    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    num_committees = 0
-    # First, calculate the weight from the end epoch
-    epoch_boundary_slot = compute_start_slot_at_epoch(end_epoch)
-    num_committees += end_slot - epoch_boundary_slot + 1
-    # Next, calculate the weight from the previous epoch
-    # Each committee from the previous epoch only contributes a pro-rated weight
-    # NOTE: using float arithmetic here. is that allowed here in spec? probably yes, since this is not consensus code.
-    multiplier = (SLOTS_PER_EPOCH - end_slot - 1) / SLOTS_PER_EPOCH
-    num_committees += (epoch_boundary_slot - start_slot) * multiplier
-    return num_committees * committee_weight
-```
 
 
 ```python
