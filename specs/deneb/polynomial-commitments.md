@@ -420,7 +420,7 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
     r = hash_to_bls_field(data)
     r_powers = compute_powers(r, len(commitments))
 
-    # Verify: e(sum r^i proof_i, [s]) ==
+    # Verify: e(sum r^i proof_i, [-s]) ==
     # e(sum r^i (commitment_i - [y_i]) + sum r^i z_i proof_i, [1])
     proof_lincomb = g1_lincomb(proofs, r_powers)
     proof_z_lincomb = g1_lincomb(
