@@ -155,7 +155,7 @@ def _load_kzg_trusted_setups(preset_name):
     trusted_setup_G1 = json_data['setup_G1']
     trusted_setup_G2 = json_data['setup_G2']
     trusted_setup_G1_lagrange = json_data['setup_G1_lagrange']
-    roots_of_unity = json_data['roots_of_unity']
+    roots_of_unity = [int(x, 16) for x in json_data['roots_of_unity']]
 
     return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
 
