@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls, never_bls,
     with_all_phases,
-    # Note, if attslotrange gets included, this will need to be 
+    # Note, if attslotrange gets included, this will need to be
     # 'with all phases up until attslotrange'
     with_all_phases_except_attslotrange,
     spec_test,
