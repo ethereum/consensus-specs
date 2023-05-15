@@ -82,7 +82,7 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
     maximum_support = int(get_committee_weight_between_slots(Slot(parent_block.slot + 1), current_slot))
-    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
+    proposer_score = int(get_proposer_score(store))
 
     # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold/100 =>
     return 100 * support > 50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support
@@ -282,7 +282,7 @@ def get_score_for_one_confirmation(store: Store, block_root: Root) -> int:
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
     maximum_support = int(get_committee_weight(parent_block.slot + 1, current_slot))
-    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
+    proposer_score = int(get_proposer_score(store))
 
     # We need to return a value confirmation_byzantine_threshold such that the following inequality is true
     # 100 * support > 50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support

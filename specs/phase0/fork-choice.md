@@ -209,6 +209,14 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
+#### `get_proposer_score_boost`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
 #### `get_weight`
 
 ```python
@@ -232,8 +240,7 @@ def get_weight(store: Store, root: Root) -> Gwei:
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
     if get_ancestor(store, store.proposer_boost_root, store.blocks[root].slot) == root:
-        committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-        proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+        proposer_score = get_proposer_score(store)
     return attestation_score + proposer_score
 ```
 
@@ -526,7 +533,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         block.parent_root,
         store.finalized_checkpoint.epoch,
     )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
