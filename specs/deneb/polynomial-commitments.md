@@ -77,7 +77,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
-| `KZG_ENDIANNESS` | `'big'` | The endianess of the field elements including blobs |
+| `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
 
 
 ## Preset
