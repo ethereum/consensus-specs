@@ -141,8 +141,8 @@ def get_exit_rlp(exit):
     exit_rlp = [
         # source_address
         (Binary(20, 20), exit.source_address),
-        # validator_index
-        (big_endian_int, exit.validator_index),
+        # validator_pubkey
+        (Binary(48, 48), exit.validator_pubkey),
     ]
 
     sedes = List([schema for schema, _ in exit_rlp])

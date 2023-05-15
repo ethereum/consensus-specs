@@ -53,7 +53,7 @@ This mechanism relies on the changes proposed by [EIP-7002](http://eips.ethereum
 ```python
 class ExecutionLayerExit(Container):
     source_address: ExecutionAddress
-    validator_index: ValidatorIndex
+    validator_pubkey: BLSPubkey
 ```
 
 ### Extended Containers
@@ -238,7 +238,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_execution_layer_exit(state: BeaconState, execution_layer_exit: ExecutionLayerExit) -> None:
-    validator = state.validators[execution_layer_exit.validator_index]
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_index = ValidatorIndex(validator_pubkeys.index(execution_layer_exit.validator_pubkey))
+    validator = state.validators[validator_index]
 
     # Verify withdrawal credentials
     is_correct_source_address = (
@@ -258,7 +260,7 @@ def process_execution_layer_exit(state: BeaconState, execution_layer_exit: Execu
         return
 
     # Initiate exit
-    initiate_validator_exit(state, execution_layer_exit.validator_index)
+    initiate_validator_exit(state, validator_index)
 ```
 
 ## Testing

@@ -1,4 +1,5 @@
 from eth2spec.test.context import expect_assertion_error
+from eth2spec.test.helpers.state import get_validator_index_by_pubkey
 
 
 #
@@ -14,7 +15,7 @@ def run_execution_layer_exit_processing(spec, state, execution_layer_exit, valid
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    validator_index = execution_layer_exit.validator_index
+    validator_index = get_validator_index_by_pubkey(state, execution_layer_exit.validator_pubkey)
 
     yield 'pre', state
     yield 'execution_layer_exit', execution_layer_exit

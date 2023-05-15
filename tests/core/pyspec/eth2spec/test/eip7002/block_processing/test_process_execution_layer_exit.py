@@ -11,11 +11,12 @@ def test_basic_exit(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    validator_pubkey = state.validators[validator_index].pubkey
     address = b'\x22' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     execution_layer_exit = spec.ExecutionLayerExit(
         source_address=address,
-        validator_index=validator_index,
+        validator_pubkey=validator_pubkey,
     )
 
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit)
@@ -29,12 +30,13 @@ def test_incorrect_source_address(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    validator_pubkey = state.validators[validator_index].pubkey
     address = b'\x22' * 20
     incorrect_address = b'\x33' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     execution_layer_exit = spec.ExecutionLayerExit(
         source_address=incorrect_address,
-        validator_index=validator_index,
+        validator_pubkey=validator_pubkey,
     )
 
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
