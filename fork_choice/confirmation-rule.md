@@ -165,9 +165,7 @@ def is_ffg_confirmed(
     assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch(store)
-
-    # The following could be replaced by get_checkpoint_block once merged in
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
+    block_checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     block_checkpoint_state = store.block_states[block_checkpoint_root]
 
     total_active_balance = int(get_total_active_balance(block_checkpoint_state))
@@ -314,9 +312,7 @@ def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
     assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch(store)
-
-    # The following could be replaced by get_checkpoint_block once merged in
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
+    block_checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     block_checkpoint_state = store.block_states[block_checkpoint_root]
 
     total_active_balance = int(get_total_active_balance(block_checkpoint_state))
