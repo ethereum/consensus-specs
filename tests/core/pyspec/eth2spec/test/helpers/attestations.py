@@ -187,7 +187,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
-def _get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
+def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
     committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
     for index in range(committees_per_slot):
         def participants_filter(comm):
@@ -262,7 +262,7 @@ def state_transition_with_full_block(spec,
     if fill_cur_epoch and state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
         slot_to_attest = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
         if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(state)):
-            attestations = _get_valid_attestation_at_slot(
+            attestations = get_valid_attestation_at_slot(
                 state,
                 spec,
                 slot_to_attest,
@@ -272,7 +272,7 @@ def state_transition_with_full_block(spec,
                 block.body.attestations.append(attestation)
     if fill_prev_epoch:
         slot_to_attest = state.slot - spec.SLOTS_PER_EPOCH + 1
-        attestations = _get_valid_attestation_at_slot(
+        attestations = get_valid_attestation_at_slot(
             state,
             spec,
             slot_to_attest,
@@ -300,7 +300,7 @@ def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, f
         slots = state.slot % spec.SLOTS_PER_EPOCH
         for slot_offset in range(slots):
             target_slot = state.slot - slot_offset
-            attestations += _get_valid_attestation_at_slot(
+            attestations += get_valid_attestation_at_slot(
                 state,
                 spec,
                 target_slot,
@@ -311,7 +311,7 @@ def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, f
         slots = spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH
         for slot_offset in range(1, slots):
             target_slot = state.slot - (state.slot % spec.SLOTS_PER_EPOCH) - slot_offset
-            attestations += _get_valid_attestation_at_slot(
+            attestations += get_valid_attestation_at_slot(
                 state,
                 spec,
                 target_slot,

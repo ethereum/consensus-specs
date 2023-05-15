@@ -39,7 +39,7 @@ The adjustments and additions for Shards are outlined in this document.
 
 ### Topics and messages
 
-Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
+Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 
 | Name                            | Message Type             |
 |---------------------------------|--------------------------|
@@ -47,7 +47,7 @@ Following the same scheme as the [Phase0 gossip topics](../phase0/p2p-interface.
 | `shard_column_{subnet_id}`      | `SignedShardSample`      |
 | `builder_block_bid`             | `BuilderBlockBid`        |
 
-The [DAS network specification](./das-p2p.md) defines additional topics.
+The [DAS network specification](../das/das-core.md) defines additional topics.
 
 #### Builder block bid
 

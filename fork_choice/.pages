@@ -1,0 +1,7 @@
+nav:
+    - ...
+    - Fork Choice -- Core:
+        - phase0: specs/phase0/fork-choice
+        - bellatrix: specs/bellatrix/fork-choice
+        - capella: specs/capella/fork-choice
+        - deneb: specs/deneb/fork-choice

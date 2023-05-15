@@ -26,6 +26,7 @@ from eth2spec.test.helpers.fork_transition import (
 from eth2spec.test.helpers.forks import (
     is_post_capella, is_post_deneb,
     is_post_fork,
+    is_post_eip6110,
 )
 from eth2spec.test.helpers.light_client import (
     get_sync_aggregate,
@@ -57,6 +58,10 @@ def needs_upgrade_to_deneb(d_spec, s_spec):
     return is_post_deneb(s_spec) and not is_post_deneb(d_spec)
 
 
+def needs_upgrade_to_eip6110(d_spec, s_spec):
+    return is_post_eip6110(s_spec) and not is_post_eip6110(d_spec)
+
+
 def check_lc_header_equal(d_spec, s_spec, data, upgraded):
     assert upgraded.beacon.slot == data.beacon.slot
     assert upgraded.beacon.hash_tree_root() == data.beacon.hash_tree_root()
@@ -82,6 +87,10 @@ def upgrade_lc_bootstrap_to_store(d_spec, s_spec, data):
 
     if needs_upgrade_to_deneb(d_spec, s_spec):
         upgraded = s_spec.upgrade_lc_bootstrap_to_deneb(upgraded)
+        check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
+
+    if needs_upgrade_to_eip6110(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_bootstrap_to_eip6110(upgraded)
         check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
 
     return upgraded
@@ -145,6 +154,8 @@ class LightClientSyncTest(object):
 
 
 def get_store_fork_version(s_spec):
+    if is_post_eip6110(s_spec):
+        return s_spec.config.EIP6110_FORK_VERSION
     if is_post_deneb(s_spec):
         return s_spec.config.DENEB_FORK_VERSION
     if is_post_capella(s_spec):
@@ -668,10 +679,9 @@ def run_test_single_fork(spec, phases, state, fork):
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    state, _ = do_fork(state, spec, phases[fork], fork_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork], state)
+    state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -755,18 +765,16 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     # ..., attested is from `fork_1`, ...
     fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_1_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_1], fork_1_epoch, with_block=False)
+    state, attested_block = do_fork(state, spec, phases[fork_1], fork_1_epoch)
     spec = phases[fork_1]
-    attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
 
     # ..., and signature is from `fork_2`
     fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1)
-    state, _ = do_fork(state, spec, phases[fork_2], fork_2_epoch, with_block=False)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork_2], state)
+    state, block = do_fork(state, spec, phases[fork_2], fork_2_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork_2]
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
 
     # Check that update applies
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)

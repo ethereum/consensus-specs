@@ -25,11 +25,10 @@
     - [`bytes_to_kzg_commitment`](#bytes_to_kzg_commitment)
     - [`bytes_to_kzg_proof`](#bytes_to_kzg_proof)
     - [`blob_to_polynomial`](#blob_to_polynomial)
-    - [`compute_challenges`](#compute_challenges)
+    - [`compute_challenge`](#compute_challenge)
     - [`bls_modular_inverse`](#bls_modular_inverse)
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
-    - [`poly_lincomb`](#poly_lincomb)
     - [`compute_powers`](#compute_powers)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
@@ -37,11 +36,13 @@
     - [`blob_to_kzg_commitment`](#blob_to_kzg_commitment)
     - [`verify_kzg_proof`](#verify_kzg_proof)
     - [`verify_kzg_proof_impl`](#verify_kzg_proof_impl)
+    - [`verify_kzg_proof_batch`](#verify_kzg_proof_batch)
     - [`compute_kzg_proof`](#compute_kzg_proof)
+    - [`compute_quotient_eval_within_domain`](#compute_quotient_eval_within_domain)
     - [`compute_kzg_proof_impl`](#compute_kzg_proof_impl)
-    - [`compute_aggregated_poly_and_commitment`](#compute_aggregated_poly_and_commitment)
-    - [`compute_aggregate_kzg_proof`](#compute_aggregate_kzg_proof)
-    - [`verify_aggregate_kzg_proof`](#verify_aggregate_kzg_proof)
+    - [`compute_blob_kzg_proof`](#compute_blob_kzg_proof)
+    - [`verify_blob_kzg_proof`](#verify_blob_kzg_proof)
+    - [`verify_blob_kzg_proof_batch`](#verify_blob_kzg_proof_batch)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -64,14 +65,17 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `KZGCommitment` | `Bytes48` | Validation: Perform [BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5) "KeyValidate" check but do allow the identity point |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
 | `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | A polynomial in evaluation form |
-| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic blob data |
+| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob |
 
 ## Constants
 
 | Name | Value | Notes |
 | - | - | - |
 | `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
+| `BYTES_PER_COMMITMENT` | `uint64(48)` | The number of bytes in a KZG commitment |
+| `BYTES_PER_PROOF` | `uint64(48)` | The number of bytes in a KZG proof |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
+| `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 
 
@@ -83,6 +87,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | - | - |
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
+| `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
 
 ### Crypto
 
@@ -100,7 +105,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 | `KZG_SETUP_G2_LENGTH` | `65` |
 | `KZG_SETUP_G1` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 | `KZG_SETUP_G2` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Helper functions
 
@@ -222,44 +227,24 @@ def blob_to_polynomial(blob: Blob) -> Polynomial:
     return polynomial
 ```
 
-#### `compute_challenges`
+#### `compute_challenge`
 
 ```python
-def compute_challenges(polynomials: Sequence[Polynomial],
-                       commitments: Sequence[KZGCommitment]) -> Tuple[Sequence[BLSFieldElement], BLSFieldElement]:
+def compute_challenge(blob: Blob,
+                      commitment: KZGCommitment) -> BLSFieldElement:
     """
-    Return the Fiat-Shamir challenges required by the rest of the protocol.
-    The Fiat-Shamir logic works as per the following pseudocode:
-
-       hashed_data = hash(DOMAIN_SEPARATOR, polynomials, commitments)
-       r = hash(hashed_data, 0)
-       r_powers = [1, r, r**2, r**3, ...]
-       eval_challenge = hash(hashed_data, 1)
-
-    Then return `r_powers` and `eval_challenge` after converting them to BLS field elements.
-    The resulting field elements are not uniform over the BLS field.
+    Return the Fiat-Shamir challenge required by the rest of the protocol.
     """
-    # Append the number of polynomials and the degree of each polynomial as a domain separator
-    num_polynomials = int.to_bytes(len(polynomials), 8, ENDIANNESS)
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
-    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly + num_polynomials
 
-    # Append each polynomial which is composed by field elements
-    for poly in polynomials:
-        for field_element in poly:
-            data += int.to_bytes(field_element, BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
+    # Append the degree of the polynomial as a domain separator
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
+    data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly
 
-    # Append serialized G1 points
-    for commitment in commitments:
-        data += commitment
+    data += blob
+    data += commitment
 
-    # Transcript has been prepared: time to create the challenges
-    hashed_data = hash(data)
-    r = hash_to_bls_field(hashed_data + b'\x00')
-    r_powers = compute_powers(r, len(commitments))
-    eval_challenge = hash_to_bls_field(hashed_data + b'\x01')
-
-    return r_powers, eval_challenge
+    # Transcript has been prepared: time to create the challenge
+    return hash_to_bls_field(data)
 ```
 
 #### `bls_modular_inverse`
@@ -267,10 +252,11 @@ def compute_challenges(polynomials: Sequence[Polynomial],
 ```python
 def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     """
-    Compute the modular inverse of x
-    i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
+    Compute the modular inverse of x (for x != 0)
+    i.e. return y such that x * y % BLS_MODULUS == 1
     """
-    return BLSFieldElement(pow(x, -1, BLS_MODULUS)) if x != 0 else BLSFieldElement(0)
+    assert (int(x) % BLS_MODULUS) != 0
+    return BLSFieldElement(pow(x, -1, BLS_MODULUS))
 ```
 
 #### `div`
@@ -291,27 +277,10 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     """
     assert len(points) == len(scalars)
-    result = bls.Z1
+    result = bls.Z1()
     for x, a in zip(points, scalars):
         result = bls.add(result, bls.multiply(bls.bytes48_to_G1(x), a))
     return KZGCommitment(bls.G1_to_bytes48(result))
-```
-
-#### `poly_lincomb`
-
-```python
-def poly_lincomb(polys: Sequence[Polynomial],
-                 scalars: Sequence[BLSFieldElement]) -> Polynomial:
-    """
-    Given a list of ``polynomials``, interpret it as a 2D matrix and compute the linear combination
-    of each column with `scalars`: return the resulting polynomials.
-    """
-    assert len(polys) == len(scalars)
-    result = [0] * FIELD_ELEMENTS_PER_BLOB
-    for v, s in zip(polys, scalars):
-        for i, x in enumerate(v):
-            result[i] = (result[i] + int(s) * int(x)) % BLS_MODULUS
-    return Polynomial([BLSFieldElement(x) for x in result])
 ```
 
 #### `compute_powers`
@@ -338,8 +307,10 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
                                            z: BLSFieldElement) -> BLSFieldElement:
     """
-    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z`` that is not in the domain.
-    Uses the barycentric formula:
+    Evaluate a polynomial (in evaluation form) at an arbitrary point ``z``.
+    - When ``z`` is in the domain, the evaluation can be found by indexing the polynomial at the
+    position that ``z`` is in the domain.
+    - When ``z`` is not in the domain, the barycentric formula is used:
        f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
@@ -358,7 +329,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
         a = BLSFieldElement(int(polynomial[i]) * int(roots_of_unity_brp[i]) % BLS_MODULUS)
         b = BLSFieldElement((int(BLS_MODULUS) + int(z) - int(roots_of_unity_brp[i])) % BLS_MODULUS)
         result += int(div(a, b) % BLS_MODULUS)
-    result = result * int(pow(z, width, BLS_MODULUS) - 1) * int(inverse_width)
+    result = result * int(BLS_MODULUS + pow(z, width, BLS_MODULUS) - 1) * int(inverse_width)
     return BLSFieldElement(result % BLS_MODULUS)
 ```
 
@@ -373,6 +344,7 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
     """
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
     return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
 ```
 
@@ -380,17 +352,22 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
 
 ```python
 def verify_kzg_proof(commitment_bytes: Bytes48,
-                     z: Bytes32,
-                     y: Bytes32,
+                     z_bytes: Bytes32,
+                     y_bytes: Bytes32,
                      proof_bytes: Bytes48) -> bool:
     """
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     Receives inputs as bytes.
     Public method.
     """
+    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    assert len(z_bytes) == BYTES_PER_FIELD_ELEMENT
+    assert len(y_bytes) == BYTES_PER_FIELD_ELEMENT
+    assert len(proof_bytes) == BYTES_PER_PROOF
+
     return verify_kzg_proof_impl(bytes_to_kzg_commitment(commitment_bytes),
-                                 bytes_to_bls_field(z),
-                                 bytes_to_bls_field(y),
+                                 bytes_to_bls_field(z_bytes),
+                                 bytes_to_bls_field(y_bytes),
                                  bytes_to_kzg_proof(proof_bytes))
 ```
 
@@ -406,113 +383,208 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
     # Verify: P - y = Q * (X - z)
-    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2, BLS_MODULUS - z))
-    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1, BLS_MODULUS - y))
+    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS))
+    P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
     return bls.pairing_check([
-        [P_minus_y, bls.neg(bls.G2)],
+        [P_minus_y, bls.neg(bls.G2())],
         [bls.bytes48_to_G1(proof), X_minus_z]
+    ])
+```
+
+#### `verify_kzg_proof_batch`
+
+```python
+def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
+                           zs: Sequence[BLSFieldElement],
+                           ys: Sequence[BLSFieldElement],
+                           proofs: Sequence[KZGProof]) -> bool:
+    """
+    Verify multiple KZG proofs efficiently.
+    """
+
+    assert len(commitments) == len(zs) == len(ys) == len(proofs)
+
+    # Compute a random challenge. Note that it does not have to be computed from a hash,
+    # r just has to be random.
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
+    num_commitments = int.to_bytes(len(commitments), 8, ENDIANNESS)
+    data = RANDOM_CHALLENGE_KZG_BATCH_DOMAIN + degree_poly + num_commitments
+
+    # Append all inputs to the transcript before we hash
+    for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
+        data += commitment \
+            + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
+            + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
+            + proof
+
+    r = hash_to_bls_field(data)
+    r_powers = compute_powers(r, len(commitments))
+
+    # Verify: e(sum r^i proof_i, [s]) ==
+    # e(sum r^i (commitment_i - [y_i]) + sum r^i z_i proof_i, [1])
+    proof_lincomb = g1_lincomb(proofs, r_powers)
+    proof_z_lincomb = g1_lincomb(
+        proofs,
+        [BLSFieldElement((int(z) * int(r_power)) % BLS_MODULUS) for z, r_power in zip(zs, r_powers)],
+    )
+    C_minus_ys = [bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
+                  for commitment, y in zip(commitments, ys)]
+    C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
+    C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
+    
+    return bls.pairing_check([
+        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[1]))],
+        [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2()]
     ])
 ```
 
 #### `compute_kzg_proof`
 
 ```python
-def compute_kzg_proof(blob: Blob, z: Bytes32) -> KZGProof:
+def compute_kzg_proof(blob: Blob, z_bytes: Bytes32) -> Tuple[KZGProof, Bytes32]:
     """
     Compute KZG proof at point `z` for the polynomial represented by `blob`.
     Do this by computing the quotient polynomial in evaluation form: q(x) = (p(x) - p(z)) / (x - z).
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+    assert len(z_bytes) == BYTES_PER_FIELD_ELEMENT
     polynomial = blob_to_polynomial(blob)
-    return compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z))
+    proof, y = compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z_bytes))
+    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
+```
+
+#### `compute_quotient_eval_within_domain`
+
+```python
+def compute_quotient_eval_within_domain(z: BLSFieldElement,
+                                        polynomial: Polynomial,
+                                        y: BLSFieldElement
+                                        ) -> BLSFieldElement:
+    """
+    Given `y == p(z)` for a polynomial `p(x)`, compute `q(z)`: the KZG quotient polynomial evaluated at `z` for the
+    special case where `z` is in `ROOTS_OF_UNITY`.
+
+    For more details, read https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html section "Dividing
+    when one of the points is zero". The code below computes q(x_m) for the roots of unity special case.
+    """
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    result = 0
+    for i, omega_i in enumerate(roots_of_unity_brp):
+        if omega_i == z:  # skip the evaluation point in the sum
+            continue
+
+        f_i = int(BLS_MODULUS) + int(polynomial[i]) - int(y) % BLS_MODULUS
+        numerator = f_i * int(omega_i) % BLS_MODULUS
+        denominator = int(z) * (int(BLS_MODULUS) + int(z) - int(omega_i)) % BLS_MODULUS
+        result += int(div(BLSFieldElement(numerator), BLSFieldElement(denominator)))
+
+    return BLSFieldElement(result % BLS_MODULUS)
 ```
 
 #### `compute_kzg_proof_impl`
 
 ```python
-def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> KZGProof:
+def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[KZGProof, BLSFieldElement]:
     """
-    Helper function for compute_kzg_proof() and compute_aggregate_kzg_proof().
+    Helper function for `compute_kzg_proof()` and `compute_blob_kzg_proof()`.
     """
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+
+    # For all x_i, compute p(x_i) - p(z)
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
     polynomial_shifted = [BLSFieldElement((int(p) - int(y)) % BLS_MODULUS) for p in polynomial]
 
-    # Make sure we won't divide by zero during division
-    assert z not in ROOTS_OF_UNITY
+    # For all x_i, compute (x_i - z)
     denominator_poly = [BLSFieldElement((int(x) - int(z)) % BLS_MODULUS)
-                        for x in bit_reversal_permutation(ROOTS_OF_UNITY)]
+                        for x in roots_of_unity_brp]
 
-    # Calculate quotient polynomial by doing point-by-point division
-    quotient_polynomial = [div(a, b) for a, b in zip(polynomial_shifted, denominator_poly)]
-    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial))
+    # Compute the quotient polynomial directly in evaluation form
+    quotient_polynomial = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
+    for i, (a, b) in enumerate(zip(polynomial_shifted, denominator_poly)):
+        if b == 0:
+            # The denominator is zero hence `z` is a root of unity: we must handle it as a special case
+            quotient_polynomial[i] = compute_quotient_eval_within_domain(roots_of_unity_brp[i], polynomial, y)
+        else:
+            # Compute: q(x_i) = (p(x_i) - p(z)) / (x_i - z).
+            quotient_polynomial[i] = div(a, b)
+
+    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial)), y
 ```
 
-#### `compute_aggregated_poly_and_commitment`
+#### `compute_blob_kzg_proof`
 
 ```python
-def compute_aggregated_poly_and_commitment(
-        blobs: Sequence[Blob],
-        kzg_commitments: Sequence[KZGCommitment]) -> Tuple[Polynomial, KZGCommitment, BLSFieldElement]:
+def compute_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes48) -> KZGProof:
     """
-    Return (1) the aggregated polynomial, (2) the aggregated KZG commitment,
-    and (3) the polynomial evaluation random challenge.
-    This function should also work with blobs == [] and kzg_commitments == []
-    """
-    assert len(blobs) == len(kzg_commitments)
-
-    # Convert blobs to polynomials
-    polynomials = [blob_to_polynomial(blob) for blob in blobs]
-
-    # Generate random linear combination and evaluation challenges
-    r_powers, evaluation_challenge = compute_challenges(polynomials, kzg_commitments)
-
-    # Create aggregated polynomial in evaluation form
-    aggregated_poly = poly_lincomb(polynomials, r_powers)
-
-    # Compute commitment to aggregated polynomial
-    aggregated_poly_commitment = KZGCommitment(g1_lincomb(kzg_commitments, r_powers))
-
-    return aggregated_poly, aggregated_poly_commitment, evaluation_challenge
-```
-
-#### `compute_aggregate_kzg_proof`
-
-```python
-def compute_aggregate_kzg_proof(blobs: Sequence[Blob]) -> KZGProof:
-    """
-    Given a list of blobs, return the aggregated KZG proof that is used to verify them against their commitments.
+    Given a blob, return the KZG proof that is used to verify it against the commitment.
+    This method does not verify that the commitment is correct with respect to `blob`.
     Public method.
     """
-    commitments = [blob_to_kzg_commitment(blob) for blob in blobs]
-    aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
-        blobs,
-        commitments
-    )
-    return compute_kzg_proof_impl(aggregated_poly, evaluation_challenge)
+    assert len(blob) == BYTES_PER_BLOB
+    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    commitment = bytes_to_kzg_commitment(commitment_bytes)
+    polynomial = blob_to_polynomial(blob)
+    evaluation_challenge = compute_challenge(blob, commitment)
+    proof, _ = compute_kzg_proof_impl(polynomial, evaluation_challenge)
+    return proof
 ```
 
-#### `verify_aggregate_kzg_proof`
+#### `verify_blob_kzg_proof`
 
 ```python
-def verify_aggregate_kzg_proof(blobs: Sequence[Blob],
-                               commitments_bytes: Sequence[Bytes48],
-                               aggregated_proof_bytes: Bytes48) -> bool:
+def verify_blob_kzg_proof(blob: Blob,
+                          commitment_bytes: Bytes48,
+                          proof_bytes: Bytes48) -> bool:
     """
-    Given a list of blobs and an aggregated KZG proof, verify that they correspond to the provided commitments.
+    Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
     Public method.
     """
-    commitments = [bytes_to_kzg_commitment(c) for c in commitments_bytes]
+    assert len(blob) == BYTES_PER_BLOB
+    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    assert len(proof_bytes) == BYTES_PER_PROOF
 
-    aggregated_poly, aggregated_poly_commitment, evaluation_challenge = compute_aggregated_poly_and_commitment(
-        blobs,
-        commitments
-    )
+    commitment = bytes_to_kzg_commitment(commitment_bytes)
 
-    # Evaluate aggregated polynomial at `evaluation_challenge` (evaluation function checks for div-by-zero)
-    y = evaluate_polynomial_in_evaluation_form(aggregated_poly, evaluation_challenge)
+    polynomial = blob_to_polynomial(blob)
+    evaluation_challenge = compute_challenge(blob, commitment)
 
-    # Verify aggregated proof
-    aggregated_proof = bytes_to_kzg_proof(aggregated_proof_bytes)
-    return verify_kzg_proof_impl(aggregated_poly_commitment, evaluation_challenge, y, aggregated_proof)
+    # Evaluate polynomial at `evaluation_challenge`
+    y = evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge)
+
+    # Verify proof
+    proof = bytes_to_kzg_proof(proof_bytes)
+    return verify_kzg_proof_impl(commitment, evaluation_challenge, y, proof)
 ```
+
+#### `verify_blob_kzg_proof_batch`
+
+```python
+def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
+                                commitments_bytes: Sequence[Bytes48],
+                                proofs_bytes: Sequence[Bytes48]) -> bool:
+    """
+    Given a list of blobs and blob KZG proofs, verify that they correspond to the provided commitments.
+
+    Public method.
+    """
+
+    assert len(blobs) == len(commitments_bytes) == len(proofs_bytes)
+    
+    commitments, evaluation_challenges, ys, proofs = [], [], [], []
+    for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
+        assert len(blob) == BYTES_PER_BLOB
+        assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+        assert len(proof_bytes) == BYTES_PER_PROOF
+        commitment = bytes_to_kzg_commitment(commitment_bytes)
+        commitments.append(commitment)
+        polynomial = blob_to_polynomial(blob)
+        evaluation_challenge = compute_challenge(blob, commitment)
+        evaluation_challenges.append(evaluation_challenge)
+        ys.append(evaluate_polynomial_in_evaluation_form(polynomial, evaluation_challenge))
+        proofs.append(bytes_to_kzg_proof(proof_bytes))
+
+    return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
+```
+

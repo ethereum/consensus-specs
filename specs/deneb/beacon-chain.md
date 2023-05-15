@@ -11,6 +11,7 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
+  - [Domain types](#domain-types)
   - [Blob](#blob)
 - [Preset](#preset)
   - [Execution](#execution)
@@ -44,15 +45,22 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `VersionedHash` | `Bytes32` | |
+| `BlobIndex` | `uint64` | |
 
 ## Constants
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_BLOB_SIDECAR` | `DomainType('0x0B000000')` |
 
 ### Blob
 
 | Name | Value |
 | - | - |
-| `BLOB_TX_TYPE` | `uint8(0x05)` |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | 
+| `BLOB_TX_TYPE` | `uint8(0x03)` |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
 
@@ -108,11 +116,11 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    excess_data_gas: uint256  # [New in Deneb]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -132,11 +140,11 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    excess_data_gas: uint256  # [New in Deneb]
     # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root
+    excess_data_gas: uint256  # [New in Deneb]
 ```
 
 ## Helper functions
@@ -165,6 +173,8 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
         message_offset
         + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
     )
+    # `VersionedHash` is a 32-byte object
+    assert (len(opaque_tx) - blob_versioned_hashes_offset) % 32 == 0
     return [
         VersionedHash(opaque_tx[x:(x + 32)])
         for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)
@@ -197,7 +207,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(state, block.body)  # [New in Deneb]
+    process_blob_kzg_commitments(block.body)  # [New in Deneb]
 ```
 
 #### Execution payload
@@ -230,18 +240,17 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         timestamp=payload.timestamp,
         extra_data=payload.extra_data,
         base_fee_per_gas=payload.base_fee_per_gas,
-        excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
+        excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
     )
 ```
 
 #### Blob KZG commitments
 
 ```python
-def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> None:
-    # pylint: disable=unused-argument
+def process_blob_kzg_commitments(body: BeaconBlockBody) -> None:
     assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 
@@ -249,7 +258,7 @@ def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> N
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Deneb testing only.
 
-The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type 
+The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type
 when initializing the first body-root.
 
 ```python

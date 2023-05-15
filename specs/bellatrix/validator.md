@@ -9,6 +9,7 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
+  - [`GetPayloadResponse`](#getpayloadresponse)
   - [`get_pow_block_at_terminal_total_difficulty`](#get_pow_block_at_terminal_total_difficulty)
   - [`get_terminal_pow_block`](#get_terminal_pow_block)
 - [Protocols](#protocols)
@@ -35,6 +36,14 @@ All terminology, constants, functions, and protocol mechanics defined in the upd
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Helpers
+
+### `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+```
 
 ### `get_pow_block_at_terminal_total_difficulty`
 
@@ -83,13 +92,13 @@ The Engine API may be used to implement it with an external execution engine.
 
 #### `get_payload`
 
-Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
-has been built since the corresponding call to `notify_forkchoice_updated` method.
+Given the `payload_id`, `get_payload` returns `GetPayloadResponse` with the most recent version of
+the execution payload that has been built since the corresponding call to `notify_forkchoice_updated` method.
 
 ```python
-def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ``execution_payload`` object.
+    Return ``GetPayloadResponse`` object.
     """
     ...
 ```
@@ -162,7 +171,7 @@ def get_execution_payload(payload_id: Optional[PayloadId], execution_engine: Exe
         # Pre-merge, empty payload
         return ExecutionPayload()
     else:
-        return execution_engine.get_payload(payload_id)
+        return execution_engine.get_payload(payload_id).execution_payload
 ```
 
 *Note*: It is recommended for a validator to call `prepare_execution_payload` as soon as input parameters become known,

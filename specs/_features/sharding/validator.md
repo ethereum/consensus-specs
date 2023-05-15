@@ -33,7 +33,7 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Bellatrix -- Honest Validator](../bellatrix/validator.md) guide.
+This document is an extension of the [Bellatrix -- Honest Validator](../../bellatrix/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Sharding](./beacon-chain.md) are requisite for this document and used throughout.

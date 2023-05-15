@@ -12,7 +12,7 @@ from eth2spec.utils.ssz.ssz_impl import serialize
 
 
 #
-# Containers from Deneb
+# Containers from EIP-4844
 #
 MAX_CALLDATA_SIZE = 2**24
 MAX_VERSIONED_HASHES_LIST_SIZE = 2**24
@@ -101,13 +101,16 @@ def get_poly_in_both_forms(spec, rng=None):
 def get_sample_opaque_tx(spec, blob_count=1, rng=None):
     blobs = []
     blob_kzg_commitments = []
+    blob_kzg_proofs = []
     blob_versioned_hashes = []
     for _ in range(blob_count):
         blob = get_sample_blob(spec, rng)
         blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
+        blob_kzg_proof = spec.compute_blob_kzg_proof(blob, blob_commitment)
         blob_versioned_hash = spec.kzg_commitment_to_versioned_hash(blob_commitment)
         blobs.append(blob)
         blob_kzg_commitments.append(blob_commitment)
+        blob_kzg_proofs.append(blob_kzg_proof)
         blob_versioned_hashes.append(blob_versioned_hash)
 
     signed_blob_tx = SignedBlobTransaction(
@@ -117,4 +120,4 @@ def get_sample_opaque_tx(spec, blob_count=1, rng=None):
     )
     serialized_tx = serialize(signed_blob_tx)
     opaque_tx = spec.uint_to_bytes(spec.BLOB_TX_TYPE) + serialized_tx
-    return opaque_tx, blobs, blob_kzg_commitments
+    return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs

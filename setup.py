@@ -47,6 +47,7 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
+EIP6110 = 'eip6110'
 
 
 # The helper functions that are used when defining constants
@@ -382,7 +383,7 @@ from typing import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
@@ -550,7 +551,7 @@ class BellatrixSpecBuilder(AltairSpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
-from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256
+from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
 '''
 
     @classmethod
@@ -587,7 +588,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
         pass
 
-    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
@@ -653,9 +654,9 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return super().sundry_functions() + '\n\n' + '''
-def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[BlobsSidecar, str]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
     # pylint: disable=unused-argument
-    return "TEST"'''
+    return ("TEST", "TEST")'''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
@@ -667,9 +668,22 @@ def retrieve_blobs_sidecar(slot: Slot, beacon_block_root: Root) -> PyUnion[Blobs
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
+#
+# EIP6110SpecBuilder
+#
+class EIP6110SpecBuilder(DenebSpecBuilder):
+    fork: str = EIP6110
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.deneb import {preset_name} as deneb
+'''
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder)
 }
 
 
@@ -968,14 +982,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -987,7 +1001,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB):
+            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -996,7 +1010,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, DENEB):
+            if self.spec_fork in (CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/capella/light-client/fork.md
                     specs/capella/light-client/full-node.md
@@ -1008,7 +1022,7 @@ class PySpecCommand(Command):
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
                 """
-            if self.spec_fork == DENEB:
+            if self.spec_fork in (DENEB, EIP6110):
                 self.md_doc_paths += """
                     specs/deneb/light-client/fork.md
                     specs/deneb/light-client/full-node.md
@@ -1020,6 +1034,15 @@ class PySpecCommand(Command):
                     specs/deneb/polynomial-commitments.md
                     specs/deneb/p2p-interface.md
                     specs/deneb/validator.md
+                """
+            if self.spec_fork == EIP6110:
+                self.md_doc_paths += """
+                    specs/_features/eip6110/light-client/fork.md
+                    specs/_features/eip6110/light-client/full-node.md
+                    specs/_features/eip6110/light-client/p2p-interface.md
+                    specs/_features/eip6110/light-client/sync-protocol.md
+                    specs/_features/eip6110/beacon-chain.md
+                    specs/_features/eip6110/fork.md
                 """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -1157,11 +1180,12 @@ setup(
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
     py_modules=["eth2spec"],
     cmdclass=commands,
-    python_requires=">=3.8, <4",
+    python_requires=">=3.9, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
         "generator": ["python-snappy==0.6.1", "filelock"],
+        "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
     },
     install_requires=[
         "eth-utils>=2.0.0,<3",
@@ -1169,10 +1193,11 @@ setup(
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.25",
+        "remerkleable==0.1.27",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.1.8",
         MARKO_VERSION,
+        "py_arkworks_bls12381==0.3.4",
     ]
 )

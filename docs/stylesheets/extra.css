@@ -1,0 +1,34 @@
+/* Reference: https://zenn.dev/mebiusbox/articles/81d977a72cee01 */
+
+[data-md-color-scheme=default] {
+  --md-default-fg-color--light: #222 !important;
+}
+[data-md-color-scheme=slate] {
+  --md-default-fg-color--light: #fefefe !important;
+  --md-typeset-a-color: #fc0 !important;
+}
+
+.md-typeset pre {
+    color: #f8f8f2;
+}
+.md-typeset .highlighttable {
+    margin-left:-20px;
+    margin-right: -20px;
+    border-radius: 0;
+}
+.md-typeset .highlighttable > * {
+    --md-code-bg-color: #222 !important;
+    --md-code-fg-color: #fefefe !important;
+}
+.md-typeset .highlighttable .linenos .linenodiv pre span {
+    background-color: #222 !important;
+    color: #fefefe !important;
+}
+.md-typeset .highlighttable .md-clipboard:before,
+.md-typeset .highlighttable .md-clipboard:after {
+    color: rgba(240,240,240,.8);
+}
+.md-typeset .highlighttable .md-clipboard:hover:before,
+.md-typeset .highlighttable .md-clipboard:hover:after {
+    color: rgba(102,217,224,1);
+}
