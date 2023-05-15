@@ -305,6 +305,9 @@ workflows:
       - test-eip6110:
           requires:
             - install_pyspec_test
+      - test-attslotrange:
+          requires:
+            - install_pyspec_test
       - table_of_contents
       - codespell
       - lint:
