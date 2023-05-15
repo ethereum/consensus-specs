@@ -438,6 +438,8 @@ with_deneb_and_later = with_all_phases_from(DENEB)
 with_eip6110_and_later = with_all_phases_from(EIP6110)
 with_attslotrange_and_later = with_all_phases_from(ATTSLOTRANGE)
 
+with_all_phases_except_attslotrange = with_all_phases_except(ATTSLOTRANGE)
+
 
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET

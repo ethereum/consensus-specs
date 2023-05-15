@@ -4,6 +4,7 @@ venv
 .venvs
 .venv
 /.pytest_cache
+*.swp
 
 build/
 output/

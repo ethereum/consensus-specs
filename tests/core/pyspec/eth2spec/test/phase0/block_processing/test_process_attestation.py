@@ -2,6 +2,9 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls, never_bls,
     with_all_phases,
+    # Note, if attslotrange gets included, this will need to be 
+    # 'with all phases up until attslotrange'
+    with_all_phases_except_attslotrange,
     spec_test,
     low_balances,
     with_custom_state,
@@ -93,7 +96,7 @@ def test_invalid_before_inclusion_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_invalid_after_epoch_slots(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -391,7 +394,7 @@ def test_correct_attestation_included_at_one_epoch_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_invalid_correct_attestation_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -430,7 +433,7 @@ def test_incorrect_head_included_at_sqrt_epoch_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_incorrect_head_included_at_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
@@ -442,7 +445,7 @@ def test_incorrect_head_included_at_epoch_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_invalid_incorrect_head_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
@@ -499,7 +502,7 @@ def test_incorrect_head_and_target_included_at_epoch_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_invalid_incorrect_head_and_target_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
@@ -553,7 +556,7 @@ def test_incorrect_target_included_at_epoch_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except_attslotrange
 @spec_state_test
 def test_invalid_incorrect_target_included_after_epoch_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
