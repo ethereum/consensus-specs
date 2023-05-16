@@ -67,7 +67,6 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     num_committees += end_slot - epoch_boundary_slot + 1
     # Next, calculate the weight from the previous epoch
     # Each committee from the previous epoch only contributes a pro-rated weight
-    # NOTE: using float arithmetic here. is that allowed here in spec? probably yes, since this is not consensus code.
     multiplier = (SLOTS_PER_EPOCH - end_slot - 1) / SLOTS_PER_EPOCH
     num_committees += (epoch_boundary_slot - start_slot) * multiplier
     return num_committees * committee_weight
@@ -83,8 +82,7 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     maximum_support = int(get_committee_weight_between_slots(Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
-    # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold/100 =>
-    return 100 * support > 50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support
+    return support / maximum_support > 0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
 ```
 
 ```python
@@ -178,8 +176,7 @@ def is_ffg_confirmed(
         )
     )
 
-    # ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_weight >= 2/3 * total_active_balance =>
-    return ffg_suport_for_checkpoint * 300 + (300 - 3 * confirmation_byzantine_threshold) * remaining_ffg_weight - max_adversarial_ffg_suport_for_checkpoint * 300 >= 200 * total_active_balance
+    return ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_weight >= 2/3 * total_active_balance
 ```
 
 ### Main Function
