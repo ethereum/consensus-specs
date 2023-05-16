@@ -9,14 +9,24 @@
   - [Usage](#usage)
 - [Confirmation Rule](#confirmation-rule)
   - [Helper Functions](#helper-functions)
-      - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
-  - [Main Function](#main-function)
-- [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
-  - [Helper](#helper)
-  - [Main Function](#main-function-1)
-- [Confirmation Score](#confirmation-score)
+    - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
+    - [`is_one_confirmed`](#is_one_confirmed)
+    - [`is_LMD_confirmed`](#is_lmd_confirmed)
+    - [`get_remaining_weight_in_epoch`](#get_remaining_weight_in_epoch)
+    - [`get_leaf_block_roots`](#get_leaf_block_roots)
+    - [`get_ffg_support`](#get_ffg_support)
+    - [`is_ffg_confirmed`](#is_ffg_confirmed)
+  - [`is_confirmed`](#is_confirmed)
+- [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
-  - [Main Function](#main-function-2)
+    - [`find_confirmed_block`](#find_confirmed_block)
+  - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
+- [Confirmation Score](#confirmation-score)
+  - [Helper Functions](#helper-functions-2)
+    - [`get_score_for_one_confirmation`](#get_score_for_one_confirmation)
+    - [`get_score_for_LMD_confirmation`](#get_score_for_lmd_confirmation)
+    - [`get_score_for_FFG_confirmation`](#get_score_for_ffg_confirmation)
+  - [`get_confirmation_score`](#get_confirmation_score)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -42,9 +52,7 @@ This section specifies an algorithm to determine whether a block is confirmed. T
 
 ### Helper Functions
 
-
-##### `get_committee_weight_between_slots`
-
+#### `get_committee_weight_between_slots`
 
 ```python
 def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot: Slot) -> Gwei:
@@ -73,6 +81,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     return num_committees * committee_weight
 ```
 
+#### `is_one_confirmed`
 
 ```python
 def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
@@ -86,6 +95,8 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     return support / maximum_support > \
         0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
 ```
+
+#### `is_LMD_confirmed`
 
 ```python
 def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
@@ -105,6 +116,8 @@ def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
             )
 ```
 
+#### `get_remaining_weight_in_epoch`
+
 ```python
 def get_remaining_weight_in_epoch(store: Store, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
@@ -112,6 +125,7 @@ def get_remaining_weight_in_epoch(store: Store, current_slot: Slot) -> Gwei:
     return get_committee_weight_between_slots(store, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 ```
 
+#### `get_leaf_block_roots`
 
 ```python
 def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
@@ -129,6 +143,8 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
         return set(block_root)
 
 ```
+
+#### `get_ffg_support`
 
 ```python
 def get_ffg_support(store: Store, block_root: Root) -> Gwei:
@@ -149,6 +165,8 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     checkpoint_state = store.block_states[checkpoint_root]
     return get_attesting_balance(checkpoint_state, list(support_for_checkpoint))
 ```
+
+#### `is_ffg_confirmed`
 
 ```python
 def is_ffg_confirmed(
@@ -185,7 +203,7 @@ def is_ffg_confirmed(
         (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
 ```
 
-### Main Function
+### `is_confirmed`
 
 ```python
 def is_confirmed(
@@ -210,12 +228,13 @@ def is_confirmed(
     )
 ```
 
-
-## `get_safe_execution_payload_hash`
+## Safe Block Hash
 
 This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` Engine API call.
 
-### Helper
+### Helper Functions
+
+#### `find_confirmed_block`
 
 ```python
 def find_confirmed_block(
@@ -239,7 +258,7 @@ def find_confirmed_block(
 
 ```
 
-### Main Function
+### `get_safe_execution_payload_hash`
 
 ```python
 def get_safe_execution_payload_hash(
@@ -270,6 +289,7 @@ prevent a block from being confirmed.
 
 ### Helper Functions
 
+#### `get_score_for_one_confirmation`
 
 ```python
 def get_score_for_one_confirmation(store: Store, block_root: Root) -> int:
@@ -285,6 +305,8 @@ def get_score_for_one_confirmation(store: Store, block_root: Root) -> int:
     # the "-1" in the numerator is to return a "<=" rather than a "<" value
     return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
 ```
+
+#### `get_score_for_LMD_confirmation`
 
 ```python
 def get_score_for_LMD_confirmation(store: Store, block_root: Root) -> int:
@@ -303,6 +325,8 @@ def get_score_for_LMD_confirmation(store: Store, block_root: Root) -> int:
                 get_score_for_LMD_confirmation(store, block.parent_root)
             )
 ```
+
+#### `get_score_for_FFG_confirmation`
 
 ```python
 def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
@@ -367,7 +391,7 @@ def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
                (3 * total_active_balance)
 ```
 
-### Main Function
+### `get_confirmation_score`
 
 ```python
 def get_confirmation_score(

@@ -20,6 +20,7 @@
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_proposer_score_boost`](#get_proposer_score_boost)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
