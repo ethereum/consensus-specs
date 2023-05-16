@@ -94,13 +94,9 @@ via `get_payload(payload_id).blobs_bundle`.
 2. Validate `blobs` and `blob_kzg_commitments`:
 
 ```python
-def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
-                                       blobs: Sequence[Blob],
+def validate_blobs_and_kzg_commitments(blobs: Sequence[Blob],
                                        blob_kzg_commitments: Sequence[KZGCommitment],
                                        blob_kzg_proofs: Sequence[KZGProof]) -> None:
-    # TODO: can we just remove it?
-    # assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
-
     # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
     assert len(blob_kzg_commitments) == len(blobs) == len(blob_kzg_proofs)
     assert verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, blob_kzg_proofs)

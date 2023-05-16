@@ -31,8 +31,7 @@ def test_validate_blobs_and_kzg_commitments(spec, state):
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
-    spec.validate_blobs_and_kzg_commitments(block.body.execution_payload,
-                                            blobs,
+    spec.validate_blobs_and_kzg_commitments(blobs,
                                             blob_kzg_commitments,
                                             proofs)
 
@@ -52,7 +51,6 @@ def test_validate_blobs_and_kzg_commitments_missing_blob(spec, state):
 
     expect_assertion_error(
         lambda: spec.validate_blobs_and_kzg_commitments(
-            block.body.execution_payload,
             blobs[:-1],
             blob_kzg_commitments,
             proofs
@@ -75,7 +73,6 @@ def test_validate_blobs_and_kzg_commitments_missing_proof(spec, state):
 
     expect_assertion_error(
         lambda: spec.validate_blobs_and_kzg_commitments(
-            block.body.execution_payload,
             blobs,
             blob_kzg_commitments,
             proofs[:-1]
@@ -100,7 +97,6 @@ def test_validate_blobs_and_kzg_commitments_incorrect_blob(spec, state):
 
     expect_assertion_error(
         lambda: spec.validate_blobs_and_kzg_commitments(
-            block.body.execution_payload,
             blobs,
             blob_kzg_commitments,
             proofs

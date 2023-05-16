@@ -21,10 +21,12 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+    # Before Deneb, only `body.execution_payload` matters. `BeaconBlockBody` is just a wrapper.
+    body = spec.BeaconBlockBody(execution_payload=execution_payload)
 
     yield 'pre', state
     yield 'execution', {'execution_valid': execution_valid}
-    yield 'execution_payload', execution_payload
+    yield 'body', body
 
     called_new_block = False
 
@@ -32,22 +34,22 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
         def notify_new_payload(self, new_payload_request) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
-            assert new_payload_request.execution_payload == execution_payload
+            assert new_payload_request.execution_payload == body.execution_payload
             return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
+        expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, execution_payload, TestEngine())
+    spec.process_execution_payload(state, body, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
 
     yield 'post', state
 
-    assert state.latest_execution_payload_header == get_execution_payload_header(spec, execution_payload)
+    assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
 
 
 def run_success_test(spec, state):

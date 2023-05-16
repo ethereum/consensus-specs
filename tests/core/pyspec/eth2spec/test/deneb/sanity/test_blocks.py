@@ -53,7 +53,10 @@ def test_max_blobs(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
-def test_invalid_incorrect_blob_tx_type(spec, state):
+def test_incorrect_blob_tx_type(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -62,15 +65,18 @@ def test_invalid_incorrect_blob_tx_type(spec, state):
     opaque_tx = b'\x04' + opaque_tx[1:]  # incorrect tx type
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
-    yield 'post', None
+    yield 'post', state
 
 
 @with_deneb_and_later
 @spec_state_test
-def test_invalid_incorrect_transaction_length_1_byte(spec, state):
+def test_incorrect_transaction_length_1_byte(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -79,15 +85,18 @@ def test_invalid_incorrect_transaction_length_1_byte(spec, state):
     opaque_tx = opaque_tx + b'\x12'  # incorrect tx length
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
-    yield 'post', None
+    yield 'post', state
 
 
 @with_deneb_and_later
 @spec_state_test
-def test_invalid_incorrect_transaction_length_32_bytes(spec, state):
+def test_incorrect_transaction_length_32_bytes(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -96,15 +105,18 @@ def test_invalid_incorrect_transaction_length_32_bytes(spec, state):
     opaque_tx = opaque_tx + b'\x12' * 32  # incorrect tx length
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
-    yield 'post', None
+    yield 'post', state
 
 
 @with_deneb_and_later
 @spec_state_test
-def test_invalid_incorrect_commitment(spec, state):
+def test_incorrect_commitment(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -113,15 +125,18 @@ def test_invalid_incorrect_commitment(spec, state):
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
-    yield 'post', None
+    yield 'post', state
 
 
 @with_deneb_and_later
 @spec_state_test
-def test_invalid_incorrect_commitments_order(spec, state):
+def test_incorrect_commitments_order(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -129,10 +144,10 @@ def test_invalid_incorrect_commitments_order(spec, state):
     block.body.blob_kzg_commitments = [blob_kzg_commitments[1], blob_kzg_commitments[0]]  # incorrect order
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
-    yield 'post', None
+    yield 'post', state
 
 
 @with_deneb_and_later
