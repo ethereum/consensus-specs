@@ -93,6 +93,7 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),
         parent_beacon_block_root=hash_tree_root(state.latest_block_header), # [New in EIP-4788]
+        current_slot=state.slot,                                            # [New in EIP-4788]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,

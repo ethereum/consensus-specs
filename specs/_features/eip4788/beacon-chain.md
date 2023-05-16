@@ -46,6 +46,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     excess_data_gas: uint256
     parent_beacon_block_root: Root # [New in EIP-4788]
+    current_slot: Slot             # [New in EIP-4788]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -71,4 +72,5 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     excess_data_gas: uint256
     parent_beacon_block_root: Root # [New in EIP-4788]
+    current_slot: Slot             # [New in EIP-4788]
 ```
