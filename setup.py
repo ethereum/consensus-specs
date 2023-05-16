@@ -988,6 +988,7 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
+                    specs/phase0/p2p-interface.md
                 """
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """
