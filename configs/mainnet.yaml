@@ -94,3 +94,8 @@ PROPOSER_SCORE_BOOST: 40
 DEPOSIT_CHAIN_ID: 1
 DEPOSIT_NETWORK_ID: 1
 DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
+
+
+# Validator guide
+# ---------------------------------------------------------------
+SUBNETS_PER_NODE: 2

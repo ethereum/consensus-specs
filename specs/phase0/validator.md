@@ -13,6 +13,8 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Configuration](#configuration)
+  - [Misc](#misc-1)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
   - [`AggregateAndProof`](#aggregateandproof)
@@ -102,9 +104,16 @@ We define the following Python custom types for type hinting and readability:
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
-| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
 | `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
+
+## Configuration
+
+### Misc
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 
 ## Containers
 

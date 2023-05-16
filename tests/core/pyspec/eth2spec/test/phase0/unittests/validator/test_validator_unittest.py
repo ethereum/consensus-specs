@@ -488,7 +488,7 @@ def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
     node_id = rng.randint(0, 2**40 - 1)  # try VALIDATOR_REGISTRY_LIMIT
     epoch = rng.randint(0, 2**64 - 1)
     subnets = spec.compute_subscribed_subnets(node_id, epoch)
-    assert len(subnets) == spec.SUBNETS_PER_NODE
+    assert len(subnets) == spec.config.SUBNETS_PER_NODE
 
 
 @with_all_phases
