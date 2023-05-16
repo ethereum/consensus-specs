@@ -79,7 +79,7 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(Slot(parent_block.slot + 1), current_slot))
+    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
     return support / maximum_support > 0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
@@ -104,10 +104,10 @@ def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
 ```
 
 ```python
-def get_remaining_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
+def get_remaining_weight_in_epoch(store: Store, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
-    return get_committee_weight_between_slots(Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
+    return get_committee_weight_between_slots(store, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 ```
 
 
@@ -162,7 +162,7 @@ def is_ffg_confirmed(
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     checkpoint_state = store.block_states[checkpoint_root]
 
-    remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
     total_active_balance = int(get_total_active_balance(checkpoint_state))
     current_weight_in_epoch = total_active_balance - remaining_ffg_weight
     assert current_weight_in_epoch >= 0
@@ -176,7 +176,7 @@ def is_ffg_confirmed(
         )
     )
 
-    return ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_weight >= 2/3 * total_active_balance
+    return ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight >= 2 / 3 * total_active_balance
 ```
 
 ### Main Function
@@ -269,7 +269,7 @@ def get_score_for_one_confirmation(store: Store, block_root: Root) -> int:
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight(parent_block.slot + 1, current_slot))
+    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
     # We need to return a value confirmation_byzantine_threshold such that the following inequality is true
@@ -280,7 +280,6 @@ def get_score_for_one_confirmation(store: Store, block_root: Root) -> int:
 
 ```python
 def get_score_for_LMD_confirmation(store: Store, block_root: Root) -> int:
-    current_slot = get_current_slot(store)
     if block_root == store.finalized_checkpoint.root:
         return 100 // 3
     else:
@@ -309,7 +308,7 @@ def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
 
     total_active_balance = int(get_total_active_balance(checkpoint_state))
 
-    remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
 
     ffg_voting_weight_so_far = total_active_balance - remaining_ffg_weight
     assert ffg_voting_weight_so_far >= 0

@@ -213,7 +213,8 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 
 ```python
 def get_proposer_score(store: Store) -> Gwei:
-    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
     return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ```
 
