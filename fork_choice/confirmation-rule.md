@@ -6,8 +6,10 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+  - [Usage](#usage)
 - [Confirmation Rule](#confirmation-rule)
   - [Helper Functions](#helper-functions)
+      - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
   - [Main Function](#main-function)
 - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
   - [Helper](#helper)
@@ -15,7 +17,6 @@
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-1)
   - [Main Function](#main-function-2)
-- [Old functions kept for reference](#old-functions-kept-for-reference)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -82,7 +83,8 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
-    return support / maximum_support > 0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
+    return support / maximum_support > \
+        0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
 ```
 
 ```python
@@ -137,7 +139,9 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
     leave_roots = get_leaf_block_roots(store, block_root)
     # current_epoch_attestations contains only attestations with source matching block.current_justified_checkpoint
-    attestations_in_leaves: Set[PendingAttestation] = set().union(*[store.block_states[root].current_epoch_attestations for root in leave_roots])
+    attestations_in_leaves = set().union(
+        *[store.block_states[root].current_epoch_attestations for root in leave_roots]
+    )
 
     current_epoch = get_current_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
@@ -176,7 +180,9 @@ def is_ffg_confirmed(
         )
     )
 
-    return ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight >= 2 / 3 * total_active_balance
+    return 2 / 3 * total_active_balance <= \
+        ffg_suport_for_checkpoint - max_adversarial_ffg_suport_for_checkpoint + \
+        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
 ```
 
 ### Main Function
@@ -207,7 +213,7 @@ def is_confirmed(
 
 ## `get_safe_execution_payload_hash`
 
-This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` engine api call.
+This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` Engine API call.
 
 ### Helper
 
@@ -228,7 +234,8 @@ def find_confirmed_block(
     if is_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root):
         return block_root
     else:
-        return find_confirmed_block(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block.parent_root)
+        return find_confirmed_block(store, confirmation_byzantine_threshold,
+                                    confirmation_slashing_threshold, block.parent_root)
 
 ```
 
@@ -242,7 +249,8 @@ def get_safe_execution_payload_hash(
 ) -> Hash32:
     head_root = get_head(store)
 
-    confirmed_block_root = find_confirmed_block(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, head_root)
+    confirmed_block_root = find_confirmed_block(store, confirmation_byzantine_threshold,
+                                                confirmation_slashing_threshold, head_root)
     confirmed_block = store.blocks[confirmed_block_root]
 
     if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
@@ -330,7 +338,9 @@ def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
     # (1 - ffg_suport_for_checkpoint / ffg_voting_weight_so_far) * remaining_ffg_weight >= 2/3 * total_active_balance
     # multiplying each side by 3 * ffg_voting_weight_so_far, we get (assuming ffg_voting_weight_so_far != 0):
 
-    if ffg_voting_weight_so_far > 0 and 3 * (ffg_voting_weight_so_far - ffg_suport_for_checkpoint) * remaining_ffg_weight >= 2 * total_active_balance * ffg_voting_weight_so_far:
+    if ffg_voting_weight_so_far > 0 and \
+            3 * (ffg_voting_weight_so_far - ffg_suport_for_checkpoint) * remaining_ffg_weight >= \
+            2 * total_active_balance * ffg_voting_weight_so_far:
         # We know that confirmation_byzantine_threshold >= ffg_suport_for_checkpoint / ffg_voting_weight_so_far
 
         # Then our target statement reduces to
@@ -353,7 +363,8 @@ def get_score_for_FFG_confirmation(store: Store, block_root: Root) -> int:
         # Therfore:
         # confirmation_byzantine_threshold <= ((ffg_suport_for_checkpoint + remaining_ffg_weight)/total_active_balance - 2/3) * 100
         # by bringing all to the denominator (3 * total_active_balance), we get
-        return (300 * (ffg_suport_for_checkpoint + remaining_ffg_weight) - 200 * total_active_balance) // (3 * total_active_balance)
+        return (300 * (ffg_suport_for_checkpoint + remaining_ffg_weight) - 200 * total_active_balance) // \
+               (3 * total_active_balance)
 ```
 
 ### Main Function
