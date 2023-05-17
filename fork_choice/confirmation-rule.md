@@ -38,10 +38,14 @@ This document specifies a fast block confirmation rule for the Ethereum protocol
 
 The research paper for this rule is attached in this [ethresear.ch post](https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454).
 
-### Usage
-
 This rule makes the following network synchrony assumption: starting from the current slot, attestations created by honest validators in any slot are received by the end of that slot.
-This rule provides confirmations to users who believe in the above assumption. If this assumption is broken, confirmed blocks can be reorged without any adversarial behavior, and without slashing.
+Consequently, this rule provides confirmations to users who believe in the above assumption. If this assumption is broken, confirmed blocks can be reorged without any adversarial behavior, and without slashing.
+
+There are two algorithms in the document:
+- [**Confirmation Rule**](#confirmation-rule): Given a block and confirmation safety parameters, outputs whether the block is confirmed.
+- [**Confirmation Score**](#confirmation-score): Given a block, outputs the confirmation score for the block, i.e., the maximum possible confirmation safety parameters to deem the block confirmed.
+
+*Note:* These algorithms use floating point arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that Ethereum clients arrive at the exact same results - a property crucial for consensus objects (such as the `BeaconState`). This document describes a local confirmation rule that is not used to derive any consensus objects. Using floating point arithmetic here allows for a more readbale specification, and client-native floating point arithmetic provides sufficient precision for its objective.
 
 ## Confirmation Rule
 
