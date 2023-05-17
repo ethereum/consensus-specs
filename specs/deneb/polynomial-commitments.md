@@ -566,7 +566,7 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Given a list of blobs and blob KZG proofs, verify that they correspond to the provided commitments.
-
+    Will return True if there are zero blobs/commitments/proofs.
     Public method.
     """
 
