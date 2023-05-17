@@ -31,7 +31,8 @@
 ## Introduction
 
 This document details the beacon chain additions and changes of to support the Whisk SSLE,
-building upon the [phase0](../phase0/beacon-chain.md) specification.
+
+*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
