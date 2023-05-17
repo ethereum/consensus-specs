@@ -59,7 +59,7 @@ def get_attestation_participation_flag_indices(state: BeaconState,
     participation_flag_indices = []
     if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
-    if is_matching_target:
+    if is_matching_target:  # [Modified in AttSlotRange]
         participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
     if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
