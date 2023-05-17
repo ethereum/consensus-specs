@@ -6,16 +6,27 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+  - [Usage](#usage)
 - [Confirmation Rule](#confirmation-rule)
   - [Helper Functions](#helper-functions)
-  - [Main Function](#main-function)
-- [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
-  - [Helper](#helper)
-  - [Main Function](#main-function-1)
-- [Confirmation Score](#confirmation-score)
+    - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
+    - [`is_one_confirmed`](#is_one_confirmed)
+    - [`is_LMD_confirmed`](#is_lmd_confirmed)
+    - [`get_remaining_weight_in_epoch`](#get_remaining_weight_in_epoch)
+    - [`get_leaf_block_roots`](#get_leaf_block_roots)
+    - [`get_FFG_support`](#get_FFG_support)
+    - [`is_FFG_confirmed`](#is_FFG_confirmed)
+  - [`is_confirmed`](#is_confirmed)
+- [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
-  - [Main Function](#main-function-2)
-- [Old functions kept for reference](#old-functions-kept-for-reference)
+    - [`find_confirmed_block`](#find_confirmed_block)
+  - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
+- [Confirmation Score](#confirmation-score)
+  - [Helper Functions](#helper-functions-2)
+    - [`get_one_confirmation_score`](#get_one_confirmation_score)
+    - [`get_LMD_confirmation_score`](#get_LMD_confirmation_score)
+    - [`get_FFG_confirmation_score`](#get_FFG_confirmation_score)
+  - [`get_confirmation_score`](#get_confirmation_score)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -24,6 +35,8 @@
 
 This document specifies a fast block confirmation rule for the Ethereum protocol.
 *Note:* Confirmation is not a substitute for finality! The safety of confirmations is weaker than that of finality.
+
+The research paper for this rule is attached in this [ethresear.ch post](https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454).
 
 ### Usage
 
@@ -41,69 +54,86 @@ This section specifies an algorithm to determine whether a block is confirmed. T
 
 ### Helper Functions
 
+#### `get_committee_weight_between_slots`
 
 ```python
-def get_full_committee_at_slot(state: BeaconState, slot: Slot) -> Sequence[ValidatorIndex]:
-    epoch = compute_epoch_at_slot(slot)
-    validator_indexes = []  # type: List[ValidatorIndex]
-    for i in get_committee_count_per_slot(state, epoch):
-        validator_indexes.append(get_beacon_committee(state, slot, i))
+def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot: Slot) -> Gwei:
+    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both).
+    Uses the justified state to compute committee weights.
+    """
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    total_active_balance = get_total_active_balance(justified_state)
 
-    return validator_indexes
+    # If an entire epoch is covered by the range, return the total active balance
+    start_epoch = compute_epoch_at_slot(start_slot)
+    end_epoch = compute_epoch_at_slot(end_slot)
+    if end_epoch > start_epoch + 1:
+        return total_active_balance
+
+    if start_epoch == end_epoch:
+        num_committees = end_slot - start_slot + 1
+    else:
+        # A range that spans an epoch boundary, but does not span any full epoch
+        # needs pro-rata calculation
+        committee_weight = get_total_active_balance(justified_state) // SLOTS_PER_EPOCH
+        # First, calculate the number of committees in the current epoch
+        num_slots_in_current_epoch = (end_slot % SLOTS_PER_EPOCH) + 1
+        # Next, calculate the number of slots remaining in the current epoch
+        remaining_slots_in_current_epoch = SLOTS_PER_EPOCH - num_slots_in_current_epoch
+        # Then, calculate the number of slots in the previous epoch
+        num_slots_in_previous_epoch = SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH)
+
+        # Each committee from the previous epoch only contributes a pro-rated weight
+        multiplier = remaining_slots_in_current_epoch / SLOTS_PER_EPOCH
+        num_committees = num_slots_in_current_epoch + num_slots_in_previous_epoch * multiplier
+    return num_committees * committee_weight
 ```
 
-```python
-def get_committee_weight_between_slots(state: BeaconState, from_slot: Slot, to_slot: Slot) -> Gwei:
-    validator_index_set = set()
-    for slot in range(from_slot, to_slot + 1):
-        validator_index_set.add(set(get_full_committee_at_slot(state, Slot(slot))))
-
-    total_weight = Gwei(0)
-
-    for validator_index in validator_index_set:
-        total_weight += state.validators[validator_index].effective_balance
-
-    return total_weight
-```
+#### `is_one_confirmed`
 
 ```python
-def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root, current_slot: Slot) -> bool:
+def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
+    current_slot = get_current_slot(store)
     block = store.blocks[block_root]
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
+    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
+    proposer_score = int(get_proposer_score(store))
 
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
-
-    # support / maximum_support > 1/2 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold/100 =>
-    return 100 * support > 50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support
+    return support / maximum_support > \
+        0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
 ```
 
+#### `is_LMD_confirmed`
+
 ```python
-def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root, current_slot: Slot) -> bool:
+def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True
     else:
         block = store.blocks[block_root]
         finalized_block = store.blocks[store.finalized_checkpoint.root]
         if block.slot <= finalized_block.slot:
+            # This block is not in the finalized chain.
             return False
         else:
+            # Check is_one_confirmed for this block and is_LMD_confirmed for the preceding chain.
             return (
-                is_one_confirmed(store, confirmation_byzantine_threshold, block_root, current_slot) and
-                is_LMD_confirmed(store, confirmation_byzantine_threshold, block.parent_root, current_slot)
+                is_one_confirmed(store, confirmation_byzantine_threshold, block_root) and
+                is_LMD_confirmed(store, confirmation_byzantine_threshold, block.parent_root)
             )
 ```
 
+#### `get_remaining_weight_in_epoch`
+
 ```python
-def get_future_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
+def get_remaining_weight_in_epoch(store: Store, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
-    return get_committee_weight_between_slots(state, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
+    return get_committee_weight_between_slots(store, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 ```
 
+#### `get_leaf_block_roots`
 
 ```python
 def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
@@ -113,77 +143,75 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
     ]
 
     if any(children):
+        # Get leaves of all children and add to the set.
         leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
-
         return leaves
     else:
+        # This block is a leaf.
         return set(block_root)
 
 ```
 
+#### `get_FFG_support`
+
 ```python
-def get_ffg_support(store: Store, block_root: Root) -> Gwei:
+def get_FFG_support(store: Store, block_root: Root) -> Gwei:
     # Returns the total weight supporting the highest checkpoint in the block's chain
 
     block = store.blocks[block_root]
     assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
 
-    current_epoch = get_current_epoch(store)
-
     leave_roots = get_leaf_block_roots(store, block_root)
-
     # current_epoch_attestations contains only attestations with source matching block.current_justified_checkpoint
-    attestations_in_leaves: Set[PendingAttestation] = set().union(*[store.block_states[root].current_epoch_attestations for root in leave_roots])
+    attestations_in_leaves = set().union(
+        *[store.block_states[root].current_epoch_attestations for root in leave_roots]
+    )
 
-    block_checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
-
-    attestations_in_leaves_for_block_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == block_checkpoint_root}
-
-    block_checkpoint_state = store.block_states[block_checkpoint_root]
-
-    return get_attesting_balance(block_checkpoint_state, list(attestations_in_leaves_for_block_checkpoint))
+    current_epoch = get_current_epoch(store)
+    checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
+    support_for_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == checkpoint_root}
+    checkpoint_state = store.block_states[checkpoint_root]
+    return get_attesting_balance(checkpoint_state, list(support_for_checkpoint))
 ```
 
+#### `is_FFG_confirmed`
+
 ```python
-def is_ffg_confirmed(
+def is_FFG_confirmed(
     # Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
     store: Store,
     confirmation_byzantine_threshold: int,
     confirmation_slashing_threshold: int,
     block_root: Root,
-    current_slot: Slot
 ) -> bool:
+    current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch(store)
+    checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
+    checkpoint_state = store.block_states[checkpoint_root]
 
-    # The following could be replaced by get_checkpoint_block once merged in
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
-    block_checkpoint_state = store.block_states[block_checkpoint_root]
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
+    total_active_balance = int(get_total_active_balance(checkpoint_state))
+    current_weight_in_epoch = total_active_balance - remaining_ffg_weight
+    assert current_weight_in_epoch >= 0
 
-    total_active_balance = int(get_total_active_balance(block_checkpoint_state))
-
-    remaining_ffg_voting_weight = int(get_future_vote_weight_in_epoch(block_checkpoint_state, current_slot))
-
-    current_vote_weight_in_epoch = total_active_balance - remaining_ffg_voting_weight
-    assert current_vote_weight_in_epoch >= 0
-
-    ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_support(store, block_root))
-
-    max_ffg_weight_the_adversary_can_subtract_from_ffg_support = int(
+    ffg_support_for_checkpoint = int(get_FFG_support(store, block_root))
+    max_adversarial_ffg_support_for_checkpoint = int(
         min(
-            (current_vote_weight_in_epoch * confirmation_byzantine_threshold - 1) // 100 + 1,
+            (current_weight_in_epoch * confirmation_byzantine_threshold - 1) // 100 + 1,
             confirmation_slashing_threshold,
-            ffg_weight_supporting_checkpoint_for_block_to_be_confirmed
+            ffg_support_for_checkpoint
         )
     )
 
-    # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed - max_ffg_weight_the_adversary_can_subtract_from_ffg_support + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_voting_weight >= 2/3 * total_active_balance =>
-    return ffg_weight_supporting_checkpoint_for_block_to_be_confirmed * 300 + (300 - 3 * confirmation_byzantine_threshold) * remaining_ffg_voting_weight - max_ffg_weight_the_adversary_can_subtract_from_ffg_support * 300 >= 200 * total_active_balance
+    return 2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint + \
+        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
 ```
 
-### Main Function
+### `is_confirmed`
 
 ```python
 def is_confirmed(
@@ -192,28 +220,29 @@ def is_confirmed(
     confirmation_slashing_threshold: int,
     block_root: Root
 ) -> bool:
-    current_slot = get_current_slot(store)
     current_epoch = get_current_epoch(store)
 
     block = store.blocks[block_root]
     block_state = store.block_states[block_root]
+    block_justified_checkpoint = block_state.current_justified_checkpoint.epoch
 
-    # We can only apply isConfirmed to blocks created in the current epoch
+    # This function is only applicable to current epoch blocks
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
-        is_LMD_confirmed(store, confirmation_byzantine_threshold, block_root, current_slot) and
-        is_ffg_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root, current_slot) and
-        block_state.current_justified_checkpoint.epoch + 1 == current_epoch
+        is_LMD_confirmed(store, confirmation_byzantine_threshold, block_root) and
+        is_FFG_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root) and
+        block_justified_checkpoint + 1 == current_epoch
     )
 ```
 
+## Safe Block Hash
 
-## `get_safe_execution_payload_hash`
+This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` Engine API call.
 
-This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` engine api call.
+### Helper Functions
 
-### Helper
+#### `find_confirmed_block`
 
 ```python
 def find_confirmed_block(
@@ -232,11 +261,12 @@ def find_confirmed_block(
     if is_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root):
         return block_root
     else:
-        return find_confirmed_block(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block.parent_root)
+        return find_confirmed_block(store, confirmation_byzantine_threshold,
+                                    confirmation_slashing_threshold, block.parent_root)
 
 ```
 
-### Main Function
+### `get_safe_execution_payload_hash`
 
 ```python
 def get_safe_execution_payload_hash(
@@ -246,7 +276,8 @@ def get_safe_execution_payload_hash(
 ) -> Hash32:
     head_root = get_head(store)
 
-    confirmed_block_root = find_confirmed_block(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, head_root)
+    confirmed_block_root = find_confirmed_block(store, confirmation_byzantine_threshold,
+                                                confirmation_slashing_threshold, head_root)
     confirmed_block = store.blocks[confirmed_block_root]
 
     if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
@@ -266,105 +297,104 @@ prevent a block from being confirmed.
 
 ### Helper Functions
 
+#### `get_one_confirmation_score`
+
 ```python
-def get_score_for_one_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+def get_one_confirmation_score(store: Store, block_root: Root) -> int:
+    current_slot = get_current_slot(store)
     block = store.blocks[block_root]
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(justified_checkpoint_state, Slot(parent_block.slot + 1), current_slot))
+    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
+    proposer_score = int(get_proposer_score(store))
 
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    proposer_score = int((committee_weight * PROPOSER_SCORE_BOOST) // 100)
-
-    # We need to return a value confirmation_byzantine_threshold such that the following inequality is true
-    # 100 * support > 50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support
-    # the "-1" in the numerator is to return a "<=" rather than a "<" value
-    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
+    """
+    Return the max possible one_confirmation_score such that:
+    support / maximum_support > \
+        0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
+    """
+    return 100 * (support - 0.5 * proposer_score - 1) // maximum_support - 50
 ```
 
+#### `get_LMD_confirmation_score`
+
 ```python
-def get_score_for_LMD_confirmation(store: Store, block_root: Root, current_slot: Slot) -> int:
+def get_LMD_confirmation_score(store: Store, block_root: Root) -> int:
     if block_root == store.finalized_checkpoint.root:
         return 100 // 3
     else:
         block = store.blocks[block_root]
         finalized_block = store.blocks[store.finalized_checkpoint.root]
         if block.slot <= finalized_block.slot:
+            # This block is not in the finalized chain.
             return -1
         else:
+            # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
             return min(
-                get_score_for_one_confirmation(store, block_root, current_slot),
-                get_score_for_LMD_confirmation(store, block.parent_root, current_slot)
+                get_one_confirmation_score(store, block_root),
+                get_LMD_confirmation_score(store, block.parent_root)
             )
 ```
 
+#### `get_FFG_confirmation_score`
+
 ```python
-def get_score_for_FFG_confirmation(
-    store: Store,
-    block_root: Root,
-    current_slot: Slot
-) -> int:
+def get_FFG_confirmation_score(store: Store, block_root: Root) -> int:
+    current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
 
     current_epoch = get_current_epoch(store)
+    checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
+    checkpoint_state = store.block_states[checkpoint_root]
 
-    # The following could be replaced by get_checkpoint_block once merged in
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
-    block_checkpoint_state = store.block_states[block_checkpoint_root]
+    total_active_balance = int(get_total_active_balance(checkpoint_state))
 
-    total_active_balance = int(get_total_active_balance(block_checkpoint_state))
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
 
-    remaining_ffg_voting_weight = int(get_future_vote_weight_in_epoch(block_checkpoint_state, current_slot))
-
-    ffg_voting_weight_so_far = total_active_balance - remaining_ffg_voting_weight
+    ffg_voting_weight_so_far = total_active_balance - remaining_ffg_weight
     assert ffg_voting_weight_so_far >= 0
 
-    ffg_weight_supporting_checkpoint_for_block_to_be_confirmed = int(get_ffg_support(store, block_root))
+    ffg_support_for_checkpoint = int(get_FFG_support(store, block_root))
 
-    # We assume confirmation_slashing_threshold = + infinity
-    # So, we want to return a value confirmation_byzantine_threshold such that the following statement is true
+    """
+    Note: This function assumes confirmation_slashing_threshold = + infinity.
 
-    # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed
-    # - min(ffg_weight_supporting_checkpoint_for_block_to_be_confirmed, ffg_voting_weight_so_far  * confirmation_byzantine_threshold / 100)
-    # + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_voting_weight
-    # >= 2/3 * total_active_balance
+    Return the max possible ffg_confirmation_score such that:
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - \
+        min(ffg_support_for_checkpoint, ffg_voting_weight_so_far * ffg_confirmation_score / 100) + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+    """
 
-    # First, we check whether confirmation_byzantine_threshold >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
-    # To do this we check whether in the case that confirmation_byzantine_threshold == ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far * 100
-    # our target statement is true
-    # This amount to checking that
-    # (1 - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far) * remaining_ffg_voting_weight >= 2/3 * total_active_balance
-    # multiplying each side by 3 * ffg_voting_weight_so_far, we get (assuming ffg_voting_weight_so_far != 0):
+    """
+    Case 1: ffg_support_for_checkpoint <= ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
-    if ffg_voting_weight_so_far > 0 and 3 * (ffg_voting_weight_so_far - ffg_weight_supporting_checkpoint_for_block_to_be_confirmed) * remaining_ffg_voting_weight >= 2 * total_active_balance * ffg_voting_weight_so_far:
-        # We know that confirmation_byzantine_threshold >= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
+    2 / 3 * total_active_balance <= \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+    """
+    if ffg_voting_weight_so_far > 0:
+        ffg_confirmation_score = \
+            100 * (3 * remaining_ffg_weight - 2 * total_active_balance) // (3 * remaining_ffg_weight)
+        if ffg_confirmation_score / 100 >= ffg_support_for_checkpoint / ffg_voting_weight_so_far:
+            return ffg_confirmation_score
 
-        # Then our target statement reduces to
-        # (1 - confirmation_byzantine_threshold/100) * remaining_ffg_voting_weight >= 2/3 * total_active_balance
+    """
+    Case 2: ffg_support_for_checkpoint > ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
-        # Therefore
-        # confirmation_byzantine_threshold <=
-        # (1 - (2/3 * total_active_balance / remaining_ffg_voting_weight)) * 100 =
-        # by bringing all to the denominator (3 * remaining_ffg_voting_weight), we get
-        return (300 * remaining_ffg_voting_weight - 200 * total_active_balance) // (3 * remaining_ffg_voting_weight)
-    else:
-        # We know that  confirmation_byzantine_threshold <= ffg_weight_supporting_checkpoint_for_block_to_be_confirmed / ffg_voting_weight_so_far
-        # Then our target statement reduces to
-
-        # ffg_weight_supporting_checkpoint_for_block_to_be_confirmed
-        # - ffg_voting_weight_so_far  * confirmation_byzantine_threshold / 100
-        # + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_voting_weight
-        # >= 2/3 * total_active_balance
-
-        # Therfore:
-        # confirmation_byzantine_threshold <= ((ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight)/total_active_balance - 2/3) * 100
-        # by bringing all to the denominator (3 * total_active_balance), we get
-        return (300 * (ffg_weight_supporting_checkpoint_for_block_to_be_confirmed + remaining_ffg_voting_weight) - 200 * total_active_balance) // (3 * total_active_balance)
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - \
+        ffg_voting_weight_so_far * ffg_confirmation_score / 100 + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+    """
+    ffg_confirmation_score = \
+        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) // \
+        (3 * total_active_balance)
+    assert ffg_confirmation_score / 100 < ffg_support_for_checkpoint / ffg_voting_weight_so_far
+    return ffg_confirmation_score
 ```
 
-### Main Function
+### `get_confirmation_score`
 
 ```python
 def get_confirmation_score(
@@ -376,7 +406,6 @@ def get_confirmation_score(
     otherwise it returns the maximum percentage of adversary weight that is admissible in order to
     consider `block_root` confirmed.
     """
-    current_slot = get_current_slot(store)
     current_epoch = get_current_epoch(store)
 
     block = store.blocks[block_root]
@@ -385,57 +414,7 @@ def get_confirmation_score(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return min(
-        get_score_for_LMD_confirmation(store, block_root, current_slot),
-        get_score_for_FFG_confirmation(store, block_root, current_slot)
+        get_LMD_confirmation_score(store, block_root),
+        get_FFG_confirmation_score(store, block_root)
     )
-```
-
-
-## Old functions kept for reference
-
-```python
-def get_descendants_in_current_epoch(store: Store, block_root: Root) -> Set[Root]:
-    block = store.blocks[block_root]
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ]
-
-    descendants = set()
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
-
-    if compute_epoch_at_slot(block.slot) == current_epoch:
-        descendants.add(block_root)
-
-    if any(children):
-        for child in children:
-            descendants.update(get_descendants_in_current_epoch(store, child))
-
-    return descendants
-```
-
-```python
-def get_ffg_support_using_latest_messages(store: Store, block_root: Root) -> Gwei:
-    block = store.blocks[block_root]
-    assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
-
-    current_epoch = get_current_epoch(store)
-
-    block_checkpoint_root = get_block_root(store.block_states[block_root], current_epoch)
-
-    block_checkpoint_state = store.block_states[block_checkpoint_root]
-
-    active_indices = get_active_validator_indices(block_checkpoint_state, current_epoch)
-
-    return Gwei(sum(
-        block_checkpoint_state.validators[i].effective_balance for i in active_indices
-        if get_checkpoint_block(store, store.latest_messages[i].root, current_epoch) == block_checkpoint_root
-    ))
-```
-
-```python
-def get_current_vote_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
-    # Returns the total weight of votes for this epoch from committees up til the current slot
-    first_slot_current_epoch = compute_start_slot_at_epoch(compute_epoch_at_slot(current_slot))
-    return get_committee_weight_between_slots(state, first_slot_current_epoch, current_slot)
 ```
