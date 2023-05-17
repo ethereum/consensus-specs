@@ -163,7 +163,7 @@ def get_FFG_support(store: Store, block_root: Root) -> Gwei:
     # Returns the total weight supporting the highest checkpoint in the block's chain
 
     block = store.blocks[block_root]
-    assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
+    assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
 
     leave_roots = get_leaf_block_roots(store, block_root)
     # current_epoch_attestations contains only attestations with source matching block.current_justified_checkpoint
@@ -171,7 +171,7 @@ def get_FFG_support(store: Store, block_root: Root) -> Gwei:
         *[store.block_states[root].current_epoch_attestations for root in leave_roots]
     )
 
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     support_for_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == checkpoint_root}
     checkpoint_state = store.block_states[checkpoint_root]
@@ -190,9 +190,9 @@ def is_FFG_confirmed(
 ) -> bool:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
-    assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
+    assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
 
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     checkpoint_state = store.block_states[checkpoint_root]
 
@@ -224,7 +224,7 @@ def is_confirmed(
     confirmation_slashing_threshold: int,
     block_root: Root
 ) -> bool:
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
 
     block = store.blocks[block_root]
     block_state = store.block_states[block_root]
@@ -257,7 +257,7 @@ def find_confirmed_block(
 ) -> Root:
 
     block = store.blocks[block_root]
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
 
     if compute_epoch_at_slot(block.slot) != current_epoch:
         return store.finalized_checkpoint.root
@@ -346,9 +346,9 @@ def get_LMD_confirmation_score(store: Store, block_root: Root) -> float:
 def get_FFG_confirmation_score(store: Store, block_root: Root) -> float:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
-    assert get_current_epoch(store) == compute_epoch_at_slot(block.slot)
+    assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
 
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     checkpoint_state = store.block_states[checkpoint_root]
 
@@ -410,7 +410,7 @@ def get_confirmation_score(
     otherwise it returns the maximum percentage of adversary weight that is admissible in order to
     consider `block_root` confirmed.
     """
-    current_epoch = get_current_epoch(store)
+    current_epoch = get_current_store_epoch(store)
 
     block = store.blocks[block_root]
 
