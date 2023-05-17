@@ -12,6 +12,8 @@
 - [Preset](#preset)
 - [Configuration](#configuration)
 - [Containers](#containers)
+- [Helpers](#helpers)
+  - [Modified `get_attestation_participation_flag_indicies`](#modified-get_attestation_participation_flag_indicies)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
