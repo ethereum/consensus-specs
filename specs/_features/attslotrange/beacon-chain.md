@@ -15,6 +15,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
+- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -29,13 +30,48 @@ This feature allows for inclusion of attestations created during epoch `N` to be
 
 ## Containers
 
+## Helpers
+
+### Modified `get_attestation_participation_flag_indicies`
+
+*Note:* The function `get_attestation_participation_flag_indicies` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain.
+
+```python
+def get_attestation_participation_flag_indices(state: BeaconState,
+                                               data: AttestationData,
+                                               inclusion_delay: uint64) -> Sequence[int]:
+    """
+    Return the flag indices that are satisfied by an attestation.
+    """
+    if data.target.epoch == get_current_epoch(state):
+        justified_checkpoint = state.current_justified_checkpoint
+    else:
+        justified_checkpoint = state.previous_justified_checkpoint
+
+    # Matching roots
+    is_matching_source = data.source == justified_checkpoint
+    is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
+    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    assert is_matching_source
+
+    participation_flag_indices = []
+    if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
+        participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
+    if is_matching_target:
+        participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
+    if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
+
+    return participation_flag_indices
+```
+
 ## Beacon chain state transition function
 
 ### Block processing
 
 #### Modified `process_attestation`
 
-*Note*: The function `process_attestation` is modified to expand valid slots for inclusion to those in the `target.epoch` epoch as well as those in the `target.epoch + 1` epoch.
+*Note*: The function `process_attestation` is modified to expand valid slots for inclusion to those in both `target.epoch` epoch and `target.epoch + 1` epoch. Additionally, it utilizes an updated version of `get_attestation_participation_flag_indices` to ensure rewards are available for the extended attestation inclusion range.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -87,7 +123,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       ) -> BeaconState:
     fork = Fork(
         previous_version=ATTSLOTRANGE_FORK_VERSION,  # [Modified in AttSlotRange] for testing only
-        current_version=EIP7002_FORK_VERSION,  # [Modified in AttSlotRange]
+        current_version=ATTSLOTRANGE_FORK_VERSION,  # [Modified in AttSlotRange]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
