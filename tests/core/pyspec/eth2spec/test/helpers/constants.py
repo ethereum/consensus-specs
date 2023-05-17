@@ -16,13 +16,14 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
+EIP6988 = SpecForkName('eip6988')
 
 # The forks that pytest can run with.
 ALL_PHASES = (
     # Formal forks
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     # Experimental patches
-    EIP6110,
+    EIP6110, EIP6988,
 )
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110)
@@ -34,6 +35,7 @@ ALL_FORK_UPGRADES = {
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
     DENEB: EIP6110,
+    CAPELLA: EIP6988,
 }
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
 AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
