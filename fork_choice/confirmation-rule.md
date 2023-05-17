@@ -76,7 +76,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     num_committees += end_slot - epoch_boundary_slot + 1
     # Next, calculate the weight from the previous epoch
     # Each committee from the previous epoch only contributes a pro-rated weight
-    multiplier = (SLOTS_PER_EPOCH - end_slot - 1) / SLOTS_PER_EPOCH
+    multiplier = (SLOTS_PER_EPOCH - end_slot % SLOTS_PER_EPOCH - 1) / SLOTS_PER_EPOCH
     num_committees += (epoch_boundary_slot - start_slot) * multiplier
     return num_committees * committee_weight
 ```
