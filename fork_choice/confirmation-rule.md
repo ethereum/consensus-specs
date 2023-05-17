@@ -36,6 +36,8 @@
 This document specifies a fast block confirmation rule for the Ethereum protocol.
 *Note:* Confirmation is not a substitute for finality! The safety of confirmations is weaker than that of finality.
 
+The research paper for this rule is attached in this [ethresear.ch post](https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454).
+
 ### Usage
 
 This rule makes the following network synchrony assumption: starting from the current slot, attestations created by honest validators in any slot are received by the end of that slot.
