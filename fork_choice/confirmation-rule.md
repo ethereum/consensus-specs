@@ -357,35 +357,18 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> int:
         ffg_support_for_checkpoint - \
         min(ffg_support_for_checkpoint, ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100) + \
         (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
-
-    First, we check whether confirmation_byzantine_threshold >= ffg_support_for_checkpoint / ffg_voting_weight_so_far * 100
-    To do this we check whether in the case that confirmation_byzantine_threshold == ffg_support_for_checkpoint / ffg_voting_weight_so_far * 100
-    our target statement is true
-    This amount to checking that
-    (1 - ffg_support_for_checkpoint / ffg_voting_weight_so_far) * remaining_ffg_weight >= 2/3 * total_active_balance
-    multiplying each side by 3 * ffg_voting_weight_so_far, we get (assuming ffg_voting_weight_so_far != 0):
     """
 
     """
     Case 1: ffg_support_for_checkpoint <= ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100
 
     2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - \
-        ffg_support_for_checkpoint + \
         (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
     """
     if ffg_voting_weight_so_far > 0 and \
             3 * (ffg_voting_weight_so_far - ffg_support_for_checkpoint) * remaining_ffg_weight >= \
             2 * total_active_balance * ffg_voting_weight_so_far:
         # We know that confirmation_byzantine_threshold >= ffg_support_for_checkpoint / ffg_voting_weight_so_far
-
-        # Then our target statement reduces to
-        # (1 - confirmation_byzantine_threshold/100) * remaining_ffg_weight >= 2/3 * total_active_balance
-
-        # Therefore
-        # confirmation_byzantine_threshold <=
-        # (1 - (2/3 * total_active_balance / remaining_ffg_weight)) * 100 =
-        # by bringing all to the denominator (3 * remaining_ffg_weight), we get
         return (300 * remaining_ffg_weight - 200 * total_active_balance) // (3 * remaining_ffg_weight)
     """
     Case 2: ffg_support_for_checkpoint > ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100
@@ -397,16 +380,6 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> int:
     """
     else:
         # We know that  confirmation_byzantine_threshold <= ffg_support_for_checkpoint / ffg_voting_weight_so_far
-        # Then our target statement reduces to
-
-        # ffg_support_for_checkpoint
-        # - ffg_voting_weight_so_far  * confirmation_byzantine_threshold / 100
-        # + (1 - confirmation_byzantine_threshold/100) * remaining_ffg_weight
-        # >= 2/3 * total_active_balance
-
-        # Therfore:
-        # confirmation_byzantine_threshold <= ((ffg_support_for_checkpoint + remaining_ffg_weight)/total_active_balance - 2/3) * 100
-        # by bringing all to the denominator (3 * total_active_balance), we get
         return (300 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 200 * total_active_balance) // \
                (3 * total_active_balance)
 ```
