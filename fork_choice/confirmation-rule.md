@@ -70,16 +70,22 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     if end_epoch > start_epoch + 1:
         return total_active_balance
 
-    # A range that does not span any full epoch needs pro-rata calculation
-    committee_weight = get_total_active_balance(justified_state) // SLOTS_PER_EPOCH
-    num_committees = 0
-    # First, calculate the weight from the end epoch
-    epoch_boundary_slot = compute_start_slot_at_epoch(end_epoch)
-    num_committees += end_slot - epoch_boundary_slot + 1
-    # Next, calculate the weight from the previous epoch
-    # Each committee from the previous epoch only contributes a pro-rated weight
-    multiplier = (SLOTS_PER_EPOCH - end_slot % SLOTS_PER_EPOCH - 1) / SLOTS_PER_EPOCH
-    num_committees += (epoch_boundary_slot - start_slot) * multiplier
+    if start_epoch == end_epoch: 
+        num_committees = end_slot - start_slot + 1
+    else:
+        # A range that spans an epoch boundary, but does not span any full epoch 
+        # needs pro-rata calculation
+        committee_weight = get_total_active_balance(justified_state) // SLOTS_PER_EPOCH
+        # First, calculate the number of committees in the current epoch
+        num_slots_in_current_epoch = (end_slot % SLOTS_PER_EPOCH) + 1
+        # Next, calculate the number of slots remaining in the current epoch
+        remaining_slots_in_current_epoch = SLOTS_PER_EPOCH - num_slots_in_current_epoch
+        # Then, calculate the number of slots in the previous epoch
+        num_slots_in_previous_epoch = SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH)
+
+        # Each committee from the previous epoch only contributes a pro-rated weight
+        multiplier = remaining_slots_in_current_epoch / SLOTS_PER_EPOCH
+        num_committees = num_slots_in_current_epoch + num_slots_in_previous_epoch * multiplier
     return num_committees * committee_weight
 ```
 
