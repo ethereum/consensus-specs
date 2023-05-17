@@ -35,7 +35,7 @@ This feature allows for inclusion of attestations created during epoch `N` to be
 
 #### Modified `process_attestation`
 
-*Note*: The function `process_attestation` is modified to expand valid slots for inclusion tothose in the `target.epoch` epoch as well as those in the `target.epoch + 1` epoch.
+*Note*: The function `process_attestation` is modified to expand valid slots for inclusion to those in the `target.epoch` epoch as well as those in the `target.epoch + 1` epoch.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
