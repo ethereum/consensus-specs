@@ -70,10 +70,10 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     if end_epoch > start_epoch + 1:
         return total_active_balance
 
-    if start_epoch == end_epoch: 
+    if start_epoch == end_epoch:
         num_committees = end_slot - start_slot + 1
     else:
-        # A range that spans an epoch boundary, but does not span any full epoch 
+        # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
         committee_weight = get_total_active_balance(justified_state) // SLOTS_PER_EPOCH
         # First, calculate the number of committees in the current epoch
@@ -313,7 +313,7 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     support / maximum_support > \
         0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
     """
-    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
+    return 100 * (support - 0.5 * proposer_score - 1) // maximum_support - 50
 ```
 
 #### `get_LMD_confirmation_score`
