@@ -301,11 +301,11 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     proposer_score = int(get_proposer_score(store))
 
     """
-    Return a confirmation_byzantine_threshold such that:
+    Return the max possible one_confirmation_score such that:
     support / maximum_support > \
-        0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
+        0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
     """
-    return (100 * support - 50 * proposer_score - 1) / maximum_support - 50
+    return (100 * support - 50 * proposer_score - 1) // maximum_support - 50
 ```
 
 #### `get_LMD_confirmation_score`
@@ -352,36 +352,38 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> int:
     """
     Note: This function assumes confirmation_slashing_threshold = + infinity.
 
-    Return a value confirmation_byzantine_threshold such that:
+    Return the max possible ffg_confirmation_score such that:
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
-        min(ffg_support_for_checkpoint, ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100) + \
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+        min(ffg_support_for_checkpoint, ffg_voting_weight_so_far * ffg_confirmation_score / 100) + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
 
     """
-    Case 1: ffg_support_for_checkpoint <= ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100
+    Case 1: ffg_support_for_checkpoint <= ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
     2 / 3 * total_active_balance <= \
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
-    if ffg_voting_weight_so_far > 0 and \
-            3 * (ffg_voting_weight_so_far - ffg_support_for_checkpoint) * remaining_ffg_weight >= \
-            2 * total_active_balance * ffg_voting_weight_so_far:
-        # We know that confirmation_byzantine_threshold >= ffg_support_for_checkpoint / ffg_voting_weight_so_far
-        return (300 * remaining_ffg_weight - 200 * total_active_balance) // (3 * remaining_ffg_weight)
+    if ffg_voting_weight_so_far > 0:
+        ffg_confirmation_score = \
+            100 * (3 * remaining_ffg_weight - 2 * total_active_balance) // (3 * remaining_ffg_weight)
+        if ffg_confirmation_score / 100 >= ffg_support_for_checkpoint / ffg_voting_weight_so_far:
+            return ffg_confirmation_score
+
     """
-    Case 2: ffg_support_for_checkpoint > ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100
+    Case 2: ffg_support_for_checkpoint > ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
-        ffg_voting_weight_so_far * confirmation_byzantine_threshold / 100 + \
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+        ffg_voting_weight_so_far * ffg_confirmation_score / 100 + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
-    else:
-        # We know that  confirmation_byzantine_threshold <= ffg_support_for_checkpoint / ffg_voting_weight_so_far
-        return (300 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 200 * total_active_balance) // \
-               (3 * total_active_balance)
+    ffg_confirmation_score = \
+        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) // \
+        (3 * total_active_balance)
+    assert ffg_confirmation_score / 100 < ffg_support_for_checkpoint / ffg_voting_weight_so_far
+    return ffg_confirmation_score
 ```
 
 ### `get_confirmation_score`
