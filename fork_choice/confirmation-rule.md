@@ -45,7 +45,7 @@ There are two algorithms in the document:
 - [**Confirmation Rule**](#confirmation-rule): Given a block and confirmation safety parameters, outputs whether the block is confirmed.
 - [**Confirmation Score**](#confirmation-score): Given a block, outputs the confirmation score for the block, i.e., the maximum possible confirmation safety parameters to deem the block confirmed.
 
-*Note:* These algorithms use floating point arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that Ethereum clients arrive at the exact same results - a property crucial for consensus objects (such as the `BeaconState`). This document describes a local confirmation rule that is not used to derive any consensus objects. Using floating point arithmetic here allows for a more readbale specification, and client-native floating point arithmetic provides sufficient precision for its objective.
+*Note:* These algorithms use floating point arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that Ethereum clients arrive at the exact same results - a property crucial for consensus objects (such as the `BeaconState`). This document describes a local confirmation rule that is not used to derive any consensus objects. Using floating point arithmetic here allows for a more readable specification, and client-native floating point arithmetic provides sufficient precision for its objective.
 
 ## Confirmation Rule
 
