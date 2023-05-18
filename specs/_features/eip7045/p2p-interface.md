@@ -1,6 +1,6 @@
-# AttSlotRange -- Networking
+# EIP7045 -- Networking
 
-This document contains the consensus-layer networking specification for AttSlotRange.
+This document contains the consensus-layer networking specification for EIP7045.
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
@@ -10,7 +10,7 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Modifications in AttSlotRange](#modifications-in-attslotrange)
+- [Modifications in EIP7045](#modifications-in-eip7045)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -21,7 +21,7 @@ The specification of these changes continues in the same format as the network s
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-## Modifications in AttSlotRange
+## Modifications in EIP7045
 
 ### The gossip domain: gossipsub
 

@@ -48,7 +48,7 @@ BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
 EIP6110 = 'eip6110'
-ATTSLOTRANGE= 'attslotrange'
+EIP7045= 'eip7045'
 
 
 # The helper functions that are used when defining constants
@@ -682,10 +682,10 @@ from eth2spec.deneb import {preset_name} as deneb
 '''
 
 #
-# AttSlotRangeSpecBuilder
+# EIP7045SpecBuilder
 #
-class AttSlotRangeSpecBuilder(DenebSpecBuilder):
-    fork: str = ATTSLOTRANGE
+class EIP7045SpecBuilder(DenebSpecBuilder):
+    fork: str = EIP7045
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -695,7 +695,7 @@ from eth2spec.deneb import {preset_name} as deneb
 
 all_builders = (
     Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder,
-    EIP6110SpecBuilder, AttSlotRangeSpecBuilder,
+    EIP6110SpecBuilder, EIP7045SpecBuilder,
 )
 spec_builders = {builder.fork: builder for builder in all_builders}
 
@@ -995,14 +995,14 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, ATTSLOTRANGE):
+            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7045):
                 self.md_doc_paths = """
                     specs/phase0/beacon-chain.md
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
                 """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, ATTSLOTRANGE):
+            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7045):
                 self.md_doc_paths += """
                     specs/altair/light-client/full-node.md
                     specs/altair/light-client/light-client.md
@@ -1014,7 +1014,7 @@ class PySpecCommand(Command):
                     specs/altair/validator.md
                     specs/altair/p2p-interface.md
                 """
-            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110, ATTSLOTRANGE):
+            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7045):
                 self.md_doc_paths += """
                     specs/bellatrix/beacon-chain.md
                     specs/bellatrix/fork.md
@@ -1023,7 +1023,7 @@ class PySpecCommand(Command):
                     specs/bellatrix/p2p-interface.md
                     sync/optimistic.md
                 """
-            if self.spec_fork in (CAPELLA, DENEB, EIP6110, ATTSLOTRANGE):
+            if self.spec_fork in (CAPELLA, DENEB, EIP6110, EIP7045):
                 self.md_doc_paths += """
                     specs/capella/light-client/fork.md
                     specs/capella/light-client/full-node.md
@@ -1035,7 +1035,7 @@ class PySpecCommand(Command):
                     specs/capella/validator.md
                     specs/capella/p2p-interface.md
                 """
-            if self.spec_fork in (DENEB, EIP6110, ATTSLOTRANGE):
+            if self.spec_fork in (DENEB, EIP6110, EIP7045):
                 self.md_doc_paths += """
                     specs/deneb/light-client/fork.md
                     specs/deneb/light-client/full-node.md
@@ -1057,10 +1057,10 @@ class PySpecCommand(Command):
                     specs/_features/eip6110/beacon-chain.md
                     specs/_features/eip6110/fork.md
                 """
-            if self.spec_fork == ATTSLOTRANGE:
+            if self.spec_fork == EIP7045:
                 self.md_doc_paths += """
-                    specs/_features/attslotrange/beacon-chain.md
-                    specs/_features/attslotrange/fork.md
+                    specs/_features/eip7045/beacon-chain.md
+                    specs/_features/eip7045/fork.md
                 """
 
             if len(self.md_doc_paths) == 0:

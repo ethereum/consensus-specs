@@ -59,7 +59,7 @@ def get_attestation_participation_flag_indices(state: BeaconState,
     participation_flag_indices = []
     if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
-    if is_matching_target:  # [Modified in AttSlotRange]
+    if is_matching_target:  # [Modified in EIP7045]
         participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
     if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
@@ -80,7 +80,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot  # [Modified in AttSlotRange]
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot  # [Modified in EIP7045]
     assert data.index < get_committee_count_per_slot(state, data.target.epoch)
 
     committee = get_beacon_committee(state, data.slot, data.index)
@@ -113,9 +113,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure AttSlotRange testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP7045 testing only.
 Modifications include:
-1. Use `ATTSLOTRANGE_FORK_VERSION` as the previous and current fork version.
+1. Use `EIP7045_FORK_VERSION` as the previous and current fork version.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -124,8 +124,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=ATTSLOTRANGE_FORK_VERSION,  # [Modified in AttSlotRange] for testing only
-        current_version=ATTSLOTRANGE_FORK_VERSION,  # [Modified in AttSlotRange]
+        previous_version=EIP7045_FORK_VERSION,  # [Modified in EIP7045] for testing only
+        current_version=EIP7045_FORK_VERSION,  # [Modified in EIP7045]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(

@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to AttSlotRange](#fork-to-attslotrange)
+- [Fork to EIP7045](#fork-to-eip7045)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `ATTSLOTRANGE_FORK_VERSION` | `Version('0x05000000')` |
-| `ATTSLOTRANGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `EIP7045_FORK_VERSION` | `Version('0x05000000')` |
+| `EIP7045_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= ATTSLOTRANGE_FORK_EPOCH:
-        return ATTSLOTRANGE_FORK_VERSION
+    if epoch >= EIP7045_FORK_EPOCH:
+        return EIP7045_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
         return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
@@ -55,22 +55,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to AttSlotRange
+## Fork to EIP7045
 
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `ATTSLOTRANGE_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `EIP7045_FORK_EPOCH`.
 
-Note that for the pure AttSlotRange networks, we don't apply `upgrade_to_attslotrange` since it starts with AttSlotRange version logic.
+Note that for the pure EIP7045 networks, we don't apply `upgrade_to_eip7045` since it starts with EIP7045 version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ATTSLOTRANGE_FORK_EPOCH,
-an irregular state change is made to upgrade to AttSlotRange.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7045_FORK_EPOCH,
+an irregular state change is made to upgrade to EIP7045.
 
 ```python
-def upgrade_to_attslotrange(pre: deneb.BeaconState) -> BeaconState:
+def upgrade_to_eip7045(pre: deneb.BeaconState) -> BeaconState:
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -78,7 +78,7 @@ def upgrade_to_attslotrange(pre: deneb.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=ATTSLOTRANGE_FORK_VERSION,  # [Modified in Att-Slot-Range]
+            current_version=EIP7045_FORK_VERSION,  # [Modified in Att-Slot-Range]
             epoch=deneb.get_current_epoch(pre),
         ),
         # History
