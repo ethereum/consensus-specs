@@ -439,40 +439,31 @@ def get_validator_from_deposit_whisk(
 ```
 
 ```python
-def process_deposit(state: BeaconState, deposit: Deposit) -> None:
-    # Verify the Merkle branch
-    assert is_valid_merkle_branch(
-        leaf=hash_tree_root(deposit.data),
-        branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
-        index=state.eth1_deposit_index,
-        root=state.eth1_data.deposit_root,
-    )
-
-    # Deposits must be processed in order
-    state.eth1_deposit_index += 1
-
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
+def apply_deposit(state: BeaconState,
+                  pubkey: BLSPubkey,
+                  withdrawal_credentials: Bytes32,
+                  amount: uint64,
+                  signature: BLSSignature) -> None:
     validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, deposit.data.signature):
-            state.validators.append(
-                get_validator_from_deposit_whisk(state, pubkey, deposit.data.withdrawal_credentials, amount)
-            )  # [Change in Whisk]
-            state.balances.append(amount)
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
+        if bls.Verify(pubkey, signing_root, signature):
+            index = get_index_for_new_validator(state)
+            validator = get_validator_from_deposit_whisk(state, pubkey, withdrawal_credentials, amount)
+            set_or_append_list(state.validators, index, validator)
+            set_or_append_list(state.balances, index, amount)
+            # [New in Altair]
+            set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+            set_or_append_list(state.inactivity_scores, index, uint64(0))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
