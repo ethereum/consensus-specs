@@ -168,6 +168,19 @@ jobs:
           command: make citest fork=eip6110
       - store_test_results:
           path: tests/core/pyspec/test-reports
+  test-eip6988:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_pyspec_cached_venv
+      - run:
+          name: Run py-tests
+          command: make citest fork=eip6988
+      - store_test_results:
+          path: tests/core/pyspec/test-reports
   table_of_contents:
     docker:
       - image: circleci/node:10.16.3
@@ -289,6 +302,9 @@ workflows:
           requires:
             - install_pyspec_test
       - test-eip6110:
+          requires:
+            - install_pyspec_test
+      - test-eip6988:
           requires:
             - install_pyspec_test
       - table_of_contents
