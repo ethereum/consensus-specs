@@ -119,7 +119,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 
 ###### `blob_sidecar_{subnet_id}`
 
-This topic is used to propagate signed blob sidecars, one for each sidecar index. The number of indices is defined by `MAX_BLOBS_PER_BLOCK`.
+This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.
 
 The following validations MUST pass before forwarding the `signed_blob_sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
