@@ -22,7 +22,7 @@ The specification of these changes continues in the same format as the network s
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
-        - [`blob_sidecar_{index}`](#blob_sidecar_index)
+        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -107,7 +107,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `blob_sidecar_{index}` | `SignedBlobSidecar` (new) |
+| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` (new) |
 
 ##### Global topics
 
@@ -117,13 +117,13 @@ Deneb introduces new global topics for blob sidecars.
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in deneb.
 
-###### `blob_sidecar_{index}`
+###### `blob_sidecar_{subnet_id}`
 
 This topic is used to propagate signed blob sidecars, one for each sidecar index. The number of indices is defined by `MAX_BLOBS_PER_BLOCK`.
 
 The following validations MUST pass before forwarding the `signed_blob_sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
 
-- _[REJECT]_ The sidecar is for the correct topic -- i.e. `sidecar.index` matches the topic `{index}`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_blob_sidecar(sidecar.index) == subnet_id`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
 - _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
