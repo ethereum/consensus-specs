@@ -93,9 +93,10 @@ def test_invalid_proposer_slashed(spec, state):
     next_slot(spec, stub_state)
     proposer_index = spec.get_beacon_proposer_index(stub_state)
 
+    # build a block
+    block = build_empty_block_for_next_slot(spec, state)
+
     # set proposer to slashed
     state.validators[proposer_index].slashed = True
-
-    block = build_empty_block_for_next_slot(spec, state)
 
     yield from run_block_header_processing(spec, state, block, valid=False)

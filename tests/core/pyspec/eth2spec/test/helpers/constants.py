@@ -26,7 +26,7 @@ ALL_PHASES = (
     EIP6110, EIP6988,
 )
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110)
+TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB)
 
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
@@ -35,7 +35,6 @@ ALL_FORK_UPGRADES = {
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
     DENEB: EIP6110,
-    CAPELLA: EIP6988,
 }
 ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
 AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
