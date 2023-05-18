@@ -3,11 +3,11 @@ from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
-from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
-from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
-from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
+from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal, hive as spec_phase0_hive
+from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal, hive as spec_altair_hive
+from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal, hive as spec_bellatrix_hive
+from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal, hive as spec_capella_hive
+from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal, hive as spec_deneb_hive
 from eth2spec.eip6110 import mainnet as spec_eip6110_mainnet, minimal as spec_eip6110_minimal
 from eth2spec.utils import bls
 
@@ -15,7 +15,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     EIP6110,
-    MINIMAL, MAINNET,
+    MINIMAL, MAINNET, HIVE,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
 )
@@ -90,6 +90,13 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         CAPELLA: spec_capella_mainnet,
         DENEB: spec_deneb_mainnet,
         EIP6110: spec_eip6110_mainnet,
+    },
+    HIVE: {
+        PHASE0: spec_phase0_hive,
+        ALTAIR: spec_altair_hive,
+        BELLATRIX: spec_bellatrix_hive,
+        CAPELLA: spec_capella_hive,
+        DENEB: spec_deneb_hive,
     },
 }
 
@@ -744,3 +751,28 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
 
         return wrapper
     return decorator
+
+
+#
+# Hive state modifiers
+#
+
+def hive_state(fn):
+    """
+    Makes necessary changes to the state in order for the client to accept it in hive mode.
+    """
+    def wrapper(*args, **kwargs):
+        if 'state' not in kwargs or 'spec' not in kwargs:
+            raise Exception("hive_state decorator requires state and spec")
+        state = kwargs['state']
+        spec = kwargs['spec']
+
+        # Increase genesis time to min genesis time
+        state.genesis_time = spec.config.MIN_GENESIS_TIME
+        kwargs['state'] = state
+
+        res = fn(*args, **kwargs)
+        if res is not None:
+            yield 'genesis', state
+            yield from res
+    return wrapper
