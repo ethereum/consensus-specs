@@ -31,10 +31,9 @@ class StateID(str):
         return cls("justified")
 
 
-@dataclass(kw_only=True)
+@dataclass
 class VerifyBeaconStateV2:
-    method: str = "BeaconStateV2"
-    id: StateID
+    id: StateID = StateID.Head()
     fields: Dict = field(default_factory=dict)
 
     def __post_init__(self):
