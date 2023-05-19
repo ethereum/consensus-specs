@@ -14,6 +14,7 @@ def run_execution_layer_exit_processing(spec, state, execution_layer_exit, valid
       - execution_layer_exit ('execution_layer_exit')
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
+    If ``success == False``, it doesn't initiate exit successfully
     """
     validator_index = get_validator_index_by_pubkey(state, execution_layer_exit.validator_pubkey)
 

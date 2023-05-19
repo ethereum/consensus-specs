@@ -89,6 +89,7 @@ def upgrade_to_eip7002(pre: deneb.BeaconState) -> BeaconState:
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
         excess_data_gas=uint256(0),
+        exits_root=Root(),  # [New in EIP-7002]
     )
     post = BeaconState(
         # Versioning

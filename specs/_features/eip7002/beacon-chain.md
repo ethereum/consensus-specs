@@ -42,7 +42,7 @@ This mechanism relies on the changes proposed by [EIP-7002](http://eips.ethereum
 
 | Name | Value |
 | - | - |
-| `MAX_EXITS_PER_BLOCK` | `2**4` (= 16) |
+| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |
 
 ## Containers
 
@@ -80,7 +80,7 @@ class ExecutionPayload(Container):
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     excess_data_gas: uint256
-    exits: List[ExecutionLayerExit, MAX_EXITS_PER_BLOCK]  # [New in EIP7002]
+    exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in EIP7002]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -243,11 +243,9 @@ def process_execution_layer_exit(state: BeaconState, execution_layer_exit: Execu
     validator = state.validators[validator_index]
 
     # Verify withdrawal credentials
-    is_correct_source_address = (
-        validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        and validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
-    )
-    if not is_correct_source_address:
+    is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
+    if not (is_execution_address and is_correct_source_address):
         return
     # Verify the validator is active
     if not is_active_validator(validator, get_current_epoch(state)):
