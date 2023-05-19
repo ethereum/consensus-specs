@@ -13,7 +13,7 @@
 - [Helpers](#helpers)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`get_payload`](#get_payload)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -40,7 +40,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-#### `get_payload`
+#### Modified `get_payload`
 
 `get_payload` returns the upgraded EIP-4788 `ExecutionPayload` type.
 

@@ -10,6 +10,7 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -82,16 +83,28 @@ A validator is an entity that participates in the consensus of the Ethereum proo
 
 All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `NodeID`   | `uint256` | node identifier   |
+| `SubnetID` | `uint64`  | subnet identifier |
+
 ## Constants
 
 ### Misc
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
-| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
-| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 | `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
+| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
+| `ATTESTATION_SUBNET_PREFIX_BITS` | `(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
 ## Containers
 
@@ -513,7 +526,9 @@ The `subnet_id` for the `attestation` is calculated with:
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
-def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
+def compute_subnet_for_attestation(committees_per_slot: uint64,
+                                   slot: Slot,
+                                   committee_index: CommitteeIndex) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
@@ -521,7 +536,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
+    return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
@@ -606,15 +621,31 @@ def get_aggregate_and_proof_signature(state: BeaconState,
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
 
-* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
-* Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
-* Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
+* Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
+* Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
+* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
 
-*Note*: Short lived beacon committee assignments should not be added in into the ENR `attnets` entry.
+```python
+def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
+    node_id_prefix = node_id >> (NODE_ID_BITS - int(ATTESTATION_SUBNET_PREFIX_BITS))
+    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
+    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    permutated_prefix = compute_shuffled_index(
+        node_id_prefix,
+        1 << int(ATTESTATION_SUBNET_PREFIX_BITS),
+        permutation_seed,
+    )
+    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
+```
 
-*Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
+```python
+def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
+    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
+```
+
+*Note*: When preparing for a hard fork, a validator must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
 ## How to avoid slashing
 

@@ -384,7 +384,7 @@ from typing import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
@@ -552,7 +552,7 @@ class BellatrixSpecBuilder(AltairSpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
-from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256
+from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
 '''
 
     @classmethod
@@ -589,7 +589,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
         pass
 
-    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
@@ -1207,7 +1207,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
-        "generator": ["python-snappy==0.6.1", "filelock"],
+        "generator": ["python-snappy==0.6.1", "filelock", "pathos==0.3.0"],
         "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
     },
     install_requires=[
