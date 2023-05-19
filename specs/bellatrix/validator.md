@@ -118,12 +118,13 @@ To obtain an execution payload, a block proposer building a block on top of a `s
 
 ```python
 def prepare_execution_payload(state: BeaconState,
-                              pow_chain: Dict[Hash32, PowBlock],
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+                              execution_engine: ExecutionEngine,
+                              pow_chain: Optional[Dict[Hash32, PowBlock]]=None) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
+        assert pow_chain is not None
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
         is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         if is_terminal_block_hash_set and not is_activation_epoch_reached:
