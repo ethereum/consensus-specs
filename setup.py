@@ -164,6 +164,10 @@ ALL_KZG_SETUPS = {
     'mainnet': _load_kzg_trusted_setups('mainnet')
 }
 
+EQUIVALENT_KZG_SETUPS = {
+    'hive': 'mainnet',
+}
+
 ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
 
 
@@ -193,6 +197,8 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str]=None) -> 
 
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
+    if preset_name in EQUIVALENT_KZG_SETUPS:
+        preset_name = EQUIVALENT_KZG_SETUPS[preset_name]
     kzg_setups = ALL_KZG_SETUPS[preset_name]
     constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment, None)

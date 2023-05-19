@@ -1,7 +1,7 @@
-# Mainnet config
+# Hive config
 
-# Extends the mainnet preset
-PRESET_BASE: 'mainnet'
+# Extends the hive preset
+PRESET_BASE: 'hive'
 
 # Free-form short name of the network that this configuration applies to - known
 # canonical network names include:
@@ -26,7 +26,7 @@ TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
 # Dec 1, 2020, 12pm UTC
 MIN_GENESIS_TIME: 1606824000
-# Mainnet initial fork version, recommend altering for testnets
+# Hive initial fork version
 GENESIS_FORK_VERSION: 0x0000000a
 # 604800 seconds (7 days)
 GENESIS_DELAY: 604800
