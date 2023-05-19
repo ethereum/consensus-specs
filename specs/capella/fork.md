@@ -27,7 +27,7 @@ Warning: this configuration is not definitive.
 | Name | Value |
 | - | - |
 | `CAPELLA_FORK_VERSION` | `Version('0x03000000')` |
-| `CAPELLA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `CAPELLA_FORK_EPOCH` | `Epoch(194048)` (April 12, 2023, 10:27:35pm UTC) |
 
 
 ## Helper functions

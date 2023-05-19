@@ -59,7 +59,7 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 | Name | Value |
 | - | - |
-| `BLOB_TX_TYPE` | `uint8(0x05)` |
+| `BLOB_TX_TYPE` | `uint8(0x03)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
@@ -173,6 +173,8 @@ def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedH
         message_offset
         + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
     )
+    # `VersionedHash` is a 32-byte object
+    assert (len(opaque_tx) - blob_versioned_hashes_offset) % 32 == 0
     return [
         VersionedHash(opaque_tx[x:(x + 32)])
         for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)
@@ -205,7 +207,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Deneb]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(state, block.body)  # [New in Deneb]
+    process_blob_kzg_commitments(block.body)  # [New in Deneb]
 ```
 
 #### Execution payload
@@ -290,8 +292,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 #### Blob KZG commitments
 
 ```python
-def process_blob_kzg_commitments(state: BeaconState, body: BeaconBlockBody) -> None:
-    # pylint: disable=unused-argument
+def process_blob_kzg_commitments(body: BeaconBlockBody) -> None:
     assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 
