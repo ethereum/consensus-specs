@@ -52,7 +52,7 @@ MAINNET = PresetBaseName('mainnet')
 MINIMAL = PresetBaseName('minimal')
 HIVE = PresetBaseName('hive')
 
-ALL_PRESETS = (MINIMAL, MAINNET, HIVE)
+ALL_PRESETS = (MINIMAL, MAINNET)
 
 
 #

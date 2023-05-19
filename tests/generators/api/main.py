@@ -35,4 +35,4 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
     }
 
-    run_state_test_generators(runner_name="api", all_mods=all_mods)
+    run_state_test_generators(runner_name="api", all_mods=all_mods, is_hive=True)
