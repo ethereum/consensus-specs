@@ -20,6 +20,7 @@
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
   - [Vectors, containers, lists](#vectors-containers-lists)
+  - [Optional](#optional)
   - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
@@ -60,6 +61,8 @@
     * notation `Bitvector[N]`
 * **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
     * notation `Bitlist[N]`
+* **optional**: either a wrapped value of the given subtype, or `None`
+    * notation `Optional[type]`, e.g. `Optional[uint64]`
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
 
@@ -90,6 +93,7 @@ Assuming a helper function `default(type)` which returns the default value for `
 | `Bitvector[N]` | `[False] * N` |
 | `List[type, N]` | `[]` |
 | `Bitlist[N]` | `[]` |
+| `Optional[type]` | `None` |
 | `Union[type_0, type_1, ...]` | `default(type_0)` |
 
 #### `is_zero`
@@ -163,6 +167,15 @@ fixed_parts = [part if part != None else variable_offsets[i] for i, part in enum
 return b"".join(fixed_parts + variable_parts)
 ```
 
+### Optional
+
+```python
+if value is None:
+    return b""
+else:
+    return b"\x01" + serialize(value)
+```
+
 ### Union
 
 A `value` as `Union[T...]` type has properties `value.value` with the contained value, and `value.selector` which indexes the selected `Union` type option `T`.
@@ -178,7 +191,7 @@ A `Union`:
 ```python
 if value.value is None:
     assert value.selector == 0
-    return b"\x00"
+    return b""
 else:
     serialized_bytes = serialize(value.value)
     serialized_selector_index = value.selector.to_bytes(1, "little")
@@ -196,14 +209,15 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
   * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
-* In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
+* In the case of optional, if the serialized data has length 0, it represents `None`. Otherwise, the first byte of the deserialization scope must be checked to be `0x01`, the remainder of the scope is deserialized same as `T`.
+* In the case of unions, if the serialized data has length 0, it represents `None`. Otherwise, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type (cannot refer to `None`).
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
 - Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
-- An out-of-bounds selected index in an `Union`
+- An out-of-bounds selected index in an `Union`, or a `None` value for a type that doesn't support it.
 
 Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
@@ -244,6 +258,8 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
+* `mix_in_length(hash_tree_root(value), 1)` if `value` is of optional type, and `value` is not `None`
+* `mix_in_length(Bytes32(), 0)` if `value` is of optional type, and `value` is `None`
 * `mix_in_selector(hash_tree_root(value.value), value.selector)` if `value` is of union type, and `value.value` is not `None`
 * `mix_in_selector(Bytes32(), 0)` if `value` is of union type, and `value.value` is `None`
 
