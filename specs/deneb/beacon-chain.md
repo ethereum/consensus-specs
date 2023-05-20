@@ -40,6 +40,8 @@
 
 This upgrade adds blobs to the beacon chain as part of Deneb. This is an extension of the Capella upgrade.
 
+The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
+
 ## Custom types
 
 | Name | SSZ equivalent | Description |
@@ -69,6 +71,7 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 | Name | Value |
 | - | - |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | hardfork independent fixed theoretical limit  same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+| `MAX_BLOBS_PER_BLOCK`            | `uint64(2**2)` (= 4)     | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ## Configuration
 
