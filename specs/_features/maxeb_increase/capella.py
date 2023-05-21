@@ -144,6 +144,7 @@ JUSTIFICATION_BITS_LENGTH = uint64(4)
 ENDIANNESS: Final = 'little'
 BLS_WITHDRAWAL_PREFIX = Bytes1('0x00')
 ETH1_ADDRESS_WITHDRAWAL_PREFIX = Bytes1('0x01')
+COMPOUNDING_WITHDRAWAL_PREFIX = Bytes1('0x02')
 DOMAIN_BEACON_PROPOSER = DomainType('0x00000000')
 DOMAIN_BEACON_ATTESTER = DomainType('0x01000000')
 DOMAIN_RANDAO = DomainType('0x02000000')
@@ -180,6 +181,7 @@ GOSSIP_MAX_SIZE_BELLATRIX = 10 * 2**20
 MAX_CHUNK_SIZE_BELLATRIX = 10 * 2**20
 SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY = 128
 DOMAIN_BLS_TO_EXECUTION_CHANGE = DomainType('0x0A000000')
+DOMAIN_EXECUTION_TO_COMPOUNDING_CHANGE = DomainType('0x0B000000')
 
 # Preset vars
 MAX_COMMITTEES_PER_SLOT = uint64(64)
@@ -190,7 +192,8 @@ HYSTERESIS_QUOTIENT = uint64(4)
 HYSTERESIS_DOWNWARD_MULTIPLIER = uint64(1)
 HYSTERESIS_UPWARD_MULTIPLIER = uint64(5)
 MIN_DEPOSIT_AMOUNT = Gwei(1000000000)
-MAX_EFFECTIVE_BALANCE = Gwei(32000000000)
+MAX_EFFECTIVE_BALANCE = Gwei(2048000000000)
+MIN_ACTIVATION_BALANCE = Gwei(32000000000)
 EFFECTIVE_BALANCE_INCREMENT = Gwei(1000000000)
 MIN_ATTESTATION_INCLUSION_DELAY = uint64(1)
 SLOTS_PER_EPOCH = uint64(32)
@@ -229,6 +232,7 @@ INACTIVITY_PENALTY_QUOTIENT_BELLATRIX = uint64(16777216)
 MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX = uint64(32)
 PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX = uint64(3)
 MAX_BLS_TO_EXECUTION_CHANGES = 16
+MAX_EXECUTION_TO_COMPOUNDING_CHANGES = 16
 MAX_WITHDRAWALS_PER_PAYLOAD = uint64(16)
 MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP = 16384
 
@@ -245,7 +249,7 @@ class Configuration(NamedTuple):
     SHARD_COMMITTEE_PERIOD: uint64
     ETH1_FOLLOW_DISTANCE: uint64
     EJECTION_BALANCE: Gwei
-    MIN_PER_EPOCH_CHURN_LIMIT: uint64
+    MIN_PER_EPOCH_CHURN_LIMIT: Gwei
     CHURN_LIMIT_QUOTIENT: uint64
     PROPOSER_SCORE_BOOST: uint64
     INACTIVITY_SCORE_BIAS: uint64
@@ -273,7 +277,7 @@ config = Configuration(
     SHARD_COMMITTEE_PERIOD=uint64(256),
     ETH1_FOLLOW_DISTANCE=uint64(2048),
     EJECTION_BALANCE=Gwei(16000000000),
-    MIN_PER_EPOCH_CHURN_LIMIT=uint64(4),
+    MIN_PER_EPOCH_CHURN_LIMIT=Gwei(1280000000000),
     CHURN_LIMIT_QUOTIENT=uint64(65536),
     PROPOSER_SCORE_BOOST=uint64(40),
     INACTIVITY_SCORE_BIAS=uint64(4),
@@ -598,6 +602,13 @@ class SignedBLSToExecutionChange(Container):
     message: BLSToExecutionChange
     signature: BLSSignature
 
+class ExecutionToCompoundingChange(Container):
+    validator_index: ValidatorIndex
+    balance_ceiling: uint16 # denominated in ETH, must be a power of 2 and <=2^11.  
+
+class SignedExecutionToCompoundingChange(Container):
+    message: ExecutionToCompoundingChange
+    signature: BLSSignature
 
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
@@ -614,6 +625,8 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload
     # Capella operations
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]  # [New in Capella]
+    execution_to_compounding_changes: List[SignedExecutionToCompoundingChange, MAX_EXECUTION_TO_COMPOUNDING_CHANGES]
+
 
 
 class BeaconBlock(Container):
@@ -656,6 +669,7 @@ class BeaconState(Container):
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
@@ -770,12 +784,20 @@ def integer_squareroot(n: uint64) -> uint64:
         y = (x + n // x) // 2
     return x
 
+def is_power_of_two(n: uint16) -> bool:
+    return (n != 0) and (n & (n-1) == 0)
 
 def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
     return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2))
+
+def bytes_to_uint16(data: bytes) -> uint16:
+    """
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+    """
+    return uint16(int.from_bytes(data, ENDIANNESS))
 
 
 def bytes_to_uint64(data: bytes) -> uint64:
@@ -798,7 +820,7 @@ def is_eligible_for_activation_queue(validator: Validator) -> bool:
     """
     return (
         validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
+        and validator.effective_balance == MIN_ACTIVATION_BALANCE
     )
 
 
@@ -977,6 +999,16 @@ def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
     ))
 
 
+def get_balance_ceiling(validator: Validator) -> Gwei:
+    """
+    Return the balance ceiling for a validator.
+    """
+    if not has_compounding_withdrawal_credential(validator):
+        return MIN_ACTIVATION_BALANCE
+    # With compounding credential bytes [1-2] are the ceiling in ETH.
+    return bytes_to_uint16(validator.withdrawal_credential[1:3]) * EFFECTIVE_BALANCE_INCREMENT
+
+
 def get_current_epoch(state: BeaconState) -> Epoch:
     """
     Return the current epoch.
@@ -1025,8 +1057,8 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator churn limit for the current epoch.
     """
-    active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return max(config.MIN_PER_EPOCH_CHURN_LIMIT, uint64(len(active_validator_indices)) // config.CHURN_LIMIT_QUOTIENT)
+    total_balance = get_total_active_balance(state)
+    return max(config.MIN_PER_EPOCH_CHURN_LIMIT, total_balance // config.CHURN_LIMIT_QUOTIENT)
 
 
 def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
@@ -1144,15 +1176,24 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     # Compute exit queue epoch
-    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
+        exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
-    exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
-    if exit_queue_churn >= get_validator_churn_limit(state):
-        exit_queue_epoch += Epoch(1)
-
+    if exit_queue_epoch > max(exit_epochs): 
+        state.exit_queue_churn = Gwei(0)
+    churn_limit = get_validator_churn_limit(state)
+    if state.exit_queue_churn + validator.effective_balance <= churn_limit: # the validator fits within the churn of the current exit_queue_epoch
+        state.exit_queue_churn += validator.effective_balance # the full effective balance of the validator contributes to the churn in the exit queue epoch 
+    else: # the validator fits within the churn of the current exit_queue_epoch
+        future_epochs_churn_contribution = validator.effective_balance - (churn_limit - state.exit_queue_churn)
+        exit_queue_epoch += Epoch(future_epochs_churn_contribution + churn_limit - 1) // churn_limit # (numerator + denominator - 1) // denominator rounds up. 
+        # the validator contributes to the churn in the exit queue epoch, based on how much balance is left over at that point 
+        if future_epochs_churn_contribution % churn_limit == 0:
+            state.exit_queue_churn = churn_limit
+        else:
+            state.exit_queue_churn = future_epochs_churn_contribution % churn_limit
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
-    validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+    validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 
 
 def slash_validator(state: BeaconState,
@@ -1209,7 +1250,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
         validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1547,9 +1588,13 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_eligible_for_activation(state, validator)
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
-    # Dequeued validators for activation up to churn limit
-    for index in activation_queue[:get_validator_churn_limit(state)]:
+    # Dequeue validators for activation up to churn limit [MODIFIED TO BE WEIGHT-SENSITIVE]
+    max_churn_left = get_validator_churn_limit(state) # This is now a Gwei amount
+    for index in activation_queue:
         validator = state.validators[index]
+        max_churn_left -= validator.effective_balance
+        if max_churn_left < 0:
+            break
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 
 
@@ -1681,6 +1726,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)  # [New in Capella]
+    for_ops(body.execution_to_compounding_changes, process_execution_to_compounding_change)
 
 
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
@@ -2334,9 +2380,14 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
     return bls.Sign(privkey, signing_root)
 
 
-def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, validator_index: ValidatorIndex, slot_signature: BLSSignature) -> bool:
+    validator = state.validators[validator_index]
     committee = get_beacon_committee(state, slot, index)
-    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
+    number_virtual_validators = validator.effective_balance // MIN_ACTIVATION_BALANCE
+    committee_balance = get_total_balance(state, set(committee))
+    denominator = committee_balance ** number_virtual_validators
+    numerator = denominator - (committee_balance -  TARGET_AGGREGATORS_PER_COMMITTEE * MIN_ACTIVATION_BALANCE) ** number_virtual_validators
+    modulo = denominator // numerator
     return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 
 
@@ -3540,12 +3591,26 @@ def has_eth1_withdrawal_credential(validator: Validator) -> bool:
     return validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
 
 
+def has_compounding_withdrawal_credential(validator: Validator) -> bool:
+    """
+    Check if ``validator`` has an 0x02 prefixed "compounding" withdrawal credential.
+    """
+    return validator.withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
+
+
+def has_withdrawalable_credential(validator: Validator) -> bool:
+    """
+    Check if ``validator`` has a withdrawable credential.
+    """
+    return has_eth1_withdrawal_credential(validator) or has_compounding_withdrawal_credential(validator)
+
+
 def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
     return (
-        has_eth1_withdrawal_credential(validator)
+        has_withdrawalable_credential(validator)
         and validator.withdrawable_epoch <= epoch
         and balance > 0
     )
@@ -3555,9 +3620,13 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    has_max_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
-    has_excess_balance = balance > MAX_EFFECTIVE_BALANCE
-    return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
+    if not has_withdrawable_credential(validator):
+        return false
+    
+    ceiling = get_balance_ceiling(validator)
+    has_ceiling_effective_balance = validator.effective_balance == ceiling
+    has_excess_balance = balance > ceiling
+    return has_ceiling_effective_balance and has_excess_balance
 
 
 def process_historical_summaries_update(state: BeaconState) -> None:
@@ -3589,11 +3658,12 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             ))
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
+            ceiling = get_balance_ceiling(validator) # modified
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - MAX_EFFECTIVE_BALANCE,
+                amount=balance - ceiling,
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
@@ -3647,6 +3717,43 @@ def process_bls_to_execution_change(state: BeaconState,
         ETH1_ADDRESS_WITHDRAWAL_PREFIX
         + b'\x00' * 11
         + address_change.to_execution_address
+    )
+
+def process_execution_to_compounding_change(state: BeaconState,
+                                            signed_compounding_change: SignedExecutionToCompoundingChange) -> None:
+    compounding_change = signed_compounding_change.message
+
+    assert compounding_change.validator_index < len(state.validators)
+
+    validator = state.validators[compounding_change.validator_index]
+
+    assert validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+
+    # Check that balance_ceiling is a power of 2.
+    assert is_power_of_two(compounding_change.balance_ceiling)
+
+    # Check that balance_ceiling is greater than MIN_ACTIVATION_BALANCE.
+    assert compounding_change.balance_ceiling >= MIN_ACTIVATION_BALANCE
+
+    # Check that balance_ceiling is less than MaxEB.
+    assert compounding_change.balance_ceiling <= MAX_EFFECTIVE_BALANCE
+
+    # Write balance from uint16 into Bytes2.
+    ceiling_bytes = uint_to_bytes(compounding_change.balance_ceiling)
+
+    # Last 20 bytes are still the withdrawal address.
+    address = validator.withdrawal_credentials[12:]
+
+    # Fork-agnostic domain since compounding changes are valid across forks.
+    domain = compute_domain(DOMAIN_EXECUTION_TO_COMPOUNDING_CHANGE, genesis_validators_root=state.genesis_validators_root)
+    signing_root = compute_signing_root(compounding_change, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_compounding_change.signature)
+
+    validator.withdrawal_credentials = (
+        COMPOUNDING_WITHDRAWAL_PREFIX # byte 0
+        + ceiling_bytes               # bytes [1,2]
+        + b'\x00' * 9                 # bytes [3,11]
+        + address                     # bytes [12,31]
     )
 
 
