@@ -1718,7 +1718,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, header_1.proposer_index)
+    slash_validator(state, header_1.proposer_index, is_proposer_slashing=True)
 
 
 def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
@@ -1810,10 +1810,9 @@ def apply_deposit(state: BeaconState,
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
     else:
-        # Increase balance by deposit amount
+        # Increase balance by deposit amount (up to MIN_ACTIVATION_BALANCE).
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        validator = state.validators[index]
-        if has_compounding_withdrawal_credential(validator) and state.balances[index] + amount >= MIN_ACTIVATION_BALANCE:
+        if state.balances[index] + amount > MIN_ACTIVATION_BALANCE:
             # Increase to MIN_ACTIVATION_BALANCE only to avoid by-passing the 
             # stake-weighted rate limit of the activation queue.
             top_up = MIN_ACTIVATION_BALANCE - state.balances[index]
