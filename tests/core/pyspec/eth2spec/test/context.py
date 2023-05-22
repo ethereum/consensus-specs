@@ -566,7 +566,7 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_copy_of_spec(spec):
+def get_copy_of_spec(spec):
     fork = spec.fork
     preset = spec.config.PRESET_BASE
     module_path = f"eth2spec.{fork}.{preset}"
@@ -607,14 +607,14 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
+            spec, output_config = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
 
             # Apply config overrides to additional phases, if present
             if 'phases' in kw:
                 phases = {}
                 for fork in kw['phases']:
                     phases[fork], output = spec_with_config_overrides(
-                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                        get_copy_of_spec(kw['phases'][fork]), config_overrides)
                     if emitted_fork == fork:
                         output_config = output
                 kw['phases'] = phases
