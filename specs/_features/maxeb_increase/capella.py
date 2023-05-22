@@ -1812,7 +1812,13 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+        validator = state.validators[index]
+        if has_compounding_withdrawal_credential(validator) and state.balances[index] + amount >= MIN_ACTIVATION_BALANCE:
+            # increase to MIN_ACTIVATION_BALANCE only.
+            top_up = MIN_ACTIVATION_BALANCE - state.balances[index]
+            increase_balance(state, index, top_up)
+        else:
+            increase_balance(state, index, amount)
 
 
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
