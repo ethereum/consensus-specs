@@ -66,7 +66,7 @@ Note that for the pure EIP7045 networks, we don't apply `upgrade_to_eip7045` sin
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7045_FORK_EPOCH,
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7045_FORK_EPOCH`,
 an irregular state change is made to upgrade to EIP7045.
 
 ```python
