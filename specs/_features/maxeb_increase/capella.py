@@ -1814,9 +1814,10 @@ def apply_deposit(state: BeaconState,
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         validator = state.validators[index]
         if has_compounding_withdrawal_credential(validator) and state.balances[index] + amount >= MIN_ACTIVATION_BALANCE:
-            # increase to MIN_ACTIVATION_BALANCE only.
+            # Increase to MIN_ACTIVATION_BALANCE only.
             top_up = MIN_ACTIVATION_BALANCE - state.balances[index]
-            increase_balance(state, index, top_up)
+            if top_up > 0:
+                increase_balance(state, index, top_up)
         else:
             increase_balance(state, index, amount)
 
