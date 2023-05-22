@@ -254,7 +254,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
 
 ```python
 def process_blob_kzg_commitments(body: BeaconBlockBody) -> None:
+    # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    # Verify commitments match with corresponding blob transactions
     assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 
