@@ -3590,9 +3590,15 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    has_max_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
-    has_excess_balance = balance > MAX_EFFECTIVE_BALANCE
-    return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
+    if not has_withdrawable_credential(validator):
+        return False
+    if has_eth1_withdrawal_credential(validator):
+        ceiling = MIN_ACTIVATION_BALANCE
+    elif has_compounding_withdrawal_credential(validator):
+        ceiling = MAX_EFFECTIVE_BALANCE
+    has_ceiling_balance = validator.effective_balance == ceiling
+    has_excess_balance = balance > ceiling
+    return has_ceiling_balance and has_excess_balance
 
 
 def process_historical_summaries_update(state: BeaconState) -> None:
