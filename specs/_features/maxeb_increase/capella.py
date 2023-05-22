@@ -1810,17 +1810,10 @@ def apply_deposit(state: BeaconState,
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
     else:
-        # Increase balance by deposit amount (up to MIN_ACTIVATION_BALANCE).
+        # Increase balance by deposit amount, up to MIN_ACTIVATION_BALANCE.
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        if state.balances[index] + amount > MIN_ACTIVATION_BALANCE:
-            # Increase to MIN_ACTIVATION_BALANCE only to avoid by-passing the 
-            # stake-weighted rate limit of the activation queue.
-            top_up = MIN_ACTIVATION_BALANCE - state.balances[index]
-            if top_up > 0:
-                increase_balance(state, index, top_up)
-        else:
-            increase_balance(state, index, amount)
-
+        top_up = min(amount, MIN_ACTIVATION_BALANCE - state.balances[index])
+        increase_balance(state, index, top_up)
 
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the Merkle branch
