@@ -1,4 +1,9 @@
-from eth2spec.test.helpers.hive import StateID, VerifyBeaconStateV2
+from eth2spec.test.helpers.hive import (
+    StateID,
+    EthV2DebugBeaconStates,
+    EthV1BeaconStatesFinalityCheckpoints,
+    EthV1BeaconStatesFork,
+)
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
@@ -61,11 +66,19 @@ def test_debug_beacon_state_v2(spec, state):
 
     yield 'hive', [
         (
-            VerifyBeaconStateV2(id=StateID.Head()).
-            state_root(signed_block_2.message.state_root)
+            EthV2DebugBeaconStates(id=StateID.Head()).
+            from_state(state)
         ),
         (
-            VerifyBeaconStateV2(id=StateID.Slot(signed_block_2.message.slot)).
-            state_root(signed_block_2.message.state_root)
+            EthV2DebugBeaconStates(id=StateID.Slot(signed_block_2.message.slot)).
+            from_state(state)
         ),
+        (
+            EthV1BeaconStatesFinalityCheckpoints(id=StateID.Head(), finalized=False).
+            from_state(state)
+        ),
+        (
+            EthV1BeaconStatesFork(id=StateID.Head(), finalized=False).
+            from_state(state)
+        )
     ]
