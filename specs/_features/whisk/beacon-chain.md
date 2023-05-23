@@ -326,7 +326,7 @@ def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
 ```
 
 ```python
-def whisk_process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
     # Check the shuffle proof
     shuffle_indices = get_shuffle_indices(body.randao_reveal)
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
@@ -357,7 +357,7 @@ def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool
 
 ```python
 def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
-    whisk_process_shuffled_trackers(state, body)
+    process_shuffled_trackers(state, body)
 
     # Overwrite all validator Whisk fields (first Whisk proposal) or just the permutation commitment (next proposals)
     proposer = state.validators[get_beacon_proposer_index(state)]
