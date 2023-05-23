@@ -15,8 +15,8 @@ input:
 output: bool -- true (valid proof) or false (incorrect proof)
 ```
 
-- `z` here is encoded as a string: hexadecimal encoding of `32` bytes representing a little endian encoded field element, prefixed with `0x`.
-- `y` here is encoded as a string: hexadecimal encoding of `32` bytes representing a little endian encoded field element, prefixed with `0x`.
+- `z` here is encoded as a string: hexadecimal encoding of `32` bytes representing a big endian encoded field element, prefixed with `0x`.
+- `y` here is encoded as a string: hexadecimal encoding of `32` bytes representing a big endian encoded field element, prefixed with `0x`.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 

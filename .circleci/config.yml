@@ -157,7 +157,7 @@ jobs:
           path: tests/core/pyspec/test-reports
   test-eip6110:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
