@@ -173,3 +173,20 @@ def test_zeroed_commitment(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_invalid_correct_input__execution_invalid(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments,
+                                                valid=False, execution_valid=False)
