@@ -77,6 +77,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
+| `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
 
 
 ## Preset
@@ -161,7 +162,7 @@ def hash_to_bls_field(data: bytes) -> BLSFieldElement:
     The output is not uniform over the BLS field.
     """
     hashed_data = hash(data)
-    return BLSFieldElement(int.from_bytes(hashed_data, ENDIANNESS) % BLS_MODULUS)
+    return BLSFieldElement(int.from_bytes(hashed_data, KZG_ENDIANNESS) % BLS_MODULUS)
 ```
 
 #### `bytes_to_bls_field`
@@ -172,7 +173,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     Convert untrusted bytes to a trusted and validated BLS scalar field element.
     This function does not accept inputs greater than the BLS modulus.
     """
-    field_element = int.from_bytes(b, ENDIANNESS)
+    field_element = int.from_bytes(b, KZG_ENDIANNESS)
     assert field_element < BLS_MODULUS
     return BLSFieldElement(field_element)
 ```
@@ -237,7 +238,7 @@ def compute_challenge(blob: Blob,
     """
 
     # Append the degree of the polynomial as a domain separator
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, KZG_ENDIANNESS)
     data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly
 
     data += blob
@@ -406,15 +407,15 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
 
     # Compute a random challenge. Note that it does not have to be computed from a hash,
     # r just has to be random.
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
-    num_commitments = int.to_bytes(len(commitments), 8, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, KZG_ENDIANNESS)
+    num_commitments = int.to_bytes(len(commitments), 8, KZG_ENDIANNESS)
     data = RANDOM_CHALLENGE_KZG_BATCH_DOMAIN + degree_poly + num_commitments
 
     # Append all inputs to the transcript before we hash
     for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
         data += commitment \
-            + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
-            + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
+            + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS) \
+            + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS) \
             + proof
 
     r = hash_to_bls_field(data)
@@ -451,7 +452,7 @@ def compute_kzg_proof(blob: Blob, z_bytes: Bytes32) -> Tuple[KZGProof, Bytes32]:
     assert len(z_bytes) == BYTES_PER_FIELD_ELEMENT
     polynomial = blob_to_polynomial(blob)
     proof, y = compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z_bytes))
-    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
+    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS)
 ```
 
 #### `compute_quotient_eval_within_domain`
