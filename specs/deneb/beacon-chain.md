@@ -29,7 +29,9 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-    - [Modified `notify_new_payload`](#modified-notify_new_payload)
+    - [`is_valid_block_hash`](#is_valid_block_hash)
+    - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
+    - [`verify_and_notify_new_payload`](#verify_and_notify_new_payload)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
@@ -176,14 +178,44 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-#### Modified `notify_new_payload`
+#### `is_valid_block_hash`
+
+[0]: # (eth2spec: skip)
 
 ```python
-def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
+#### `is_valid_versioned_hashes`
+
+[0]: # (eth2spec: skip)
+
+```python
+def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if the version hashes computed by the blob transactions of
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    """
+    ...
+```
+
+#### `verify_and_notify_new_payload`
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
+    assert self.is_valid_block_hash(new_payload_request.execution_payload)
+    assert self.is_valid_versioned_hashes(new_payload_request)
+    assert self.notify_new_payload(new_payload_request.execution_payload)
     ...
+    return True
 ```
 
 #### Execution payload
@@ -204,7 +236,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify the execution payload is valid
     # [Modified in Deneb]
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    assert execution_engine.notify_new_payload(
+    assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
     )
 

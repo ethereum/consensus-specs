@@ -337,6 +337,10 @@ class SpecBuilder(ABC):
         raise NotImplementedError()
 
     @classmethod
+    def execution_engine_cls(cls) -> str:
+        raise NotImplementedError()
+
+    @classmethod
     @abstractmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         """
@@ -469,6 +473,12 @@ get_attesting_indices = cache_this(
     ),
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return ""
+
+
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {}
@@ -573,12 +583,14 @@ def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
 
 
 def get_pow_chain_head() -> PowBlock:
-    pass
+    pass"""
 
-
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
 class NoopExecutionEngine(ExecutionEngine):
 
-    def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -659,6 +671,39 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
     return ("TEST", "TEST")'''
 
     @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
+class NoopExecutionEngine(ExecutionEngine):
+
+    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+        pass
+
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+        # pylint: disable=unused-argument
+        raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+
+EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+
+    @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
@@ -708,6 +753,12 @@ def objects_to_spec(preset_name: str,
     )
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
+        if "verify_and_notify_new_payload" in protocol_def.functions:
+            # del protocol_def.functions['verify_and_notify_new_payload']
+            protocol_def.functions['verify_and_notify_new_payload'] = """def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    ..."""
+
         protocol = f"class {protocol_name}(Protocol):"
         for fn_source in protocol_def.functions.values():
             fn_source = fn_source.replace("self: "+protocol_name, "self")
@@ -783,6 +834,7 @@ def objects_to_spec(preset_name: str,
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
             + '\n\n' + builder.sundry_functions()
+            + builder.execution_engine_cls()
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
