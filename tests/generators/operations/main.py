@@ -36,7 +36,10 @@ if __name__ == "__main__":
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
 
-    deneb_mods = capella_mods
+    _new_deneb_mods = {key: 'eth2spec.test.deneb.block_processing.test_process_' + key for key in [
+        'execution_payload',
+    ]}
+    deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
     _new_eip6110_mods = {key: 'eth2spec.test.eip6110.block_processing.test_process_' + key for key in [
         'deposit_receipt',
