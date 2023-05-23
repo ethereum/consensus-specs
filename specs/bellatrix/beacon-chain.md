@@ -330,7 +330,7 @@ The Engine API may be used to implement this and similarly defined functions via
 ```python
 def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```

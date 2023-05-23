@@ -30,7 +30,6 @@
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
     - [Modified `notify_new_payload`](#modified-notify_new_payload)
-  - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
@@ -182,23 +181,9 @@ class NewPayloadRequest(object):
 ```python
 def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     ...
-```
-
-### Block processing
-
-```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Deneb]
-    process_randao(state, block.body)
-    process_eth1_data(state, block.body)
-    process_operations(state, block.body)
-    process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
 #### Execution payload
