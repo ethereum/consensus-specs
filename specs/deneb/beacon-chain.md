@@ -30,6 +30,7 @@
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
     - [Modified `notify_new_payload`](#modified-notify_new_payload)
+  - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
@@ -185,6 +186,8 @@ def notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadReq
     """
     ...
 ```
+
+### Block processing
 
 #### Execution payload
 
