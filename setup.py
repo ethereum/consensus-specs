@@ -736,6 +736,11 @@ def is_byte_vector(value: str) -> bool:
     return value.startswith(('ByteVector'))
 
 
+def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
+    function = protocol_def.functions[key].split('"""')
+    protocol_def.functions[key] = function[0] + "..."
+
+
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -753,11 +758,10 @@ def objects_to_spec(preset_name: str,
     )
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
-        if "verify_and_notify_new_payload" in protocol_def.functions:
-            # del protocol_def.functions['verify_and_notify_new_payload']
-            protocol_def.functions['verify_and_notify_new_payload'] = """def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
-    ..."""
+        abstract_functions = ["verify_and_notify_new_payload"]
+        for key in protocol_def.functions.keys():
+           if key in abstract_functions:
+                make_function_abstract(protocol_def, key)
 
         protocol = f"class {protocol_name}(Protocol):"
         for fn_source in protocol_def.functions.values():

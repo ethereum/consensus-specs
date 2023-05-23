@@ -180,8 +180,6 @@ class NewPayloadRequest(object):
 
 #### `is_valid_block_hash`
 
-[0]: # (eth2spec: skip)
-
 ```python
 def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
     """
@@ -191,8 +189,6 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
 ```
 
 #### `is_valid_versioned_hashes`
-
-[0]: # (eth2spec: skip)
 
 ```python
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
