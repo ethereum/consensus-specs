@@ -30,9 +30,8 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 def validate_blobs(expected_kzg_commitments: Sequence[KZGCommitment],
                    blobs: Sequence[Blob],
                    proofs: Sequence[KZGProof]) -> None:
-    assert len(expected_kzg_commitments) == len(blobs)
-    assert len(blobs) == len(proofs)
-
+    assert len(expected_kzg_commitments) == len(blobs) == len(proofs)
+    
     assert verify_blob_kzg_proof_batch(blobs, expected_kzg_commitments, proofs)
 ```
 

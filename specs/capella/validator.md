@@ -11,9 +11,10 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`get_payload`](#get_payload)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -39,11 +40,20 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ## Helpers
 
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+```
+
 ## Protocols
 
 ### `ExecutionEngine`
 
-#### `get_payload`
+#### Modified `get_payload`
 
 `get_payload` returns the upgraded Capella `ExecutionPayload` type.
 
