@@ -176,9 +176,8 @@ class BeaconState(Container):
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP6110]
@@ -211,8 +210,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
     # [New in EIP6110]
-    if is_execution_enabled(state, body):
-        for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
+    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
 #### New `process_deposit_receipt`
@@ -241,8 +239,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp

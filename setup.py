@@ -279,7 +279,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     elif name in config:
                         config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
-                        if name == 'ENDIANNESS':
+                        if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
                             # Deal with mypy Literal typing check
                             value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
@@ -1051,6 +1051,7 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
+                    specs/phase0/p2p-interface.md
                 """
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
                 self.md_doc_paths += """

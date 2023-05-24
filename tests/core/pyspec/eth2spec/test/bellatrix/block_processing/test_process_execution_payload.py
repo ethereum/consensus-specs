@@ -8,7 +8,13 @@ from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
     build_state_with_complete_transition,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_bellatrix_and_later
+from eth2spec.test.context import (
+    BELLATRIX,
+    expect_assertion_error,
+    spec_state_test,
+    with_bellatrix_and_later,
+    with_phases,
+)
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -119,7 +125,7 @@ def test_invalid_bad_execution_regular_payload(spec, state):
     yield from run_bad_execution_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_bad_parent_hash_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)

@@ -371,7 +371,7 @@ def test_compute_subnet_for_attestation(spec, state):
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
-            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.ATTESTATION_SUBNET_COUNT
+            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.config.ATTESTATION_SUBNET_COUNT
 
             assert actual_subnet_id == expected_subnet_id
 
@@ -488,7 +488,7 @@ def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
     node_id = rng.randint(0, 2**40 - 1)  # try VALIDATOR_REGISTRY_LIMIT
     epoch = rng.randint(0, 2**64 - 1)
     subnets = spec.compute_subscribed_subnets(node_id, epoch)
-    assert len(subnets) == spec.SUBNETS_PER_NODE
+    assert len(subnets) == spec.config.SUBNETS_PER_NODE
 
 
 @with_all_phases
