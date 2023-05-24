@@ -249,7 +249,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    assert execution_engine.notify_new_payload(
+    assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
     )
     # Cache execution payload header
