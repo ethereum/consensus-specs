@@ -26,8 +26,6 @@ def run_block_with_blobs(spec, state, blob_count, excess_data_gas=1, valid=True)
     block.body.execution_payload.excess_data_gas = excess_data_gas
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
-    print(len(block.body.blob_kzg_commitments))
-
     if valid:
         signed_block = state_transition_and_sign_block(spec, state, block)
     else:
