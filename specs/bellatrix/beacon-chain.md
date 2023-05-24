@@ -37,6 +37,8 @@
       - [`NewPayloadRequest`](#newpayloadrequest)
     - [Engine APIs](#engine-apis)
     - [`notify_new_payload`](#notify_new_payload)
+    - [`is_valid_block_hash`](#is_valid_block_hash)
+    - [`verify_and_notify_new_payload`](#verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
