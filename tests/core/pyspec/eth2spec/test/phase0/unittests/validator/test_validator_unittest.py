@@ -13,7 +13,7 @@ from eth2spec.test.helpers.attestations import build_attestation_data, get_valid
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, next_slot
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
@@ -518,6 +518,7 @@ def test_compute_subscribed_subnets_random_3(spec):
 @with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_slashed_validator_elected_for_proposal(spec, state):
+    next_slot(spec, state)
     proposer_index = spec.get_beacon_proposer_index(state)
     state.validators[proposer_index].slashed = True
 
