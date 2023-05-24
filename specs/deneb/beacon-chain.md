@@ -197,10 +197,16 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
-    assert self.is_valid_block_hash(new_payload_request.execution_payload)
-    assert self.is_valid_versioned_hashes(new_payload_request)  # [New in Deneb]
-    assert self.notify_new_payload(new_payload_request.execution_payload)
-    ...
+    if not self.is_valid_block_hash(new_payload_request.execution_payload):
+        return False
+
+    # [New in Deneb]
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    if not self.notify_new_payload(new_payload_request.execution_payload):
+        return False
+
     return True
 ```
 
