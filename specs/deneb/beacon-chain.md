@@ -43,6 +43,8 @@
 
 This upgrade adds blobs to the beacon chain as part of Deneb. This is an extension of the Capella upgrade.
 
+The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
+
 ## Custom types
 
 | Name | SSZ equivalent | Description |
@@ -71,7 +73,8 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 | Name | Value |
 | - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+| `MAX_BLOBS_PER_BLOCK`            | `uint64(2**2)` (= 4)     | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ## Configuration
 
@@ -99,7 +102,7 @@ class BeaconBlockBody(Container):
     # Execution
     execution_payload: ExecutionPayload  # [Modified in Deneb]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in Deneb]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]  # [New in Deneb]
 ```
 
 #### `ExecutionPayload`
@@ -226,8 +229,12 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+
+    # [New in Deneb] Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+
     # Verify the execution payload is valid
-    # [Modified in Deneb]
+    # [Modified in Deneb] Pass `versioned_hashes` to Engine API 
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
