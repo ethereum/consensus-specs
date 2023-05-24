@@ -26,6 +26,7 @@ from eth2spec.test.helpers.fork_transition import (
 from eth2spec.test.helpers.forks import (
     is_post_capella, is_post_deneb,
     is_post_fork,
+    is_post_eip6110,
 )
 from eth2spec.test.helpers.light_client import (
     get_sync_aggregate,
@@ -57,6 +58,10 @@ def needs_upgrade_to_deneb(d_spec, s_spec):
     return is_post_deneb(s_spec) and not is_post_deneb(d_spec)
 
 
+def needs_upgrade_to_eip6110(d_spec, s_spec):
+    return is_post_eip6110(s_spec) and not is_post_eip6110(d_spec)
+
+
 def check_lc_header_equal(d_spec, s_spec, data, upgraded):
     assert upgraded.beacon.slot == data.beacon.slot
     assert upgraded.beacon.hash_tree_root() == data.beacon.hash_tree_root()
@@ -82,6 +87,10 @@ def upgrade_lc_bootstrap_to_store(d_spec, s_spec, data):
 
     if needs_upgrade_to_deneb(d_spec, s_spec):
         upgraded = s_spec.upgrade_lc_bootstrap_to_deneb(upgraded)
+        check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
+
+    if needs_upgrade_to_eip6110(d_spec, s_spec):
+        upgraded = s_spec.upgrade_lc_bootstrap_to_eip6110(upgraded)
         check_lc_bootstrap_equal(d_spec, s_spec, data, upgraded)
 
     return upgraded
@@ -145,6 +154,8 @@ class LightClientSyncTest(object):
 
 
 def get_store_fork_version(s_spec):
+    if is_post_eip6110(s_spec):
+        return s_spec.config.EIP6110_FORK_VERSION
     if is_post_deneb(s_spec):
         return s_spec.config.DENEB_FORK_VERSION
     if is_post_capella(s_spec):

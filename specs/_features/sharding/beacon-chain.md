@@ -236,8 +236,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     verify_builder_block_bid(state, block)
     process_sharded_data(state, block)
-    if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block, EXECUTION_ENGINE)
+    process_execution_payload(state, block, EXECUTION_ENGINE)
 
     if not is_builder_block_slot(block.slot):
         process_randao(state, block.body)
@@ -371,8 +370,7 @@ def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_
         payload = block.body.payload_data.value.execution_payload
 
         # Verify consistency of the parent hash with respect to the previous execution payload header
-        if is_merge_transition_complete(state):
-            assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
         # Verify random
         assert payload.random == get_randao_mix(state, get_current_epoch(state))
         # Verify timestamp

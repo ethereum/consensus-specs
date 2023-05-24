@@ -33,7 +33,7 @@
 This is the beacon chain specification of in-protocol deposits processing mechanism.
 This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
 
-*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
+*Note:* This specification is built upon [Deneb](../../deneb/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -91,7 +91,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP-6110]
+    excess_data_gas: uint256
+    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -115,7 +116,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    deposit_receipts_root: Root  # [New in EIP-6110]
+    excess_data_gas: uint256
+    deposit_receipts_root: Root  # [New in EIP6110]
 ```
 
 #### `BeaconState`
@@ -157,13 +159,13 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in EIP6110]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    # [New in EIP-6110]
+    # [New in EIP6110]
     deposit_receipts_start_index: uint64
 ```
 
@@ -174,12 +176,11 @@ class BeaconState(Container):
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP-6110]
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in EIP-6110]
+    process_operations(state, block.body)  # [Modified in EIP6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -189,7 +190,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # [Modified in EIP-6110]
+    # [Modified in EIP6110]
     # Disable former deposit mechanism once all prior deposits are processed
     eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
@@ -204,13 +205,12 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation)
-    for_ops(body.deposits, process_deposit)  # [Modified in EIP-6110]
+    for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
-    # [New in EIP-6110]
-    if is_execution_enabled(state, body):
-        for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
+    # [New in EIP6110]
+    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
 #### New `process_deposit_receipt`
@@ -235,16 +235,22 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 *Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+    )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -262,7 +268,8 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP-6110]
+        excess_data_gas=payload.excess_data_gas,
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
     )
 ```
 

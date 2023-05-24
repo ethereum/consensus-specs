@@ -30,9 +30,8 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 def validate_blobs(expected_kzg_commitments: Sequence[KZGCommitment],
                    blobs: Sequence[Blob],
                    proofs: Sequence[KZGProof]) -> None:
-    assert len(expected_kzg_commitments) == len(blobs)
-    assert len(blobs) == len(proofs)
-
+    assert len(expected_kzg_commitments) == len(blobs) == len(proofs)
+    
     assert verify_blob_kzg_proof_batch(blobs, expected_kzg_commitments, proofs)
 ```
 
@@ -82,7 +81,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # [New in Deneb]
     # Check if blob data is available
@@ -93,10 +97,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state = pre_state.copy()
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
-
-    # Check the merge transition
-    if is_merge_transition_block(pre_state, block.body):
-        validate_merge_block(block)
 
     # Add new block to the store
     store.blocks[block_root] = block
