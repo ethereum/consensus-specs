@@ -71,8 +71,8 @@ The blob transactions are packed into the execution payload by the EL/builder wi
 
 ### Execution
 
-| Name | Value |
-| - | - |
+| Name | Value | Description |
+| - | - | - |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
 | `MAX_BLOBS_PER_BLOCK`            | `uint64(2**2)` (= 4)     | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
