@@ -24,6 +24,7 @@ EIP6110 = SpecForkName('eip6110')
 
 # The forks that are deployed on Mainnet
 MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA)
+LATEST_FORK = MAINNET_FORKS[-1]
 # The forks that pytest can run with.
 ALL_PHASES = (
     # Formal forks
@@ -33,7 +34,7 @@ ALL_PHASES = (
     EIP6110,
 )
 # The forks that have light client specs
-LIGHT_CLIENT_TESTING_FORKS = (*MAINNET_FORKS, DENEB)
+LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110)
 
