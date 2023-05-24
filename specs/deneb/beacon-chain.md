@@ -29,8 +29,8 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-    - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
-    - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
+      - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
@@ -178,7 +178,7 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-#### `is_valid_versioned_hashes`
+##### `is_valid_versioned_hashes`
 
 ```python
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
@@ -189,7 +189,7 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
     ...
 ```
 
-#### Modified `verify_and_notify_new_payload`
+##### Modified `verify_and_notify_new_payload`
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
