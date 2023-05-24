@@ -3637,11 +3637,15 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             ))
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
+            if has_eth1_withdrawal_credential(validator):
+                ceiling = MIN_ACTIVATION_BALANCE 
+            elif has_compounding_withdrawal_credential(validator):
+                ceiling = MAX_EFFECTIVE_BALANCE
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - MAX_EFFECTIVE_BALANCE,
+                amount=ceiling - MAX_EFFECTIVE_BALANCE,
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
