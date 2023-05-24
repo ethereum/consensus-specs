@@ -179,16 +179,6 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-#### `is_valid_block_hash`
-
-```python
-def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
-    """
-    ...
-```
-
 #### `is_valid_versioned_hashes`
 
 ```python
@@ -200,7 +190,7 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
     ...
 ```
 
-#### `verify_and_notify_new_payload`
+#### Modified `verify_and_notify_new_payload`
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -209,7 +199,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     assert self.is_valid_block_hash(new_payload_request.execution_payload)
-    assert self.is_valid_versioned_hashes(new_payload_request)
+    assert self.is_valid_versioned_hashes(new_payload_request)  # [Modified in Deneb]
     assert self.notify_new_payload(new_payload_request.execution_payload)
     ...
     return True
