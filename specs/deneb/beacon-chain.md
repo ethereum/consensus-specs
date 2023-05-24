@@ -234,7 +234,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
 
     # Verify the execution payload is valid
-    # [Modified in Deneb] Pass `versioned_hashes` to Engine API 
+    # [Modified in Deneb] Pass `versioned_hashes` to Execution Engine
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
