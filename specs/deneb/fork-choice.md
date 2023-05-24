@@ -98,10 +98,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
-    # Check the merge transition
-    if is_merge_transition_block(pre_state, block.body):
-        validate_merge_block(block)
-
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
