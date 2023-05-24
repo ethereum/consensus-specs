@@ -58,7 +58,7 @@ def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
 
     b = bytes()
     for v in values:
-        b += v.to_bytes(32, spec.ENDIANNESS)
+        b += v.to_bytes(32, spec.KZG_ENDIANNESS)
 
     return spec.Blob(b)
 

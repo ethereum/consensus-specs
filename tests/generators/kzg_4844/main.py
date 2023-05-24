@@ -27,11 +27,11 @@ def expect_exception(func, *args):
 
 
 def field_element_bytes(x):
-    return int.to_bytes(x % spec.BLS_MODULUS, 32, spec.ENDIANNESS)
+    return int.to_bytes(x % spec.BLS_MODULUS, 32, spec.KZG_ENDIANNESS)
 
 
 def field_element_bytes_unchecked(x):
-    return int.to_bytes(x, 32, spec.ENDIANNESS)
+    return int.to_bytes(x, 32, spec.KZG_ENDIANNESS)
 
 
 def encode_hex_list(a):
@@ -54,7 +54,7 @@ def evaluate_blob_at(blob, z):
     )
 
 
-BLS_MODULUS_BYTES = spec.BLS_MODULUS.to_bytes(32, spec.ENDIANNESS)
+BLS_MODULUS_BYTES = spec.BLS_MODULUS.to_bytes(32, spec.KZG_ENDIANNESS)
 
 G1 = bls.G1_to_bytes48(bls.G1())
 G1_INVALID_TOO_FEW_BYTES = G1[:-1]

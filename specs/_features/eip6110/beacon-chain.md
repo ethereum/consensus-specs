@@ -176,14 +176,12 @@ class BeaconState(Container):
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP6110]
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(block.body)
 ```
 
 #### Modified `process_operations`
@@ -212,8 +210,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
     # [New in EIP6110]
-    if is_execution_enabled(state, body):
-        for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
+    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
 #### New `process_deposit_receipt`
@@ -238,16 +235,20 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 *Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+    )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
