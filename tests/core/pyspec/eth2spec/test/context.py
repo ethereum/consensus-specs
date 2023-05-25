@@ -757,22 +757,56 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
 # Hive state modifiers
 #
 
-def hive_state(fn):
-    """
-    Makes necessary changes to the state in order for the client to accept it in hive mode.
-    """
-    def wrapper(*args, **kwargs):
-        if 'state' not in kwargs or 'spec' not in kwargs:
-            raise Exception("hive_state decorator requires state and spec")
-        state = kwargs['state']
-        spec = kwargs['spec']
+def hive_state(**decorator_kwargs):
+    def decorator(fn):
+        """
+        Makes necessary changes to the state in order for the client to accept it in hive mode.
+        """
+        def wrapper(*args, **kwargs):
+            if 'state' not in kwargs or 'spec' not in kwargs:
+                raise Exception("hive_state decorator requires state and spec")
+            state = kwargs['state']
+            spec = kwargs['spec']
 
-        # Increase genesis time to min genesis time
-        state.genesis_time = spec.config.MIN_GENESIS_TIME
-        kwargs['state'] = state
+            # Increase genesis time to min genesis time
+            state.genesis_time = spec.config.MIN_GENESIS_TIME
+            kwargs['state'] = state
 
-        res = fn(*args, **kwargs)
-        if res is not None:
-            yield 'genesis', state
-            yield from res
-    return wrapper
+            res = fn(*args, **kwargs)
+            if res is not None:
+                yield 'genesis', state
+                yield from res
+
+            # Also yield extra configuration that is for the client in hive mode
+
+            # Time is the next slot after test ends
+            time = state.genesis_time + ((state.slot + 1) * spec.config.SECONDS_PER_SLOT)
+            if "time" in decorator_kwargs:
+                time = decorator_kwargs["time"]
+            elif "slot_time" in decorator_kwargs:
+                time = state.genesis_time + (decorator_kwargs["slot_time"] * spec.config.SECONDS_PER_SLOT)
+            
+            head = state
+            head_epoch = spec.compute_epoch_at_slot(head.slot)
+            fork_version = spec.compute_fork_version(head_epoch)
+            fork_digest = spec.compute_fork_digest(fork_version, state.genesis_validators_root)
+            finalized_checkpoint = state.finalized_checkpoint
+
+            yield 'hive_config', {
+                'genesis_time': int(state.genesis_time),
+                'genesis_validators_root': state.genesis_validators_root.hex(),
+                'time': int(time),
+                'fork_version': fork_version.hex(),
+                'fork_digest': fork_digest.hex(),
+                'finalized_checkpoint': {
+                    'epoch': int(finalized_checkpoint.epoch),
+                    'root': finalized_checkpoint.root.hex(),
+                },
+                'head': {
+                    'epoch': int(head_epoch),
+                    'root': head.hash_tree_root().hex(),
+                },
+                'head_slot': int(head.slot),
+            }
+        return wrapper
+    return decorator
