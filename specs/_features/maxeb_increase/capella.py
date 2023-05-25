@@ -1168,8 +1168,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 def slash_validator(state: BeaconState,
                     slashed_index: ValidatorIndex,
-                    whistleblower_index: ValidatorIndex=None,
-                    is_proposer_slashing: bool=False) -> None:
+                    whistleblower_index: ValidatorIndex=None) -> None:
     """
     Slash the validator with index ``slashed_index``.
     """
@@ -1179,8 +1178,8 @@ def slash_validator(state: BeaconState,
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    min_slashing_amount = MIN_PROPOSER_SLASHING if is_proposer_slashing else validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
-    decrease_balance(state, slashed_index, min_slashing_amount)
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX  # [Modified in Bellatrix]
+    decrease_balance(state, slashed_index, slashing_penalty)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
@@ -1718,7 +1717,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, header_1.proposer_index, is_proposer_slashing=True)
+    slash_validator(state, header_1.proposer_index)
 
 
 def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
