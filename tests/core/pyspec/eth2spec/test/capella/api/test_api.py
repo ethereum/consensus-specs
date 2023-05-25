@@ -1,12 +1,12 @@
 from eth2spec.test.helpers.hive import (
     StateID,
-    EthV2DebugBeaconStates,
+    Eth2BeaconChainRequestBeaconBlocksByRange,
     EthV1BeaconStatesFinalityCheckpoints,
     EthV1BeaconStatesFork,
 )
 from eth2spec.test.context import (
     with_capella_and_later,
-    spec_state_test,
+    spec_state_test_with_matching_config,
     hive_state,
 )
 from eth2spec.test.helpers.state import (
@@ -51,8 +51,8 @@ def _perform_valid_withdrawal(spec, state):
 
 
 @with_capella_and_later
-@spec_state_test
-@hive_state
+@spec_state_test_with_matching_config
+@hive_state()
 def test_debug_beacon_state_v2(spec, state):
     _, signed_block_1, pre_next_withdrawal_index = (_perform_valid_withdrawal(spec, state))
 
@@ -66,19 +66,25 @@ def test_debug_beacon_state_v2(spec, state):
 
     yield 'hive', [
         (
-            EthV2DebugBeaconStates(id=StateID.Head()).
-            from_state(state)
-        ),
-        (
-            EthV2DebugBeaconStates(id=StateID.Slot(signed_block_2.message.slot)).
-            from_state(state)
-        ),
-        (
             EthV1BeaconStatesFinalityCheckpoints(id=StateID.Head(), finalized=False).
             from_state(state)
         ),
         (
             EthV1BeaconStatesFork(id=StateID.Head(), finalized=False).
             from_state(state)
-        )
+        ),
+        (
+            Eth2BeaconChainRequestBeaconBlocksByRange(
+                start_slot=1,
+                count=2,  # Slot 2 is empty
+                expected_roots=[signed_block_1.hash_tree_root()]
+            )
+        ),
+        (
+            Eth2BeaconChainRequestBeaconBlocksByRange(
+                start_slot=1,
+                count=3,
+                expected_roots=[block.hash_tree_root() for block in [signed_block_1, signed_block_2]],
+            )
+        ),
     ]
