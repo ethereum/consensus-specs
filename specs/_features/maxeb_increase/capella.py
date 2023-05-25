@@ -3638,7 +3638,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=ceiling - MAX_EFFECTIVE_BALANCE,
+                amount=balance - ceiling,
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
