@@ -1,7 +1,11 @@
 from ruamel.yaml import YAML
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 yaml = YAML()
+
+#
+# Beacon API actions/verifications
+#
 
 
 class StateID(str):
@@ -387,3 +391,23 @@ class EthV1BeaconStatesFork:
 yaml.register_class(EthV2DebugBeaconStates)
 yaml.register_class(EthV1BeaconStatesFinalityCheckpoints)
 yaml.register_class(EthV1BeaconStatesFork)
+
+
+#
+# Beacon P2P actions/verifications
+#
+
+
+@dataclass
+class Eth2BeaconChainRequestBeaconBlocksByRange:
+    start_slot: int
+    count: int
+    expected_roots: List[Any] = field(default_factory=list)
+    step: int = 1
+    version: int = 2
+
+    def __post_init__(self):
+        self.expected_roots = [root.hex() for root in self.expected_roots]
+
+
+yaml.register_class(Eth2BeaconChainRequestBeaconBlocksByRange)
