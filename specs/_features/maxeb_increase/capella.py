@@ -3585,6 +3585,14 @@ def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: 
         and balance > 0
     )
 
+def get_validator_ceiling(validator: Validator) -> Gwei:
+    """
+    Get ceiling balance for paritial withdrawals for ``validator``.
+    """
+    if has_compounding_withdrawal_credential(validator):
+        return MAX_EFFECTIVE_BALANCE
+    return MIN_ACTIVATION_BALANCE
+
 
 def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> bool:
     """
@@ -3592,10 +3600,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     if not has_withdrawable_credential(validator):
         return False
-    if has_eth1_withdrawal_credential(validator):
-        ceiling = MIN_ACTIVATION_BALANCE
-    elif has_compounding_withdrawal_credential(validator):
-        ceiling = MAX_EFFECTIVE_BALANCE
+    ceiling = get_validator_ceiling(validator)
     has_ceiling_balance = validator.effective_balance == ceiling
     has_excess_balance = balance > ceiling
     return has_ceiling_balance and has_excess_balance
@@ -3630,10 +3635,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             ))
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
-            if has_eth1_withdrawal_credential(validator):
-                ceiling = MIN_ACTIVATION_BALANCE 
-            elif has_compounding_withdrawal_credential(validator):
-                ceiling = MAX_EFFECTIVE_BALANCE
+            ceiling = get_validator_ceiling(validator)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
