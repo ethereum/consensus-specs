@@ -2340,7 +2340,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
 
     return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 
-
+    
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
@@ -2350,10 +2350,10 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
 def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, validator_index: ValidatorIndex, slot_signature: BLSSignature) -> bool:
     validator = state.validators[validator_index]
     committee = get_beacon_committee(state, slot, index)
-    number_virtual_validators = validator.effective_balance // MIN_ACTIVATION_BALANCE
+    effective_balance_increments = validator.effective_balance // MIN_ACTIVATION_BALANCE
     committee_balance = get_total_balance(state, set(committee))
-    denominator = committee_balance ** number_virtual_validators
-    numerator = denominator - (committee_balance -  TARGET_AGGREGATORS_PER_COMMITTEE * MIN_ACTIVATION_BALANCE) ** number_virtual_validators
+    denominator = committee_balance ** effective_balance_increments
+    numerator = denominator - (committee_balance -  TARGET_AGGREGATORS_PER_COMMITTEE * MIN_ACTIVATION_BALANCE) ** effective_balance_increments
     modulo = denominator // numerator
     return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 
