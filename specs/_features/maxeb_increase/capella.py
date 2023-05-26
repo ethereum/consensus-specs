@@ -191,8 +191,8 @@ HYSTERESIS_QUOTIENT = uint64(4)
 HYSTERESIS_DOWNWARD_MULTIPLIER = uint64(1)
 HYSTERESIS_UPWARD_MULTIPLIER = uint64(5)
 MIN_DEPOSIT_AMOUNT = Gwei(1000000000)
-MAX_EFFECTIVE_BALANCE = Gwei(2048000000000)
 MIN_ACTIVATION_BALANCE = Gwei(32000000000)
+MAX_EFFECTIVE_BALANCE = Gwei(2048000000000)
 EFFECTIVE_BALANCE_INCREMENT = Gwei(1000000000)
 MIN_ATTESTATION_INCLUSION_DELAY = uint64(1)
 SLOTS_PER_EPOCH = uint64(32)
@@ -247,7 +247,7 @@ class Configuration(NamedTuple):
     SHARD_COMMITTEE_PERIOD: uint64
     ETH1_FOLLOW_DISTANCE: uint64
     EJECTION_BALANCE: Gwei
-    MIN_PER_EPOCH_CHURN_LIMIT: Gwei
+    MIN_PER_EPOCH_CHURN_LIMIT: uint64
     CHURN_LIMIT_QUOTIENT: uint64
     PROPOSER_SCORE_BOOST: uint64
     INACTIVITY_SCORE_BIAS: uint64
@@ -275,7 +275,7 @@ config = Configuration(
     SHARD_COMMITTEE_PERIOD=uint64(256),
     ETH1_FOLLOW_DISTANCE=uint64(2048),
     EJECTION_BALANCE=Gwei(16000000000),
-    MIN_PER_EPOCH_CHURN_LIMIT=Gwei(1280000000000),
+    MIN_PER_EPOCH_CHURN_LIMIT=uint64(4),
     CHURN_LIMIT_QUOTIENT=uint64(65536),
     PROPOSER_SCORE_BOOST=uint64(40),
     INACTIVITY_SCORE_BIAS=uint64(4),
@@ -772,6 +772,7 @@ def integer_squareroot(n: uint64) -> uint64:
         y = (x + n // x) // 2
     return x
 
+
 def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
@@ -1026,8 +1027,7 @@ def get_validator_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the validator churn limit for the current epoch.
     """
-    total_balance = get_total_active_balance(state)
-    return max(config.MIN_PER_EPOCH_CHURN_LIMIT, total_balance // config.CHURN_LIMIT_QUOTIENT)
+    return max(config.MIN_PER_EPOCH_CHURN_LIMIT * MIN_ACTIVATION_BALANCE, get_total_active_balance(state) // config.CHURN_LIMIT_QUOTIENT)
 
 
 def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
@@ -1150,12 +1150,12 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if exit_queue_epoch > max(exit_epochs): 
         state.exit_queue_churn = Gwei(0)
     churn_limit = get_validator_churn_limit(state)
-    if state.exit_queue_churn + validator.effective_balance <= churn_limit: # the validator fits within the churn of the current exit_queue_epoch
-        state.exit_queue_churn += validator.effective_balance # the full effective balance of the validator contributes to the churn in the exit queue epoch 
-    else: # the validator does not fit within the churn of the current exit_queue_epoch
+    if state.exit_queue_churn + validator.effective_balance <= churn_limit:  # The validator fits within the churn of the current exit_queue_epoch
+        state.exit_queue_churn += validator.effective_balance # The full effective balance of the validator contributes to the churn in the exit queue epoch 
+    else:  # The validator does not fit within the churn of the current exit_queue_epoch
         future_epochs_churn_contribution = validator.effective_balance - (churn_limit - state.exit_queue_churn)
-        exit_queue_epoch += Epoch((future_epochs_churn_contribution + churn_limit - 1) // churn_limit) # (numerator + denominator - 1) // denominator rounds up. 
-        # the validator contributes to the churn in the exit queue epoch, based on how much balance is left over at that point 
+        exit_queue_epoch += Epoch((future_epochs_churn_contribution + churn_limit - 1) // churn_limit) # (numerator + denominator - 1) // denominator rounds up
+        # The validator contributes to the churn in the exit queue epoch, based on how much balance is left over at that point 
         if future_epochs_churn_contribution % churn_limit == 0:
             state.exit_queue_churn = churn_limit
         else:
@@ -1810,8 +1810,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount, up to MIN_ACTIVATION_BALANCE.
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        top_up = min(amount, MIN_ACTIVATION_BALANCE - state.balances[index])
-        increase_balance(state, index, top_up)
+        increase_balance(state, index, min(amount, MIN_ACTIVATION_BALANCE - state.balances[index]))
 
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the Merkle branch
@@ -3566,42 +3565,33 @@ def has_compounding_withdrawal_credential(validator: Validator) -> bool:
     return validator.withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
 
 
-def has_withdrawable_credential(validator: Validator) -> bool:
-    """
-    Check if ``validator`` has a withdrawable credential.
-    """
-    return has_eth1_withdrawal_credential(validator) or has_compounding_withdrawal_credential(validator)
-
-
 def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is fully withdrawable.
     """
     return (
-        has_withdrawable_credential(validator)
+        (has_eth1_withdrawal_credential(validator) or has_compounding_withdrawal_credential(validator))
         and validator.withdrawable_epoch <= epoch
         and balance > 0
     )
 
-def get_validator_ceiling(validator: Validator) -> Gwei:
+def get_validator_excess_balance(validator: Validator, balance: Gwei) -> Gwei:
     """
-    Get ceiling balance for paritial withdrawals for ``validator``.
+    Get excess balance for paritial withdrawals for ``validator``.
     """
-    if has_compounding_withdrawal_credential(validator):
-        return MAX_EFFECTIVE_BALANCE
-    return MIN_ACTIVATION_BALANCE
-
+    if has_compounding_withdrawal_credential(validator) and balance > MAX_EFFECTIVE_BALANCE:
+        return balance - MAX_EFFECTIVE_BALANCE
+    elif has_eth1_withdrawal_credential(validator) and balance > MIN_ACTIVATION_BALANCE:
+        return balance - MIN_ACTIVATION_BALANCE
+    return 0
 
 def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> bool:
     """
     Check if ``validator`` is partially withdrawable.
     """
-    if not has_withdrawable_credential(validator):
-        return False
-    ceiling = get_validator_ceiling(validator)
-    has_ceiling_balance = validator.effective_balance == ceiling
-    has_excess_balance = balance > ceiling
-    return has_ceiling_balance and has_excess_balance
+    excess_balance = get_validator_excess_balance(validator, balance)
+    has_excess_balance = excess_balance > 0
+    return has_excess_balance
 
 
 def process_historical_summaries_update(state: BeaconState) -> None:
@@ -3633,12 +3623,12 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             ))
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
-            ceiling = get_validator_ceiling(validator)
+            excess = get_validator_excess_balance(validator, balance)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - ceiling,
+                amount=balance - excess,
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
