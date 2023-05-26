@@ -2396,7 +2396,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     N = len(get_active_validator_indices(state, get_current_epoch(state)))
     t = get_total_active_balance(state) // N // ETH_TO_GWEI
     T = MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI
-    delta = get_validator_churn_limit(state)
+    delta = get_validator_churn_limit(state) // MIN_ACTIVATION_BALANCE
     Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
     D = SAFETY_DECAY
 
