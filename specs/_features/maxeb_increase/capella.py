@@ -2350,10 +2350,10 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
 def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, validator_index: ValidatorIndex, slot_signature: BLSSignature) -> bool:
     validator = state.validators[validator_index]
     committee = get_beacon_committee(state, slot, index)
-    min_balance_incrememts = validator.effective_balance // MIN_ACTIVATION_BALANCE
+    min_balance_increments = validator.effective_balance // MIN_ACTIVATION_BALANCE
     committee_balance = get_total_balance(state, set(committee))
-    denominator = committee_balance ** min_balance_incrememts
-    numerator = denominator - (committee_balance -  TARGET_AGGREGATORS_PER_COMMITTEE * MIN_ACTIVATION_BALANCE) ** min_balance_incrememts
+    denominator = committee_balance ** min_balance_increments
+    numerator = denominator - (committee_balance -  TARGET_AGGREGATORS_PER_COMMITTEE * MIN_ACTIVATION_BALANCE) ** min_balance_increments
     modulo = denominator // numerator
     return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
 
