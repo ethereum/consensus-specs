@@ -2340,7 +2340,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
 
     return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 
-    
+
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_root = compute_signing_root(slot, domain)
