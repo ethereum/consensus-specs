@@ -1562,9 +1562,9 @@ def process_registry_updates(state: BeaconState) -> None:
     max_churn_left = get_validator_churn_limit(state)
     for index in activation_queue:
         validator = state.validators[index]
-        max_churn_left -= validator.effective_balance
-        if max_churn_left < 0:
+        if max_churn_left < validator.effective_balance:
             break
+        max_churn_left -= validator.effective_balance
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 
 
