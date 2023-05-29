@@ -275,7 +275,7 @@ config = Configuration(
     SHARD_COMMITTEE_PERIOD=uint64(256),
     ETH1_FOLLOW_DISTANCE=uint64(2048),
     EJECTION_BALANCE=Gwei(16000000000),
-    MIN_PER_EPOCH_CHURN_LIMIT=uint64(64),
+    MIN_PER_EPOCH_CHURN_LIMIT=uint64(4),
     CHURN_LIMIT_QUOTIENT=uint64(65536),
     PROPOSER_SCORE_BOOST=uint64(40),
     INACTIVITY_SCORE_BIAS=uint64(4),
@@ -658,6 +658,7 @@ class BeaconState(Container):
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    activation_validator_balance: Gwei
     exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -1148,15 +1149,17 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
-    if exit_queue_epoch > max(exit_epochs): 
-        # New exit epoch, full validator balance can be withdrawn
-        state.exit_queue_churn = validator.effective_balance
-    elif state.exit_queue_churn + validator.effective_balance <= get_validator_churn_limit(state):
-        # Same exit epoch, full validator balance fits within the churn limit
-        state.exit_queue_churn += validator.effective_balance
-    else:  # Full validator balance does not fit within the churn limit
+    exit_balance_to_consume = validator.effective_balance
+    per_epoch_churn_limit = get_validator_churn_limit(state)
+    if state.exit_queue_churn + exit_balance_to_consume <= per_epoch_churn_limit:
+        state.exit_queue_churn += exit_balance_to_consume
+    else:  # Exit balance rolls over to subsequent epoch(s)
+        exit_balance_to_consume -= (per_epoch_churn_limit - state.exit_queue_churn)
         exit_queue_epoch += Epoch(1)
-        state.exit_queue_churn = validator.effective_balance
+        while exit_balance_to_consume >= per_epoch_churn_limit:
+            exit_balance_to_consume -= per_epoch_churn_limit
+            exit_queue_epoch += Epoch(1)
+        state.exit_queue_churn = exit_balance_to_consume
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
@@ -1555,13 +1558,17 @@ def process_registry_updates(state: BeaconState) -> None:
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
-    max_churn_left = get_validator_churn_limit(state)
+    activation_balance_to_consume = get_validator_churn_limit(state)
     for index in activation_queue:
         validator = state.validators[index]
-        if max_churn_left < validator.effective_balance:
+        # Validator can now be activated
+        if state.activation_validator_balance + activation_balance_to_consume >= validator.effective_balance:
+            activation_balance_to_consume -= (validator.effective_balance - state.activation_validator_balance)
+            state.activation_validator_balance = Gwei(0)
+            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+        else:  
+            state.activation_validator_balance += activation_balance_to_consume
             break
-        max_churn_left -= validator.effective_balance
-        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 
 
 def process_slashings(state: BeaconState) -> None:
