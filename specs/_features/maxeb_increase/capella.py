@@ -600,6 +600,7 @@ class SignedBLSToExecutionChange(Container):
     message: BLSToExecutionChange
     signature: BLSSignature
 
+
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
@@ -1151,10 +1152,10 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         state.exit_queue_churn = Gwei(0)
     churn_limit = get_validator_churn_limit(state)
     if state.exit_queue_churn + validator.effective_balance <= churn_limit:  # The validator fits within the churn of the current exit_queue_epoch
-        state.exit_queue_churn += validator.effective_balance # The full effective balance of the validator contributes to the churn in the exit queue epoch 
+        state.exit_queue_churn += validator.effective_balance  # The full effective balance of the validator contributes to the churn in the exit queue epoch 
     else:  # The validator does not fit within the churn of the current exit_queue_epoch
         future_epochs_churn_contribution = validator.effective_balance - (churn_limit - state.exit_queue_churn)
-        exit_queue_epoch += Epoch((future_epochs_churn_contribution + churn_limit - 1) // churn_limit) # (numerator + denominator - 1) // denominator rounds up
+        exit_queue_epoch += Epoch((future_epochs_churn_contribution + churn_limit - 1) // churn_limit)  # (numerator + denominator - 1) // denominator rounds up
         # The validator contributes to the churn in the exit queue epoch, based on how much balance is left over at that point 
         if future_epochs_churn_contribution % churn_limit == 0:
             state.exit_queue_churn = churn_limit
@@ -1557,8 +1558,8 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_eligible_for_activation(state, validator)
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
-    # Dequeue validators for activation up to churn limit [MODIFIED TO BE WEIGHT-SENSITIVE]
-    max_churn_left = get_validator_churn_limit(state) # This is now a Gwei amount
+    # Dequeued validators for activation up to churn limit
+    max_churn_left = get_validator_churn_limit(state)
     for index in activation_queue:
         validator = state.validators[index]
         max_churn_left -= validator.effective_balance
@@ -1808,7 +1809,7 @@ def apply_deposit(state: BeaconState,
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
     else:
-        # Increase balance by deposit amount, up to MIN_ACTIVATION_BALANCE.
+        # Increase balance by deposit amount, up to MIN_ACTIVATION_BALANCE
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
         increase_balance(state, index, min(amount, MIN_ACTIVATION_BALANCE - state.balances[index]))
 
@@ -3589,9 +3590,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    excess_balance = get_validator_excess_balance(validator, balance)
-    has_excess_balance = excess_balance > 0
-    return has_excess_balance
+    return get_validator_excess_balance(validator, balance) > 0
 
 
 def process_historical_summaries_update(state: BeaconState) -> None:
@@ -3623,12 +3622,11 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             ))
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
-            excess = get_validator_excess_balance(validator, balance)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - excess,
+                amount=get_validator_excess_balance(validator, balance),
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
