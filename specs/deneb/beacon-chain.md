@@ -33,8 +33,8 @@
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
-      - [`process_execution_payload`](#process_execution_payload)
-      - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
+      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -218,7 +218,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
 #### Execution payload
 
-##### `process_execution_payload`
+##### Modified `process_execution_payload`
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -262,7 +262,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     )
 ```
 
-##### Modified `process_voluntary_exit`
+#### Modified `process_voluntary_exit`
 
 ```python
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
