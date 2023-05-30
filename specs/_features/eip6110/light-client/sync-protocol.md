@@ -70,7 +70,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
             return False
 
     if epoch < DENEB_FORK_EPOCH:
-        if header.execution.excess_data_gas != uint256(0):
+        if header.execution.excess_data_gas != uint64(0):
             return False
 
     if epoch < CAPELLA_FORK_EPOCH:

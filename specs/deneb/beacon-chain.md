@@ -126,7 +126,7 @@ class ExecutionPayload(Container):
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    excess_data_gas: uint256  # [New in Deneb]
+    excess_data_gas: uint64  # [New in Deneb]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -150,7 +150,7 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root
-    excess_data_gas: uint256  # [New in Deneb]
+    excess_data_gas: uint64  # [New in Deneb]
 ```
 
 ## Helper functions
