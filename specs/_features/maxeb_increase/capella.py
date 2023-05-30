@@ -658,7 +658,7 @@ class BeaconState(Container):
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    activation_queue_budget: Gwei
+    activation_validator_balance: Gwei
     exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -1558,14 +1558,16 @@ def process_registry_updates(state: BeaconState) -> None:
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
-    state.activation_queue_budget += get_validator_churn_limit(state)
+    activation_balance_to_consume = get_validator_churn_limit(state)
     for index in activation_queue:
         validator = state.validators[index]
         # Validator can now be activated
-        if validator.effective_balance <= state.activation_queue_budget:
-            state.activation_queue_budget -= validator.effective_balance
+        if state.activation_validator_balance + activation_balance_to_consume >= validator.effective_balance:
+            activation_balance_to_consume -= (validator.effective_balance - state.activation_validator_balance)
+            state.activation_validator_balance = Gwei(0)
             validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-        else:
+        else:  
+            state.activation_validator_balance += activation_balance_to_consume
             break
 
 
