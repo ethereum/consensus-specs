@@ -24,15 +24,17 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
-    - [`tx_peek_blob_versioned_hashes`](#tx_peek_blob_versioned_hashes)
-    - [`verify_kzg_commitments_against_transactions`](#verify_kzg_commitments_against_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+      - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
+    - [Engine APIs](#engine-apis)
+      - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
-    - [Modified `process_operations`](#modified-process_operations)
       - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
-    - [Blob KZG commitments](#blob-kzg-commitments)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -41,6 +43,8 @@
 ## Introduction
 
 This upgrade adds blobs to the beacon chain as part of Deneb. This is an extension of the Capella upgrade.
+
+The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 ## Custom types
 
@@ -68,9 +72,10 @@ This upgrade adds blobs to the beacon chain as part of Deneb. This is an extensi
 
 ### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(2**2)` (= 4) |
+| Name | Value | Description |
+| - | - | - |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+| `MAX_BLOBS_PER_BLOCK`            | `uint64(2**2)` (= 4)     | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ## Configuration
 
@@ -98,7 +103,7 @@ class BeaconBlockBody(Container):
     # Execution
     execution_payload: ExecutionPayload  # [Modified in Deneb]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]  # [New in Deneb]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]  # [New in Deneb]
 ```
 
 #### `ExecutionPayload`
@@ -160,73 +165,81 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
-#### `tx_peek_blob_versioned_hashes`
-
-This function retrieves the hashes from the `SignedBlobTransaction` as defined in Deneb, using SSZ offsets.
-Offsets are little-endian `uint32` values, as defined in the [SSZ specification](../../ssz/simple-serialize.md).
-See [the full details of `blob_versioned_hashes` offset calculation](https://gist.github.com/protolambda/23bd106b66f6d4bb854ce46044aa3ca3).
-
-```python
-def tx_peek_blob_versioned_hashes(opaque_tx: Transaction) -> Sequence[VersionedHash]:
-    assert opaque_tx[0] == BLOB_TX_TYPE
-    message_offset = 1 + uint32.decode_bytes(opaque_tx[1:5])
-    # field offset: 32 + 8 + 32 + 32 + 8 + 4 + 32 + 4 + 4 + 32 = 188
-    blob_versioned_hashes_offset = (
-        message_offset
-        + uint32.decode_bytes(opaque_tx[(message_offset + 188):(message_offset + 192)])
-    )
-    # `VersionedHash` is a 32-byte object
-    assert (len(opaque_tx) - blob_versioned_hashes_offset) % 32 == 0
-    return [
-        VersionedHash(opaque_tx[x:(x + 32)])
-        for x in range(blob_versioned_hashes_offset, len(opaque_tx), 32)
-    ]
-```
-
-#### `verify_kzg_commitments_against_transactions`
-
-```python
-def verify_kzg_commitments_against_transactions(transactions: Sequence[Transaction],
-                                                kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    all_versioned_hashes: List[VersionedHash] = []
-    for tx in transactions:
-        if tx[0] == BLOB_TX_TYPE:
-            all_versioned_hashes += tx_peek_blob_versioned_hashes(tx)
-    return all_versioned_hashes == [kzg_commitment_to_versioned_hash(commitment) for commitment in kzg_commitments]
-```
-
 ## Beacon chain state transition function
 
-### Block processing
+### Execution engine
+
+#### Request data
+
+##### Modified `NewPayloadRequest`
 
 ```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Deneb]
-    process_randao(state, block.body)
-    process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Deneb]
-    process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(block.body)  # [New in Deneb]
+@dataclass
+class NewPayloadRequest(object):
+    execution_payload: ExecutionPayload
+    versioned_hashes: Sequence[VersionedHash]
 ```
+
+#### Engine APIs
+
+##### `is_valid_versioned_hashes`
+
+```python
+def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if the version hashes computed by the blob transactions of
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    if not self.is_valid_block_hash(new_payload_request.execution_payload):
+        return False
+
+    # [New in Deneb]
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    if not self.notify_new_payload(new_payload_request.execution_payload):
+        return False
+
+    return True
+```
+
+### Block processing
 
 #### Execution payload
 
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+
+    # [New in Deneb] Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    # [Modified in Deneb] Pass `versioned_hashes` to Execution Engine
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+    )
 
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
@@ -247,25 +260,6 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         withdrawals_root=hash_tree_root(payload.withdrawals),
         excess_data_gas=payload.excess_data_gas,  # [New in Deneb]
     )
-```
-
-#### Modified `process_operations`
-
-```python
-def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
-
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(body.proposer_slashings, process_proposer_slashing)
-    for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation)
-    for_ops(body.deposits, process_deposit)
-    for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Deneb]
-    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 ```
 
 ##### Modified `process_voluntary_exit`
@@ -289,14 +283,6 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
-```
-
-
-#### Blob KZG commitments
-
-```python
-def process_blob_kzg_commitments(body: BeaconBlockBody) -> None:
-    assert verify_kzg_commitments_against_transactions(body.execution_payload.transactions, body.blob_kzg_commitments)
 ```
 
 ## Testing

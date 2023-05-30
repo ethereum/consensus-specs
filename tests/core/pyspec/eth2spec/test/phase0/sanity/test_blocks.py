@@ -143,7 +143,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     )
     if is_post_bellatrix(spec):
         if spec.is_execution_enabled(state, block.body):
-            spec.process_execution_payload(state, block.body.execution_payload, spec.EXECUTION_ENGINE)
+            spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
 
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)

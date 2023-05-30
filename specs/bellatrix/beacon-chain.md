@@ -33,7 +33,12 @@
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+      - [`NewPayloadRequest`](#newpayloadrequest)
+    - [Engine APIs](#engine-apis)
     - [`notify_new_payload`](#notify_new_payload)
+    - [`is_valid_block_hash`](#is_valid_block_hash)
+    - [`verify_and_notify_new_payload`](#verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
@@ -300,17 +305,29 @@ def slash_validator(state: BeaconState,
 
 ### Execution engine
 
+#### Request data
+
+##### `NewPayloadRequest`
+
+```python
+@dataclass
+class NewPayloadRequest(object):
+    execution_payload: ExecutionPayload
+```
+
+#### Engine APIs
+
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
 * a state object `self.execution_state` of type `ExecutionState`
 * a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
 
-*Note*: `notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
-
-The body of this function is implementation dependent.
+The body of these functions are implementation dependent.
 The Engine API may be used to implement this and similarly defined functions via an external execution engine.
 
 #### `notify_new_payload`
+
+`notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 ```python
 def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -318,6 +335,31 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
+```
+
+#### `is_valid_block_hash`
+
+```python
+def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
+#### `verify_and_notify_new_payload`
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    if not self.is_valid_block_hash(new_payload_request.execution_payload):
+        return False
+    if not self.notify_new_payload(new_payload_request.execution_payload):
+        return False
+    return True
 ```
 
 ### Block processing
@@ -328,7 +370,7 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [New in Bellatrix]
+        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [New in Bellatrix]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -340,7 +382,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
     if is_merge_transition_complete(state):
         assert payload.parent_hash == state.latest_execution_payload_header.block_hash
@@ -349,7 +393,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
