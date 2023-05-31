@@ -14,7 +14,9 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 
   - [Warning](#warning)
   - [Modifications in Bellatrix](#modifications-in-bellatrix)
-    - [Configuration](#configuration)
+  - [Preset](#preset)
+    - [Network](#network)
+  - [Configuration](#configuration)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
         - [Global topics](#global-topics)
@@ -41,14 +43,18 @@ Refer to the note in the [validator guide](./validator.md) for further details.
 
 ## Modifications in Bellatrix
 
-### Configuration
+## Preset
+
+### Network
+
+| Name | Value |
+| - | - |
+| `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10,485,760, 10 MiB) |
+| `MAX_CHUNK_SIZE` | `10 * 2**20` (= 10,485,760, 10 MiB) |
+
+## Configuration 
 
 This section outlines modifications constants that are used in this spec.
-
-| Name | Value | Description |
-|---|---|---|
-| `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed gossip messages starting at Bellatrix upgrade. |
-| `MAX_CHUNK_SIZE` | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses starting at Bellatrix upgrade. |
 
 ### The gossip domain: gossipsub
 
@@ -60,13 +66,6 @@ Topics follow the same specification as in prior upgrades.
 All topics remain stable except the beacon block topic which is updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 and Altair documents unless explicitly noted here.
-
-Starting at Bellatrix upgrade, `GOSSIP_MAX_SIZE` has increased from 1Mib to 10Mib.
-
-Starting at Bellatrix upgrade, each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
-has a maximum size of `GOSSIP_MAX_SIZE`.
-Clients MUST reject (fail validation) messages that are over this size limit.
-Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The derivation of the `message-id` remains stable.
 
@@ -131,12 +130,6 @@ down-scoring or disconnection.
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 Request and Response remain unchanged unless explicitly noted here.
-
-Starting at Bellatrix upgrade, `MAX_CHUNK_SIZE` has increased from 1Mib to 10Mib.
-
-Starting at Bellatrix upgrade,
-a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks
-regardless of type specific bounds that *MUST* also be respected.
 
 Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix block type.
 
