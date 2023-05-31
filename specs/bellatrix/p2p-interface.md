@@ -67,6 +67,8 @@ All topics remain stable except the beacon block topic which is updated with the
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 and Altair documents unless explicitly noted here.
 
+Starting at Bellatrix upgrade, `GOSSIP_MAX_SIZE` has increased from 1Mib to 10Mib.
+
 The derivation of the `message-id` remains stable.
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
@@ -130,6 +132,8 @@ down-scoring or disconnection.
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 Request and Response remain unchanged unless explicitly noted here.
+
+Starting at Bellatrix upgrade, `MAX_CHUNK_SIZE` has increased from 1Mib to 10Mib.
 
 Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix block type.
 
