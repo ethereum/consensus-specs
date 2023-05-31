@@ -15,6 +15,8 @@ from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
     run_sync_committee_processing,
     run_successful_sync_committee_test,
+    _build_block_for_next_slot_with_sync_participation,
+    validate_sync_committee_rewards,
 )
 from eth2spec.test.helpers.voluntary_exits import (
     get_unslashed_exited_validators,
@@ -702,3 +704,37 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
         )
     )
     yield from run_sync_committee_processing(spec, state, block)
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+def test_slashed_proposer_rewarded_for_sync_aggregate_inclusion(spec, state):
+    committee_indices = compute_committee_indices(state)
+    committee_bits = [True for _ in committee_indices]
+    block = _build_block_for_next_slot_with_sync_participation(spec, state, committee_indices, committee_bits)
+
+    pre_state = state.copy()
+
+    # process block header
+    spec.process_slots(state, block.slot)
+    spec.process_block_header(state, block)
+
+    # slash proposer
+    state.validators[block.proposer_index].slashed = True
+
+    yield 'pre', state
+    yield 'sync_aggregate', block.body.sync_aggregate
+
+    spec.process_sync_aggregate(state, block.body.sync_aggregate)
+
+    yield 'post', state
+
+    validate_sync_committee_rewards(
+        spec,
+        pre_state,
+        state,
+        committee_indices,
+        committee_bits,
+        block.proposer_index
+    )

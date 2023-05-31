@@ -39,6 +39,7 @@ from eth2spec.test.context import (
     with_custom_state,
     large_validator_set,
 )
+from copy import deepcopy
 
 
 @with_all_phases
@@ -1145,3 +1146,47 @@ def test_full_random_operations_2(spec, state):
 @spec_state_test
 def test_full_random_operations_3(spec, state):
     yield from run_test_full_random_operations(spec, state, rng=Random(2023))
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_slashes_itself(spec, state):
+    advanced_state = deepcopy(state)
+    next_slot(spec, advanced_state)
+    proposer_index = spec.get_beacon_proposer_index(advanced_state)
+
+    proposer_slashing = get_valid_proposer_slashing(spec, state,
+                                                    slashed_index=proposer_index,
+                                                    signed_1=True, signed_2=True)
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings.append(proposer_slashing)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    assert state.validators[proposer_index].slashed
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_with_lack_of_effective_balance(spec, state):
+    advanced_state = deepcopy(state)
+    next_slot(spec, advanced_state)
+    proposer_index = spec.get_beacon_proposer_index(advanced_state)
+
+    state.validators[proposer_index].effective_balance = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    state.balances[proposer_index] = state.validators[proposer_index].effective_balance
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    assert proposer_index != block.proposer_index
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
