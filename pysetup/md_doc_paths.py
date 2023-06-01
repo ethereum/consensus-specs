@@ -66,10 +66,6 @@ def get_md_doc_paths(spec_fork: str) -> str:
         """
     if spec_fork == EIP6110:
         md_doc_paths += """
-            specs/_features/eip6110/light-client/fork.md
-            specs/_features/eip6110/light-client/full-node.md
-            specs/_features/eip6110/light-client/p2p-interface.md
-            specs/_features/eip6110/light-client/sync-protocol.md
             specs/_features/eip6110/beacon-chain.md
             specs/_features/eip6110/fork.md
         """
