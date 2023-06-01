@@ -2,6 +2,30 @@
 
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Test case format](#test-case-format)
+  - [`meta.yaml`](#metayaml)
+  - [`anchor_state.ssz_snappy`](#anchor_statessz_snappy)
+  - [`anchor_block.ssz_snappy`](#anchor_blockssz_snappy)
+  - [`steps.yaml`](#stepsyaml)
+    - [`on_tick` execution step](#on_tick-execution-step)
+    - [`on_attestation` execution step](#on_attestation-execution-step)
+    - [`on_block` execution step](#on_block-execution-step)
+    - [`on_merge_block` execution step](#on_merge_block-execution-step)
+    - [`on_attester_slashing` execution step](#on_attester_slashing-execution-step)
+    - [`on_payload_info` execution step](#on_payload_info-execution-step)
+    - [Checks step](#checks-step)
+  - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
+  - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
+- [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 ## Test case format
 
 ### `meta.yaml`
@@ -59,13 +83,19 @@ The parameter that is required for executing `on_block(store, block)`.
 
 ```yaml
 {
-    block: string  -- the name of the `block_<32-byte-root>.ssz_snappy` file.
-                      To execute `on_block(store, block)` with the given attestation.
-    valid: bool    -- optional, default to `true`.
-                      If it's `false`, this execution step is expected to be invalid.
+    block: string           -- the name of the `block_<32-byte-root>.ssz_snappy` file.
+                              To execute `on_block(store, block)` with the given attestation.
+    blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
+                               The blobs file content is a `List[Blob, MAX_BLOBS_PER_BLOCK]` SSZ object.
+    proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
+    valid: bool             -- optional, default to `true`.
+                               If it's `false`, this execution step is expected to be invalid.
 }  
 ```
+
 The file is located in the same folder (see below).
+
+`blobs` and `proofs` are new fields from Deneb EIP-4844. These are the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper.
 
 After this step, the `store` object may have been updated.
 
