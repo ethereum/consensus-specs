@@ -264,7 +264,7 @@ Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, lea
 
 The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer may not be available beyond the initial distribution via gossip.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `validate_blobs`.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof_batch`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
 
