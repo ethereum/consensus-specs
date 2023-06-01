@@ -32,6 +32,29 @@ from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
 #
+# `is_execution_enabled` has been removed from Capella
+#
+
+@with_capella_and_later
+@spec_state_test
+def test_invalid_is_execution_enabled_false(spec, state):
+    # Set `latest_execution_payload_header` to empty
+    state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Set `execution_payload` to empty
+    block.body.execution_payload = spec.ExecutionPayload()
+    assert len(block.body.execution_payload.transactions) == 0
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield 'blocks', [signed_block]
+    yield 'post', None
+
+
+#
 # BLSToExecutionChange
 #
 

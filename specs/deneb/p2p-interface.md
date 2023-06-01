@@ -117,6 +117,11 @@ Deneb introduces new global topics for blob sidecars.
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in deneb.
 
+New validation:
+
+- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
+  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+
 ###### `blob_sidecar_{subnet_id}`
 
 This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.

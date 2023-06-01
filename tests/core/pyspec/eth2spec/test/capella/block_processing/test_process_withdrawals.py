@@ -56,7 +56,7 @@ def verify_post_state(state, spec, expected_withdrawals,
 def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None,
                                fully_withdrawable_indices=None, partial_withdrawals_indices=None, valid=True):
     """
-    Run ``process_execution_payload``, yielding:
+    Run ``process_withdrawals``, yielding:
       - pre-state ('pre')
       - execution payload ('execution_payload')
       - post-state ('post').
