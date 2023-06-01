@@ -67,7 +67,7 @@ All topics remain stable except the beacon block topic which is updated with the
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Phase 0 and Altair documents unless explicitly noted here.
 
-Starting at Bellatrix upgrade, `GOSSIP_MAX_SIZE` has increased from 1Mib to 10Mib.
+Starting at Bellatrix upgrade, `GOSSIP_MAX_SIZE` has increased from 1Mib to 10Mib `GOSSIP_MAX_SIZE_BELLATRIX`.
 
 The derivation of the `message-id` remains stable.
 
@@ -133,7 +133,7 @@ down-scoring or disconnection.
 
 Request and Response remain unchanged unless explicitly noted here.
 
-Starting at Bellatrix upgrade, `MAX_CHUNK_SIZE` has increased from 1Mib to 10Mib.
+Starting at Bellatrix upgrade, `MAX_CHUNK_SIZE` has increased from 1Mib to 10Mib `MAX_CHUNK_SIZE_BELLATRIX`.
 
 Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix block type.
 
@@ -179,9 +179,9 @@ current mainnet conditions.
 
 Geth currently has a [max gossip message size](https://github.com/ethereum/go-ethereum/blob/3ce9f6d96f38712f5d6756e97b59ccc20cc403b3/eth/protocols/eth/protocol.go#L49) of 10 MiB.
 To support backward compatibility with this previously defined network limit,
-we adopt `GOSSIP_MAX_SIZE` of 10 MiB for maximum gossip sizes at the
+we adopt `GOSSIP_MAX_SIZE_BELLATRIX` of 10 MiB for maximum gossip sizes at the
 point of Bellatrix and beyond. Note, that clients SHOULD still reject objects
-that exceed their maximum theoretical bounds which in most cases is less than `GOSSIP_MAX_SIZE`.
+that exceed their maximum theoretical bounds which in most cases is less than `GOSSIP_MAX_SIZE_BELLATRIX`.
 
 Note, that due to additional size induced by the `BeaconBlock` contents (e.g.
 proposer signature, operations lists, etc) this does reduce the
