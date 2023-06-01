@@ -88,8 +88,8 @@ def upgrade_to_eip6110(pre: deneb.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        data_gas_used=uint256(0),
-        excess_data_gas=uint256(0),
+        data_gas_used=uint64(0),
+        excess_data_gas=uint64(0),
         deposit_receipts_root=Root(),  # [New in EIP-6110]
     )
     post = BeaconState(

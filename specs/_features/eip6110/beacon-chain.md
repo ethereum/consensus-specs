@@ -91,8 +91,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    data_gas_used: uint256
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
 ```
 
@@ -117,8 +117,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    data_gas_used: uint256
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts_root: Root  # [New in EIP6110]
 ```
 
