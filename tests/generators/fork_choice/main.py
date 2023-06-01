@@ -19,7 +19,13 @@ if __name__ == "__main__":
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
     capella_mods = bellatrix_mods  # No additional Capella specific fork choice tests
-    deneb_mods = capella_mods  # No additional Deneb specific fork choice tests
+
+    # Deneb adds `is_data_available` tests
+    _new_deneb_mods = {key: 'eth2spec.test.deneb.fork_choice.test_' + key for key in [
+        'on_block',
+    ]}
+    deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
+
     eip6110_mods = deneb_mods  # No additional EIP6110 specific fork choice tests
 
     all_mods = {
