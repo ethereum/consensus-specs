@@ -86,3 +86,10 @@ MAX_ATTESTATIONS: 128
 MAX_DEPOSITS: 16
 # 2**4 (= 16)
 MAX_VOLUNTARY_EXITS: 16
+
+# Networking
+# ---------------------------------------------------------------
+# `2**20` (= 1048576, 1 MiB)
+GOSSIP_MAX_SIZE: 1048576
+# `2**20` (=1048576, 1 MiB) 
+MAX_CHUNK_SIZE: 1048576

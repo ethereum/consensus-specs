@@ -22,6 +22,8 @@ It consists of four main sections:
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Custom types](#custom-types)
   - [Constants](#constants)
+- [Preset](#preset)
+  - [Network](#network)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -183,17 +185,24 @@ We define the following Python custom types for type hinting and readability:
 | - | - | :-: | :-: |
 | `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
+## Preset
+
+### Network
+
+| Name | Value | Description |
+|---|---|---|
+| `GOSSIP_MAX_SIZE_BELLATRIX` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `MAX_CHUNK_SIZE_BELLATRIX` | `2**20` (=1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
+
 ### Configuration
 
 This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
-| `MAX_CHUNK_SIZE` | `2**20` (=1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10` | The maximum duration in **seconds** for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
