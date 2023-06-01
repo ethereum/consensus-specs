@@ -280,7 +280,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     elif name in config:
                         config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
-                        if name == 'ENDIANNESS':
+                        if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
                             # Deal with mypy Literal typing check
                             value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
@@ -335,6 +335,10 @@ class SpecBuilder(ABC):
         """
         The functions that are (1) defined abstractly in specs or (2) adjusted for getting better performance.
         """
+        raise NotImplementedError()
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
         raise NotImplementedError()
 
     @classmethod
@@ -470,6 +474,12 @@ get_attesting_indices = cache_this(
     ),
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return ""
+
+
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {}
@@ -574,9 +584,11 @@ def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
 
 
 def get_pow_chain_head() -> PowBlock:
-    pass
+    pass"""
 
-
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
 class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -592,6 +604,13 @@ class NoopExecutionEngine(ExecutionEngine):
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
@@ -660,6 +679,39 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
     return ("TEST", "TEST")'''
 
     @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
+class NoopExecutionEngine(ExecutionEngine):
+
+    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+        pass
+
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+        # pylint: disable=unused-argument
+        raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+
+EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+
+    @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
@@ -705,6 +757,11 @@ def is_byte_vector(value: str) -> bool:
     return value.startswith(('ByteVector'))
 
 
+def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
+    function = protocol_def.functions[key].split('"""')
+    protocol_def.functions[key] = function[0] + "..."
+
+
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
                     builder: SpecBuilder,
@@ -722,6 +779,11 @@ def objects_to_spec(preset_name: str,
     )
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
+        abstract_functions = ["verify_and_notify_new_payload"]
+        for key in protocol_def.functions.keys():
+           if key in abstract_functions:
+                make_function_abstract(protocol_def, key)
+
         protocol = f"class {protocol_name}(Protocol):"
         for fn_source in protocol_def.functions.values():
             fn_source = fn_source.replace("self: "+protocol_name, "self")
@@ -797,6 +859,7 @@ def objects_to_spec(preset_name: str,
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
             + '\n\n' + builder.sundry_functions()
+            + builder.execution_engine_cls()
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
@@ -1002,6 +1065,7 @@ class PySpecCommand(Command):
                     specs/phase0/fork-choice.md
                     specs/phase0/validator.md
                     specs/phase0/weak-subjectivity.md
+                    specs/phase0/p2p-interface.md
                 """
             if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002):
                 self.md_doc_paths += """
@@ -1051,10 +1115,6 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == EIP6110:
                 self.md_doc_paths += """
-                    specs/_features/eip6110/light-client/fork.md
-                    specs/_features/eip6110/light-client/full-node.md
-                    specs/_features/eip6110/light-client/p2p-interface.md
-                    specs/_features/eip6110/light-client/sync-protocol.md
                     specs/_features/eip6110/beacon-chain.md
                     specs/_features/eip6110/fork.md
                 """

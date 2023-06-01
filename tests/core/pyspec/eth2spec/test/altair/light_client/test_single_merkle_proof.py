@@ -1,12 +1,12 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_altair_and_later,
+    with_light_client,
     with_test_suite_name,
 )
 
 
 @with_test_suite_name("BeaconState")
-@with_altair_and_later
+@with_light_client
 @spec_state_test
 def test_current_sync_committee_merkle_proof(spec, state):
     yield "object", state
@@ -27,7 +27,7 @@ def test_current_sync_committee_merkle_proof(spec, state):
 
 
 @with_test_suite_name("BeaconState")
-@with_altair_and_later
+@with_light_client
 @spec_state_test
 def test_next_sync_committee_merkle_proof(spec, state):
     yield "object", state
@@ -48,7 +48,7 @@ def test_next_sync_committee_merkle_proof(spec, state):
 
 
 @with_test_suite_name("BeaconState")
-@with_altair_and_later
+@with_light_client
 @spec_state_test
 def test_finality_root_merkle_proof(spec, state):
     yield "object", state

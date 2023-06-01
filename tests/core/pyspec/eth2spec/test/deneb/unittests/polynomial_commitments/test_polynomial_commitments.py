@@ -33,7 +33,7 @@ def bls_add_one(x):
 
 
 def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "little")
+    return int.to_bytes(x % BLS_MODULUS, 32, "big")
 
 
 @with_deneb_and_later
@@ -304,7 +304,7 @@ def test_bytes_to_bls_field_modulus_minus_one(spec):
     Verify that `bytes_to_bls_field` handles modulus minus one
     """
 
-    spec.bytes_to_bls_field((BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.ENDIANNESS))
+    spec.bytes_to_bls_field((BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS))
 
 
 @with_deneb_and_later
@@ -316,7 +316,7 @@ def test_bytes_to_bls_field_modulus(spec):
     """
 
     expect_assertion_error(lambda: spec.bytes_to_bls_field(
-        BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.ENDIANNESS)
+        BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
     ))
 
 
