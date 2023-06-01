@@ -18,6 +18,7 @@ from .helpers.constants import (
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
+    LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -428,13 +429,6 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
-with_altair_and_later = with_all_phases_from(ALTAIR)
-with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
-with_capella_and_later = with_all_phases_from(CAPELLA)
-with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
-
-
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET
     if 'preset' in kw:
@@ -538,6 +532,14 @@ def with_presets(preset_bases, reason=None):
             return fn(*args, spec=spec, **kw)
         return wrapper
     return decorator
+
+
+with_altair_and_later = with_all_phases_from(ALTAIR)
+with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
+with_capella_and_later = with_all_phases_from(CAPELLA)
+with_deneb_and_later = with_all_phases_from(DENEB)
+with_eip6110_and_later = with_all_phases_from(EIP6110)
+with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
 
 
 class quoted_str(str):
