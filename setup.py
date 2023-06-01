@@ -1120,10 +1120,6 @@ class PySpecCommand(Command):
                 """
             if self.spec_fork == EIP7002:
                 self.md_doc_paths += """
-                    specs/_features/eip7002/light-client/fork.md
-                    specs/_features/eip7002/light-client/full-node.md
-                    specs/_features/eip7002/light-client/p2p-interface.md
-                    specs/_features/eip7002/light-client/sync-protocol.md
                     specs/_features/eip7002/beacon-chain.md
                     specs/_features/eip7002/fork.md
                 """
