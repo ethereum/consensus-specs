@@ -164,6 +164,10 @@ ALL_KZG_SETUPS = {
     'mainnet': _load_kzg_trusted_setups('mainnet')
 }
 
+EQUIVALENT_KZG_SETUPS = {
+    'hive': 'mainnet',
+}
+
 ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
 
 
@@ -193,6 +197,8 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str]=None) -> 
 
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
+    if preset_name in EQUIVALENT_KZG_SETUPS:
+        preset_name = EQUIVALENT_KZG_SETUPS[preset_name]
     kzg_setups = ALL_KZG_SETUPS[preset_name]
     constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment, None)
@@ -210,6 +216,9 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
     custom_types: Dict[str, str] = {}
+    preset_base = config.get('PRESET_BASE')
+    if preset_base is not None:
+        preset_base = preset_base.strip("'")
 
     with open(file_name) as source_file:
         document = gfm.parse(source_file.read())
@@ -291,7 +300,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):
-        _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
+        _update_constant_vars_with_kzg_setups(constant_vars, preset_name if preset_base is None else preset_base)
 
     return SpecObject(
         functions=functions,
@@ -749,6 +758,7 @@ def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
 
 
 def objects_to_spec(preset_name: str,
+                    preset_base: Optional[str],
                     spec_object: SpecObject,
                     builder: SpecBuilder,
                     ordered_class_objects: Dict[str, str]) -> str:
@@ -806,7 +816,7 @@ def objects_to_spec(preset_name: str,
     config_spec += '\n'.join(f'    {k}: {v.type_name if v.type_name is not None else "int"}'
                              for k, v in spec_object.config_vars.items())
     config_spec += '\n\n\nconfig = Configuration(\n'
-    config_spec += f'    PRESET_BASE="{preset_name}",\n'
+    config_spec += f'    PRESET_BASE="{preset_name if preset_base is None else preset_base}",\n'
     config_spec += '\n'.join('    ' + format_config_var(k, v) for k, v in spec_object.config_vars.items())
     config_spec += '\n)\n'
 
@@ -999,8 +1009,10 @@ def _build_spec(preset_name: str, fork: str,
     while OrderedDict(new_objects) != OrderedDict(class_objects):
         new_objects = copy.deepcopy(class_objects)
         dependency_order_class_objects(class_objects, spec_object.custom_types)
-
-    return objects_to_spec(preset_name, spec_object, spec_builders[fork], class_objects)
+    preset_base = config.get('PRESET_BASE')
+    if preset_base is not None:
+        preset_base = preset_base.strip("'")
+    return objects_to_spec(preset_name, preset_base, spec_object, spec_builders[fork], class_objects)
 
 
 class BuildTarget(NamedTuple):
@@ -1038,6 +1050,7 @@ class PySpecCommand(Command):
         self.build_targets = """
                 minimal:presets/minimal:configs/minimal.yaml
                 mainnet:presets/mainnet:configs/mainnet.yaml
+                hive:presets/mainnet:configs/hive.yaml
         """
 
     def finalize_options(self):

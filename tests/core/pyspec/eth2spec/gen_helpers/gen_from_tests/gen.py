@@ -3,7 +3,7 @@ from inspect import getmembers, isfunction
 from typing import Any, Callable, Dict, Iterable, Optional, List, Union
 
 from eth2spec.utils import bls
-from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
+from eth2spec.test.helpers.constants import ALL_PRESETS, HIVE, TESTGEN_FORKS
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 
 from eth2spec.gen_helpers.gen_base import gen_runner
@@ -96,10 +96,13 @@ def get_create_provider_fn(runner_name: str) -> Callable[[SpecForkName, str, str
 def run_state_test_generators(runner_name: str,
                               all_mods: Dict[str, Dict[str, str]],
                               presets: Iterable[PresetBaseName] = ALL_PRESETS,
-                              forks: Iterable[SpecForkName] = TESTGEN_FORKS) -> None:
+                              forks: Iterable[SpecForkName] = TESTGEN_FORKS,
+                              is_hive: bool = False) -> None:
     """
     Generate all available state tests of `TESTGEN_FORKS` forks of `ALL_PRESETS` presets of the given runner.
     """
+    if is_hive:
+        presets = [HIVE]
     for preset_name in presets:
         for fork_name in forks:
             if fork_name in all_mods:

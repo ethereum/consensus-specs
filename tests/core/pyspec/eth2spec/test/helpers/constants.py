@@ -61,6 +61,7 @@ AFTER_DENEB_PRE_POST_FORKS = AFTER_DENEB_UPGRADES.items()
 #
 MAINNET = PresetBaseName('mainnet')
 MINIMAL = PresetBaseName('minimal')
+HIVE = PresetBaseName('hive')
 
 ALL_PRESETS = (MINIMAL, MAINNET)
 
