@@ -91,7 +91,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
 ```
 
@@ -116,7 +117,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts_root: Root  # [New in EIP6110]
 ```
 
@@ -268,6 +270,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
+        data_gas_used=payload.data_gas_used,
         excess_data_gas=payload.excess_data_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
     )

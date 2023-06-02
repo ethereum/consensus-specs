@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_presets,
-    with_altair_and_later,
+    with_light_client,
 )
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
@@ -29,7 +29,7 @@ def create_test_update(spec, test, with_next, with_finality, participation_rate)
     )
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_update_ranking(spec, state):
