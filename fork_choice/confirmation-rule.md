@@ -104,8 +104,10 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
-    return support / maximum_support > \
+    return (
+        support / maximum_support >
         0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
+    )
 ```
 
 #### `is_LMD_confirmed`
@@ -210,9 +212,12 @@ def is_FFG_confirmed(
         )
     )
 
-    return 2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint + \
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+    return (
+        2 / 3 * total_active_balance <= (
+            ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
+            (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+        )
+    )
 ```
 
 ### `is_confirmed`
@@ -234,9 +239,9 @@ def is_confirmed(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
-        is_LMD_confirmed(store, confirmation_byzantine_threshold, block_root) and
-        is_FFG_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root) and
-        block_justified_checkpoint + 1 == current_epoch
+        is_LMD_confirmed(store, confirmation_byzantine_threshold, block_root)
+        and is_FFG_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
+        and block_justified_checkpoint + 1 == current_epoch
     )
 ```
 
@@ -378,8 +383,9 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> float:
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
     if ffg_voting_weight_so_far > 0:
-        ffg_confirmation_score = \
+        ffg_confirmation_score = (
             100 * (3 * remaining_ffg_weight - 2 * total_active_balance) / (3 * remaining_ffg_weight)
+        )
         if ffg_confirmation_score / 100 >= ffg_support_for_checkpoint / ffg_voting_weight_so_far:
             return ffg_confirmation_score
 
@@ -391,9 +397,10 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> float:
         ffg_voting_weight_so_far * ffg_confirmation_score / 100 + \
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
-    ffg_confirmation_score = \
-        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) / \
+    ffg_confirmation_score = (
+        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) /
         (3 * total_active_balance)
+    )
     assert ffg_confirmation_score / 100 < ffg_support_for_checkpoint / ffg_voting_weight_so_far
     return ffg_confirmation_score
 ```

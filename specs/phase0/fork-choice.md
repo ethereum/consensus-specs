@@ -20,7 +20,7 @@
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
     - [`get_checkpoint_block`](#get_checkpoint_block)
-    - [`get_proposer_score_boost`](#get_proposer_score_boost)
+    - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
@@ -210,7 +210,7 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
-#### `get_proposer_score_boost`
+#### `get_proposer_score`
 
 ```python
 def get_proposer_score(store: Store) -> Gwei:
