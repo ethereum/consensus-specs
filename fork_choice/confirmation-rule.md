@@ -79,7 +79,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
-        committee_weight = get_total_active_balance(justified_state) // SLOTS_PER_EPOCH
+        committee_weight = total_active_balance // SLOTS_PER_EPOCH
         # First, calculate the number of committees in the current epoch
         num_slots_in_current_epoch = (end_slot % SLOTS_PER_EPOCH) + 1
         # Next, calculate the number of slots remaining in the current epoch
@@ -239,9 +239,9 @@ def is_confirmed(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
-        is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
+        block_justified_checkpoint + 1 == current_epoch
+        and is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
         and is_ffg_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
-        and block_justified_checkpoint + 1 == current_epoch
     )
 ```
 
