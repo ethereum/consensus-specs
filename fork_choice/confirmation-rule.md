@@ -11,11 +11,11 @@
   - [Helper Functions](#helper-functions)
     - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
     - [`is_one_confirmed`](#is_one_confirmed)
-    - [`is_LMD_confirmed`](#is_lmd_confirmed)
+    - [`is_lmd_confirmed`](#is_lmd_confirmed)
     - [`get_remaining_weight_in_epoch`](#get_remaining_weight_in_epoch)
     - [`get_leaf_block_roots`](#get_leaf_block_roots)
-    - [`get_FFG_support`](#get_FFG_support)
-    - [`is_FFG_confirmed`](#is_FFG_confirmed)
+    - [`get_ffg_support`](#get_ffg_support)
+    - [`is_ffg_confirmed`](#is_ffg_confirmed)
   - [`is_confirmed`](#is_confirmed)
 - [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
@@ -24,8 +24,8 @@
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-2)
     - [`get_one_confirmation_score`](#get_one_confirmation_score)
-    - [`get_LMD_confirmation_score`](#get_LMD_confirmation_score)
-    - [`get_FFG_confirmation_score`](#get_FFG_confirmation_score)
+    - [`get_lmd_confirmation_score`](#get_lmd_confirmation_score)
+    - [`get_ffg_confirmation_score`](#get_ffg_confirmation_score)
   - [`get_confirmation_score`](#get_confirmation_score)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -110,10 +110,10 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     )
 ```
 
-#### `is_LMD_confirmed`
+#### `is_lmd_confirmed`
 
 ```python
-def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
+def is_lmd_confirmed(store: Store, confirmation_byzantine_threshold: int, block_root: Root) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True
     else:
@@ -123,10 +123,10 @@ def is_LMD_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
             # This block is not in the finalized chain.
             return False
         else:
-            # Check is_one_confirmed for this block and is_LMD_confirmed for the preceding chain.
+            # Check is_one_confirmed for this block and is_lmd_confirmed for the preceding chain.
             return (
                 is_one_confirmed(store, confirmation_byzantine_threshold, block_root) and
-                is_LMD_confirmed(store, confirmation_byzantine_threshold, block.parent_root)
+                is_lmd_confirmed(store, confirmation_byzantine_threshold, block.parent_root)
             )
 ```
 
@@ -158,10 +158,10 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 
 ```
 
-#### `get_FFG_support`
+#### `get_ffg_support`
 
 ```python
-def get_FFG_support(store: Store, block_root: Root) -> Gwei:
+def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     # Returns the total weight supporting the highest checkpoint in the block's chain
 
     block = store.blocks[block_root]
@@ -180,10 +180,10 @@ def get_FFG_support(store: Store, block_root: Root) -> Gwei:
     return get_attesting_balance(checkpoint_state, list(support_for_checkpoint))
 ```
 
-#### `is_FFG_confirmed`
+#### `is_ffg_confirmed`
 
 ```python
-def is_FFG_confirmed(
+def is_ffg_confirmed(
     # Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
     store: Store,
     confirmation_byzantine_threshold: int,
@@ -203,7 +203,7 @@ def is_FFG_confirmed(
     current_weight_in_epoch = total_active_balance - remaining_ffg_weight
     assert current_weight_in_epoch >= 0
 
-    ffg_support_for_checkpoint = int(get_FFG_support(store, block_root))
+    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
             (current_weight_in_epoch * confirmation_byzantine_threshold - 1) // 100 + 1,
@@ -239,8 +239,8 @@ def is_confirmed(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return (
-        is_LMD_confirmed(store, confirmation_byzantine_threshold, block_root)
-        and is_FFG_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
+        is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
+        and is_ffg_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
         and block_justified_checkpoint + 1 == current_epoch
     )
 ```
@@ -325,10 +325,10 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> float:
     return 100 * (support - 0.5 * proposer_score - 1) / maximum_support - 50
 ```
 
-#### `get_LMD_confirmation_score`
+#### `get_lmd_confirmation_score`
 
 ```python
-def get_LMD_confirmation_score(store: Store, block_root: Root) -> float:
+def get_lmd_confirmation_score(store: Store, block_root: Root) -> float:
     if block_root == store.finalized_checkpoint.root:
         return 100 / 3
     else:
@@ -341,14 +341,14 @@ def get_LMD_confirmation_score(store: Store, block_root: Root) -> float:
             # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
             return min(
                 get_one_confirmation_score(store, block_root),
-                get_LMD_confirmation_score(store, block.parent_root)
+                get_lmd_confirmation_score(store, block.parent_root)
             )
 ```
 
-#### `get_FFG_confirmation_score`
+#### `get_ffg_confirmation_score`
 
 ```python
-def get_FFG_confirmation_score(store: Store, block_root: Root) -> float:
+def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
@@ -364,7 +364,7 @@ def get_FFG_confirmation_score(store: Store, block_root: Root) -> float:
     ffg_voting_weight_so_far = total_active_balance - remaining_ffg_weight
     assert ffg_voting_weight_so_far >= 0
 
-    ffg_support_for_checkpoint = int(get_FFG_support(store, block_root))
+    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
 
     """
     Note: This function assumes confirmation_slashing_threshold = + infinity.
@@ -425,7 +425,7 @@ def get_confirmation_score(
     assert compute_epoch_at_slot(block.slot) == current_epoch
 
     return min(
-        get_LMD_confirmation_score(store, block_root),
-        get_FFG_confirmation_score(store, block_root)
+        get_lmd_confirmation_score(store, block_root),
+        get_ffg_confirmation_score(store, block_root)
     )
 ```
