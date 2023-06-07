@@ -74,7 +74,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     if end_epoch > start_epoch + 1:
         return total_active_balance
 
- committee_weight = total_active_balance // SLOTS_PER_EPOCH
+    committee_weight = total_active_balance // SLOTS_PER_EPOCH
     if start_epoch == end_epoch:
         num_committees = end_slot - start_slot + 1
     else:
