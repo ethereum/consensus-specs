@@ -50,6 +50,8 @@ The specification of these changes continues in the same format as the network s
 
 #### `BlobSidecar`
 
+[New in Deneb:EIP4844]
+
 ```python
 class BlobSidecar(Container):
     block_root: Root
@@ -64,6 +66,8 @@ class BlobSidecar(Container):
 
 #### `SignedBlobSidecar`
 
+[New in Deneb:EIP4844]
+
 ```python
 class SignedBlobSidecar(Container):
     message: BlobSidecar
@@ -71,6 +75,8 @@ class SignedBlobSidecar(Container):
 ```
 
 #### `BlobIdentifier`
+
+[New in Deneb:EIP4844]
 
 ```python
 class BlobIdentifier(Container):
@@ -107,7 +113,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` (new) |
+| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` [New in Deneb:EIP4844] |
 
 ##### Global topics
 
@@ -123,6 +129,8 @@ New validation:
   i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
 ###### `blob_sidecar_{subnet_id}`
+
+[New in Deneb:EIP4844]
 
 This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.
 
@@ -191,7 +199,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
-New in deneb.
+[New in Deneb:EIP4844]
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -240,7 +248,7 @@ Clients MAY limit the number of blocks and sidecars in the response.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
-New in deneb.
+[New in Deneb:EIP4844]
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -269,7 +277,7 @@ Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, lea
 
 The response is unsigned, i.e. `BlobSidecarsByRange`, as the signature of the beacon block proposer may not be available beyond the initial distribution via gossip.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `validate_blobs`.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof_batch`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
 
