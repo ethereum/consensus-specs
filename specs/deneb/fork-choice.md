@@ -42,8 +42,7 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     if isinstance(blobs, str) or isinstance(proofs, str):
         return True
 
-    assert verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
-    return True
+    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
 ## Updated fork-choice handlers
