@@ -157,6 +157,7 @@ Modifications include:
 1. Use `EIP6988_FORK_VERSION` as the previous and current fork version.
 2. Utilize the EIP-6988 `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Add `deposit_receipts_start_index` variable to the genesis state initialization.
+4. Initialize proposer shuffling by a call to `update_proposer_shuffling`.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -176,9 +177,6 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
-
-    # [New in EIP-6988]
-    update_proposer_shuffling(state)
 
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
@@ -205,6 +203,10 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
 
     # Initialize the execution payload header
     state.latest_execution_payload_header = execution_payload_header
+
+    # [New in EIP-6988]
+    # Initialize proposer shuffling
+    update_proposer_shuffling(state)
 
     return state
 ```
