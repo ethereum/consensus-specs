@@ -116,7 +116,12 @@ def upgrade_to_eip6988(pre: capella.BeaconState) -> BeaconState:
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
+        # Proposer shuffling
+        proposer_shuffling=Vector[ValidatorIndex, SLOTS_PER_EPOCH](),  # [New in EIP-6988]
     )
+
+    # [New in EIP-6988]
+    update_proposer_shuffling(post)
 
     return post
 ```

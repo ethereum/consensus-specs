@@ -23,6 +23,59 @@ EIP-6988 modifies the protocol to prevent slashed validator from becoming a bloc
 
 *Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
+## Containers
+
+### Extended containers
+
+#### `BeaconState`
+
+```python
+class BeaconState(Container):
+    # Versioning
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # Randomness
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    # Slashings
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # Finality
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    # Inactivity
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Sync
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # Execution
+    latest_execution_payload_header: ExecutionPayloadHeader
+    # Withdrawals
+    next_withdrawal_index: WithdrawalIndex
+    next_withdrawal_validator_index: ValidatorIndex
+    # Deep history valid from Capella onwards
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    # [New in EIP6988]
+    proposer_shuffling: Vector[ValidatorIndex, SLOTS_PER_EPOCH]
+```
+
 ## Helper functions
 
 ### Misc
@@ -53,21 +106,48 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
 
 #### Modified `get_beacon_proposer_index`
 
-*Note:* Modified to read proposer index from the state to ensure the output stays unaffected if proposing validator gets slashed.
+*Note:* Modified to read proposer index from the state.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
-    # [New in EIP6988]
-    if state.latest_block_header.slot == state.slot:
-        return state.latest_block_header.proposer_index
-    
+    return state.proposer_shuffling[state.slot]
+```
+
+## Epoch processing
+
+*Note*: The function `update_proposer_shuffling` is added in EIP-6988.
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_summaries_update(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
+    update_proposer_shuffling(state)  # [New in EIP-6988]
+```
+
+### New `update_proposer_shuffling`
+
+```python
+def update_proposer_shuffling(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot))
     indices = get_active_validator_indices(state, epoch)
-    return compute_proposer_index(state, indices, seed)
+    epoch_seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+
+    for slot in range(0, SLOTS_PER_EPOCH):
+        seed = hash(epoch_seed + uint_to_bytes(slot))
+        state.proposer_shuffling[slot] = compute_proposer_index(state, indices, seed)
 ```
 
 ## Testing
@@ -96,6 +176,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
+
+    # [New in EIP-6988]
+    update_proposer_shuffling(state)
 
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
