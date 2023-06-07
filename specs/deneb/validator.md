@@ -98,6 +98,8 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### Blob KZG commitments
 
+[New in Deneb:EIP4844]
+
 1. After retrieving the execution payload from the execution engine as specified in Capella,
 use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
 via `get_payload(payload_id).blobs_bundle`.
