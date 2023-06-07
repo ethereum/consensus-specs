@@ -86,9 +86,9 @@ The parameter that is required for executing `on_block(store, block)`.
     block: string           -- the name of the `block_<32-byte-root>.ssz_snappy` file.
                               To execute `on_block(store, block)` with the given attestation.
     blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
-                               The blobs file content is a `List[Blob, MAX_REQUEST_BLOB_SIDECARS]` SSZ object.
+                               The blobs file content is a `List[Blob, MAX_BLOBS_PER_BLOCK]` SSZ object.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
-    is_data_available: bool -- optional, default to `true`.
+    is_data_available: bool -- optional, if it's undefined, the test runner should mock or monkeypatch `is_data_available()` helper to return `true`.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
 }  
@@ -97,8 +97,8 @@ The parameter that is required for executing `on_block(store, block)`.
 The file is located in the same folder (see below).
 
 `blobs` and `proofs` are new fields from Deneb EIP-4844. These are the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper.
-`is_data_available` is the expected result of `is_data_available()` helper.
-If none of these parameters are set, the test runner should assume that `is_data_available()` helper returns `true`.
+`is_data_available` is the expected result of `is_data_available()` helper validation.
+If `is_data_available` is undefined, the test runner should mock or monkeypatch `is_data_available()` helper to return `true`.
 
 After this step, the `store` object may have been updated.
 

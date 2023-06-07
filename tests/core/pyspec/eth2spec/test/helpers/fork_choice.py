@@ -172,7 +172,7 @@ def add_block(spec,
         if blob_data.is_data_available:
             assert valid is True
 
-        blobs = spec.List[spec.Blob, spec.MAX_REQUEST_BLOB_SIDECARS](blob_data.blobs)
+        blobs = spec.List[spec.Blob, spec.MAX_BLOBS_PER_BLOCK](blob_data.blobs)
         blobs_root = blobs.hash_tree_root()
         yield get_blobs_file_name(blobs_root=blobs_root), blobs
 
