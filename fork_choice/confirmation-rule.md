@@ -74,12 +74,12 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     if end_epoch > start_epoch + 1:
         return total_active_balance
 
+ committee_weight = total_active_balance // SLOTS_PER_EPOCH
     if start_epoch == end_epoch:
         num_committees = end_slot - start_slot + 1
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
-        committee_weight = total_active_balance // SLOTS_PER_EPOCH
         # First, calculate the number of committees in the current epoch
         num_slots_in_current_epoch = (end_slot % SLOTS_PER_EPOCH) + 1
         # Next, calculate the number of slots remaining in the current epoch
