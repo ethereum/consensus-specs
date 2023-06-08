@@ -83,7 +83,8 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        excess_data_gas=uint256(0),  # [New in Deneb]
+        data_gas_used=uint64(0),  # [New in Deneb]
+        excess_data_gas=uint64(0),  # [New in Deneb]
     )
     post = BeaconState(
         # Versioning

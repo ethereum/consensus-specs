@@ -5,6 +5,7 @@ BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
 EIP6110 = 'eip6110'
+WHISK = 'whisk'
 
 
 # The helper functions that are used when defining constants

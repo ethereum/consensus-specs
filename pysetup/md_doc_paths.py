@@ -5,12 +5,13 @@ from .constants import (
     CAPELLA,
     DENEB,
     EIP6110,
+    WHISK,
 )
 
 
 def get_md_doc_paths(spec_fork: str) -> str:
     md_doc_paths = ""
-    if spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
+    if spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, WHISK):
         md_doc_paths += """
             specs/phase0/beacon-chain.md
             specs/phase0/fork-choice.md
@@ -18,7 +19,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
             specs/phase0/weak-subjectivity.md
             specs/phase0/p2p-interface.md
         """
-    if spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
+    if spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, WHISK):
         md_doc_paths += """
             specs/altair/light-client/full-node.md
             specs/altair/light-client/light-client.md
@@ -30,7 +31,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
             specs/altair/validator.md
             specs/altair/p2p-interface.md
         """
-    if spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110):
+    if spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110, WHISK):
         md_doc_paths += """
             specs/bellatrix/beacon-chain.md
             specs/bellatrix/fork.md
@@ -39,7 +40,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
             specs/bellatrix/p2p-interface.md
             sync/optimistic.md
         """
-    if spec_fork in (CAPELLA, DENEB, EIP6110):
+    if spec_fork in (CAPELLA, DENEB, EIP6110, WHISK):
         md_doc_paths += """
             specs/capella/light-client/fork.md
             specs/capella/light-client/full-node.md
@@ -68,5 +69,10 @@ def get_md_doc_paths(spec_fork: str) -> str:
         md_doc_paths += """
             specs/_features/eip6110/beacon-chain.md
             specs/_features/eip6110/fork.md
+        """
+    if spec_fork == WHISK:
+        md_doc_paths += """
+            specs/_features/whisk/beacon-chain.md
+            specs/_features/whisk/fork.md
         """
     return md_doc_paths

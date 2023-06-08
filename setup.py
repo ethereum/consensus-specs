@@ -518,5 +518,6 @@ setup(
         "lru-dict==1.1.8",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

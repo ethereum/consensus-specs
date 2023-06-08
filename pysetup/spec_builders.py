@@ -9,6 +9,7 @@ from .constants import (
     CAPELLA,
     DENEB,
     EIP6110,
+    WHISK,
     OPTIMIZED_BLS_AGGREGATE_PUBKEYS,
 )
 
@@ -434,6 +435,28 @@ from eth2spec.deneb import {preset_name} as deneb
 '''
 
 
+#
+# WhiskSpecBuilder
+#
+class WhiskSpecBuilder(CapellaSpecBuilder):
+    fork: str = WHISK
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.capella import {preset_name} as capella
+'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
+        constants = {
+            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
+            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
+
 spec_builders = {
     builder.fork: builder
     for builder in (
@@ -443,5 +466,6 @@ spec_builders = {
         CapellaSpecBuilder,
         DenebSpecBuilder,
         EIP6110SpecBuilder,
+        WhiskSpecBuilder,
     )
 }
