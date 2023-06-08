@@ -257,6 +257,21 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     if any('KZG_SETUP' in name for name in constant_vars):
         _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
 
+    if any('CURDLEPROOFS_CRS' in name for name in constant_vars):
+        # TODO: Use actual CRS derived from a fixed string like 'nankokita_no_kakurenbo'
+        crs_len = int(preset_vars['WHISK_VALIDATORS_PER_SHUFFLE'].value) + int(preset_vars['CURDLEPROOFS_N_BLINDERS'].value) + 3
+        constant_vars['CURDLEPROOFS_CRS_G1'] = VariableDefinition(constant_vars['CURDLEPROOFS_CRS_G1'].value, str(ALL_KZG_SETUPS['mainnet'][0][0:crs_len]), "noqa: E501", None)
+        constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
+            None,
+            "curdleproofs.CurdleproofsCrs.from_random_points(WHISK_VALIDATORS_PER_SHUFFLE, CURDLEPROOFS_N_BLINDERS, [G1Point.from_compressed_bytes_unchecked(p) for p in CURDLEPROOFS_CRS_G1])",
+            "noqa: E501", None
+        )
+        constant_vars['BLS_G1_GENERATOR'] = VariableDefinition(
+            constant_vars['BLS_G1_GENERATOR'].value,
+            "'0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb'",
+            "noqa: E501", None
+        )
+
     return SpecObject(
         functions=functions,
         protocols=protocols,
@@ -519,6 +534,6 @@ setup(
         "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
-        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@805d06785b6ff35fde7148762277dd1ae678beeb#egg=curdleproofs&subdirectory=curdleproofs",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@bc4bb34961a896af6bcf4a5ff4867bb2971742c8#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

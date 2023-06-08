@@ -1,13 +1,14 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002, WHISK,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -93,6 +94,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == EIP7002:
         previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.EIP7002_FORK_VERSION
+    elif spec.fork == WHISK:
+        previous_version = spec.config.CAPELLA_FORK_VERSION
+        current_version = spec.config.WHISK_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -144,5 +148,17 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_eip6110(spec):
         state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+
+    if is_post_whisk(spec):
+        vc = len(state.validators)
+        for i in range(vc):
+            state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
+            state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
+
+        for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
+
+        for i in range(spec.WHISK_PROPOSER_TRACKERS_COUNT):
+            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     return state
