@@ -25,7 +25,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 #### `is_data_available`
 
-[New in Deneb:EIP4844]
+*[New in Deneb:EIP4844]*
 
 The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
 Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
