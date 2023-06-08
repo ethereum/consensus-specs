@@ -34,7 +34,8 @@ The block MUST NOT be considered valid until all valid `Blob`s have been downloa
 def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
-    # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+    # Note: the p2p network does not guarantee sidecar retrieval outside of
+    # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
     # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
