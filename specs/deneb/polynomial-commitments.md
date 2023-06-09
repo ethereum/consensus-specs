@@ -49,7 +49,7 @@
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
+This document specifies basic polynomial operations and KZG polynomial commitment operations that are essential for the implementation of the EIP-4844 feature in the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
 
 Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
 

@@ -25,6 +25,8 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 #### `is_data_available`
 
+*[New in Deneb:EIP4844]*
+
 The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
 Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
 
@@ -75,7 +77,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
-    # [New in Deneb]
+    # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this block MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
