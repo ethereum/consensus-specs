@@ -19,11 +19,3 @@ MAX_TRANSACTIONS_PER_PAYLOAD: 1048576
 BYTES_PER_LOGS_BLOOM: 256
 # 2**5 (= 32)
 MAX_EXTRA_DATA_BYTES: 32
-
-# Networking
-# ---------------------------------------------------------------
-# `10 * 2**20` (= 10485760, 10 MiB)
-GOSSIP_MAX_SIZE_BELLATRIX: 10485760
-
-# `10 * 2**20` (= 10,485,760, 10 MiB)
-MAX_CHUNK_SIZE_BELLATRIX: 10485760
