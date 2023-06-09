@@ -50,6 +50,8 @@ The specification of these changes continues in the same format as the network s
 
 #### `BlobSidecar`
 
+*[New in Deneb:EIP4844]*
+
 ```python
 class BlobSidecar(Container):
     block_root: Root
@@ -64,6 +66,8 @@ class BlobSidecar(Container):
 
 #### `SignedBlobSidecar`
 
+*[New in Deneb:EIP4844]*
+
 ```python
 class SignedBlobSidecar(Container):
     message: BlobSidecar
@@ -71,6 +75,8 @@ class SignedBlobSidecar(Container):
 ```
 
 #### `BlobIdentifier`
+
+*[New in Deneb:EIP4844]*
 
 ```python
 class BlobIdentifier(Container):
@@ -107,7 +113,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` (new) |
+| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` [New in Deneb:EIP4844] |
 
 ##### Global topics
 
@@ -123,6 +129,8 @@ New validation:
   i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
 ###### `blob_sidecar_{subnet_id}`
+
+*[New in Deneb:EIP4844]*
 
 This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.
 
@@ -191,7 +199,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
-New in deneb.
+*[New in Deneb:EIP4844]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -240,7 +248,7 @@ Clients MAY limit the number of blocks and sidecars in the response.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
-New in deneb.
+*[New in Deneb:EIP4844]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -278,18 +286,18 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
-Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
+Let `blob_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`.
+Clients MUST keep a record of signed blob sidecars seen on the epoch range `blob_serve_range`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 
-Peers that are unable to reply to blob sidecar requests within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
-epoch range SHOULD respond with error code `3: ResourceUnavailable`.
+Peers that are unable to reply to blob sidecar requests within the
+range `blob_serve_range` SHOULD respond with error code `3: ResourceUnavailable`.
 Such peers that are unable to successfully reply to this range of requests MAY get descored
 or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
-MUST backfill the local blobs database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+MUST backfill the local blobs database to at least the range `blob_serve_range`
 to be fully compliant with `BlobSidecarsByRange` requests.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
