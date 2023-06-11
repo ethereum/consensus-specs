@@ -1284,7 +1284,7 @@ setup(
         "remerkleable==0.1.27",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
-        "lru-dict==1.1.8",
+        "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
         "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
