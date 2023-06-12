@@ -300,6 +300,8 @@ or disconnected at any time.
 MUST backfill the local blobs database to at least the range `blob_serve_range`
 to be fully compliant with `BlobSidecarsByRange` requests.
 
+*Note*: In an extreme scenario of non-finality its possible that the `blob_serve_range` falls short of covering the `finalized_epoch`. This will necessitate new joining clients to be started of a non-finalized weak subjectivity checkpoint state in the `blob_serve_range`. Also online clients would not be able to fork to branches not previously seened or DA-ed in past before this range.
+
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
