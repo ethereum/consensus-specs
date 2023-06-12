@@ -18,3 +18,5 @@ def test_length(spec):
 def test_networking(spec):
     assert spec.MAX_BLOBS_PER_BLOCK < spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
     assert spec.config.MAX_REQUEST_BLOB_SIDECARS == spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.MAX_BLOBS_PER_BLOCK
+    # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
+    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT == spec.MAX_BLOBS_PER_BLOCK

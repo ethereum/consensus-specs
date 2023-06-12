@@ -10,8 +10,6 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Constants](#constants)
-  - [Misc](#misc)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -39,14 +37,6 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
-
-## Constants
-
-### Misc
-
-| Name | Value | Unit |
-| - | - | :-: |
-| `BLOB_SIDECAR_SUBNET_COUNT` | `6` | *[New in Deneb:EIP4844]* The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ## Helpers
 
