@@ -43,7 +43,8 @@
 ## Introduction
 
 Deneb is a consensus-layer upgrade containing a number of features. Including:
-* [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner.
+* [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
+* [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
 
 ## Custom types
 
