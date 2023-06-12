@@ -86,7 +86,6 @@ and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL
 
 ## Configuration
 
-
 ## Containers
 
 ### Extended containers
