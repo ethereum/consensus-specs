@@ -46,7 +46,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `BLOB_SIDECAR_SUBNET_COUNT` | `4` | *[New in Deneb:EIP4844]* The number of blob sidecar subnets used in the gossipsub protocol. |
+| `BLOB_SIDECAR_SUBNET_COUNT` | `6` | *[New in Deneb:EIP4844]* The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ## Helpers
 
