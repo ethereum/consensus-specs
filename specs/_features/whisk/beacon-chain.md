@@ -19,7 +19,6 @@
   - [`BeaconState`](#beaconstate)
 - [Block processing](#block-processing)
   - [Block header](#block-header)
-    - [`BeaconBlock`](#beaconblock)
   - [Whisk](#whisk)
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Deposits](#deposits)
@@ -235,23 +234,11 @@ def process_epoch(state: BeaconState) -> None:
 
 ### Block header
 
-#### `BeaconBlock`
-
-```python
-class BeaconBlock(Container):
-    slot: Slot
-    proposer_index: ValidatorIndex
-    parent_root: Root
-    state_root: Root
-    body: BeaconBlockBody
-    whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
-```
-
 ```python
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
     k_commitment = state.validators[block.proposer_index].whisk_k_commitment
-    assert IsValidWhiskOpeningProof(tracker, k_commitment, block.whisk_opening_proof)
+    assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
 ```
 
 Removed `assert block.proposer_index == get_beacon_proposer_index(state)` check in Whisk.
@@ -303,6 +290,8 @@ class BeaconBlockBody(capella.BeaconBlockBody):
     execution_payload: ExecutionPayload
     # Capella operations
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    # Whisk
+    whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
     whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
