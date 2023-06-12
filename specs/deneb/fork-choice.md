@@ -25,7 +25,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 #### `is_data_available`
 
-[New in Deneb:EIP4844]
+*[New in Deneb:EIP4844]*
 
 The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
 Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
@@ -36,7 +36,8 @@ The block MUST NOT be considered valid until all valid `Blob`s have been downloa
 def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
-    # Note: the p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+    # Note: the p2p network does not guarantee sidecar retrieval outside of
+    # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
     # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
@@ -44,8 +45,7 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     if isinstance(blobs, str) or isinstance(proofs, str):
         return True
 
-    assert verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
-    return True
+    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
 ## Updated fork-choice handlers
