@@ -44,8 +44,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP7002_FORK_EPOCH:
         return EIP7002_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
         return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
@@ -70,8 +68,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to EIP-7002.
 
 ```python
-def upgrade_to_eip7002(pre: deneb.BeaconState) -> BeaconState:
-    epoch = deneb.get_current_epoch(pre)
+def upgrade_to_eip7002(pre: capella.BeaconState) -> BeaconState:
+    epoch = capella.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
@@ -88,7 +86,6 @@ def upgrade_to_eip7002(pre: deneb.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        excess_data_gas=uint256(0),
         exits_root=Root(),  # [New in EIP-7002]
     )
     post = BeaconState(

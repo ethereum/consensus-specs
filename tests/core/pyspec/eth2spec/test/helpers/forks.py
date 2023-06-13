@@ -6,7 +6,7 @@ from .constants import (
 
 def is_post_fork(a, b):
     if a == EIP7002:
-        return b in [PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP7002]
+        return b in [PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP7002]
     if a == EIP6110:
         return b in [PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110]
     if a == DENEB:

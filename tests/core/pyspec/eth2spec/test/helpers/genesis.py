@@ -91,7 +91,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         previous_version = spec.config.DENEB_FORK_VERSION
         current_version = spec.config.EIP6110_FORK_VERSION
     elif spec.fork == EIP7002:
-        previous_version = spec.config.DENEB_FORK_VERSION
+        previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.EIP7002_FORK_VERSION
 
     state = spec.BeaconState(

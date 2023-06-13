@@ -34,7 +34,7 @@ This is the beacon chain specification of the execution layer triggerable exits 
 
 This mechanism relies on the changes proposed by [EIP-7002](http://eips.ethereum.org/EIPS/eip-7002).
 
-*Note:* This specification is built upon [Deneb](../../deneb/beacon-chain.md) and is under active development.
+*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Preset
 
@@ -79,7 +79,6 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    excess_data_gas: uint256
     exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in EIP7002]
 ```
 
@@ -104,7 +103,6 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    excess_data_gas: uint256
     exits_root: Root  # [New in EIP7002]
 ```
 
@@ -166,20 +164,14 @@ class BeaconState(Container):
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
     payload = body.execution_payload
-
     # Verify consistency of the parent hash with respect to the previous execution payload header
     assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
     # Verify the execution payload is valid
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
-    )
+    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -197,7 +189,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        excess_data_gas=payload.excess_data_gas,
         exits_root=hash_tree_root(payload.exits),  # [New in EIP7002]
     )
 ```
