@@ -50,7 +50,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Check table of contents
-        run: sudo npm install -g doctoc@2 && make check_toc
+        run: sudo npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
    runs-on: self-hosted
