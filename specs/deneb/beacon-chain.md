@@ -270,6 +270,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Modified `process_voluntary_exit`
 
+Note: The function `process_voluntary_exit` is modified to use the a fixed fork version -- `CAPELLA_FORK_VERSION` -- for EIP-7044
+
 ```python
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
     voluntary_exit = signed_voluntary_exit.message
