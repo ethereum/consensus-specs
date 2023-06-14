@@ -319,20 +319,23 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
     # Check the shuffle proof
     shuffle_indices = get_shuffle_indices(body.randao_reveal)
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
-    post_shuffle_trackers = body.whisk_post_shuffle_trackers
 
     shuffle_epoch = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
         # Require unchanged trackers during cooldown
-        assert pre_shuffle_trackers == post_shuffle_trackers
+        assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
+        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
+        assert body.whisk_shuffle_proof == WhiskShuffleProof()
+        post_shuffle_trackers = pre_shuffle_trackers
     else:
         # Require shuffled trackers during shuffle
         assert IsValidWhiskShuffleProof(
             pre_shuffle_trackers,
-            post_shuffle_trackers,
+            body.whisk_post_shuffle_trackers,
             body.whisk_shuffle_proof_M_commitment,
             body.whisk_shuffle_proof,
         )
+        post_shuffle_trackers = body.whisk_post_shuffle_trackers
 
     # Shuffle candidate trackers
     for i, shuffle_index in enumerate(shuffle_indices):
