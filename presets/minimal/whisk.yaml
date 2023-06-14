@@ -3,7 +3,7 @@
 # Misc
 # ---------------------------------------------------------------
 # [customized]
-CURDLEPROOFS_N_BLINDERS: 2
+CURDLEPROOFS_N_BLINDERS: 4
 # [customized]
 WHISK_CANDIDATE_TRACKERS_COUNT: 32
 # [customized]
@@ -11,7 +11,7 @@ WHISK_PROPOSER_TRACKERS_COUNT: 16
 # [customized]
 WHISK_EPOCHS_PER_SHUFFLING_PHASE: 4
 # [customized]
-WHISK_VALIDATORS_PER_SHUFFLE: 2
+WHISK_VALIDATORS_PER_SHUFFLE: 4
 # [customized]
 WHISK_PROPOSER_SELECTION_GAP: 1
 # `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
