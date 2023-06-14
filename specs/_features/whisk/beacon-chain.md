@@ -306,9 +306,10 @@ def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
     """
     indices = []
-    for i in WHISK_VALIDATORS_PER_SHUFFLE:
+    for i in range(0, WHISK_VALIDATORS_PER_SHUFFLE):
         # XXX ensure we are not suffering from modulo bias
-        shuffle_index = uint256(hash(randao_reveal + uint_to_bytes(i))) % WHISK_CANDIDATE_TRACKERS_COUNT
+        pre_image = randao_reveal + uint_to_bytes(uint64(i))
+        shuffle_index = bytes_to_uint64(hash(pre_image)[0:8]) % WHISK_CANDIDATE_TRACKERS_COUNT
         indices.append(shuffle_index)
 
     return indices
