@@ -7,7 +7,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
     CAPELLA,
-    DENEB,
 )
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import (
@@ -80,7 +79,7 @@ def test_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch(spec,
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch(spec, state):
