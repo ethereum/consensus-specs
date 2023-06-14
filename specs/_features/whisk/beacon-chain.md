@@ -322,7 +322,7 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
 
     shuffle_epoch = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
-        # Require unchanged trackers during cooldown
+        # Require trackers set to zero during cooldown
         assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
         assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
         assert body.whisk_shuffle_proof == WhiskShuffleProof()
