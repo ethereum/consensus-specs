@@ -159,8 +159,6 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=
         state = post_spec.upgrade_to_capella(state)
     elif post_spec.fork == DENEB:
         state = post_spec.upgrade_to_deneb(state)
-    elif post_spec.fork == EIP6110:
-        state = post_spec.upgrade_to_eip6110(state)
 
     assert state.fork.epoch == fork_epoch
 
