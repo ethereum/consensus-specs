@@ -10,8 +10,6 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Constants](#constants)
-  - [Misc](#misc)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -40,17 +38,11 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
-## Constants
-
-### Misc
-
-| Name | Value | Unit |
-| - | - | :-: |
-| `BLOB_SIDECAR_SUBNET_COUNT` | `4` | The number of blob sidecar subnets used in the gossipsub protocol. |
-
 ## Helpers
 
 ### `BlobsBundle`
+
+*[New in Deneb:EIP4844]*
 
 ```python
 @dataclass
@@ -67,7 +59,7 @@ class BlobsBundle(object):
 class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
-    blobs_bundle: BlobsBundle
+    blobs_bundle: BlobsBundle  # [New in Deneb:EIP4844]
 ```
 
 ## Protocol
@@ -98,12 +90,16 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### Blob KZG commitments
 
+*[New in Deneb:EIP4844]*
+
 1. After retrieving the execution payload from the execution engine as specified in Capella,
 use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
 via `get_payload(payload_id).blobs_bundle`.
 2. Set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
 #### Constructing the `SignedBlobSidecar`s
+
+*[New in Deneb:EIP4844]*
 
 To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
