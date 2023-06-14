@@ -35,6 +35,8 @@ def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epo
 def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec, state):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
+
+    Note: This test is valid for ``spec.fork == DENEB`` and invalid for subsequent forks
     """
     assert state.fork.previous_version != state.fork.current_version
 
@@ -63,6 +65,8 @@ def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec
 def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch(spec, state):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
+
+    Note: This test is valid for ``spec.fork == DENEB`` and invalid for subsequent forks
     """
     assert state.fork.previous_version != state.fork.current_version
 
