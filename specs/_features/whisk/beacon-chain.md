@@ -369,6 +369,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFieldElement:
+    # hash `validator_index || counter`
     return BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
 ```
 
@@ -376,7 +377,6 @@ def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFie
 def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFieldElement:
     counter = 0
     while True:
-        # hash `validator_index || counter`
         k = get_initial_whisk_k(validator_index, counter)
         if is_k_commitment_unique(state, BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
             return k  # unique by trial and error
