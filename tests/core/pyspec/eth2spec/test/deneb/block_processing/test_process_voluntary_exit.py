@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
     with_deneb_and_later,
 )
 from eth2spec.test.helpers.constants import (
