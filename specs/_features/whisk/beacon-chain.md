@@ -23,6 +23,7 @@
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Deposits](#deposits)
   - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -469,4 +470,26 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
+```
+
+## Testing
+
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Whisk testing only.
+
+```python
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
+                                      eth1_timestamp: uint64,
+                                      deposits: Sequence[Deposit],
+                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
+                                      ) -> BeaconState:
+    state_capella = capella.initialize_beacon_state_from_eth1(
+        eth1_block_hash,
+        eth1_timestamp,
+        deposits,
+        execution_payload_header,
+    )
+    state = upgrade_to_whisk(state_capella)
+    state.fork.previous_version = WHISK_FORK_VERSION
+    state.fork.current_version = WHISK_FORK_VERSION
+    return state
 ```
