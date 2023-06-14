@@ -177,17 +177,21 @@ class BeaconState(Container):
 ```
 
 ```python
-def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
+def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
-    proposer_seed = get_seed(state, epoch - WHISK_PROPOSER_SELECTION_GAP, DOMAIN_WHISK_PROPOSER_SELECTION)
+    proposer_seed_epoch = max(epoch, WHISK_PROPOSER_SELECTION_GAP) - WHISK_PROPOSER_SELECTION_GAP
+    proposer_seed = get_seed(state, proposer_seed_epoch, DOMAIN_WHISK_PROPOSER_SELECTION)
     for i in range(WHISK_PROPOSER_TRACKERS_COUNT):
         index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
+```
 
+```python
+def select_whisk_candidate_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select candidate trackers from active validator trackers
     active_validator_indices = get_active_validator_indices(state, epoch)
     for i in range(WHISK_CANDIDATE_TRACKERS_COUNT):
-        seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(i))
+        seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(uint64(i)))
         candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
         state.whisk_candidate_trackers[i] = state.whisk_trackers[candidate_index]
 ```
@@ -196,7 +200,8 @@ def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
 def process_whisk_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % WHISK_EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
-        select_whisk_trackers(state, next_epoch)
+        select_whisk_proposer_trackers(state, next_epoch)
+        select_whisk_candidate_trackers(state, next_epoch)
 ```
 
 ```python
