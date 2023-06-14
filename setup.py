@@ -48,7 +48,6 @@ BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
 EIP6110 = 'eip6110'
-EIP7045= 'eip7045'
 WHISK = 'whisk'
 
 PREVIOUS_FORK_OF = {
@@ -58,7 +57,6 @@ PREVIOUS_FORK_OF = {
     CAPELLA: BELLATRIX,
     DENEB: CAPELLA,
     EIP6110: DENEB,
-    EIP7045: DENEB,
     WHISK: CAPELLA,
 }
 
@@ -779,18 +777,6 @@ from eth2spec.deneb import {preset_name} as deneb
 '''
 
 #
-# EIP7045SpecBuilder
-#
-class EIP7045SpecBuilder(DenebSpecBuilder):
-    fork: str = EIP7045
-
-    @classmethod
-    def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
-from eth2spec.deneb import {preset_name} as deneb
-'''
-
-#
 # WhiskSpecBuilder
 #
 class WhiskSpecBuilder(CapellaSpecBuilder):
@@ -816,7 +802,7 @@ spec_builders = {
     builder.fork: builder
     for builder in (
         Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder,
-        EIP6110SpecBuilder, EIP7045SpecBuilder, WhiskSpecBuilder,
+        EIP6110SpecBuilder, WhiskSpecBuilder,
     )
 }
 
