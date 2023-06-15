@@ -203,14 +203,15 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
 ```python
 def is_ffg_confirmed(
-    """
-    Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
-    """
+
     store: Store,
     confirmation_byzantine_threshold: int,
     confirmation_slashing_threshold: int,
     block_root: Root,
 ) -> bool:
+    """
+    Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
+    """
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
