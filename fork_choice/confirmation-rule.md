@@ -73,7 +73,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     end_epoch = compute_epoch_at_slot(end_slot)
 
     if start_slot > end_slot:
-        return 0
+        return Gwei(0)
 
     if end_epoch > start_epoch + 1:
         return total_active_balance
@@ -356,7 +356,7 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     support / maximum_support > \
         0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
     """
-    return max(100 * (support - 0.5 * proposer_score - 1) // maximum_support - 50, -1)
+    return max((100 * support - 50 * proposer_score - 1) // maximum_support - 50, -1)
 ```
 
 #### `get_lmd_confirmation_score`
@@ -364,7 +364,7 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
 ```python
 def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
     if block_root == store.finalized_checkpoint.root:
-        return 100 / 3
+        return 100 // 3
     else:
         block = store.blocks[block_root]
         finalized_block = store.blocks[store.finalized_checkpoint.root]
