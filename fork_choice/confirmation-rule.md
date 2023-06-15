@@ -154,7 +154,7 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
         return leaves
     else:
         # This block is a leaf.
-        return set(block_root)
+        return set([block_root])
 
 ```
 
