@@ -72,6 +72,10 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     # If an entire epoch is covered by the range, return the total active balance
     start_epoch = compute_epoch_at_slot(start_slot)
     end_epoch = compute_epoch_at_slot(end_slot)
+
+    if start_slot > end_slot:
+        return 0
+
     if end_epoch > start_epoch + 1:
         return total_active_balance
 
