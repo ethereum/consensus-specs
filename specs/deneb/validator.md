@@ -22,6 +22,11 @@
       - [Blob KZG commitments](#blob-kzg-commitments)
     - [Constructing the `SignedBlobSidecar`s](#constructing-the-signedblobsidecars)
       - [Sidecar](#sidecar)
+  - [Validator duties](#validator-duties)
+    - [Attestations](#attestations)
+    - [Aggregates](#aggregates)
+    - [Sync committee messages](#sync-committee-messages)
+    - [Sync committee contributions](#sync-committee-contributions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -155,3 +160,25 @@ The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUEST
 to ensure the data-availability of these blobs throughout the network.
 
 After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.
+
+### Validator duties
+
+The timing for sending attestation, aggregate, sync committee messages and contributions change.
+
+#### Attestations
+
+A validator must create and broadcast the `attestation` to the associated attestation subnet as soon as the validator has received a valid block from the expected block proposer for the assigned `slot`.
+
+If the block has not been observed at `SECONDS_PER_SLOT / 2` seconds into the slot, the validator should send the attestation voting for its current head as selected by fork choice.
+
+#### Aggregates
+
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `SECONDS_PER_SLOT * 3 / 4` seconds after the start of the slot.
+
+#### Sync committee messages
+
+This logic is triggered upon the same conditions as when producing an attestation.
+
+#### Sync committee contributions
+
+This logic is triggered upon the same conditions as when producing an aggregate.
