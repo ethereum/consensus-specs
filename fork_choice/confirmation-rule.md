@@ -174,7 +174,9 @@ def get_current_epoch_participating_indices(state: BeaconState, active_validator
 
 ```python
 def get_ffg_support(store: Store, block_root: Root) -> Gwei:
-    # Returns the total weight supporting the highest checkpoint in the block's chain
+    """
+    Returns the total weight supporting the highest checkpoint in the block's chain
+    """
 
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
@@ -201,7 +203,9 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
 ```python
 def is_ffg_confirmed(
-    # Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
+    """
+    Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
+    """
     store: Store,
     confirmation_byzantine_threshold: int,
     confirmation_slashing_threshold: int,
