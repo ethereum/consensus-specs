@@ -6,7 +6,6 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Usage](#usage)
 - [Confirmation Rule](#confirmation-rule)
   - [Helper Functions](#helper-functions)
     - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
@@ -110,9 +109,15 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
+    """
+    Returns whether the following condition is true using only integer arithmetic
+    support / maximum_support >
+    0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
+    """
+
     return (
-        support / maximum_support >
-        0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
+        100 * support > 
+        50 * maximum_support + 50 * proposer_score + confirmation_byzantine_threshold * maximum_support 
     )
 ```
 
@@ -234,11 +239,18 @@ def is_ffg_confirmed(
         )
     )
 
+    """
+    Returns whether the following condition is true using only integer arithmetic
+    2 / 3 * total_active_balance <= (
+        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
+        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+    )
+    """
+
     return (
-        2 / 3 * total_active_balance <= (
-            ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
-            (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
-        )
+        200 * total_active_balance <=
+        ffg_support_for_checkpoint * 300 + (300 - 3 * confirmation_byzantine_threshold) *
+        remaining_ffg_weight - max_adversarial_ffg_support_for_checkpoint * 300
     )
 ```
 
@@ -331,7 +343,7 @@ prevent a block from being confirmed.
 #### `get_one_confirmation_score`
 
 ```python
-def get_one_confirmation_score(store: Store, block_root: Root) -> float:
+def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
@@ -344,13 +356,13 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> float:
     support / maximum_support > \
         0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
     """
-    return max(100 * (support - 0.5 * proposer_score - 1) / maximum_support - 50, -1)
+    return max(100 * (support - 0.5 * proposer_score - 1) // maximum_support - 50, -1)
 ```
 
 #### `get_lmd_confirmation_score`
 
 ```python
-def get_lmd_confirmation_score(store: Store, block_root: Root) -> float:
+def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
     if block_root == store.finalized_checkpoint.root:
         return 100 / 3
     else:
@@ -370,7 +382,7 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> float:
 #### `get_ffg_confirmation_score`
 
 ```python
-def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
+def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
@@ -406,9 +418,9 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
     """
     if ffg_voting_weight_so_far > 0:
         ffg_confirmation_score = (
-            100 * (3 * remaining_ffg_weight - 2 * total_active_balance) / (3 * remaining_ffg_weight)
+            100 * (3 * remaining_ffg_weight - 2 * total_active_balance) // (3 * remaining_ffg_weight)
         )
-        if ffg_confirmation_score / 100 >= ffg_support_for_checkpoint / ffg_voting_weight_so_far:
+        if ffg_support_for_checkpoint * 100 <= ffg_voting_weight_so_far * ffg_confirmation_score:
             return ffg_confirmation_score
 
     """
@@ -420,10 +432,10 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
     ffg_confirmation_score = (
-        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) /
+        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) //
         (3 * total_active_balance)
     )
-    assert ffg_confirmation_score / 100 < ffg_support_for_checkpoint / ffg_voting_weight_so_far
+    assert ffg_support_for_checkpoint * 100 > ffg_voting_weight_so_far * ffg_confirmation_score
     return max(ffg_confirmation_score, -1)
 ```
 
@@ -433,7 +445,7 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
 def get_confirmation_score(
     store: Store,
     block_root: Root
-) -> float:
+) -> int:
     """
     Return -1 in the case that `block_root` cannot be confirmed even by assuming no adversary weight,
     otherwise it returns the maximum percentage of adversary weight that is admissible in order to
