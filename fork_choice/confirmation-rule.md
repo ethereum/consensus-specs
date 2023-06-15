@@ -80,6 +80,7 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
         return total_active_balance
 
     committee_weight = total_active_balance // SLOTS_PER_EPOCH
+    
     if start_epoch == end_epoch:
         num_committees = end_slot - start_slot + 1
     else:
@@ -203,7 +204,6 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
 ```python
 def is_ffg_confirmed(
-
     store: Store,
     confirmation_byzantine_threshold: int,
     confirmation_slashing_threshold: int,
