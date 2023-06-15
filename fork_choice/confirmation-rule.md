@@ -335,7 +335,7 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> float:
     support / maximum_support > \
         0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
     """
-    return 100 * (support - 0.5 * proposer_score - 1) / maximum_support - 50
+    return max(100 * (support - 0.5 * proposer_score - 1) / maximum_support - 50, -1)
 ```
 
 #### `get_lmd_confirmation_score`
@@ -415,7 +415,7 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> float:
         (3 * total_active_balance)
     )
     assert ffg_confirmation_score / 100 < ffg_support_for_checkpoint / ffg_voting_weight_so_far
-    return ffg_confirmation_score
+    return max(ffg_confirmation_score, -1)
 ```
 
 ### `get_confirmation_score`
