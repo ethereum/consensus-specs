@@ -14,6 +14,7 @@
     - [`is_lmd_confirmed`](#is_lmd_confirmed)
     - [`get_remaining_weight_in_epoch`](#get_remaining_weight_in_epoch)
     - [`get_leaf_block_roots`](#get_leaf_block_roots)
+    - [`get_current_epoch_participating_indices`](#get_current_epoch_participating_indices)
     - [`get_ffg_support`](#get_ffg_support)
     - [`is_ffg_confirmed`](#is_ffg_confirmed)
   - [`is_confirmed`](#is_confirmed)
@@ -158,6 +159,13 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 
 ```
 
+#### `get_current_epoch_participating_indices`
+
+```python
+def get_current_epoch_participating_indices(state: BeaconState, active_validator_indices: Sequence[ValidatorIndex]) -> Set[ValidatorIndex]:    
+    return set([i for i in active_validator_indices if has_flag(state.current_epoch_participation[i], TIMELY_TARGET_FLAG_INDEX)])
+```
+
 #### `get_ffg_support`
 
 ```python
@@ -167,17 +175,22 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
 
-    leave_roots = get_leaf_block_roots(store, block_root)
-    # current_epoch_attestations contains only attestations with source matching block.current_justified_checkpoint
-    attestations_in_leaves = set().union(
-        *[store.block_states[root].current_epoch_attestations for root in leave_roots]
-    )
-
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
-    support_for_checkpoint = {a for a in attestations_in_leaves if a.data.target.root == checkpoint_root}
     checkpoint_state = store.block_states[checkpoint_root]
-    return get_attesting_balance(checkpoint_state, list(support_for_checkpoint))
+
+    leave_roots = get_leaf_block_roots(store, block_root)
+
+    # keep only leaves with checkpoint consistent with checkpoint_root   
+    leave_roots = {root for root in leave_roots if get_checkpoint_block(store, root, current_epoch) == checkpoint_root}
+
+    active_validator_indices = get_active_validator_indices(checkpoint_state, current_epoch)
+
+    participating_indices = set().union(
+        *[get_current_epoch_participating_indices(store.block_states[root], active_validator_indices) for root in leave_roots]
+    )
+
+    return get_total_balance(checkpoint_state, participating_indices)
 ```
 
 #### `is_ffg_confirmed`
