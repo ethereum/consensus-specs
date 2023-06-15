@@ -81,21 +81,22 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
     committee_weight = total_active_balance // SLOTS_PER_EPOCH
     
     if start_epoch == end_epoch:
-        num_committees = end_slot - start_slot + 1
+        return (end_slot - start_slot + 1) * committee_weight
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
         # First, calculate the number of committees in the current epoch
-        num_slots_in_current_epoch = (end_slot % SLOTS_PER_EPOCH) + 1
+        num_slots_in_current_epoch = int((end_slot % SLOTS_PER_EPOCH) + 1)
         # Next, calculate the number of slots remaining in the current epoch
-        remaining_slots_in_current_epoch = SLOTS_PER_EPOCH - num_slots_in_current_epoch
+        remaining_slots_in_current_epoch = int(SLOTS_PER_EPOCH - num_slots_in_current_epoch)
         # Then, calculate the number of slots in the previous epoch
-        num_slots_in_previous_epoch = SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH)
+        num_slots_in_previous_epoch = int(SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH))
 
         # Each committee from the previous epoch only contributes a pro-rated weight
-        multiplier = float(remaining_slots_in_current_epoch) / SLOTS_PER_EPOCH
-        num_committees = float(num_slots_in_current_epoch) + float(num_slots_in_previous_epoch) * multiplier
-    return Gwei(int(num_committees * committee_weight))
+        return Gwei(
+            (num_slots_in_current_epoch + num_slots_in_previous_epoch * remaining_slots_in_current_epoch) *
+            int(committee_weight) // num_slots_in_previous_epoch
+        )
 ```
 
 #### `is_one_confirmed`
