@@ -94,9 +94,9 @@ def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot:
         num_slots_in_previous_epoch = SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH)
 
         # Each committee from the previous epoch only contributes a pro-rated weight
-        multiplier = remaining_slots_in_current_epoch / SLOTS_PER_EPOCH
-        num_committees = num_slots_in_current_epoch + num_slots_in_previous_epoch * multiplier
-    return num_committees * committee_weight
+        multiplier = float(remaining_slots_in_current_epoch) / SLOTS_PER_EPOCH
+        num_committees = float(num_slots_in_current_epoch) + float(num_slots_in_previous_epoch) * multiplier
+    return Gwei(int(num_committees * committee_weight))
 ```
 
 #### `is_one_confirmed`
