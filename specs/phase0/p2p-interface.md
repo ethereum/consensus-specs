@@ -55,7 +55,7 @@ It consists of four main sections:
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
-  - [Attestation subnet subcription](#attestation-subnet-subcription)
+  - [Attestation subnet subscription](#attestation-subnet-subscription)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
@@ -1002,7 +1002,7 @@ Clients MAY connect to peers with the same `fork_digest` but a different `next_f
 Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients,
 these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
-### Attestation subnet subcription
+### Attestation subnet subscription
 
 Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
 
