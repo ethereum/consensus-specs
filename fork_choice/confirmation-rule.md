@@ -224,10 +224,12 @@ def is_ffg_confirmed(
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
 
-    if checkpoint_root not in store.checkpoint_states:
+    checkpoint = Checkpoint(root=checkpoint_root, epoch=current_epoch)
+
+    if checkpoint not in store.checkpoint_states:
         return False
 
-    checkpoint_state = store.checkpoint_states[checkpoint_root]
+    checkpoint_state = store.checkpoint_states[checkpoint]
 
     remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
     total_active_balance = int(get_total_active_balance(checkpoint_state))
@@ -395,10 +397,12 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
 
-    if checkpoint_root not in store.checkpoint_states:
+    checkpoint = Checkpoint(root=checkpoint_root, epoch=current_epoch)
+
+    if checkpoint not in store.checkpoint_states:
         return -1
 
-    checkpoint_state = store.checkpoint_states[checkpoint_root]    
+    checkpoint_state = store.checkpoint_states[checkpoint]
 
     total_active_balance = int(get_total_active_balance(checkpoint_state))
     remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
