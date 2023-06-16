@@ -61,12 +61,10 @@ This section specifies an algorithm to determine whether a block is confirmed. T
 #### `get_committee_weight_between_slots`
 
 ```python
-def get_committee_weight_between_slots(store: Store, start_slot: Slot, end_slot: Slot) -> Gwei:
-    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both).
-    Uses the justified state to compute committee weights.
+def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end_slot: Slot) -> Gwei:
+    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both)..
     """
-    justified_state = store.checkpoint_states[store.justified_checkpoint]
-    total_active_balance = get_total_active_balance(justified_state)
+    total_active_balance = get_total_active_balance(state)
 
     # If an entire epoch is covered by the range, return the total active balance
     start_epoch = compute_epoch_at_slot(start_slot)
@@ -107,7 +105,8 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    maximum_support = int(get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
     """
@@ -145,10 +144,10 @@ def is_lmd_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
 #### `get_remaining_weight_in_epoch`
 
 ```python
-def get_remaining_weight_in_epoch(store: Store, current_slot: Slot) -> Gwei:
+def get_remaining_weight_in_epoch(state: BeaconState, current_slot: Slot) -> Gwei:
     # Returns the total weight of votes for this epoch from future committees after the current slot
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
-    return get_committee_weight_between_slots(store, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
+    return get_committee_weight_between_slots(state, Slot(current_slot + 1), Slot(first_slot_next_epoch - 1))
 ```
 
 #### `get_leaf_block_roots`
@@ -224,9 +223,13 @@ def is_ffg_confirmed(
 
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
-    checkpoint_state = store.block_states[checkpoint_root]
 
-    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
+    if checkpoint_root not in store.checkpoint_states:
+        return False
+
+    checkpoint_state = store.checkpoint_states[checkpoint_root]
+
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
     total_active_balance = int(get_total_active_balance(checkpoint_state))
     current_weight_in_epoch = total_active_balance - remaining_ffg_weight
     assert current_weight_in_epoch >= 0
@@ -349,7 +352,8 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
-    maximum_support = int(get_committee_weight_between_slots(store, Slot(parent_block.slot + 1), current_slot))
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    maximum_support = int(get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot))
     proposer_score = int(get_proposer_score(store))
 
     """
@@ -390,11 +394,14 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
 
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
-    checkpoint_state = store.block_states[checkpoint_root]
+
+    if checkpoint_root not in store.checkpoint_states:
+        return -1
+
+    checkpoint_state = store.checkpoint_states[checkpoint_root]    
 
     total_active_balance = int(get_total_active_balance(checkpoint_state))
-
-    remaining_ffg_weight = int(get_remaining_weight_in_epoch(store, current_slot))
+    remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
 
     ffg_voting_weight_so_far = total_active_balance - remaining_ffg_weight
     assert ffg_voting_weight_so_far >= 0
