@@ -95,7 +95,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // 2
     if get_current_slot(store) == block.slot and is_before_attesting_interval:
         store.proposer_boost_root = hash_tree_root(block)
 
