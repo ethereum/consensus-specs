@@ -45,7 +45,7 @@
     - [Modified `slash_validator`](#modified-slash_validator)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
-    - [Modified `apply_deposit`](#modified-apply_deposit)
+    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
     - [Sync aggregate processing](#sync-aggregate-processing)
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
@@ -508,40 +508,23 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
-#### Modified `apply_deposit`
+#### Modified `add_validator_to_registry`
 
-*Note*: The function `apply_deposit` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
+*Note*: The function `add_validator_to_registry` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
 
 ```python
-def apply_deposit(state: BeaconState,
-                  pubkey: BLSPubkey,
-                  withdrawal_credentials: Bytes32,
-                  amount: uint64,
-                  signature: BLSSignature) -> None:
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        # Initialize validator if the deposit signature is valid
-        if bls.Verify(pubkey, signing_root, signature):
-            index = get_index_for_new_validator(state)
-            validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
-            set_or_append_list(state.validators, index, validator)
-            set_or_append_list(state.balances, index, amount)
-            # [New in Altair]
-            set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-            set_or_append_list(state.inactivity_scores, index, uint64(0))
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, amount)
+    # [New in Altair]
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, uint64(0))
 ```
 
 #### Sync aggregate processing
