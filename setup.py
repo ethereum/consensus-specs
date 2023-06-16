@@ -48,7 +48,27 @@ BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
 EIP6110 = 'eip6110'
+WHISK = 'whisk'
 
+PREVIOUS_FORK_OF = {
+    PHASE0: None,
+    ALTAIR: PHASE0,
+    BELLATRIX: ALTAIR,
+    CAPELLA: BELLATRIX,
+    DENEB: CAPELLA,
+    EIP6110: DENEB,
+    WHISK: CAPELLA,
+}
+
+ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
+
+IGNORE_SPEC_FILES = [
+    "specs/phase0/deposit-contract.md"
+]
+
+EXTRA_SPEC_FILES = {
+    BELLATRIX: "sync/optimistic.md"
+}
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
@@ -94,6 +114,30 @@ class SpecObject(NamedTuple):
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
 
+
+def is_post_fork(a, b) -> bool:
+    """
+    Returns true if fork a is after b, or if a == b
+    """
+    if a == b:
+        return True
+
+    prev_fork = PREVIOUS_FORK_OF[a]
+    if prev_fork == b:
+        return True
+    elif prev_fork == None:
+        return False
+    else:
+        return is_post_fork(prev_fork, b)
+
+def get_fork_directory(fork):
+    dir1 = f'specs/{fork}'
+    if os.path.exists(dir1):
+        return dir1
+    dir2 = f'specs/_features/{fork}'
+    if os.path.exists(dir2):
+        return dir2
+    raise FileNotFoundError(f"No directory found for fork: {fork}")
 
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
     last_child = heading.children[-1]
@@ -279,7 +323,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     elif name in config:
                         config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
-                        if name == 'ENDIANNESS':
+                        if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
                             # Deal with mypy Literal typing check
                             value_def = _parse_value(name, value, type_hint='Final')
                         constant_vars[name] = value_def
@@ -337,6 +381,10 @@ class SpecBuilder(ABC):
         raise NotImplementedError()
 
     @classmethod
+    def execution_engine_cls(cls) -> str:
+        raise NotImplementedError()
+
+    @classmethod
     @abstractmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         """
@@ -383,7 +431,7 @@ from typing import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
@@ -469,6 +517,12 @@ get_attesting_indices = cache_this(
     ),
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return ""
+
+
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {}
@@ -551,7 +605,7 @@ class BellatrixSpecBuilder(AltairSpecBuilder):
         return super().imports(preset_name) + f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
-from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector, uint256
+from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
 '''
 
     @classmethod
@@ -573,9 +627,11 @@ def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
 
 
 def get_pow_chain_head() -> PowBlock:
-    pass
+    pass"""
 
-
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
 class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -588,9 +644,16 @@ class NoopExecutionEngine(ExecutionEngine):
                                   payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
         pass
 
-    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> ExecutionPayload:
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
@@ -659,6 +722,39 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
     return ("TEST", "TEST")'''
 
     @classmethod
+    def execution_engine_cls(cls) -> str:
+        return "\n\n" + """
+class NoopExecutionEngine(ExecutionEngine):
+
+    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+        pass
+
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+        # pylint: disable=unused-argument
+        raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+        return True
+
+    def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+
+EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+
+    @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         constants = {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
@@ -681,14 +777,41 @@ from eth2spec.deneb import {preset_name} as deneb
 '''
 
 
+#
+# WhiskSpecBuilder
+#
+class WhiskSpecBuilder(CapellaSpecBuilder):
+    fork: str = WHISK
+
+    @classmethod
+    def imports(cls, preset_name: str):
+        return super().imports(preset_name) + f'''
+from eth2spec.capella import {preset_name} as capella
+'''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+        # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
+        constants = {
+            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
+            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
+        }
+        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
+
+
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder)
+    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder, WhiskSpecBuilder)
 }
 
 
 def is_byte_vector(value: str) -> bool:
     return value.startswith(('ByteVector'))
+
+
+def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
+    function = protocol_def.functions[key].split('"""')
+    protocol_def.functions[key] = function[0] + "..."
 
 
 def objects_to_spec(preset_name: str,
@@ -708,6 +831,11 @@ def objects_to_spec(preset_name: str,
     )
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
+        abstract_functions = ["verify_and_notify_new_payload"]
+        for key in protocol_def.functions.keys():
+           if key in abstract_functions:
+                make_function_abstract(protocol_def, key)
+
         protocol = f"class {protocol_name}(Protocol):"
         for fn_source in protocol_def.functions.values():
             fn_source = fn_source.replace("self: "+protocol_name, "self")
@@ -783,6 +911,7 @@ def objects_to_spec(preset_name: str,
             + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
             + '\n\n\n' + functions_spec
             + '\n\n' + builder.sundry_functions()
+            + builder.execution_engine_cls()
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
             + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
@@ -982,68 +1111,20 @@ class PySpecCommand(Command):
         if len(self.md_doc_paths) == 0:
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
-            if self.spec_fork in (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
-                self.md_doc_paths = """
-                    specs/phase0/beacon-chain.md
-                    specs/phase0/fork-choice.md
-                    specs/phase0/validator.md
-                    specs/phase0/weak-subjectivity.md
-                """
-            if self.spec_fork in (ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110):
-                self.md_doc_paths += """
-                    specs/altair/light-client/full-node.md
-                    specs/altair/light-client/light-client.md
-                    specs/altair/light-client/p2p-interface.md
-                    specs/altair/light-client/sync-protocol.md
-                    specs/altair/beacon-chain.md
-                    specs/altair/bls.md
-                    specs/altair/fork.md
-                    specs/altair/validator.md
-                    specs/altair/p2p-interface.md
-                """
-            if self.spec_fork in (BELLATRIX, CAPELLA, DENEB, EIP6110):
-                self.md_doc_paths += """
-                    specs/bellatrix/beacon-chain.md
-                    specs/bellatrix/fork.md
-                    specs/bellatrix/fork-choice.md
-                    specs/bellatrix/validator.md
-                    specs/bellatrix/p2p-interface.md
-                    sync/optimistic.md
-                """
-            if self.spec_fork in (CAPELLA, DENEB, EIP6110):
-                self.md_doc_paths += """
-                    specs/capella/light-client/fork.md
-                    specs/capella/light-client/full-node.md
-                    specs/capella/light-client/p2p-interface.md
-                    specs/capella/light-client/sync-protocol.md
-                    specs/capella/beacon-chain.md
-                    specs/capella/fork.md
-                    specs/capella/fork-choice.md
-                    specs/capella/validator.md
-                    specs/capella/p2p-interface.md
-                """
-            if self.spec_fork in (DENEB, EIP6110):
-                self.md_doc_paths += """
-                    specs/deneb/light-client/fork.md
-                    specs/deneb/light-client/full-node.md
-                    specs/deneb/light-client/p2p-interface.md
-                    specs/deneb/light-client/sync-protocol.md
-                    specs/deneb/beacon-chain.md
-                    specs/deneb/fork.md
-                    specs/deneb/fork-choice.md
-                    specs/deneb/polynomial-commitments.md
-                    specs/deneb/p2p-interface.md
-                    specs/deneb/validator.md
-                """
-            if self.spec_fork == EIP6110:
-                self.md_doc_paths += """
-                    specs/_features/eip6110/light-client/fork.md
-                    specs/_features/eip6110/light-client/full-node.md
-                    specs/_features/eip6110/light-client/p2p-interface.md
-                    specs/_features/eip6110/light-client/sync-protocol.md
-                    specs/_features/eip6110/beacon-chain.md
-                    specs/_features/eip6110/fork.md
-                """
+            self.md_doc_paths = ""
+
+            for fork in ALL_FORKS:
+                if is_post_fork(self.spec_fork, fork):
+                    # Append all files in fork directory recursively
+                    for root, dirs, files in os.walk(get_fork_directory(fork)):
+                        for filename in files:
+                            filepath = os.path.join(root, filename)
+                            if filepath.endswith('.md') and filepath not in IGNORE_SPEC_FILES:
+                                self.md_doc_paths += filepath + "\n"
+                    # Append extra files if any
+                    if fork in EXTRA_SPEC_FILES:
+                        self.md_doc_paths += EXTRA_SPEC_FILES[fork] + "\n"
+
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 
@@ -1184,7 +1265,7 @@ setup(
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
-        "generator": ["python-snappy==0.6.1", "filelock"],
+        "generator": ["python-snappy==0.6.1", "filelock", "pathos==0.3.0"],
         "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
     },
     install_requires=[
@@ -1196,8 +1277,9 @@ setup(
         "remerkleable==0.1.27",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
-        "lru-dict==1.1.8",
+        "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@805d06785b6ff35fde7148762277dd1ae678beeb#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

@@ -157,7 +157,7 @@ jobs:
           path: tests/core/pyspec/test-reports
   test-eip6110:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -176,7 +176,7 @@ jobs:
       - checkout
       - run:
           name: Check table of contents
-          command: sudo npm install -g doctoc@2 && make check_toc
+          command: sudo npm install -g doctoc@2.2.0 && make check_toc
   codespell:
     docker:
       - image: circleci/python:3.9

@@ -18,6 +18,7 @@ from .helpers.constants import (
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
+    LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -428,13 +429,6 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
-with_altair_and_later = with_all_phases_from(ALTAIR)
-with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
-with_capella_and_later = with_all_phases_from(CAPELLA)
-with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
-
-
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET
     if 'preset' in kw:
@@ -540,6 +534,14 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+with_altair_and_later = with_all_phases_from(ALTAIR)
+with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
+with_capella_and_later = with_all_phases_from(CAPELLA)
+with_deneb_and_later = with_all_phases_from(DENEB)
+with_eip6110_and_later = with_all_phases_from(EIP6110)
+with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
+
+
 class quoted_str(str):
     pass
 
@@ -560,7 +562,7 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_copy_of_spec(spec):
+def get_copy_of_spec(spec):
     fork = spec.fork
     preset = spec.config.PRESET_BASE
     module_path = f"eth2spec.{fork}.{preset}"
@@ -601,14 +603,14 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
+            spec, output_config = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
 
             # Apply config overrides to additional phases, if present
             if 'phases' in kw:
                 phases = {}
                 for fork in kw['phases']:
                     phases[fork], output = spec_with_config_overrides(
-                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                        get_copy_of_spec(kw['phases'][fork]), config_overrides)
                     if emitted_fork == fork:
                         output_config = output
                 kw['phases'] = phases

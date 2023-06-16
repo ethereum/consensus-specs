@@ -13,7 +13,7 @@
 - [Helpers](#helpers)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`get_payload`](#get_payload)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -40,7 +40,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-#### `get_payload`
+#### Modified `get_payload`
 
 `get_payload` returns the upgraded EIP-4788 `ExecutionPayload` type.
 
@@ -64,27 +64,12 @@ parameter to the `PayloadAttributes`.
 
 ```python
 def prepare_execution_payload(state: BeaconState,
-                              pow_chain: Dict[Hash32, PowBlock],
                               safe_block_hash: Hash32,
                               finalized_block_hash: Hash32,
                               suggested_fee_recipient: ExecutionAddress,
                               execution_engine: ExecutionEngine) -> Optional[PayloadId]:
-    if not is_merge_transition_complete(state):
-        is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
-        is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        if is_terminal_block_hash_set and not is_activation_epoch_reached:
-            # Terminal block hash is set but activation epoch is not yet reached, no prepare payload call is needed
-            return None
-
-        terminal_pow_block = get_terminal_pow_block(pow_chain)
-        if terminal_pow_block is None:
-            # Pre-merge, no prepare payload call is needed
-            return None
-        # Signify merge via producing on top of the terminal PoW block
-        parent_hash = terminal_pow_block.block_hash
-    else:
-        # Post-merge, normal payload
-        parent_hash = state.latest_execution_payload_header.block_hash
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    parent_hash = state.latest_execution_payload_header.block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(

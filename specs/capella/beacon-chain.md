@@ -331,9 +331,9 @@ def process_historical_summaries_update(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
+    # [Modified in Capella] Removed `is_execution_enabled` check in Capella
+    process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Capella]
@@ -404,19 +404,21 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type
+and removed the `is_merge_transition_complete` check.
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+    # [Modified in Capella] Removed `is_merge_transition_complete` check in Capella
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,

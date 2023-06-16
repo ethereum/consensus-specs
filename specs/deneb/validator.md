@@ -11,7 +11,11 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
-  - [`get_blobs_and_kzg_commitments`](#get_blobs_and_kzg_commitments)
+  - [`BlobsBundle`](#blobsbundle)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -36,17 +40,42 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ## Helpers
 
-### `get_blobs_and_kzg_commitments`
+### `BlobsBundle`
 
-The interface to retrieve blobs and corresponding kzg commitments.
-
-Note: This API is *unstable*. `get_blobs_and_kzg_commitments` and `get_payload` may be unified.
-Implementers may also retrieve blobs individually per transaction.
+*[New in Deneb:EIP4844]*
 
 ```python
-def get_blobs_and_kzg_commitments(
-    payload_id: PayloadId
-) -> Tuple[Sequence[Blob], Sequence[KZGCommitment], Sequence[KZGProof]]:
+@dataclass
+class BlobsBundle(object):
+    commitments: Sequence[KZGCommitment]
+    proofs: Sequence[KZGProof]
+    blobs: Sequence[Blob]
+```
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle  # [New in Deneb:EIP4844]
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle objects.
+    """
     # pylint: disable=unused-argument
     ...
 ```
@@ -61,26 +90,16 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### Blob KZG commitments
 
+*[New in Deneb:EIP4844]*
+
 1. After retrieving the execution payload from the execution engine as specified in Capella,
-use the `payload_id` to retrieve `blobs` and `blob_kzg_commitments` via `get_blobs_and_kzg_commitments(payload_id)`.
-2. Validate `blobs` and `blob_kzg_commitments`:
-
-```python
-def validate_blobs_and_kzg_commitments(execution_payload: ExecutionPayload,
-                                       blobs: Sequence[Blob],
-                                       blob_kzg_commitments: Sequence[KZGCommitment],
-                                       blob_kzg_proofs: Sequence[KZGProof]) -> None:
-    # Optionally sanity-check that the KZG commitments match the versioned hashes in the transactions
-    assert verify_kzg_commitments_against_transactions(execution_payload.transactions, blob_kzg_commitments)
-
-    # Optionally sanity-check that the KZG commitments match the blobs (as produced by the execution engine)
-    assert len(blob_kzg_commitments) == len(blobs) == len(blob_kzg_proofs)
-    assert verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, blob_kzg_proofs)
-```
-
-3. If valid, set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
+use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
+via `get_payload(payload_id).blobs_bundle`.
+2. Set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
 #### Constructing the `SignedBlobSidecar`s
+
+*[New in Deneb:EIP4844]*
 
 To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
@@ -108,7 +127,7 @@ def get_blob_sidecars(block: BeaconBlock,
 
 ```
 
-Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the `blob_sidecar_{index}` topics according to its index.
+Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 
 `signature` is obtained from:
 
@@ -119,6 +138,15 @@ def get_blob_sidecar_signature(state: BeaconState,
     domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
     signing_root = compute_signing_root(sidecar, domain)
     return bls.Sign(privkey, signing_root)
+```
+
+The `subnet_id` for the `signed_sidecar` is calculated with:
+- Let `blob_index = signed_sidecar.message.index`.
+- Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
+
+```python
+def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> SubnetID:
+    return SubnetID(blob_index % BLOB_SIDECAR_SUBNET_COUNT)
 ```
 
 After publishing the peers on the network may request the sidecar through sync-requests, or a local user may be interested.
