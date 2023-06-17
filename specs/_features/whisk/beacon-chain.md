@@ -179,8 +179,11 @@ class BeaconState(Container):
 ```python
 def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
-    proposer_seed_epoch = max(epoch, WHISK_PROPOSER_SELECTION_GAP) - WHISK_PROPOSER_SELECTION_GAP
-    proposer_seed = get_seed(state, proposer_seed_epoch, DOMAIN_WHISK_PROPOSER_SELECTION)
+    proposer_seed = get_seed(
+        state,
+        Epoch(saturating_sub(epoch, WHISK_PROPOSER_SELECTION_GAP)),
+        DOMAIN_WHISK_PROPOSER_SELECTION
+    )
     for i in range(WHISK_PROPOSER_TRACKERS_COUNT):
         index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]

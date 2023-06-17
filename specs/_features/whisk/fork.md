@@ -115,7 +115,7 @@ def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day
     # Use an old epoch when selecting candidates so that we don't get the same seed as in the next candidate selection
-    select_whisk_candidate_trackers(post, max(0, epoch - WHISK_PROPOSER_SELECTION_GAP - 1))
+    select_whisk_candidate_trackers(post, Epoch(saturating_sub(epoch, WHISK_PROPOSER_SELECTION_GAP + 1)))
     select_whisk_proposer_trackers(post, epoch)
 
     # Do a final round of candidate selection.
