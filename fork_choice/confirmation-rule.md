@@ -448,7 +448,7 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
     2 / 3 * total_active_balance <= \
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
-    if ffg_voting_weight_so_far > 0:
+    if ffg_voting_weight_so_far > 0 and remaining_ffg_weight > 0:
         ffg_confirmation_score = (
             100 * (3 * remaining_ffg_weight - 2 * total_active_balance) // (3 * remaining_ffg_weight)
         )
