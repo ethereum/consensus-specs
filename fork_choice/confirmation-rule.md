@@ -202,6 +202,10 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
     checkpoint = Checkpoint(root=checkpoint_root, epoch=current_epoch)
+
+    if checkpoint not in store.checkpoint_states:
+        return Gwei(0)
+
     checkpoint_state = store.checkpoint_states[checkpoint]
 
     leave_roots = get_leaf_block_roots(store, block_root)
