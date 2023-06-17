@@ -489,6 +489,11 @@ def get_confirmation_score(
 
     # We can only confirm blocks created in the current epoch
     assert compute_epoch_at_slot(block.slot) == current_epoch
+    block_state = store.block_states[block_root]
+    block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
+
+    if block_justified_checkpoint_epoch + 1 != current_epoch:
+        return -1
 
     return min(
         get_lmd_confirmation_score(store, block_root),
