@@ -409,7 +409,11 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
 #### `get_ffg_confirmation_score`
 
 ```python
-def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
+def get_ffg_confirmation_score(
+    store: Store, 
+    confirmation_slashing_threshold: int,
+    block_root: Root
+) -> int:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
@@ -432,31 +436,39 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
 
     ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
 
-    """
-    Note: This function assumes confirmation_slashing_threshold = + infinity.
+    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, confirmation_slashing_threshold)
 
+    """
     Return the max possible ffg_confirmation_score such that:
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
-        min(ffg_support_for_checkpoint, ffg_voting_weight_so_far * ffg_confirmation_score / 100) + \
+        min(min_ffg_support_slash_th, ffg_voting_weight_so_far * ffg_confirmation_score / 100) + \
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
 
     """
-    Case 1: ffg_support_for_checkpoint <= ffg_voting_weight_so_far * ffg_confirmation_score / 100
+    Case 1: min_ffg_support_slash_th <= ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
     2 / 3 * total_active_balance <= \
-        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+        ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
+        remaining_ffg_weight
     """
-    if ffg_voting_weight_so_far > 0 and remaining_ffg_weight > 0:
-        ffg_confirmation_score = (
-            100 * (3 * remaining_ffg_weight - 2 * total_active_balance) // (3 * remaining_ffg_weight)
-        )
-        if ffg_support_for_checkpoint * 100 <= ffg_voting_weight_so_far * ffg_confirmation_score:
-            return ffg_confirmation_score
+    if ffg_voting_weight_so_far > 0:
+        if remaining_ffg_weight > 0:
+            ffg_confirmation_score = (
+                100 * (
+                    3 * (ffg_support_for_checkpoint - min_ffg_support_slash_th + remaining_ffg_weight) 
+                    - 2 * total_active_balance
+                ) // (3 * remaining_ffg_weight)
+            )
+            if min_ffg_support_slash_th * 100 <= ffg_voting_weight_so_far * ffg_confirmation_score:
+                return ffg_confirmation_score
+        else:
+            if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
+                return 100 // 3
 
     """
-    Case 2: ffg_support_for_checkpoint > ffg_voting_weight_so_far * ffg_confirmation_score / 100
+    Case 2: min_ffg_support_slash_th > ffg_voting_weight_so_far * ffg_confirmation_score / 100
 
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
@@ -476,6 +488,7 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
 ```python
 def get_confirmation_score(
     store: Store,
+    confirmation_slashing_threshold: int,
     block_root: Root
 ) -> int:
     """
@@ -497,6 +510,6 @@ def get_confirmation_score(
 
     return min(
         get_lmd_confirmation_score(store, block_root),
-        get_ffg_confirmation_score(store, block_root)
+        get_ffg_confirmation_score(store, confirmation_slashing_threshold, block_root)
     )
 ```
