@@ -106,7 +106,9 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
     justified_state = store.checkpoint_states[store.justified_checkpoint]
-    maximum_support = int(get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot))
+    maximum_support = int(
+        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot)
+    )
     proposer_score = int(get_proposer_score(store))
 
     """
@@ -172,8 +174,15 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 #### `get_current_epoch_participating_indices`
 
 ```python
-def get_current_epoch_participating_indices(state: BeaconState, active_validator_indices: Sequence[ValidatorIndex]) -> Set[ValidatorIndex]:    
-    return set([i for i in active_validator_indices if has_flag(state.current_epoch_participation[i], TIMELY_TARGET_FLAG_INDEX)])
+def get_current_epoch_participating_indices(
+    state: BeaconState, 
+    active_validator_indices: 
+    Sequence[ValidatorIndex]
+) -> Set[ValidatorIndex]:    
+    return set([
+        i for i in active_validator_indices 
+        if has_flag(state.current_epoch_participation[i], TIMELY_TARGET_FLAG_INDEX)
+    ])
 ```
 
 #### `get_ffg_support`
@@ -198,9 +207,10 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
     active_validator_indices = get_active_validator_indices(checkpoint_state, current_epoch)
 
-    participating_indices = set().union(
-        *[get_current_epoch_participating_indices(store.block_states[root], active_validator_indices) for root in leave_roots]
-    )
+    participating_indices = set().union(*[
+        get_current_epoch_participating_indices(store.block_states[root], active_validator_indices) 
+        for root in leave_roots
+    ])
 
     return get_total_balance(checkpoint_state, participating_indices)
 ```
@@ -355,7 +365,9 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     parent_block = store.blocks[block.parent_root]
     support = int(get_weight(store, block_root))
     justified_state = store.checkpoint_states[store.justified_checkpoint]
-    maximum_support = int(get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot))
+    maximum_support = int(
+        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot)
+    )
     proposer_score = int(get_proposer_score(store))
 
     """
