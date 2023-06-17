@@ -92,8 +92,11 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
 
         # Each committee from the previous epoch only contributes a pro-rated weight
         return Gwei(
-            (num_slots_in_current_epoch + num_slots_in_previous_epoch * remaining_slots_in_current_epoch) *
-            int(committee_weight) // num_slots_in_previous_epoch
+            (num_slots_in_current_epoch * int(committee_weight)) + 
+            (
+                num_slots_in_previous_epoch * remaining_slots_in_current_epoch *
+                int(committee_weight) // SLOTS_PER_EPOCH
+            )
         )
 ```
 
