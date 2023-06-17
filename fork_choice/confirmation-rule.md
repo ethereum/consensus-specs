@@ -92,11 +92,8 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
 
         # Each committee from the previous epoch only contributes a pro-rated weight
         return Gwei(
-            (num_slots_in_current_epoch * int(committee_weight)) + 
-            (
-                num_slots_in_previous_epoch * remaining_slots_in_current_epoch *
-                int(committee_weight) // SLOTS_PER_EPOCH
-            )
+            (num_slots_in_current_epoch + num_slots_in_previous_epoch * remaining_slots_in_current_epoch) *
+            int(committee_weight) // num_slots_in_previous_epoch
         )
 ```
 
@@ -219,10 +216,10 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     return get_total_balance(checkpoint_state, participating_indices)
 ```
 
-#### `is_ffg_confirmed_current_epoch`
+#### `is_ffg_confirmed`
 
 ```python
-def is_ffg_confirmed_current_epoch(
+def is_ffg_confirmed(
     store: Store,
     confirmation_byzantine_threshold: int,
     confirmation_slashing_threshold: int,
@@ -274,39 +271,6 @@ def is_ffg_confirmed_current_epoch(
     )
 ```
 
-#### `is_ffg_confirmed_previous_epoch`
-
-```python
-def is_ffg_confirmed_previous_epoch(
-    store: Store,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,
-    block_root: Root,
-) -> bool:
-    """
-    Returns whether the `block_root`'s checkpoint is justified
-    """
-
-    block = store.blocks[block_root]
-    assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot) + 1
-
-    previous_epoch = get_current_store_epoch(store)
-    checkpoint_root = get_checkpoint_block(store, block_root, current_epoch)
-
-    checkpoint = Checkpoint(root=checkpoint_root, epoch=current_epoch)
-
-    if checkpoint not in store.checkpoint_states:
-        return False
-
-    checkpoint_state = store.checkpoint_states[checkpoint]    
-
-    total_active_balance = int(get_total_active_balance(checkpoint_state))
-
-    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
-
-    return 2 * total_active_balance <= ffg_support_for_checkpoint * 3
-```
-
 ### `is_confirmed`
 
 ```python
@@ -321,23 +285,15 @@ def is_confirmed(
     block = store.blocks[block_root]
     block_state = store.block_states[block_root]
     block_justified_checkpoint = block_state.current_justified_checkpoint.epoch
-    block_epoch = compute_epoch_at_slot(block.slot)
 
-    # This function is only applicable to current and previous epoch blocks
-    assert block_epoch + 1 >= current_epoch
+    # This function is only applicable to current epoch blocks
+    assert compute_epoch_at_slot(block.slot) == current_epoch
 
-    if block_epoch == current_epoch:
-        return (
-            block_justified_checkpoint + 1 == current_epoch
-            and is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
-            and is_ffg_confirmed_current_epoch(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
-        )
-    else:
-        return (
-            block_justified_checkpoint + 2 >= current_epoch
-            and is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
-            and is_ffg_confirmed_previous_epoch(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
-        )
+    return (
+        block_justified_checkpoint + 1 == current_epoch
+        and is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)
+        and is_ffg_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
+    )
 ```
 
 ## Safe Block Hash
