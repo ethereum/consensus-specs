@@ -176,7 +176,7 @@ jobs:
       - checkout
       - run:
           name: Check table of contents
-          command: sudo npm install -g doctoc@2 && make check_toc
+          command: sudo npm install -g doctoc@2.2.0 && make check_toc
   codespell:
     docker:
       - image: circleci/python:3.9

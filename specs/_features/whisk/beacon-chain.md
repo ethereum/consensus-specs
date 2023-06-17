@@ -15,7 +15,6 @@
   - [Curdleproofs and opening proofs](#curdleproofs-and-opening-proofs)
 - [Epoch processing](#epoch-processing)
   - [`WhiskTracker`](#whisktracker)
-  - [`Validator`](#validator)
   - [`BeaconState`](#beaconstate)
 - [Block processing](#block-processing)
   - [Block header](#block-header)
@@ -23,6 +22,7 @@
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Deposits](#deposits)
   - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -124,23 +124,6 @@ class WhiskTracker(Container):
     k_r_G: BLSG1Point  # k * r * G
 ```
 
-### `Validator`
-
-```python
-class Validator(Container):
-    pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
-    effective_balance: Gwei  # Balance at stake
-    slashed: boolean
-    # Status epochs
-    activation_eligibility_epoch: Epoch  # When criteria for activation were met
-    activation_epoch: Epoch
-    exit_epoch: Epoch
-    withdrawable_epoch: Epoch  # When validator can withdraw funds
-    whisk_tracker: WhiskTracker  # Whisk tracker (r * G, k * r * G) [New in Whisk]
-    whisk_k_commitment: BLSG1Point  # Whisk k commitment k * BLS_G1_GENERATOR [New in Whisk]
-```
-
 ### `BeaconState`
 
 ```python
@@ -186,8 +169,11 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    # Whisk
     whisk_candidate_trackers: Vector[WhiskTracker, WHISK_CANDIDATE_TRACKERS_COUNT]  # [New in Whisk]
     whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
+    whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
+    whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
 ```
 
 ```python
@@ -203,7 +189,7 @@ def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
     for i in range(WHISK_CANDIDATE_TRACKERS_COUNT):
         seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(i))
         candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
-        state.whisk_candidate_trackers[i] = state.validators[candidate_index].whisk_tracker
+        state.whisk_candidate_trackers[i] = state.whisk_trackers[candidate_index]
 ```
 
 ```python
@@ -237,7 +223,7 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
-    k_commitment = state.validators[block.proposer_index].whisk_k_commitment
+    k_commitment = state.whisk_k_commitments[block.proposer_index]
     assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
 ```
 
@@ -297,7 +283,7 @@ class BeaconBlockBody(capella.BeaconBlockBody):
     whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
-    whisk_k_commitment: BLSG1Point  # [New in Whisk]
+    whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in Whisk]
 ```
 
 ```python
@@ -306,9 +292,10 @@ def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
     """
     indices = []
-    for i in WHISK_VALIDATORS_PER_SHUFFLE:
+    for i in range(0, WHISK_VALIDATORS_PER_SHUFFLE):
         # XXX ensure we are not suffering from modulo bias
-        shuffle_index = uint256(hash(randao_reveal + uint_to_bytes(i))) % WHISK_CANDIDATE_TRACKERS_COUNT
+        pre_image = randao_reveal + uint_to_bytes(uint64(i))
+        shuffle_index = bytes_to_uint64(hash(pre_image)[0:8]) % WHISK_CANDIDATE_TRACKERS_COUNT
         indices.append(shuffle_index)
 
     return indices
@@ -319,20 +306,23 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
     # Check the shuffle proof
     shuffle_indices = get_shuffle_indices(body.randao_reveal)
     pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
-    post_shuffle_trackers = body.whisk_post_shuffle_trackers
 
     shuffle_epoch = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
-        # Require unchanged trackers during cooldown
-        assert pre_shuffle_trackers == post_shuffle_trackers
+        # Require trackers set to zero during cooldown
+        assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
+        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
+        assert body.whisk_shuffle_proof == WhiskShuffleProof()
+        post_shuffle_trackers = pre_shuffle_trackers
     else:
         # Require shuffled trackers during shuffle
         assert IsValidWhiskShuffleProof(
             pre_shuffle_trackers,
-            post_shuffle_trackers,
+            body.whisk_post_shuffle_trackers,
             body.whisk_shuffle_proof_M_commitment,
             body.whisk_shuffle_proof,
         )
+        post_shuffle_trackers = body.whisk_post_shuffle_trackers
 
     # Shuffle candidate trackers
     for i, shuffle_index in enumerate(shuffle_indices):
@@ -341,7 +331,7 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
 
 ```python
 def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool:
-    return all([validator.whisk_k_commitment != k_commitment for validator in state.validators])
+    return all([whisk_k_commitment != k_commitment for whisk_k_commitment in state.whisk_k_commitments])
 ```
 
 ```python
@@ -383,48 +373,29 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ### Deposits
 
 ```python
+def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFieldElement:
+    # hash `validator_index || counter`
+    return BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
+```
+
+```python
 def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFieldElement:
     counter = 0
     while True:
-        # hash `validator_index || counter`
-        k = BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
+        k = get_initial_whisk_k(validator_index, counter)
         if is_k_commitment_unique(state, BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
             return k  # unique by trial and error
         counter += 1
 ```
 
 ```python
-def get_initial_commitments(k: BLSFieldElement) -> Tuple[BLSG1Point, WhiskTracker]:
-    return (
-        BLSG1ScalarMultiply(k, BLS_G1_GENERATOR),
-        WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR))
-    )
+def get_k_commitment(k: BLSFieldElement) -> BLSG1Point:
+    return BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)
 ```
 
 ```python
-def get_validator_from_deposit_whisk(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64
-) -> Validator:
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators)))
-    whisk_k_commitment, whisk_tracker = get_initial_commitments(k)
-
-    validator = Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
-        # Whisk fields
-        whisk_tracker=whisk_tracker,
-        whisk_k_commitment=whisk_k_commitment,
-    )
-    return validator
+def get_initial_tracker(k: BLSFieldElement) -> WhiskTracker:
+    return WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR))
 ```
 
 ```python
@@ -446,13 +417,16 @@ def apply_deposit(state: BeaconState,
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
             index = get_index_for_new_validator(state)
-            validator = get_validator_from_deposit_whisk(state, pubkey, withdrawal_credentials, amount)
+            validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
             set_or_append_list(state.validators, index, validator)
             set_or_append_list(state.balances, index, amount)
-            # [New in Altair]
             set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
             set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
             set_or_append_list(state.inactivity_scores, index, uint64(0))
+            # [New in Whisk]
+            k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators) - 1))
+            state.whisk_trackers.append(get_initial_tracker(k))
+            state.whisk_k_commitments.append(get_k_commitment(k))
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
@@ -468,4 +442,26 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
+```
+
+## Testing
+
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Whisk testing only.
+
+```python
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
+                                      eth1_timestamp: uint64,
+                                      deposits: Sequence[Deposit],
+                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
+                                      ) -> BeaconState:
+    state_capella = capella.initialize_beacon_state_from_eth1(
+        eth1_block_hash,
+        eth1_timestamp,
+        deposits,
+        execution_payload_header,
+    )
+    state = upgrade_to_whisk(state_capella)
+    state.fork.previous_version = WHISK_FORK_VERSION
+    state.fork.current_version = WHISK_FORK_VERSION
+    return state
 ```
