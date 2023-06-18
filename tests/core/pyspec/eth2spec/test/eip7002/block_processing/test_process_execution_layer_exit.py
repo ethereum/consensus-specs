@@ -85,3 +85,23 @@ def test_on_exit_initiated_validator(spec, state):
     )
 
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
+
+
+@with_eip7002_and_later
+@spec_state_test
+def test_activation_epoch_less_than_shard_committee_period(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    validator_pubkey = state.validators[validator_index].pubkey
+    address = b'\x22' * 20
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
+    execution_layer_exit = spec.ExecutionLayerExit(
+        source_address=address,
+        validator_pubkey=validator_pubkey,
+    )
+
+    assert spec.get_current_epoch(state) < (
+        state.validators[validator_index].activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
+    )
+
+    yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
