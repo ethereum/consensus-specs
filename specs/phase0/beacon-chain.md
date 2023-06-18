@@ -1850,6 +1850,15 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
 ```
 
 ```python
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+    state.balances.append(amount)
+```
+
+```python
 def apply_deposit(state: BeaconState,
                   pubkey: BLSPubkey,
                   withdrawal_credentials: Bytes32,
@@ -1865,12 +1874,8 @@ def apply_deposit(state: BeaconState,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, signature):
-            return
-
-        # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
-        state.balances.append(amount)
+        if bls.Verify(pubkey, signing_root, signature):
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))

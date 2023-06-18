@@ -33,7 +33,8 @@
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
-      - [`process_execution_payload`](#process_execution_payload)
+      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -42,7 +43,8 @@
 ## Introduction
 
 Deneb is a consensus-layer upgrade containing a number of features. Including:
-* [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner.
+* [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
+* [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
 
 ## Custom types
 
@@ -221,7 +223,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
 #### Execution payload
 
-##### `process_execution_payload`
+##### Modified `process_execution_payload`
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -264,6 +266,31 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         data_gas_used=payload.data_gas_used,  # [New in Deneb:EIP4844]
         excess_data_gas=payload.excess_data_gas,  # [New in Deneb:EIP4844]
     )
+```
+
+#### Modified `process_voluntary_exit`
+
+*Note*: The function `process_voluntary_exit` is modified to use the a fixed fork version -- `CAPELLA_FORK_VERSION` -- for EIP-7044
+
+```python
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= voluntary_exit.epoch
+    # Verify the validator has been active long enough
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    # Verify signature
+    # [Modified in Deneb:EIP7044]
+    domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    # Initiate exit
+    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
 ## Testing
