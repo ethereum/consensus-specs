@@ -55,7 +55,7 @@ It consists of four main sections:
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
-  - [Attestation subnet subcription](#attestation-subnet-subcription)
+  - [Attestation subnet subscription](#attestation-subnet-subscription)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)

@@ -24,7 +24,8 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
-  - [Modified `get_attestation_participation_flag_indicies`](#modified-get_attestation_participation_flag_indicies)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
@@ -173,7 +174,9 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
-### Modified `get_attestation_participation_flag_indicies`
+### Beacon state accessors
+
+#### Modified `get_attestation_participation_flag_indices`
 
 *Note:* The function `get_attestation_participation_flag_indicies` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
 
@@ -205,7 +208,6 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 
     return participation_flag_indices
 ```
-
 
 ## Beacon chain state transition function
 
