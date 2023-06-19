@@ -396,6 +396,11 @@ class Deposit(Container):
     data: DepositData
 
 
+class PendingBalanceDeposit(Container):
+    index: ValidatorIndex
+    amount: Gwei
+
+
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
@@ -658,7 +663,7 @@ class BeaconState(Container):
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    activation_validator_balance: Gwei
+    deposit_validator_balance: Gwei
     exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -684,6 +689,7 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
+    pending_balance_deposits: PendingBalanceDeposit
 
 
 @dataclass(eq=True, frozen=True)
@@ -1294,6 +1300,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
+    process_pending_balance_deposits(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
@@ -1551,24 +1558,10 @@ def process_registry_updates(state: BeaconState) -> None:
         ):
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not yet dequeued for activation
-    activation_queue = sorted([
-        index for index, validator in enumerate(state.validators)
-        if is_eligible_for_activation(state, validator)
-        # Order by the sequence of activation_eligibility_epoch setting and then index
-    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
-    # Dequeued validators for activation up to churn limit
-    activation_balance_to_consume = get_validator_churn_limit(state)
-    for index in activation_queue:
-        validator = state.validators[index]
-        # Validator can now be activated
-        if state.activation_validator_balance + activation_balance_to_consume >= validator.effective_balance:
-            activation_balance_to_consume -= (validator.effective_balance - state.activation_validator_balance)
-            state.activation_validator_balance = Gwei(0)
+    # Activate all eligible validators
+    for validator in state.validators:
+        if is_eligible_for_activation(state, validator):
             validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-        else:  
-            state.activation_validator_balance += activation_balance_to_consume
-            break
 
 
 def process_slashings(state: BeaconState) -> None:
@@ -1591,6 +1584,21 @@ def process_eth1_data_reset(state: BeaconState) -> None:
     # Reset eth1 data votes
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
+
+
+def process_pending_balance_deposits(state: BeaconState) -> None:
+    deposit_balance_to_consume = get_validator_churn_limit(state) * MAX_EFFECTIVE_BALANCE
+    next_pending_deposit_index = 0
+    for pending_balance_deposit in state.pending_balance_deposits:
+        if state.deposit_validator_balance + deposit_balance_to_consume >= pending_balance_deposit.amount:
+            deposit_balance_to_consume -= pending_balance_deposit.amount - state.deposit_validator_balance
+            state.deposit_validator_balance = Gwei(0)
+            increase_balance(state, pending_balance_deposit.index, pending_balance_deposit.amount)
+            next_pending_deposit_index += 1
+        else:
+            state.deposit_validator_balance += deposit_balance_to_consume
+            break
+    state.pending_balance_deposits = state.pending_balance_deposits[next_pending_deposit_index:]
 
 
 def process_effective_balance_updates(state: BeaconState) -> None:
@@ -1784,7 +1792,7 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
+        effective_balance=0,
     )
 
 
