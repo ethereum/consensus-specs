@@ -1585,7 +1585,7 @@ def process_eth1_data_reset(state: BeaconState) -> None:
 
 
 def process_pending_balance_deposits(state: BeaconState) -> None:
-    deposit_balance_to_consume = get_validator_churn_limit(state) * MAX_EFFECTIVE_BALANCE
+    deposit_balance_to_consume = get_validator_churn_limit(state)
     next_pending_deposit_index = 0
     for pending_balance_deposit in state.pending_balance_deposits:
         if state.deposit_validator_balance + deposit_balance_to_consume >= pending_balance_deposit.amount:
@@ -1780,9 +1780,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 
 
-def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-
+def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32) -> Validator:
     return Validator(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -1811,16 +1809,16 @@ def apply_deposit(state: BeaconState,
         signing_root = compute_signing_root(deposit_message, domain)
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
-            state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+            state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials))
             state.balances.append(amount)
             # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
     else:
-        # Increase balance by deposit amount, up to MIN_ACTIVATION_BALANCE
+        # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, min(amount, MIN_ACTIVATION_BALANCE - state.balances[index]))
+        state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
 
 
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
