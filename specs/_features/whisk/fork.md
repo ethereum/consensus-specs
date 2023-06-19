@@ -53,27 +53,13 @@ The upgrade occurs after the completion of the inner loop of `process_slots` tha
 This ensures that we drop right into the beginning of the shuffling phase but without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle all the setup ourselves in `upgrade_to_whisk()` below.
 
 ```python
-def whisk_candidate_selection(state: BeaconState, epoch: Epoch) -> None:
-    # TODO
-    # pylint: disable=unused-argument
-    pass
-```
-
-```python
-def whisk_proposer_selection(state: BeaconState, epoch: Epoch) -> None:
-    # TODO
-    # pylint: disable=unused-argument
-    pass
-```
-
-```python
-def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
+def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
     # Compute initial unsafe trackers for all validators
     ks = [get_initial_whisk_k(ValidatorIndex(validator_index), 0) for validator_index in range(len(pre.validators))]
     whisk_k_commitments = [get_k_commitment(k) for k in ks]
     whisk_trackers = [get_initial_tracker(k) for k in ks]
 
-    epoch = bellatrix.get_current_epoch(pre)
+    epoch = get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -115,6 +101,11 @@ def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
+        # Withdrawals
+        next_withdrawal_index=pre.next_withdrawal_index,
+        next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
+        # Deep history valid from Capella onwards
+        historical_summaries=pre.historical_summaries,
         # Whisk
         whisk_proposer_trackers=[WhiskTracker() for _ in range(WHISK_PROPOSER_TRACKERS_COUNT)],  # [New in Whisk]
         whisk_candidate_trackers=[WhiskTracker() for _ in range(WHISK_CANDIDATE_TRACKERS_COUNT)],  # [New in Whisk]
@@ -124,12 +115,12 @@ def upgrade_to_whisk(pre: bellatrix.BeaconState) -> BeaconState:
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day
     # Use an old epoch when selecting candidates so that we don't get the same seed as in the next candidate selection
-    whisk_candidate_selection(post, epoch - WHISK_PROPOSER_SELECTION_GAP - 1)
-    whisk_proposer_selection(post, epoch)
+    select_whisk_candidate_trackers(post, Epoch(saturating_sub(epoch, WHISK_PROPOSER_SELECTION_GAP + 1)))
+    select_whisk_proposer_trackers(post, epoch)
 
     # Do a final round of candidate selection.
     # We need it so that we have something to shuffle over the upcoming shuffling phase.
-    whisk_candidate_selection(post, epoch)
+    select_whisk_candidate_trackers(post, epoch)
 
     return post
 ```
