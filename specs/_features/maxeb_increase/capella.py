@@ -689,7 +689,7 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
-    pending_balance_deposits: PendingBalanceDeposit
+    pending_balance_deposits: List[PendingBalanceDeposit]
 
 
 @dataclass(eq=True, frozen=True)
