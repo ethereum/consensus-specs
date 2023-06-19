@@ -1557,9 +1557,10 @@ def process_registry_updates(state: BeaconState) -> None:
             initiate_validator_exit(state, ValidatorIndex(index))
 
     # Activate all eligible validators
+    activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     for validator in state.validators:
         if is_eligible_for_activation(state, validator):
-            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+            validator.activation_epoch = activation_epoch
 
 
 def process_slashings(state: BeaconState) -> None:
