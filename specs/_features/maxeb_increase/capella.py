@@ -1035,7 +1035,8 @@ def get_validator_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the validator churn limit for the current epoch.
     """
-    return max(config.MIN_PER_EPOCH_CHURN_LIMIT * MIN_ACTIVATION_BALANCE, get_total_active_balance(state) // config.CHURN_LIMIT_QUOTIENT)
+    churn = max(config.MIN_PER_EPOCH_CHURN_LIMIT * MIN_ACTIVATION_BALANCE, get_total_active_balance(state) // config.CHURN_LIMIT_QUOTIENT)
+    return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 
 
 def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
@@ -1161,11 +1162,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         state.exit_queue_churn += exit_balance_to_consume
     else:  # Exit balance rolls over to subsequent epoch(s)
         exit_balance_to_consume -= (per_epoch_churn_limit - state.exit_queue_churn)
-        exit_queue_epoch += Epoch(1)
-        while exit_balance_to_consume >= per_epoch_churn_limit:
-            exit_balance_to_consume -= per_epoch_churn_limit
-            exit_queue_epoch += Epoch(1)
-        state.exit_queue_churn = exit_balance_to_consume
+        additional_epochs, state.exit_queue_churn = divmod(exit_balance_to_consume - (per_epoch_churn_limit - state.exit_queue_churn), per_epoch_churn_limit)
+        exit_queue_epoch += Epoch(additional_epochs + 1)
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
