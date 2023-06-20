@@ -1841,8 +1841,20 @@ def apply_deposit(state: BeaconState,
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(uint64(0))
     else:
-        # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        # Topups used to increase the balance ceiling
+        if withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX:
+            old_credential = state.validators[index].withdrawal_credentials
+            # Check that the address was not changed
+            assert withdrawal_credentials[12:] == old_credential[12:]
+            # Get new ceiling
+            new_ceiling = bytes_to_uint16(withdrawal_credentials[1:3])
+            assert new_ceiling * EFFECTIVE_BALANCE_INCREMENT < MAX_EFFECTIVE_BALANCE
+            # Check that ceiling is greater than existing ceiling
+            old_ceiling = bytes_to_uint16(old_credential[1:3])
+            assert new_ceiling > old_ceiling
+            # Write to validator
+            state.validators[index].withdrawal_credentials[:12] = withdrawal_credentials[:12]
     state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
 
 
