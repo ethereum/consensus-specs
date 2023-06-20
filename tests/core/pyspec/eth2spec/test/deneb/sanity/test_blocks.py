@@ -79,7 +79,7 @@ def test_include_attestation_from_previous_fork_with_new_range(spec, state):
     # Generate an attestation for slot 0 of this epoch
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    # Transition to second to last slot in `DENEB_FORK_EPOCH
+    # Transition to second to last slot in `DENEB_FORK_EPOCH`
     next_epoch_via_block(spec, state)
     current_epoch = spec.get_current_epoch(state)
     assert current_epoch == spec.config.DENEB_FORK_EPOCH

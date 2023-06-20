@@ -25,7 +25,7 @@ The specification of these changes continues in the same format as the network s
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}](#beacon_attestation_subnet_id)
+        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -178,7 +178,7 @@ The following validations are added in its place:
 
 ##### Attestation subnets
 
-###### `beacon_attestation_{subnet_id}
+###### `beacon_attestation_{subnet_id}`
 
 *[Modified in Deneb:EIP7045]*
 
