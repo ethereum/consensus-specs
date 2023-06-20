@@ -1835,7 +1835,7 @@ def apply_deposit(state: BeaconState,
         # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
             state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials))
-            state.balances.append(amount)
+            state.balances.append(0)
             # [New in Altair]
             state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
@@ -1843,7 +1843,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
+    state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
 
 
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
