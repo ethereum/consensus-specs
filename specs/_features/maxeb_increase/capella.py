@@ -3634,13 +3634,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     return has_ceiling_effective_balance and has_excess_balance
 
 
-def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> bool:
-    """
-    Check if ``validator`` is partially withdrawable.
-    """
-    return get_validator_excess_balance(validator, balance) > 0
-
-
 def process_historical_summaries_update(state: BeaconState) -> None:
     # Set historical block root accumulator.
     next_epoch = Epoch(get_current_epoch(state) + 1)
