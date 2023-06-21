@@ -408,6 +408,7 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(
     assert block_state.current_justified_checkpoint.epoch + 1 == spec.get_current_store_epoch(store)  
     conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
     assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
     
     yield 'steps', test_steps
     
@@ -448,6 +449,7 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(
     assert block_state.current_justified_checkpoint.epoch + 2 == spec.get_current_store_epoch(store)      
     conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
     assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
     
     yield 'steps', test_steps
     
@@ -491,6 +493,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(
 
     conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
     assert conf_rule_wrapper.get_confirmation_score(store, root) < 15
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
     
     yield 'steps', test_steps
     
