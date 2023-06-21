@@ -776,7 +776,6 @@ class EIP6110SpecBuilder(DenebSpecBuilder):
 from eth2spec.deneb import {preset_name} as deneb
 '''
 
-
 #
 # WhiskSpecBuilder
 #
@@ -801,7 +800,10 @@ from eth2spec.capella import {preset_name} as capella
 
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder, WhiskSpecBuilder)
+    for builder in (
+        Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder,
+        EIP6110SpecBuilder, WhiskSpecBuilder,
+    )
 }
 
 

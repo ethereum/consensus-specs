@@ -24,6 +24,8 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
@@ -32,6 +34,7 @@
       - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
+    - [Modified `process_attestation`](#modified-process_attestation)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
@@ -45,6 +48,7 @@
 Deneb is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
 * [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
+* [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
 
 ## Custom types
 
@@ -170,6 +174,41 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
+### Beacon state accessors
+
+#### Modified `get_attestation_participation_flag_indices`
+
+*Note:* The function `get_attestation_participation_flag_indices` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
+
+```python
+def get_attestation_participation_flag_indices(state: BeaconState,
+                                               data: AttestationData,
+                                               inclusion_delay: uint64) -> Sequence[int]:
+    """
+    Return the flag indices that are satisfied by an attestation.
+    """
+    if data.target.epoch == get_current_epoch(state):
+        justified_checkpoint = state.current_justified_checkpoint
+    else:
+        justified_checkpoint = state.previous_justified_checkpoint
+
+    # Matching roots
+    is_matching_source = data.source == justified_checkpoint
+    is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
+    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    assert is_matching_source
+
+    participation_flag_indices = []
+    if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
+        participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
+    if is_matching_target:  # [Modified in Deneb:EIP7045]
+        participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
+    if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
+
+    return participation_flag_indices
+```
+
 ## Beacon chain state transition function
 
 ### Execution engine
@@ -221,9 +260,51 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
 ### Block processing
 
+#### Modified `process_attestation`
+
+*Note*: The function `process_attestation` is modified to expand valid slots for inclusion to those in both `target.epoch` epoch and `target.epoch + 1` epoch for EIP-7045. Additionally, it utilizes an updated version of `get_attestation_participation_flag_indices` to ensure rewards are available for the extended attestation inclusion range for EIP-7045.
+
+```python
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot  # [Modified in Deneb:EIP7045]
+    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
+
+    committee = get_beacon_committee(state, data.slot, data.index)
+    assert len(attestation.aggregation_bits) == len(committee)
+
+    # Participation flag indices
+    participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
+
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
+    # Update epoch participation flags
+    if data.target.epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+                proposer_reward_numerator += get_base_reward(state, index) * weight
+
+    # Reward proposer
+    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+```
+
 #### Execution payload
 
 ##### Modified `process_execution_payload`
+
+*Note*: The function `process_execution_payload` is modified to pass `versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to assign the new fields in `ExecutionPayloadHeader` for EIP-4844.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -270,7 +351,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Modified `process_voluntary_exit`
 
-*Note*: The function `process_voluntary_exit` is modified to use the a fixed fork version -- `CAPELLA_FORK_VERSION` -- for EIP-7044
+*Note*: The function `process_voluntary_exit` is modified to use the a fixed fork version -- `CAPELLA_FORK_VERSION` -- for EIP-7044.
 
 ```python
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
