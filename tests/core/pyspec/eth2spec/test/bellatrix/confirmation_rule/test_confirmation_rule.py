@@ -121,91 +121,96 @@ def get_valid_attestation_for_block(
                                       lambda slot, index, comm: set(list(comm)[0:int(len(comm)*perc)]))
         )    
 
+class ConfirmationRuleWrapper:
+    def __init__(self, spec, confirmation_byzantine_threshold, confirmation_slashing_threshold):
+        self.spec = spec
+        self.confirmation_byzantine_threshold = confirmation_byzantine_threshold
+        self.confirmation_slashing_threshold = confirmation_slashing_threshold
+        
+    def check_is_confirmed(
+        self,
+        store,
+        block_root,
+        test_steps,
+        expected=None
+    ):
+        confirmed = self.spec.is_confirmed(store, self.confirmation_byzantine_threshold, self.confirmation_slashing_threshold, block_root)
+        if expected != None:
+            assert confirmed == expected
+        test_steps.append({
+            'check_is_confirmed': {
+                'result': confirmed,
+                'block_root': str(block_root)
+            }
+        }) 
+        
+    def is_lmd_confirmed(
+        self,
+        store,
+        block_root,
+    ):
+        return self.spec.is_lmd_confirmed(store, self.confirmation_byzantine_threshold, block_root)         
+    
+    def is_ffg_confirmed(
+        self,
+        store,
+        block_root,
+    ):
+        return self.spec.is_ffg_confirmed(store, self.confirmation_byzantine_threshold, self.confirmation_slashing_threshold, block_root)                   
+                                        
+    def check_get_confirmation_score(
+        self,
+        store,
+        block_root,
+        test_steps,
+        expected=None
+    ):
+        confirmation_score = int(self.spec.get_confirmation_score(store, self.confirmation_slashing_threshold, block_root))
+        if expected != None:
+            assert confirmation_score == expected
+        test_steps.append({
+            'check_get_confirmation_score': {
+                'result': confirmation_score,
+                'block_root': str(block_root)
+            }
+        })     
+        
+    def get_confirmation_score(
+        self,
+        store,
+        block_root
+    ):
+        return self.spec.get_confirmation_score(store, self.confirmation_slashing_threshold, block_root)
+    
+    def get_lmd_confirmation_score(
+        self,
+        store,
+        block_root
+    ):
+        return self.spec.get_lmd_confirmation_score(store, self.confirmation_slashing_threshold, block_root)     
+    
+    def get_ffg_confirmation_score(
+        self,
+        store,
+        block_root
+    ):
+        return self.spec.get_lmd_confirmation_score(store, self.confirmation_slashing_threshold, block_root)          
+        
+    
 def confirmation_rule_setup(confirmation_byzantine_threshold: int, confirmation_slashing_threshold: int):        
     def decorator(func):
-        def wrapped(*args, **kwargs):
-            def check_is_confirmed(
-                spec,
-                store,
-                block_root,
-                test_steps,
-                expected=None
-            ):
-                confirmed = spec.is_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)
-                if expected != None:
-                    assert confirmed == expected
-                test_steps.append({
-                    'check_is_confirmed': {
-                        'result': confirmed,
-                        'block_root': str(block_root)
-                    }
-                }) 
-                
-            def is_lmd_confirmed(
-                spec,
-                store,
-                block_root,
-            ):
-                return spec.is_lmd_confirmed(store, confirmation_byzantine_threshold, block_root)         
-            
-            def is_ffg_confirmed(
-                spec,
-                store,
-                block_root,
-            ):
-                return spec.is_ffg_confirmed(store, confirmation_byzantine_threshold, confirmation_slashing_threshold, block_root)                   
-                                              
-            def check_get_confirmation_score(
-                spec,
-                store,
-                block_root,
-                test_steps,
-                expected=None
-            ):
-                confirmation_score = int(spec.get_confirmation_score(store, confirmation_slashing_threshold, block_root))
-                if expected != None:
-                    assert confirmation_score == expected
-                test_steps.append({
-                    'check_get_confirmation_score': {
-                        'result': confirmation_score,
-                        'block_root': str(block_root)
-                    }
-                })     
-                
-            def get_confirmation_score(
-                spec,
-                store,
-                block_root
-            ):
-                return spec.get_confirmation_score(store, confirmation_slashing_threshold, block_root)
-            
-            def get_lmd_confirmation_score(
-                spec,
-                store,
-                block_root
-            ):
-                return spec.get_lmd_confirmation_score(store, confirmation_slashing_threshold, block_root)     
-            
-            def get_ffg_confirmation_score(
-                spec,
-                store,
-                block_root
-            ):
-                return spec.get_lmd_confirmation_score(store, confirmation_slashing_threshold, block_root)                                        
-                         
+        def wrapped(*args, **kwargs):                         
             yield 'setup', {
                     'confirmation_byzantine_threshold': confirmation_byzantine_threshold,
                     'confirmation_slashing_threshold': confirmation_slashing_threshold
                 }
             yield from func(
                     *args, 
-                    check_is_confirmed=check_is_confirmed, 
-                    check_get_confirmation_score=check_get_confirmation_score,
-                    is_lmd_confirmed=is_lmd_confirmed,
-                    is_ffg_confirmed=is_ffg_confirmed,
-                    get_confirmation_score=get_confirmation_score,
-                    get_lmd_confirmation_score=get_lmd_confirmation_score,
-                    get_ffg_confirmation_score=get_ffg_confirmation_score,
+                    conf_rule_wrapper=ConfirmationRuleWrapper(
+                        spec=kwargs['spec'],
+                        confirmation_slashing_threshold=confirmation_slashing_threshold,
+                        confirmation_byzantine_threshold=confirmation_byzantine_threshold
+                    ),
                     **kwargs
                 )
         return wrapped
@@ -217,13 +222,7 @@ def confirmation_rule_setup(confirmation_byzantine_threshold: int, confirmation_
 def test_confirm_current_epoch_no_byz(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -251,7 +250,7 @@ def test_confirm_current_epoch_no_byz(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
     
-    check_is_confirmed(spec, store, root, test_steps, True)
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, True)
     
     yield 'steps', test_steps
 
@@ -261,13 +260,7 @@ def test_confirm_current_epoch_no_byz(
 def test_confirm_previous_epoch_no_byz(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -293,7 +286,7 @@ def test_confirm_previous_epoch_no_byz(
     
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
     
-    check_is_confirmed(spec, store, root, test_steps, True)
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, True)
     
     yield 'steps', test_steps
 
@@ -303,13 +296,7 @@ def test_confirm_previous_epoch_no_byz(
 def test_no_confirm_current_epoch_due_to_justified_checkpoint(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -337,11 +324,11 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
     
-    assert is_lmd_confirmed(spec, store, root)
-    assert is_ffg_confirmed(spec, store, root)
+    assert conf_rule_wrapper.is_lmd_confirmed(store, root)
+    assert conf_rule_wrapper.is_ffg_confirmed(store, root)
     
-    check_is_confirmed(spec, store, root, test_steps, False)
-    check_get_confirmation_score(spec, store, root, test_steps, -1)
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, -1)
     
     yield 'steps', test_steps
     
@@ -351,13 +338,7 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(
 def test_no_confirm_previous_epoch_due_to_justified_checkpoint(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -382,10 +363,10 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(
     
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
     
-    assert is_lmd_confirmed(spec, store, root)
-    assert is_ffg_confirmed(spec, store, root)    
-    check_is_confirmed(spec, store, root, test_steps, False)
-    check_get_confirmation_score(spec, store, root, test_steps, -1)
+    assert conf_rule_wrapper.is_lmd_confirmed(store, root)
+    assert conf_rule_wrapper.is_ffg_confirmed(store, root)    
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, -1)
     
     yield 'steps', test_steps
     
@@ -395,13 +376,7 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(
 def test_no_confirm_current_epoch_but_ffg_confirmed(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -428,11 +403,11 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
     
-    assert is_ffg_confirmed(spec, store, root)  
+    assert conf_rule_wrapper.is_ffg_confirmed(store, root)  
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 1 == spec.get_current_store_epoch(store)  
-    check_is_confirmed(spec, store, root, test_steps, False)
-    assert get_confirmation_score(spec, store, root) < 30
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
+    assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
     
     yield 'steps', test_steps
     
@@ -442,13 +417,7 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(
 def test_no_confirm_previous_epoch_but_ffg_confirmed(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -474,11 +443,11 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(
     
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
     
-    assert is_ffg_confirmed(spec, store, root)  
+    assert conf_rule_wrapper.is_ffg_confirmed(store, root)  
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 2 == spec.get_current_store_epoch(store)      
-    check_is_confirmed(spec, store, root, test_steps, False)
-    assert get_confirmation_score(spec, store, root) < 30
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
+    assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
     
     yield 'steps', test_steps
     
@@ -489,13 +458,7 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(
 def test_no_confirm_current_epoch_but_lmd_confirmed(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -522,12 +485,12 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
     
-    assert is_lmd_confirmed(spec, store, root)  
+    assert conf_rule_wrapper.is_lmd_confirmed(store, root)  
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 1 == spec.get_current_store_epoch(store)  
 
-    check_is_confirmed(spec, store, root, test_steps, False)
-    assert get_confirmation_score(spec, store, root) < 15
+    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
+    assert conf_rule_wrapper.get_confirmation_score(store, root) < 15
     
     yield 'steps', test_steps
     
@@ -585,13 +548,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(
 def test_current_get_confirmation_score_no_slashing_threshold(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -618,7 +575,7 @@ def test_current_get_confirmation_score_no_slashing_threshold(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
      
-    check_get_confirmation_score(spec, store, root, test_steps, 23)
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, 23)
     
     yield 'steps', test_steps
     
@@ -629,13 +586,7 @@ def test_current_get_confirmation_score_no_slashing_threshold(
 def test_current_get_confirmation_score_slashing_threshold(
     spec, 
     state, 
-    check_is_confirmed, 
-    check_get_confirmation_score,
-    is_lmd_confirmed,
-    is_ffg_confirmed,
-    get_confirmation_score,
-    get_lmd_confirmation_score,
-    get_ffg_confirmation_score
+    conf_rule_wrapper
 ):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
         
@@ -662,7 +613,7 @@ def test_current_get_confirmation_score_slashing_threshold(
     
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
     
-    check_get_confirmation_score(spec, store, root, test_steps, 13)
+    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, 13)
     
     yield 'steps', test_steps
     
