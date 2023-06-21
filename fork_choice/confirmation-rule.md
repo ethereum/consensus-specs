@@ -301,7 +301,7 @@ def is_ffg_confirmed_previous_epoch(
     block = store.blocks[block_root]
     assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot) + 1
 
-    previous_epoch = get_current_store_epoch(store) - 1
+    previous_epoch = Epoch(get_current_store_epoch(store) - 1)
     checkpoint_root = get_checkpoint_block(store, block_root, previous_epoch)
 
     checkpoint = Checkpoint(root=checkpoint_root, epoch=previous_epoch)
@@ -462,10 +462,10 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
             )
 ```
 
-#### `get_ffg_confirmation_score`
+#### `get_ffg_confirmation_score_current_epoch`
 
 ```python
-def get_ffg_confirmation_score(
+def get_ffg_confirmation_score_current_epoch(
     store: Store, 
     confirmation_slashing_threshold: int,
     block_root: Root
@@ -487,8 +487,77 @@ def get_ffg_confirmation_score(
     total_active_balance = int(get_total_active_balance(checkpoint_state))
     remaining_ffg_weight = int(get_remaining_weight_in_epoch(checkpoint_state, current_slot))
 
-    ffg_voting_weight_so_far = total_active_balance - remaining_ffg_weight
-    assert ffg_voting_weight_so_far >= 0
+    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
+
+    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, confirmation_slashing_threshold)
+
+    """
+    Return the max possible ffg_confirmation_score such that:
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - \
+        min(min_ffg_support_slash_th, total_active_balance * ffg_confirmation_score / 100) + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+    """
+
+    """
+    Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
+
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
+        remaining_ffg_weight
+    """
+    if remaining_ffg_weight > 0:
+        ffg_confirmation_score = (
+            100 * (
+                3 * (ffg_support_for_checkpoint - min_ffg_support_slash_th + remaining_ffg_weight) 
+                - 2 * total_active_balance
+            ) // (3 * remaining_ffg_weight)
+        )
+        if min_ffg_support_slash_th * 100 <= total_active_balance * ffg_confirmation_score:
+            return ffg_confirmation_score
+    else:
+        if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
+            return 100 // 3
+
+    """
+    Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
+
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - \
+        total_active_balance * ffg_confirmation_score / 100 + \
+        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+    """
+    ffg_confirmation_score = (
+        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) //
+        (3 * (remaining_ffg_weight + total_active_balance))
+    )
+    assert ffg_support_for_checkpoint * 100 > total_active_balance * ffg_confirmation_score
+    return max(ffg_confirmation_score, -1)
+```
+
+#### `get_ffg_confirmation_score_previous_epoch`
+
+```python
+def get_ffg_confirmation_score_previous_epoch(
+    store: Store, 
+    confirmation_slashing_threshold: int,
+    block_root: Root
+) -> int:
+
+    block = store.blocks[block_root]
+    block_epoch = compute_epoch_at_slot(block.slot)
+    assert get_current_store_epoch(store) == block_epoch + 1
+
+    checkpoint_root = get_checkpoint_block(store, block_root, block_epoch)
+
+    checkpoint = Checkpoint(root=checkpoint_root, epoch=block_epoch)
+
+    if checkpoint not in store.checkpoint_states:
+        return -1
+
+    checkpoint_state = store.checkpoint_states[checkpoint]
+
+    total_active_balance = int(get_total_active_balance(checkpoint_state))
 
     ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
 
@@ -498,44 +567,28 @@ def get_ffg_confirmation_score(
     Return the max possible ffg_confirmation_score such that:
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
-        min(min_ffg_support_slash_th, ffg_voting_weight_so_far * ffg_confirmation_score / 100) + \
-        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+        min(min_ffg_support_slash_th, total_active_balance * ffg_confirmation_score / 100)
     """
 
     """
-    Case 1: min_ffg_support_slash_th <= ffg_voting_weight_so_far * ffg_confirmation_score / 100
-
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
-        remaining_ffg_weight
-    """
-    if ffg_voting_weight_so_far > 0:
-        if remaining_ffg_weight > 0:
-            ffg_confirmation_score = (
-                100 * (
-                    3 * (ffg_support_for_checkpoint - min_ffg_support_slash_th + remaining_ffg_weight) 
-                    - 2 * total_active_balance
-                ) // (3 * remaining_ffg_weight)
-            )
-            if min_ffg_support_slash_th * 100 <= ffg_voting_weight_so_far * ffg_confirmation_score:
-                return ffg_confirmation_score
-        else:
-            if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
-                return 100 // 3
-
-    """
-    Case 2: min_ffg_support_slash_th > ffg_voting_weight_so_far * ffg_confirmation_score / 100
+    Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
 
     2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - \
-        ffg_voting_weight_so_far * ffg_confirmation_score / 100 + \
-        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
+        ffg_support_for_checkpoint - min_ffg_support_slash_th
+    """
+    if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
+        return 100 // 3
+
+    """
+    Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
+
+    2 / 3 * total_active_balance <= \
+        ffg_support_for_checkpoint - total_active_balance * ffg_confirmation_score / 100
     """
     ffg_confirmation_score = (
-        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) //
+        (300 * ffg_support_for_checkpoint - 200 * total_active_balance) //
         (3 * total_active_balance)
     )
-    assert ffg_support_for_checkpoint * 100 > ffg_voting_weight_so_far * ffg_confirmation_score
     return max(ffg_confirmation_score, -1)
 ```
 
@@ -555,17 +608,29 @@ def get_confirmation_score(
     current_epoch = get_current_store_epoch(store)
 
     block = store.blocks[block_root]
+    block_epoch = compute_epoch_at_slot(block.slot)
 
-    # We can only confirm blocks created in the current epoch
-    assert compute_epoch_at_slot(block.slot) == current_epoch
+    # This function is only applicable to current and previous epoch blocks
+    assert current_epoch <= block_epoch + 1
+    assert block_epoch <= current_epoch
+
     block_state = store.block_states[block_root]
     block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
 
-    if block_justified_checkpoint_epoch + 1 != current_epoch:
-        return -1
+    if block_epoch == current_epoch:
+        if block_justified_checkpoint_epoch + 1 != current_epoch:
+            return -1
 
-    return min(
-        get_lmd_confirmation_score(store, block_root),
-        get_ffg_confirmation_score(store, confirmation_slashing_threshold, block_root)
-    )
+        return min(
+            get_lmd_confirmation_score(store, block_root),
+            get_ffg_confirmation_score_current_epoch(store, confirmation_slashing_threshold, block_root)
+        )
+    else:
+        if block_justified_checkpoint_epoch + 2 < current_epoch:
+            return -1
+
+        return min(
+            get_lmd_confirmation_score(store, block_root),
+            get_ffg_confirmation_score_previous_epoch(store, confirmation_slashing_threshold, block_root)
+        )        
 ```
