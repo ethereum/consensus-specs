@@ -18,6 +18,7 @@
     - [`get_ffg_support`](#get_ffg_support)
     - [`is_ffg_confirmed_current_epoch`](#is_ffg_confirmed_current_epoch)
     - [`is_ffg_confirmed_previous_epoch`](#is_ffg_confirmed_previous_epoch)
+    - [`is_ffg_confirmed`](#is_ffg_confirmed)
   - [`is_confirmed`](#is_confirmed)
 - [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
@@ -29,6 +30,7 @@
     - [`get_lmd_confirmation_score`](#get_lmd_confirmation_score)
     - [`get_ffg_confirmation_score_current_epoch`](#get_ffg_confirmation_score_current_epoch)
     - [`get_ffg_confirmation_score_previous_epoch`](#get_ffg_confirmation_score_previous_epoch)
+    - [`get_ffg_confirmation_score`](#get_ffg_confirmation_score)
   - [`get_confirmation_score`](#get_confirmation_score)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
