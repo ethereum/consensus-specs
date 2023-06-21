@@ -480,20 +480,13 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
 
 ```python
 def get_ffg_confirmation_score_current_epoch(
-    store: Store, 
-    confirmation_slashing_threshold: int,
-    block_root: Root
+    total_active_balance: int,
+    ffg_support_for_checkpoint: int,
+    min_ffg_support_slash_th: int,
+    remaining_ffg_weight: int
 ) -> int:
-    block = store.blocks[block_root]
-    assert get_current_store_epoch(store) == compute_epoch_at_slot(block.slot)
-
-    total_active_balance = int(get_total_active_balance_for_block_root(store, block_root))
-    remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
-
-    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
-
-    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, confirmation_slashing_threshold)
-
+    assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
+    
     """
     Return the max possible ffg_confirmation_score such that:
     2 / 3 * total_active_balance <= \
@@ -542,30 +535,11 @@ def get_ffg_confirmation_score_current_epoch(
 
 ```python
 def get_ffg_confirmation_score_previous_epoch(
-    store: Store, 
-    confirmation_slashing_threshold: int,
-    block_root: Root
+    total_active_balance: int,
+    ffg_support_for_checkpoint: int,
+    min_ffg_support_slash_th: int
 ) -> int:
-
-    block = store.blocks[block_root]
-    block_epoch = compute_epoch_at_slot(block.slot)
-    assert get_current_store_epoch(store) == block_epoch + 1
-
-    checkpoint_root = get_checkpoint_block(store, block_root, block_epoch)
-
-    checkpoint = Checkpoint(root=checkpoint_root, epoch=block_epoch)
-
-    if checkpoint not in store.checkpoint_states:
-        return -1
-
-    checkpoint_state = store.checkpoint_states[checkpoint]
-
-    total_active_balance = int(get_total_active_balance(checkpoint_state))
-
-    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
-
-    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, confirmation_slashing_threshold)
-
+    assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
     """
     Return the max possible ffg_confirmation_score such that:
     2 / 3 * total_active_balance <= \
@@ -579,7 +553,7 @@ def get_ffg_confirmation_score_previous_epoch(
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - min_ffg_support_slash_th
     """
-    if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
+    if 2 * int(total_active_balance) <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
         return 100 // 3
 
     """
@@ -589,10 +563,50 @@ def get_ffg_confirmation_score_previous_epoch(
         ffg_support_for_checkpoint - total_active_balance * ffg_confirmation_score / 100
     """
     ffg_confirmation_score = (
-        (300 * ffg_support_for_checkpoint - 200 * total_active_balance) //
-        (3 * total_active_balance)
+        (300 * (ffg_support_for_checkpoint) - 200 * int(total_active_balance)) //
+        (3 * (total_active_balance))
     )
     return max(ffg_confirmation_score, -1)
+```
+
+#### `get_ffg_confirmation_score`
+
+```python
+def get_ffg_confirmation_score(
+    store: Store, 
+    confirmation_slashing_threshold: int,
+    block_root: Root
+) -> int:
+
+    current_epoch = get_current_store_epoch(store)
+
+    block = store.blocks[block_root]
+    block_epoch = compute_epoch_at_slot(block.slot)
+
+    # This function is only applicable to current and previous epoch blocks
+    assert current_epoch <= block_epoch + 1
+    assert block_epoch <= current_epoch
+
+    total_active_balance = int(get_total_active_balance_for_block_root(store, block_root))
+
+    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
+
+    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, confirmation_slashing_threshold)
+
+    if block_epoch == current_epoch:
+        remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
+        return get_ffg_confirmation_score_current_epoch(
+            total_active_balance,
+            ffg_support_for_checkpoint,
+            min_ffg_support_slash_th,
+            remaining_ffg_weight
+        )
+    else:
+        return get_ffg_confirmation_score_previous_epoch(
+            total_active_balance,
+            ffg_support_for_checkpoint,
+            min_ffg_support_slash_th
+        )
 ```
 
 ### `get_confirmation_score`
@@ -620,20 +634,14 @@ def get_confirmation_score(
     block_state = store.block_states[block_root]
     block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
 
-    if block_epoch == current_epoch:
-        if block_justified_checkpoint_epoch + 1 != current_epoch:
-            return -1
+    if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
+        return -1
 
-        return min(
-            get_lmd_confirmation_score(store, block_root),
-            get_ffg_confirmation_score_current_epoch(store, confirmation_slashing_threshold, block_root)
-        )
-    else:
-        if block_justified_checkpoint_epoch + 2 < current_epoch:
-            return -1
+    if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
+        return -1
 
-        return min(
-            get_lmd_confirmation_score(store, block_root),
-            get_ffg_confirmation_score_previous_epoch(store, confirmation_slashing_threshold, block_root)
-        )        
+    return min(
+        get_lmd_confirmation_score(store, block_root),
+        get_ffg_confirmation_score(store, confirmation_slashing_threshold, block_root)
+    )            
 ```
