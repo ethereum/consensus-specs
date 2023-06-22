@@ -21,6 +21,7 @@ from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 
+
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
     if proposer_index is None:
         assert state.slot <= slot
@@ -123,13 +124,13 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         # Create valid whisk opening proof
         # TODO: Use k_initial or k_final to handle first and subsequent proposals
         k_initial = whisk_ks_initial[proposer_index]
-  
+
         # Sanity check proposer is correct
         proposer_k_commitment = state.validators[proposer_index].whisk_k_commitment
         k_commitment = py_ecc_G1_to_bytes48(multiply(G1, int(k_initial)))
         if proposer_k_commitment != k_commitment:
-            raise Exception("k proposer_index does not match proposer_k_commitment", proposer_k_commitment, k_commitment)
-        
+            raise Exception("k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment)
+
         proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
@@ -142,7 +143,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
                 proposer_k_commitment,
                 empty_block.body.whisk_opening_proof
             )
-        
+
         # Whisk shuffle proof
         #######
 
@@ -168,7 +169,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
                 empty_block.body.whisk_shuffle_proof_M_commitment,
                 empty_block.body.whisk_shuffle_proof,
             )
-        
+
         # Whisk registration proof
         #######
 
@@ -177,7 +178,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         if is_first_proposal:
             # Register new tracker
             k_final = whisk_ks_final[proposer_index]
-            # TODO: Actual logic should pick a random r, but we may want to do something fancy to locate trackers quickly
+            # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
             r = 2
             tracker, k_commitment = get_whisk_tracker_and_commitment(k_final, r)
             empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(tracker, k_final)
@@ -209,15 +210,15 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 def find_whisk_proposer(spec, state):
     raise Exception("proposer not known without heavy math")
-    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
-    # First attempt direct equality with trackers
-    for i, validator in enumerate(state.validators):
-        # # This is insanely slow
-        # if validator.whisk_tracker == proposer_tracker:
-        if True:
-            return i
-    # In Whisk where to get proposer from?
-    raise Exception("proposer_tracker not matched")
+    # proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+    # # First attempt direct equality with trackers
+    # for i, validator in enumerate(state.validators):
+    #     # # This is insanely slow
+    #     # if validator.whisk_tracker == proposer_tracker:
+    #     if True:
+    #         return i
+    # # In Whisk where to get proposer from?
+    # raise Exception("proposer_tracker not matched")
 
 
 def build_empty_block_for_next_slot(spec, state, proposer_index=None):

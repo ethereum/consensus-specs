@@ -12,5 +12,6 @@ whisk_ks_final = [MAX_KEYS + i for i in range(MAX_KEYS)]
 
 known_whisk_trackers = {}
 
+
 def register_known_whisk_tracker(k_r_G: bytes, index: int):
     known_whisk_trackers[k_r_G] = index

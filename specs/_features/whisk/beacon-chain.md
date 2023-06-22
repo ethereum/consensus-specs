@@ -86,12 +86,12 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element % BLS_MODULUS)
 ```
 
-| Name               | Value                                                                           |
-| ------------------ | ------------------------------------------------------------------------------- |
-| `BLS_G1_GENERATOR` | `Bytes48('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')` |
-| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
-| `CURDLEPROOFS_CRS_G1` | `Vector[G1Point, WHISK_VALIDATORS_PER_SHUFFLE + CURDLEPROOFS_N_BLINDERS + 3]`, contents TBD
-| `CURDLEPROOFS_CRS` | `curdleproofs.CurdleproofsCrs.from_points_compressed(WHISK_VALIDATORS_PER_SHUFFLE, CURDLEPROOFS_N_BLINDERS, CURDLEPROOFS_CRS_G1)` | 
+| Name                  | Value                                                                           |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `BLS_G1_GENERATOR`    | `Bytes48` |
+| `BLS_MODULUS`         | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
+| `CURDLEPROOFS_CRS_G1` | `Vector[BLSG1Point, WHISK_VALIDATORS_PER_SHUFFLE + CURDLEPROOFS_N_BLINDERS + 3]`, contents TBD
+| `CURDLEPROOFS_CRS`    | TBD | 
 
 ### Curdleproofs and opening proofs
 
@@ -106,16 +106,13 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
-    try:
-        return curdleproofs.IsValidWhiskShuffleProof(
-            CURDLEPROOFS_CRS,
-            pre_shuffle_trackers,
-            post_shuffle_trackers,
-            M,
-            shuffle_proof,
-        )
-    except:
-        return False
+    return curdleproofs.IsValidWhiskShuffleProof(
+        CURDLEPROOFS_CRS,
+        pre_shuffle_trackers,
+        post_shuffle_trackers,
+        M,
+        shuffle_proof,
+    )
 ```
 
 ```python
@@ -126,11 +123,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
     """
-    try:
-        return curdleproofs.IsValidWhiskOpeningProof(tracker, k_commitment, tracker_proof)
-    except:
-        return False
-    
+    return curdleproofs.IsValidWhiskOpeningProof(tracker, k_commitment, tracker_proof)
 ```
 
 ## Epoch processing

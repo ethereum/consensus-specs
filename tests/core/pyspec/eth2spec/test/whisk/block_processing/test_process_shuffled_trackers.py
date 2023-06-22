@@ -3,6 +3,7 @@ from eth2spec.test.helpers.keys import whisk_ks_initial
 from eth2spec.test.helpers.whisk import get_whisk_tracker
 from curdleproofs import GenerateWhiskShuffleProof
 
+
 def set_correct_shuffle_proofs(spec, state, body):
     pre_shuffle_trackers = get_and_populate_pre_shuffle_trackers(spec, state, body)
 
@@ -10,6 +11,7 @@ def set_correct_shuffle_proofs(spec, state, body):
     body.whisk_post_shuffle_trackers = post_trackers
     body.whisk_shuffle_proof = shuffle_proof
     body.whisk_shuffle_proof_M_commitment = m
+
 
 def get_and_populate_pre_shuffle_trackers(spec, state, body):
     shuffle_indices = spec.get_shuffle_indices(body.randao_reveal)
@@ -21,17 +23,22 @@ def get_and_populate_pre_shuffle_trackers(spec, state, body):
         pre_shuffle_trackers.append(tracker)
     return pre_shuffle_trackers
 
+
 def get_pre_shuffle_trackers(spec, state, body):
     return [state.whisk_candidate_trackers[i] for i in spec.get_shuffle_indices(body.randao_reveal)]
+
 
 def set_state_epoch(spec, state, epoch):
     state.slot = epoch * spec.SLOTS_PER_EPOCH
 
+
 def set_state_epoch_selection_gap(spec, state):
     set_state_epoch(spec, state, spec.WHISK_EPOCHS_PER_SHUFFLING_PHASE - 1)
 
+
 def empty_block_body(spec):
     return spec.BeaconBlockBody()
+
 
 def run_process_shuffled_trackers(spec, state, body, valid=True):
     yield 'pre', state
@@ -54,6 +61,7 @@ def test_shuffle_trackers(spec, state):
     set_correct_shuffle_proofs(spec, state, body)
     yield from run_process_shuffled_trackers(spec, state, body)
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_no_shuffle_minus_selection_gap(spec, state):
@@ -61,12 +69,14 @@ def test_no_shuffle_minus_selection_gap(spec, state):
     set_state_epoch_selection_gap(spec, state)
     yield from run_process_shuffled_trackers(spec, state, body)
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_no_shuffle_minus_one_and_selection_gap(spec, state):
     body = empty_block_body(spec)
     set_state_epoch(spec, state, spec.WHISK_EPOCHS_PER_SHUFFLING_PHASE - spec.WHISK_PROPOSER_SELECTION_GAP - 1)
     yield from run_process_shuffled_trackers(spec, state, body)
+
 
 @with_whisk_and_later
 @spec_state_test
@@ -81,6 +91,7 @@ def test_shuffle_during_selection_gap(spec, state):
 # - wrong proof
 # - wrong post shuffle
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_invalid_shuffle_bad_m(spec, state):
@@ -89,6 +100,7 @@ def test_invalid_shuffle_bad_m(spec, state):
     body.whisk_shuffle_proof_M_commitment = spec.BLSG1Point()
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_invalid_shuffle_bad_proof(spec, state):
@@ -96,6 +108,7 @@ def test_invalid_shuffle_bad_proof(spec, state):
     set_correct_shuffle_proofs(spec, state, body)
     body.whisk_shuffle_proof = spec.WhiskShuffleProof()
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
+
 
 @with_whisk_and_later
 @spec_state_test
@@ -122,13 +135,17 @@ def test_invalid_shuffle_bad_trackers_zero(spec, state):
 # - not empty m
 # - not empty proof
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_invalid_gap_non_zero_m(spec, state):
     body = empty_block_body(spec)
-    body.whisk_shuffle_proof_M_commitment = spec.BLSG1Point('0xc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000')
+    body.whisk_shuffle_proof_M_commitment = spec.BLSG1Point(
+        '0xc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+    )
     set_state_epoch_selection_gap(spec, state)
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
+
 
 @with_whisk_and_later
 @spec_state_test
@@ -138,6 +155,7 @@ def test_invalid_gap_non_zero_proof(spec, state):
     set_state_epoch_selection_gap(spec, state)
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_invalid_gap_non_zero_trackers(spec, state):
@@ -145,4 +163,3 @@ def test_invalid_gap_non_zero_trackers(spec, state):
     body.whisk_post_shuffle_trackers = get_and_populate_pre_shuffle_trackers(spec, state, body)
     set_state_epoch_selection_gap(spec, state)
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
-

@@ -1,17 +1,8 @@
-from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot, build_empty_block
-)
-from eth2spec.test.context import (
-    spec_state_test,
-    with_whisk_and_later,
-    WHISK,
-)
-from eth2spec.test.helpers.keys import privkeys, pubkeys, whisk_ks_initial
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block
-)
-from curdleproofs import IsValidWhiskShuffleProof
-from eth2spec.test.helpers.whisk import is_first_proposal, get_whisk_tracker_and_commitment, set_as_first_proposal
+from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.context import spec_state_test, with_whisk_and_later
+from eth2spec.test.helpers.keys import whisk_ks_initial
+from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment
 from curdleproofs import WhiskTracker
 
 known_whisk_trackers = {}
@@ -33,10 +24,12 @@ def initialize_whisk_full(spec, state):
     spec.select_whisk_candidate_trackers(state, spec.Epoch(0))
     spec.select_whisk_proposer_trackers(state, spec.Epoch(0))
 
+
 # Fill candidate trackers with the same tracker so shuffling does not break
 def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
     for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
         state.whisk_candidate_trackers[i] = tracker
+
 
 @with_whisk_and_later
 @spec_state_test

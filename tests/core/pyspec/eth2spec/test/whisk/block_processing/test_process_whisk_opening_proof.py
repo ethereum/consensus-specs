@@ -5,8 +5,10 @@ from eth2spec.test.helpers.whisk import (
     set_opening_proof
 )
 
+
 def empty_block(spec):
     return spec.BeaconBlock()
+
 
 def run_process_whisk_opening_proof(spec, state, block, valid=True):
     yield 'pre', state
@@ -21,11 +23,13 @@ def run_process_whisk_opening_proof(spec, state, block, valid=True):
 
     yield 'post', state
 
+
 PROPOSER_INDEX = 0
 K_OK = 2
 K_WRONG = 3
 R_OK = 2
 R_WRONG = 3
+
 
 @with_whisk_and_later
 @spec_state_test
@@ -33,6 +37,7 @@ def test_valid_proof(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
     run_process_whisk_opening_proof(spec, state, block)
+
 
 @with_whisk_and_later
 @spec_state_test
@@ -42,6 +47,7 @@ def test_wrong_commitment(spec, state):
     state.validators[PROPOSER_INDEX].whisk_k_commitment = get_whisk_k_commitment(K_WRONG)
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
+
 @with_whisk_and_later
 @spec_state_test
 def test_wrong_tracker_r(spec, state):
@@ -49,6 +55,7 @@ def test_wrong_tracker_r(spec, state):
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
     state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT] = get_whisk_tracker(K_OK, R_WRONG)
     run_process_whisk_opening_proof(spec, state, block, valid=False)
+
 
 @with_whisk_and_later
 @spec_state_test

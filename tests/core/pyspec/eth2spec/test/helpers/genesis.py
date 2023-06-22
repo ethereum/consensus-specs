@@ -5,9 +5,9 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_whisk,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110,
 )
-from eth2spec.test.helpers.keys import pubkeys, whisk_ks_initial
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def build_mock_validator(spec, i: int, balance: int):
