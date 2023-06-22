@@ -256,6 +256,8 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
 
 ##### Modified `notify_new_payload`
 
+*Note*: The function `notify_new_payload` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
