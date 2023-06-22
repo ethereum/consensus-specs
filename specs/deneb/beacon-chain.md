@@ -31,7 +31,9 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [`is_valid_block_hash`](#is_valid_block_hash)
       - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
@@ -46,6 +48,7 @@
 ## Introduction
 
 Deneb is a consensus-layer upgrade containing a number of features. Including:
+* [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
 * [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
 * [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
 * [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
@@ -85,7 +88,6 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 ## Configuration
-
 
 ## Containers
 
@@ -222,9 +224,24 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
+    parent_beacon_block_root: Root
 ```
 
 #### Engine APIs
+
+##### `is_valid_block_hash`
+
+*Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+
+```python
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
 
 ##### `is_valid_versioned_hashes`
 
@@ -237,6 +254,20 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
     ...
 ```
 
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       parent_beacon_block_root: Root) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
+    """
+    ...
+```
+
 ##### Modified `verify_and_notify_new_payload`
 
 ```python
@@ -245,14 +276,19 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
-    if not self.is_valid_block_hash(new_payload_request.execution_payload):
+    execution_payload = new_payload_request.execution_payload
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+
+    # [Modified in Deneb:EIP4788]
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
 
     # [New in Deneb:EIP4844]
     if not self.is_valid_versioned_hashes(new_payload_request):
         return False
 
-    if not self.notify_new_payload(new_payload_request.execution_payload):
+    # [Modified in Deneb:EIP4788]
+    if not self.notify_new_payload(execution_payload, parent_beacon_block_root):
         return False
 
     return True
@@ -304,7 +340,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to pass `versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to assign the new fields in `ExecutionPayloadHeader` for EIP-4844.
+*Note*: The function `process_execution_payload` is modified to pass `versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to assign the new fields in `ExecutionPayloadHeader` for EIP-4844. It is also modified to pass in the parent beacon block root to support EIP-4788.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -322,9 +358,14 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
+    # [Modified in Deneb:EIP4788] Pass `parent_beacon_block_root` to Execution Engine
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
     )
 
     # Cache execution payload header

@@ -726,7 +726,9 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
         return "\n\n" + """
 class NoopExecutionEngine(ExecutionEngine):
 
-    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def notify_new_payload(self: ExecutionEngine,
+                           execution_payload: ExecutionPayload,
+                           parent_beacon_block_root: Root) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -740,7 +742,9 @@ class NoopExecutionEngine(ExecutionEngine):
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
-    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def is_valid_block_hash(self: ExecutionEngine,
+                            execution_payload: ExecutionPayload,
+                            parent_beacon_block_root: Root) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:

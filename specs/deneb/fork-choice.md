@@ -8,7 +8,8 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
 - [Helpers](#helpers)
-    - [`is_data_available`](#is_data_available)
+  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -23,7 +24,21 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-#### `is_data_available`
+### Extended `PayloadAttributes`
+
+`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+```
+
+### `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
