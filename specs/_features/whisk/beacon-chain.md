@@ -355,8 +355,8 @@ def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool
 
 ```python
 def process_whisk_registration(state: BeaconState, body: BeaconBlockBody) -> None:
-    proposer = state.validators[get_beacon_proposer_index(state)]
-    if proposer.whisk_tracker.r_G == BLS_G1_GENERATOR:  # first Whisk proposal
+    proposer_index = get_beacon_proposer_index(state)
+    if state.whisk_trackers[proposer_index].r_G == BLS_G1_GENERATOR:  # first Whisk proposal
         assert body.whisk_tracker.r_G != BLS_G1_GENERATOR
         assert is_k_commitment_unique(state, body.whisk_k_commitment)
         assert IsValidWhiskOpeningProof(
@@ -364,8 +364,8 @@ def process_whisk_registration(state: BeaconState, body: BeaconBlockBody) -> Non
             body.whisk_k_commitment,
             body.whisk_registration_proof,
         )
-        proposer.whisk_tracker = body.whisk_tracker
-        proposer.whisk_k_commitment = body.whisk_k_commitment
+        state.whisk_trackers[proposer_index] = body.whisk_tracker
+        state.whisk_k_commitments[proposer_index] = body.whisk_k_commitment
     else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
