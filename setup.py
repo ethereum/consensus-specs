@@ -801,8 +801,9 @@ def objects_to_spec(preset_name: str,
         )
     )
 
-    # Collect previous fork's builders starting with fork, e.g. [bellatrix, altair, phase0]
-    builders = [spec_builders[fork] for fork in collect_prev_forks(fork)]
+    # Collect builders with the reversed previous forks
+    # e.g. `[bellatrix, altair, phase0]` -> `[phase0, altair, bellatrix]`
+    builders = [spec_builders[fork] for fork in collect_prev_forks(fork)[::-1]]
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
         abstract_functions = ["verify_and_notify_new_payload"]
@@ -871,7 +872,7 @@ def objects_to_spec(preset_name: str,
     preparations =         reduce(lambda txt, builder: (txt + "\n\n" + builder.preparations()        ).strip("\n"), builders, "")
     sundry_functions =     reduce(lambda txt, builder: (txt + "\n\n" + builder.sundry_functions()    ).strip("\n"), builders, "")
     # Keep engine from the most recent fork
-    execution_engine_cls = reduce(lambda txt, builder: txt or builder.execution_engine_cls(), builders, "")
+    execution_engine_cls = reduce(lambda txt, builder: builder.execution_engine_cls() or txt, builders, "")
 
     constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
