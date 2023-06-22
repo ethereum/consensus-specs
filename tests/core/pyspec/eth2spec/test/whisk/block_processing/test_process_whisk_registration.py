@@ -57,7 +57,7 @@ def test_first_proposal_indentity_tracker(spec, state):
 def test_first_proposal_non_unique_k_other(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
-    state.validators[OTHER_INDEX].whisk_k_commitment = get_whisk_k_commitment(OTHER_K)
+    state.whisk_k_commitments[OTHER_INDEX] = get_whisk_k_commitment(OTHER_K)
     set_registration(body, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 
@@ -67,7 +67,7 @@ def test_first_proposal_non_unique_k_other(spec, state):
 def test_first_proposal_non_unique_k_self(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
-    state.validators[PROPOSER_INDEX].whisk_k_commitment = get_whisk_k_commitment(OTHER_K)
+    state.whisk_k_commitments[PROPOSER_INDEX] = get_whisk_k_commitment(OTHER_K)
     set_registration(body, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 

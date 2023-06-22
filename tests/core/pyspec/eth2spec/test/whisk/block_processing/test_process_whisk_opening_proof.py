@@ -44,7 +44,7 @@ def test_valid_proof(spec, state):
 def test_wrong_commitment(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
-    state.validators[PROPOSER_INDEX].whisk_k_commitment = get_whisk_k_commitment(K_WRONG)
+    state.whisk_k_commitments[PROPOSER_INDEX] = get_whisk_k_commitment(K_WRONG)
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 

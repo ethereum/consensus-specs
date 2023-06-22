@@ -17,7 +17,7 @@ from py_ecc.bls.g2_primitives import (
     G1_to_pubkey as py_ecc_G1_to_bytes48,
     pubkey_to_G1 as py_ecc_bytes48_to_G1,
 )
-from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment
+from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment, is_first_proposal
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 
@@ -126,7 +126,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         k_initial = whisk_ks_initial[proposer_index]
 
         # Sanity check proposer is correct
-        proposer_k_commitment = state.validators[proposer_index].whisk_k_commitment
+        proposer_k_commitment = state.whisk_k_commitments[proposer_index]
         k_commitment = py_ecc_G1_to_bytes48(multiply(G1, int(k_initial)))
         if proposer_k_commitment != k_commitment:
             raise Exception("k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment)
@@ -174,8 +174,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         #######
 
         # Branching logic depending if first proposal or not
-        is_first_proposal = state.validators[proposer_index].whisk_tracker.r_G == spec.BLS_G1_GENERATOR
-        if is_first_proposal:
+        if is_first_proposal(spec, state, proposer_index):
             # Register new tracker
             k_final = whisk_ks_final[proposer_index]
             # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly

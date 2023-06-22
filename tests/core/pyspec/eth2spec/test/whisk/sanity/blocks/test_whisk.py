@@ -14,10 +14,10 @@ def assign_proposer_at_slot(state, slot: int):
 
 def initialize_whisk_full(spec, state):
     # TODO: De-duplicate code from whisk/fork.md
-    for index, validator in enumerate(state.validators):
+    for index in range(len(state.validators)):
         whisk_k_commitment, whisk_tracker = spec.get_initial_commitments(whisk_ks_initial[index])
-        validator.whisk_k_commitment = whisk_k_commitment
-        validator.whisk_tracker = whisk_tracker
+        state.whisk_k_commitments[index] = whisk_k_commitment
+        state.whisk_trackers[index] = whisk_tracker
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day
     # Use an old epoch when selecting candidates so that we don't get the same seed as in the next candidate selection
@@ -37,7 +37,7 @@ def test_whisk__process_block_single_initial(spec, state):
     assert state.slot == 0
     proposer_slot_1 = 0
     tracker_slot_1, k_commitment = get_whisk_tracker_and_commitment(whisk_ks_initial[proposer_slot_1], 1)
-    state.validators[proposer_slot_1].whisk_k_commitment = k_commitment
+    state.whisk_k_commitments[proposer_slot_1] = k_commitment
     state.whisk_proposer_trackers[1] = tracker_slot_1
     fill_candidate_trackers(spec, state, tracker_slot_1)
 

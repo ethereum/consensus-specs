@@ -5,7 +5,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_whisk
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -140,5 +140,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_eip6110(spec):
         state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+
+    if is_post_whisk(spec):
+        zero_commitment = spec.BLSPubkey()
+        zero_tracker = spec.WhiskTracker()
+        for _ in range(len(state.validators)):
+            state.whisk_k_commitments.append(zero_commitment)
+            state.whisk_trackers.append(zero_tracker)
 
     return state
