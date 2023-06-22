@@ -1,6 +1,6 @@
 from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
 from eth2spec.test.helpers.keys import whisk_ks_initial
-from eth2spec.test.helpers.whisk import get_whisk_tracker
+from eth2spec.test.helpers.whisk import compute_whisk_tracker
 from curdleproofs import GenerateWhiskShuffleProof
 
 
@@ -18,7 +18,7 @@ def get_and_populate_pre_shuffle_trackers(spec, state, body):
     pre_shuffle_trackers = []
     for i in shuffle_indices:
         # Set r to some value > 1 ( = 2+i)
-        tracker = get_whisk_tracker(whisk_ks_initial[i], 2 + i)
+        tracker = compute_whisk_tracker(whisk_ks_initial[i], 2 + i)
         state.whisk_candidate_trackers[i] = tracker
         pre_shuffle_trackers.append(tracker)
     return pre_shuffle_trackers

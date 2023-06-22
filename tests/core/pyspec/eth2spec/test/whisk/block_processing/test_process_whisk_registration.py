@@ -1,5 +1,5 @@
 from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
-from eth2spec.test.helpers.whisk import set_as_first_proposal, get_whisk_k_commitment, set_registration
+from eth2spec.test.helpers.whisk import set_as_first_proposal, compute_whisk_k_commitment, set_registration
 
 
 def empty_block_body(spec):
@@ -57,7 +57,7 @@ def test_first_proposal_indentity_tracker(spec, state):
 def test_first_proposal_non_unique_k_other(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
-    state.whisk_k_commitments[OTHER_INDEX] = get_whisk_k_commitment(OTHER_K)
+    state.whisk_k_commitments[OTHER_INDEX] = compute_whisk_k_commitment(OTHER_K)
     set_registration(body, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 
@@ -67,7 +67,7 @@ def test_first_proposal_non_unique_k_other(spec, state):
 def test_first_proposal_non_unique_k_self(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
-    state.whisk_k_commitments[PROPOSER_INDEX] = get_whisk_k_commitment(OTHER_K)
+    state.whisk_k_commitments[PROPOSER_INDEX] = compute_whisk_k_commitment(OTHER_K)
     set_registration(body, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 

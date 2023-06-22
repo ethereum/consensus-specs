@@ -17,7 +17,11 @@ from py_ecc.bls.g2_primitives import (
     G1_to_pubkey as py_ecc_G1_to_bytes48,
     pubkey_to_G1 as py_ecc_bytes48_to_G1,
 )
-from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment, is_first_proposal
+from eth2spec.test.helpers.whisk import (
+    compute_whisk_tracker_and_commitment,
+    is_first_proposal,
+    resolve_known_tracker
+)
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 
@@ -179,7 +183,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
             k_final = whisk_ks_final[proposer_index]
             # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
             r = 2
-            tracker, k_commitment = get_whisk_tracker_and_commitment(k_final, r)
+            tracker, k_commitment = compute_whisk_tracker_and_commitment(k_final, r)
             empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(tracker, k_final)
             empty_block.body.whisk_tracker = tracker
             empty_block.body.whisk_k_commitment = k_commitment
@@ -208,8 +212,18 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 
 def find_whisk_proposer(spec, state):
-    raise Exception("proposer not known without heavy math")
-    # proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+
+    # Check record of known trackers
+    # During the first shuffling phase (epoch < WHISK_EPOCHS_PER_SHUFFLING_PHASE)
+    # proposer trackers are those inserted on the genesis state, and have not gone
+    # through any shuffling. We cache those initial trackers and use `resolve_known_tracker`
+    # to check if the tracker is known, and skip the need to actually find the matching tracker
+    proposer_index = resolve_known_tracker(proposer_tracker)
+    if proposer_index is not None:
+        return proposer_index
+
+    print("proposer_tracker", proposer_tracker)
     # # First attempt direct equality with trackers
     # for i, validator in enumerate(state.validators):
     #     # # This is insanely slow
@@ -218,6 +232,7 @@ def find_whisk_proposer(spec, state):
     #         return i
     # # In Whisk where to get proposer from?
     # raise Exception("proposer_tracker not matched")
+    raise Exception("proposer not known without heavy math")
 
 
 def build_empty_block_for_next_slot(spec, state, proposer_index=None):

@@ -1,7 +1,7 @@
 from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
 from eth2spec.test.helpers.whisk import (
-    get_whisk_k_commitment,
-    get_whisk_tracker,
+    compute_whisk_k_commitment,
+    compute_whisk_tracker,
     set_opening_proof
 )
 
@@ -44,7 +44,7 @@ def test_valid_proof(spec, state):
 def test_wrong_commitment(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
-    state.whisk_k_commitments[PROPOSER_INDEX] = get_whisk_k_commitment(K_WRONG)
+    state.whisk_k_commitments[PROPOSER_INDEX] = compute_whisk_k_commitment(K_WRONG)
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 
@@ -53,7 +53,8 @@ def test_wrong_commitment(spec, state):
 def test_wrong_tracker_r(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
-    state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT] = get_whisk_tracker(K_OK, R_WRONG)
+    wrong_tracker = compute_whisk_tracker(K_OK, R_WRONG)
+    state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT] = wrong_tracker
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 

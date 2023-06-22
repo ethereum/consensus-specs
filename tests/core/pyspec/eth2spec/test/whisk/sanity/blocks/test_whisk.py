@@ -2,7 +2,7 @@ from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.context import spec_state_test, with_whisk_and_later
 from eth2spec.test.helpers.keys import whisk_ks_initial
 from eth2spec.test.helpers.state import state_transition_and_sign_block
-from eth2spec.test.helpers.whisk import get_whisk_tracker_and_commitment
+from eth2spec.test.helpers.whisk import compute_whisk_tracker_and_commitment
 from curdleproofs import WhiskTracker
 
 known_whisk_trackers = {}
@@ -36,7 +36,7 @@ def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
 def test_whisk__process_block_single_initial(spec, state):
     assert state.slot == 0
     proposer_slot_1 = 0
-    tracker_slot_1, k_commitment = get_whisk_tracker_and_commitment(whisk_ks_initial[proposer_slot_1], 1)
+    tracker_slot_1, k_commitment = compute_whisk_tracker_and_commitment(whisk_ks_initial[proposer_slot_1], 1)
     state.whisk_k_commitments[proposer_slot_1] = k_commitment
     state.whisk_proposer_trackers[1] = tracker_slot_1
     fill_candidate_trackers(spec, state, tracker_slot_1)
