@@ -26,7 +26,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ### Extended `PayloadAttributes`
 
-`PayloadAttributes` is extended with the parent beacon block root.
+`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
 
 ```python
 @dataclass

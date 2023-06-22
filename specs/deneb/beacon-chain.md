@@ -231,6 +231,8 @@ class NewPayloadRequest(object):
 
 ##### `is_valid_block_hash`
 
+*Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
                         execution_payload: ExecutionPayload,
@@ -275,7 +277,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
 
-    # [New in Deneb:EIP4788]
+    # [Modified in Deneb:EIP4788]
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
 
@@ -283,7 +285,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.is_valid_versioned_hashes(new_payload_request):
         return False
 
-    # [New in Deneb:EIP4788]
+    # [Modified in Deneb:EIP4788]
     if not self.notify_new_payload(execution_payload, parent_beacon_block_root):
         return False
 
@@ -354,7 +356,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
-    # [Modified in Deneb:EIP4788] Pass parent beacon block root to Execution Engine
+    # [Modified in Deneb:EIP4788] Pass `parent_beacon_block_root` to Execution Engine
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
