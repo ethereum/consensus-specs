@@ -742,9 +742,7 @@ class NoopExecutionEngine(ExecutionEngine):
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
-    def is_valid_block_hash(self: ExecutionEngine,
-                            execution_payload: ExecutionPayload,
-                            parent_beacon_block_root: Root) -> bool:
+    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:

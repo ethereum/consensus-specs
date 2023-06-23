@@ -31,7 +31,6 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-      - [`is_valid_block_hash`](#is_valid_block_hash)
       - [`is_valid_versioned_hashes`](#is_valid_versioned_hashes)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
@@ -229,20 +228,6 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-##### `is_valid_block_hash`
-
-*Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
-
-```python
-def is_valid_block_hash(self: ExecutionEngine,
-                        execution_payload: ExecutionPayload,
-                        parent_beacon_block_root: Root) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
-    """
-    ...
-```
-
 ##### `is_valid_versioned_hashes`
 
 ```python
@@ -279,8 +264,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
 
-    # [Modified in Deneb:EIP4788]
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    if not self.is_valid_block_hash(execution_payload):
         return False
 
     # [New in Deneb:EIP4844]
