@@ -726,7 +726,9 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZ
         return "\n\n" + """
 class NoopExecutionEngine(ExecutionEngine):
 
-    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def notify_new_payload(self: ExecutionEngine,
+                           execution_payload: ExecutionPayload,
+                           parent_beacon_block_root: Root) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -740,7 +742,9 @@ class NoopExecutionEngine(ExecutionEngine):
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
-    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def is_valid_block_hash(self: ExecutionEngine,
+                            execution_payload: ExecutionPayload,
+                            parent_beacon_block_root: Root) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
@@ -776,7 +780,6 @@ class EIP6110SpecBuilder(DenebSpecBuilder):
 from eth2spec.deneb import {preset_name} as deneb
 '''
 
-
 #
 # WhiskSpecBuilder
 #
@@ -793,15 +796,18 @@ from eth2spec.capella import {preset_name} as capella
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
         constants = {
-            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
-            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
+            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
+            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
         }
         return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 spec_builders = {
     builder.fork: builder
-    for builder in (Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder, EIP6110SpecBuilder, WhiskSpecBuilder)
+    for builder in (
+        Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder,
+        EIP6110SpecBuilder, WhiskSpecBuilder,
+    )
 }
 
 
