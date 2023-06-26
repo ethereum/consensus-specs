@@ -127,26 +127,26 @@ def objects_to_spec(preset_name: str,
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_custom_type_dep_constants[x]), hardcoded_custom_type_dep_constants))
     spec_strs = [
-            imports,
-            preparations,
-            f"fork = \'{fork}\'\n",
-            # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
-            custom_type_dep_constants,
-            new_type_definitions,
-            CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
-            # The constants that some SSZ containers require. Need to be defined before `constants_spec`
-            ssz_dep_constants,
-            constant_vars_spec,
-            preset_vars_spec,
-            config_spec,
-            ordered_class_objects_spec,
-            protocols_spec,
-            functions_spec,
-            sundry_functions,
-            execution_engine_cls,
-            # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
-            # as same as the spec definition.
-            ssz_dep_constants_verification,
+        imports,
+        preparations,
+        f"fork = \'{fork}\'\n",
+        # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
+        custom_type_dep_constants,
+        new_type_definitions,
+        CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
+        # The constants that some SSZ containers require. Need to be defined before `constants_spec`
+        ssz_dep_constants,
+        constant_vars_spec,
+        preset_vars_spec,
+        config_spec,
+        ordered_class_objects_spec,
+        protocols_spec,
+        functions_spec,
+        sundry_functions,
+        execution_engine_cls,
+        # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
+        # as same as the spec definition.
+        ssz_dep_constants_verification,
     ]
     return "\n\n\n".join([str.strip("\n") for str in spec_strs if str]) +  "\n"
 
