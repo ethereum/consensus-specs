@@ -224,7 +224,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         state.deposit_receipts_start_index = deposit_receipt.index
 
     apply_deposit(
-        state=state, 
+        state=state,
         pubkey=deposit_receipt.pubkey,
         withdrawal_credentials=deposit_receipt.withdrawal_credentials,
         amount=deposit_receipt.amount,
@@ -251,7 +251,11 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
     )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(

@@ -12,6 +12,7 @@ import sys
 import copy
 from collections import OrderedDict
 import json
+from functools import reduce
 
 from pysetup.constants import (
     # code names
@@ -317,7 +318,7 @@ def build_spec(fork: str,
         new_objects = copy.deepcopy(class_objects)
         dependency_order_class_objects(class_objects, spec_object.custom_types)
 
-    return objects_to_spec(preset_name, spec_object, spec_builders[fork], class_objects)
+    return objects_to_spec(preset_name, spec_object, fork, class_objects)
 
 
 class PySpecCommand(Command):
@@ -518,6 +519,6 @@ setup(
         "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
-        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@master#egg=curdleproofs&subdirectory=curdleproofs",
+        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@805d06785b6ff35fde7148762277dd1ae678beeb#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )

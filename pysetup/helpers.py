@@ -1,15 +1,25 @@
-from pathlib import Path
 import re
-from typing import TypeVar, Dict, Sequence
+from typing import TypeVar, Dict
 import textwrap
+from functools import reduce
 
 from .constants import CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
-from .spec_builders import SpecBuilder
+from .spec_builders import spec_builders
+from .md_doc_paths import PREVIOUS_FORK_OF
 from .typing import (
     ProtocolDefinition,
     SpecObject,
     VariableDefinition,
 )
+
+
+def collect_prev_forks(fork: str) -> list[str]:
+    forks = [fork]
+    while True:
+        fork = PREVIOUS_FORK_OF[fork]
+        if fork is None:
+            return forks
+        forks.append(fork)
 
 
 def is_byte_vector(value: str) -> bool:
@@ -23,7 +33,7 @@ def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
 
 def objects_to_spec(preset_name: str,
                     spec_object: SpecObject,
-                    builder: SpecBuilder,
+                    fork: str,
                     ordered_class_objects: Dict[str, str]) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -36,6 +46,10 @@ def objects_to_spec(preset_name: str,
             ]
         )
     )
+
+    # Collect builders with the reversed previous forks
+    # e.g. `[bellatrix, altair, phase0]` -> `[phase0, altair, bellatrix]`
+    builders = [spec_builders[fork] for fork in collect_prev_forks(fork)[::-1]]
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
         abstract_functions = ["verify_and_notify_new_payload"]
@@ -58,7 +72,8 @@ def objects_to_spec(preset_name: str,
             "compute_merkle_proof_for_state",
         ]:
             del spec_object.functions[k]
-    functions = builder.implement_optimizations(spec_object.functions)
+
+    functions = reduce(lambda fns, builder: builder.implement_optimizations(fns), builders, spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
 
     # Access global dict of config vars for runtime configurables
@@ -94,37 +109,46 @@ def objects_to_spec(preset_name: str,
         if vardef.comment is not None:
             out += f'  # {vardef.comment}'
         return out
+    
+    # Merge all constant objects
+    hardcoded_ssz_dep_constants =         reduce(lambda obj, builder: {**obj, **builder.hardcoded_ssz_dep_constants()},                    builders, {})
+    hardcoded_custom_type_dep_constants = reduce(lambda obj, builder: {**obj, **builder.hardcoded_custom_type_dep_constants(spec_object)}, builders, {})
+    # Concatenate all strings
+    imports =              reduce(lambda txt, builder: (txt + "\n\n" + builder.imports(preset_name)  ).strip("\n"), builders, "")
+    preparations =         reduce(lambda txt, builder: (txt + "\n\n" + builder.preparations()        ).strip("\n"), builders, "")
+    sundry_functions =     reduce(lambda txt, builder: (txt + "\n\n" + builder.sundry_functions()    ).strip("\n"), builders, "")
+    # Keep engine from the most recent fork
+    execution_engine_cls = reduce(lambda txt, builder: builder.execution_engine_cls() or txt, builders, "")
 
     constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
-    ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_ssz_dep_constants()[x]), builder.hardcoded_ssz_dep_constants()))
-    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), builder.hardcoded_ssz_dep_constants()))
-    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, builder.hardcoded_custom_type_dep_constants(spec_object)[x]), builder.hardcoded_custom_type_dep_constants(spec_object)))
-    spec = (
-            builder.imports(preset_name)
-            + builder.preparations()
-            + '\n\n' + f"fork = \'{builder.fork}\'\n"
+    ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
+    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
+    custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_custom_type_dep_constants[x]), hardcoded_custom_type_dep_constants))
+    spec_strs = [
+            imports,
+            preparations,
+            f"fork = \'{fork}\'\n",
             # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
-            + ('\n\n' + custom_type_dep_constants + '\n' if custom_type_dep_constants != '' else '')
-            + '\n\n' + new_type_definitions
-            + '\n' + CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
+            custom_type_dep_constants,
+            new_type_definitions,
+            CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
             # The constants that some SSZ containers require. Need to be defined before `constants_spec`
-            + ('\n\n' + ssz_dep_constants if ssz_dep_constants != '' else '')
-            + '\n\n' + constant_vars_spec
-            + '\n\n' + preset_vars_spec
-            + '\n\n\n' + config_spec
-            + '\n\n' + ordered_class_objects_spec
-            + ('\n\n\n' + protocols_spec if protocols_spec != '' else '')
-            + '\n\n\n' + functions_spec
-            + '\n\n' + builder.sundry_functions()
-            + builder.execution_engine_cls()
+            ssz_dep_constants,
+            constant_vars_spec,
+            preset_vars_spec,
+            config_spec,
+            ordered_class_objects_spec,
+            protocols_spec,
+            functions_spec,
+            sundry_functions,
+            execution_engine_cls,
             # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
             # as same as the spec definition.
-            + ('\n\n\n' + ssz_dep_constants_verification if ssz_dep_constants_verification != '' else '')
-            + '\n'
-    )
-    return spec
+            ssz_dep_constants_verification,
+    ]
+    return "\n\n\n".join([str.strip("\n") for str in spec_strs if str]) +  "\n"
 
 
 def combine_protocols(old_protocols: Dict[str, ProtocolDefinition],

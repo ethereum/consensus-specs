@@ -47,6 +47,7 @@ def is_post_fork(a, b) -> bool:
     else:
         return is_post_fork(prev_fork, b)
 
+
 def get_fork_directory(fork):
     dir1 = f'specs/{fork}'
     if os.path.exists(dir1):

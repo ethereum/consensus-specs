@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Sequence
+from typing import Dict, Sequence
 from pathlib import Path
 
 from .constants import (
@@ -21,59 +21,52 @@ class SpecBuilder(ABC):
         raise NotImplementedError()
 
     @classmethod
-    @abstractmethod
     def imports(cls, preset_name: str) -> str:
         """
         Import objects from other libraries.
         """
-        raise NotImplementedError()
+        return ""
 
     @classmethod
-    @abstractmethod
     def preparations(cls) -> str:
         """
         Define special types/constants for building pyspec or call functions.
         """
-        raise NotImplementedError()
+        return ""
 
     @classmethod
-    @abstractmethod
     def sundry_functions(cls) -> str:
         """
         The functions that are (1) defined abstractly in specs or (2) adjusted for getting better performance.
         """
-        raise NotImplementedError()
+        return ""
 
     @classmethod
     def execution_engine_cls(cls) -> str:
-        raise NotImplementedError()
+        return ""
 
     @classmethod
-    @abstractmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         """
         The constants that are required for SSZ objects.
         """
-        raise NotImplementedError()
+        return {}
 
     @classmethod
-    @abstractmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
         """
         The constants that are required for custom types.
         """
-        raise NotImplementedError()
+        return {}
 
     @classmethod
-    @abstractmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
-        raise NotImplementedError()
+        return functions
 
     @classmethod
-    @abstractmethod
     def build_spec(cls, preset_name: str,
-                   source_files: List[Path], preset_files: Sequence[Path], config_file: Path) -> str:
-        raise NotImplementedError()
+                   source_files: Sequence[Path], preset_files: Sequence[Path], config_file: Path) -> str:
+        return _build_spec(preset_name, cls.fork, source_files, preset_files, config_file)
 
 
 #
@@ -182,32 +175,15 @@ get_attesting_indices = cache_this(
     _get_attesting_indices, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)'''
 
 
-    @classmethod
-    def execution_engine_cls(cls) -> str:
-        return ""
-
-
-    @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
-        return {}
-
-    @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
-        return {}
-
-    @classmethod
-    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
-        return functions
-
-
+#
 # AltairSpecBuilder
 #
-class AltairSpecBuilder(Phase0SpecBuilder):
+class AltairSpecBuilder(SpecBuilder):
     fork: str = ALTAIR
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
-        return super().imports(preset_name) + '\n' + f'''
+        return f'''
 from typing import NewType, Union as PyUnion
 
 from eth2spec.phase0 import {preset_name} as phase0
@@ -217,14 +193,14 @@ from eth2spec.utils.ssz.ssz_typing import Path
 
     @classmethod
     def preparations(cls):
-        return super().preparations() + '\n' + '''
+        return '''
 SSZVariableName = str
 GeneralizedIndex = NewType('GeneralizedIndex', int)
 '''
 
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '\n\n' + '''
+        return '''
 def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariableName]]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
     for item in path:
@@ -239,40 +215,35 @@ def compute_merkle_proof_for_state(state: BeaconState,
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
-        constants = {
+        return {
             'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
             'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
             'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
         }
-        return {**super().hardcoded_ssz_dep_constants(), **constants}
 
     @classmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
         if "eth_aggregate_pubkeys" in functions:
             functions["eth_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
-        return super().implement_optimizations(functions)
+        return functions
 
 #
 # BellatrixSpecBuilder
 #
-class BellatrixSpecBuilder(AltairSpecBuilder):
+class BellatrixSpecBuilder(SpecBuilder):
     fork: str = BELLATRIX
 
     @classmethod
     def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
+        return f'''
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
 from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
 '''
 
     @classmethod
-    def preparations(cls):
-        return super().preparations()
-
-    @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '\n\n' + """
+        return """
 ExecutionState = Any
 
 
@@ -289,7 +260,7 @@ def get_pow_chain_head() -> PowBlock:
 
     @classmethod
     def execution_engine_cls(cls) -> str:
-        return "\n\n" + """
+        return """
 class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -319,28 +290,27 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
-        constants = {
+        return {
             'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
 # CapellaSpecBuilder
 #
-class CapellaSpecBuilder(BellatrixSpecBuilder):
+class CapellaSpecBuilder(SpecBuilder):
     fork: str = CAPELLA
 
     @classmethod
     def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
+        return f'''
 from eth2spec.bellatrix import {preset_name} as bellatrix
 '''
 
 
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '\n\n' + '''
+        return '''
 def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
                                         index: GeneralizedIndex) -> Sequence[Bytes32]:
     return build_proof(body.get_backing(), index)'''
@@ -348,43 +318,45 @@ def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
-        constants = {
+        return {
             'EXECUTION_PAYLOAD_INDEX': 'GeneralizedIndex(25)',
         }
-        return {**super().hardcoded_ssz_dep_constants(), **constants}
+
 
 #
 # DenebSpecBuilder
 #
-class DenebSpecBuilder(CapellaSpecBuilder):
+class DenebSpecBuilder(SpecBuilder):
     fork: str = DENEB
 
     @classmethod
     def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
+        return f'''
 from eth2spec.capella import {preset_name} as capella
 '''
 
 
     @classmethod
     def preparations(cls):
-        return super().preparations() + '\n' + '''
+        return '''
 T = TypeVar('T')  # For generic function
 '''
 
     @classmethod
     def sundry_functions(cls) -> str:
-        return super().sundry_functions() + '\n\n' + '''
+        return '''
 def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
     # pylint: disable=unused-argument
     return ("TEST", "TEST")'''
 
     @classmethod
     def execution_engine_cls(cls) -> str:
-        return "\n\n" + """
+        return """
 class NoopExecutionEngine(ExecutionEngine):
 
-    def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def notify_new_payload(self: ExecutionEngine,
+                           execution_payload: ExecutionPayload,
+                           parent_beacon_block_root: Root) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -398,7 +370,9 @@ class NoopExecutionEngine(ExecutionEngine):
         # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
-    def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+    def is_valid_block_hash(self: ExecutionEngine,
+                            execution_payload: ExecutionPayload,
+                            parent_beacon_block_root: Root) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
@@ -414,58 +388,50 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
-        constants = {
+        return {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 #
 # EIP6110SpecBuilder
 #
-class EIP6110SpecBuilder(DenebSpecBuilder):
+class EIP6110SpecBuilder(SpecBuilder):
     fork: str = EIP6110
 
     @classmethod
     def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
+        return f'''
 from eth2spec.deneb import {preset_name} as deneb
 '''
-
 
 #
 # WhiskSpecBuilder
 #
-class WhiskSpecBuilder(CapellaSpecBuilder):
+class WhiskSpecBuilder(SpecBuilder):
     fork: str = WHISK
 
     @classmethod
     def imports(cls, preset_name: str):
-        return super().imports(preset_name) + f'''
+        return f'''
 from eth2spec.capella import {preset_name} as capella
 '''
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
-        constants = {
-            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
-            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.constant_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
+        return {
+            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
+            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
         }
-        return {**super().hardcoded_custom_type_dep_constants(spec_object), **constants}
 
 
 spec_builders = {
     builder.fork: builder
     for builder in (
-        Phase0SpecBuilder,
-        AltairSpecBuilder,
-        BellatrixSpecBuilder,
-        CapellaSpecBuilder,
-        DenebSpecBuilder,
-        EIP6110SpecBuilder,
-        WhiskSpecBuilder,
+        Phase0SpecBuilder, AltairSpecBuilder, BellatrixSpecBuilder, CapellaSpecBuilder, DenebSpecBuilder,
+        EIP6110SpecBuilder, WhiskSpecBuilder,
     )
 }
