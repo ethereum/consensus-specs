@@ -56,8 +56,8 @@ You can refer to the previous fork's `fork.md` file.
 - Update Pyspec [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
 - Update helpers for [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py) for building the spec:
     - Update [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) with the new feature name as Pyspec `constants.py` defined.
-    - Update [`pysetup/spec_builders.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/spec_builders.py) with a new `SpecBuilder` with the new feature name. e.g., `EIP9999SpecBuilder`. Append it to the `spec_builders` list.
-    - Update [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py): add the path of the new markdown files in `get_md_doc_paths` function.
+    - Update [`pysetup/spec_builders/__init__.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/spec_builders/__init__.py). Implement a new `<FEATURE_NAME>SpecBuilder` in `pysetup/spec_builders/<FEATURE_NAME>.py` with the new feature name. e.g., `EIP9999SpecBuilder`. Append it to the `spec_builders` list.
+    - Update [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py): add the path of the new markdown files in `get_md_doc_paths` function if needed.
 
 ## B: Make it executable for pytest and test generator
 
