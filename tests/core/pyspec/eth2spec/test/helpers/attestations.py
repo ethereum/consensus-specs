@@ -5,7 +5,7 @@ from typing import List
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair
+from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -156,6 +156,14 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
+
+
+def compute_max_inclusion_slot(spec, attestation):
+    if is_post_deneb(spec):
+        next_epoch = spec.compute_epoch_at_slot(attestation.data.slot) + 1
+        end_of_next_epoch = spec.compute_start_slot_at_epoch(next_epoch + 1) - 1
+        return end_of_next_epoch
+    return attestation.data.slot + spec.SLOTS_PER_EPOCH
 
 
 def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_participant_set=None):

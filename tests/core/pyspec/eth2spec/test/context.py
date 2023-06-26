@@ -537,13 +537,14 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
+
 with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_eip6110_and_later = with_all_phases_from(EIP6110)
 with_eip7002_and_later = with_all_phases_from(EIP7002)
-with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
 
 
 class quoted_str(str):

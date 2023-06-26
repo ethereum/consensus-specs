@@ -31,7 +31,7 @@ ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     DENEB,
-    # Experimental features
+    # Experimental patches
     EIP6110,
     EIP7002,
 )
