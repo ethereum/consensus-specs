@@ -9,7 +9,7 @@ from typing import (
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint16, uint32, uint64,
+    View, boolean, Container, List, Vector, uint8, uint32, uint64,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
@@ -795,35 +795,11 @@ def bytes_to_uint64(data: bytes) -> uint64:
     return uint64(int.from_bytes(data, ENDIANNESS))
 
 
-def bytes_to_uint16(data: bytes) -> uint16:
-    """
-    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
-    """
-    return uint16(int.from_bytes(data, ENDIANNESS))
-
-
 def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
-
-
-def has_compounding_withdrawal_credential(validator: Validator) -> bool:
-    """
-    Check if ``validator`` has an 0x02 prefixed "compounding" withdrawal credential.
-    """
-    return validator.withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
-
-
-def calculate_balance_ceiling(validator: Validator) -> Gwei:
-    """
-    Calculate the balance ceiling using a withdraw credential.
-    """
-    if not has_compounding_withdrawal_credential(validator):
-        return MIN_ACTIVATION_BALANCE
-    # With compounding credential bytes [1-2] are the ceiling in ETH.
-    return bytes_to_uint16(validator.withdrawal_credential[1:3]) * EFFECTIVE_BALANCE_INCREMENT
 
 
 def is_eligible_for_activation_queue(validator: Validator) -> bool:
@@ -1842,19 +1818,6 @@ def apply_deposit(state: BeaconState,
             state.inactivity_scores.append(uint64(0))
     else:
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        # Topups used to increase the balance ceiling
-        if withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX:
-            old_credential = state.validators[index].withdrawal_credentials
-            # Check that the address was not changed
-            assert withdrawal_credentials[12:] == old_credential[12:]
-            # Get new ceiling
-            new_ceiling = bytes_to_uint16(withdrawal_credentials[1:3])
-            assert new_ceiling * EFFECTIVE_BALANCE_INCREMENT < MAX_EFFECTIVE_BALANCE
-            # Check that ceiling is greater than existing ceiling
-            old_ceiling = bytes_to_uint16(old_credential[1:3])
-            assert new_ceiling > old_ceiling
-            # Write to validator
-            state.validators[index].withdrawal_credentials[:12] = withdrawal_credentials[:12]
     state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
 
 
@@ -3627,9 +3590,8 @@ def get_validator_excess_balance(validator: Validator, balance: Gwei) -> Gwei:
     """
     if has_eth1_withdrawal_credential(validator) and balance > MIN_ACTIVATION_BALANCE:
         return balance - MIN_ACTIVATION_BALANCE
-    ceiling = calculate_balance_ceiling(validator)
-    if has_compounding_withdrawal_credential(validator) and balance > ceiling:
-        return balance - ceiling
+    if has_compounding_withdrawal_credential(validator) and balance > MAX_EFFECTIVE_BALANCE:
+        return balance - MAX_EFFECTIVE_BALANCE
     return Gwei(0)
 
 
@@ -3639,11 +3601,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     if not (has_eth1_withdrawal_credential(validator) or has_compounding_withdrawal_credential(validator)):
         return False
-
-    ceiling = calculate_balance_ceiling(validator)
-    has_ceiling_effective_balance = validator.effective_balance == ceiling
-    has_excess_balance = balance > ceiling
-    return has_ceiling_effective_balance and has_excess_balance
+    return get_validator_excess_balance(validator, balance) > 0
 
 
 def process_historical_summaries_update(state: BeaconState) -> None:
