@@ -401,6 +401,11 @@ class PendingBalanceDeposit(Container):
     amount: Gwei
 
 
+class PendingBalanceWithdrawal(Container):
+    index: ValidatorIndex
+    amount: Gwei
+
+
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
@@ -664,6 +669,7 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     deposit_validator_balance: Gwei
+    withdrawal_validator_balance: Gwei
     exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -690,6 +696,7 @@ class BeaconState(Container):
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
     pending_balance_deposits: List[PendingBalanceDeposit]
+    pending_balance_withdrawals: List[PendingBalanceWithdrawal]
 
 
 @dataclass(eq=True, frozen=True)
@@ -1598,6 +1605,21 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
             state.deposit_validator_balance += deposit_balance_to_consume
             break
     state.pending_balance_deposits = state.pending_balance_deposits[next_pending_deposit_index:]
+
+
+def process_pending_balance_withdrawals(state: BeaconState) -> None:
+    withdrawal_balance_to_consume = get_validator_churn_limit(state)
+    next_pending_withdrawal_index = 0
+    for pending_balance_withdrawal in state.pending_balance_withdrawals:
+        if state.deposit_validator_balance + withdrawal_balance_to_consume >= pending_balance_withdrawal.amount:
+            withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
+            state.withdrawal_validator_balance = Gwei(0)
+            decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
+            next_pending_withdrawal_index += 1
+        else:
+            state.withdrawl_validator_balance += withdrawal_balance_to_consume
+            break
+    state.pending_balance_withdrawals = state.pending_balance_withdrawal[next_pending_withdrawal_index:]
 
 
 def process_effective_balance_updates(state: BeaconState) -> None:
