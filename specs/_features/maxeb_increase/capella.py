@@ -3642,7 +3642,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
     count = 0
     for withdrawal in state.pending_balance_withdrawals:
-        if withdrawal.is_complete:
+        if withdrawal.withdrawable_epoch != FAR_FUTURE_EPOCH:
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
