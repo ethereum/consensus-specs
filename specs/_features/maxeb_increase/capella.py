@@ -1614,6 +1614,7 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
             withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
             state.withdrawal_validator_balance = Gwei(0)
             next_pending_withdrawal_index += 1
+            pending_balance_withdrawal.is_complete = True
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
             break
