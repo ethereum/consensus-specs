@@ -406,7 +406,6 @@ class PendingBalanceWithdrawal(Container):
     amount: Gwei
     is_exit: bool
     withdrawable_epoch: Epoch
-    is_complete: bool
 
 
 class VoluntaryExit(Container):
@@ -1601,20 +1600,21 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
     withdrawal_balance_to_consume = get_validator_churn_limit(state)
     next_pending_withdrawal_index = 0
     for pending_balance_withdrawal in state.pending_balance_withdrawals:
-        if pending_balance_withdrawal.is_complete:
+        if pending_balance_withdrawal.withdrawable_epoch != FAR_FUTURE_EPOCH:
             next_pending_withdrawal_index += 1
             continue
         if state.deposit_validator_balance + withdrawal_balance_to_consume >= pending_balance_withdrawal.amount:
+            withdrawable_epoch = Epoch(state.epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
             if pending_balance_withdrawal.is_exit:
                 validator = state.validators[pending_balance_withdrawal.index]
                 validator.exit_epoch = state.epoch
-                validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+                validator.withdrawable_epoch = withdrawable_epoch
             else:
                 decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
             withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
             state.withdrawal_validator_balance = Gwei(0)
             next_pending_withdrawal_index += 1
-            pending_balance_withdrawal.is_complete = True
+            pending_balance_withdrawal.withdrawable_epoch = withdrawable_epoch
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
             break
