@@ -405,6 +405,7 @@ class PendingBalanceWithdrawal(Container):
     index: ValidatorIndex
     amount: Gwei
     is_exit: bool
+    withdrawable_epoch: Epoch
 
 
 class VoluntaryExit(Container):
@@ -1160,7 +1161,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
     
-    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, validator.balance, True))
+    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, validator.balance, True, state.Epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY))
 
 
 def slash_validator(state: BeaconState,
@@ -1600,14 +1601,15 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
     next_pending_withdrawal_index = 0
     for pending_balance_withdrawal in state.pending_balance_withdrawals:
         if state.deposit_validator_balance + withdrawal_balance_to_consume >= pending_balance_withdrawal.amount:
-            withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
-            state.withdrawal_validator_balance = Gwei(0)
-            decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
-            next_pending_withdrawal_index += 1
             if pending_balance_withdrawal.is_exit:
                 validator = state.validators[pending_balance_withdrawal.index]
                 validator.exit_epoch = state.epoch
                 validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+            else:
+                decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
+            withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
+            state.withdrawal_validator_balance = Gwei(0)
+            next_pending_withdrawal_index += 1
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
             break
