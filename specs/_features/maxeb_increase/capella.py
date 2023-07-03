@@ -1161,7 +1161,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
     
-    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, validator.balance, True, state.Epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY))
+    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, validator.balance, True, FAR_FUTURE_EPOCH))
 
 
 def slash_validator(state: BeaconState,
