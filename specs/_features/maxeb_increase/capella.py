@@ -1598,10 +1598,8 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
 
 def process_pending_balance_withdrawals(state: BeaconState) -> None:
     withdrawal_balance_to_consume = get_validator_churn_limit(state)
-    next_pending_withdrawal_index = 0
     for pending_balance_withdrawal in state.pending_balance_withdrawals:
         if pending_balance_withdrawal.withdrawable_epoch != FAR_FUTURE_EPOCH:
-            next_pending_withdrawal_index += 1
             continue
         if state.deposit_validator_balance + withdrawal_balance_to_consume >= pending_balance_withdrawal.amount:
             withdrawable_epoch = Epoch(state.epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
@@ -1613,7 +1611,6 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
                 decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
             withdrawal_balance_to_consume -= pending_balance_withdrawal.amount - state.withdrawal_validator_balance
             state.withdrawal_validator_balance = Gwei(0)
-            next_pending_withdrawal_index += 1
             pending_balance_withdrawal.withdrawable_epoch = withdrawable_epoch
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
