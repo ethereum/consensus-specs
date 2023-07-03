@@ -1613,7 +1613,7 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
             state.withdrawal_validator_balance = Gwei(0)
             pending_balance_withdrawal.withdrawable_epoch = withdrawable_epoch
         else:
-            state.withdrawl_validator_balance += withdrawal_balance_to_consume
+            state.withdrawal_validator_balance += withdrawal_balance_to_consume
             break
 
 
@@ -3637,7 +3637,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
-    for i, withdrawal in enunmerate(state.pending_balance_withdrawals):
+    for i, withdrawal in enumerate(state.pending_balance_withdrawals):
         if withdrawal.withdrawable_epoch <= epoch:
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
