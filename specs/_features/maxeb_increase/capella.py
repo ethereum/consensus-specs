@@ -404,6 +404,7 @@ class PendingBalanceDeposit(Container):
 class PendingBalanceWithdrawal(Container):
     index: ValidatorIndex
     amount: Gwei
+    is_exit: bool
 
 
 class VoluntaryExit(Container):
@@ -1159,21 +1160,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
-
-    # Compute exit queue epoch
-    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
-    exit_balance_to_consume = validator.effective_balance
-    per_epoch_churn_limit = get_validator_churn_limit(state)
-    if state.exit_queue_churn + exit_balance_to_consume <= per_epoch_churn_limit:
-        state.exit_queue_churn += exit_balance_to_consume
-    else:  # Exit balance rolls over to subsequent epoch(s)
-        exit_balance_to_consume -= (per_epoch_churn_limit - state.exit_queue_churn)
-        additional_epochs, state.exit_queue_churn = divmod(exit_balance_to_consume - (per_epoch_churn_limit - state.exit_queue_churn), per_epoch_churn_limit)
-        exit_queue_epoch += Epoch(additional_epochs + 1)
-    # Set validator exit epoch and withdrawable epoch
-    validator.exit_epoch = exit_queue_epoch
-    validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+    
+    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, validator.balance, True))
 
 
 def slash_validator(state: BeaconState,
@@ -1306,6 +1294,7 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings(state)
     process_eth1_data_reset(state)
     process_pending_balance_deposits(state)
+    process_pending_balance_withdrawals(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
@@ -1616,6 +1605,10 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
             state.withdrawal_validator_balance = Gwei(0)
             decrease_balance(state, pending_balance_withdrawal.index, pending_balance_withdrawal.amount)
             next_pending_withdrawal_index += 1
+            if pending_balance_withdrawal.is_exit:
+                validator = state.validators[pending_balance_withdrawal.index]
+                validator.exit_epoch = state.epoch
+                validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
             break
