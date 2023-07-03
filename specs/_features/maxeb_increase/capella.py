@@ -671,7 +671,6 @@ class BeaconState(Container):
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     deposit_validator_balance: Gwei
     withdrawal_validator_balance: Gwei
-    exit_queue_churn: Gwei
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
