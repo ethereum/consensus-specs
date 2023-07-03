@@ -406,6 +406,7 @@ class PendingBalanceWithdrawal(Container):
     amount: Gwei
     is_exit: bool
     withdrawable_epoch: Epoch
+    is_complete: bool
 
 
 class VoluntaryExit(Container):
@@ -1600,6 +1601,9 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
     withdrawal_balance_to_consume = get_validator_churn_limit(state)
     next_pending_withdrawal_index = 0
     for pending_balance_withdrawal in state.pending_balance_withdrawals:
+        if pending_balance_withdrawal.is_complete:
+            next_pending_withdrawal_index += 1
+            continue
         if state.deposit_validator_balance + withdrawal_balance_to_consume >= pending_balance_withdrawal.amount:
             if pending_balance_withdrawal.is_exit:
                 validator = state.validators[pending_balance_withdrawal.index]
@@ -1613,7 +1617,6 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
         else:
             state.withdrawl_validator_balance += withdrawal_balance_to_consume
             break
-    state.pending_balance_withdrawals = state.pending_balance_withdrawal[next_pending_withdrawal_index:]
 
 
 def process_effective_balance_updates(state: BeaconState) -> None:
@@ -3636,19 +3639,32 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
+    count = 0
+    for withdrawal in state.pending_balance_withdrawals:
+        if withdrawal.is_complete:
+            withdrawals.append(Withdrawal(
+                index=withdrawal_index,
+                validator_index=validator_index,
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]), 
+                amount=withdrawal.amount,
+            ))
+            count += 1
+            withdrawal_index += WithdrawalIndex(1)
+        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+    
+    # Remove completed withdrawals.
+    state.pending_balance_withdrawals = state.pending_balance_withdrawals[count:]
+
+    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        return withdrawals
+    
+    # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     for _ in range(bound):
         validator = state.validators[validator_index]
         balance = state.balances[validator_index]
-        if is_fully_withdrawable_validator(validator, balance, epoch):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
-                validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance,
-            ))
-            withdrawal_index += WithdrawalIndex(1)
-        elif is_partially_withdrawable_validator(validator, balance):
+        if is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
