@@ -27,18 +27,21 @@ WHISK = SpecForkName('whisk')
 MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA)
 LATEST_FORK = MAINNET_FORKS[-1]
 # The forks that pytest can run with.
+# Note: when adding a new fork here, all tests from previous forks with decorator `with_X_and_later`
+#       will run on the new fork. To skip this behaviour, add the fork to `ALLOWED_TEST_RUNNER_FORKS`
 ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     DENEB,
     # Experimental patches
     EIP6110,
-    WHISK,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110, WHISK)
+# Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
+ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK)
 
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
