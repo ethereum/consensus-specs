@@ -1160,9 +1160,20 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
-    
-    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(index, Gwei(0), True, FAR_FUTURE_EPOCH))
 
+    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(
+        index=index,
+        amount=Gwei(0),
+        is_exit=True,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+    ))
+
+
+def cancel_validator_withdrawals(state: BeaconState,
+                                 slashed_index: ValidatorIndex) -> None:
+    for i, withdrawal in state.pending_balance_withdrawals:
+        if withdrawal.index == slashed_index and withdrawal.withdrawable_epoch == FAR_FUTURE_EPOCH:
+            state.pending_balance_withdrawals = state.pending_balance_withdrawals[:i] + state.pending_balance_withdrawals[i+1:]
 
 
 def slash_validator(state: BeaconState,
@@ -1172,6 +1183,7 @@ def slash_validator(state: BeaconState,
     Slash the validator with index ``slashed_index``.
     """
     epoch = get_current_epoch(state)
+    cancel_validator_withdrawals(state, slashed_index)
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
     validator.slashed = True
@@ -3647,7 +3659,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]), 
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawal.amount,
             ))
             withdrawal_index += WithdrawalIndex(1)
