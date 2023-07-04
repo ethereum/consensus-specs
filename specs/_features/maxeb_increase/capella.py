@@ -408,6 +408,12 @@ class PendingBalanceWithdrawal(Container):
     withdrawable_epoch: Epoch
 
 
+class ExecutionLayerWithdrawRequest(Container):
+    source_address: ExecutionAddress
+    validator_pubkey: BLSPubkey
+    balance: Gwei
+
+
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
@@ -1738,6 +1744,45 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)  # [New in Capella]
+    for_ops(body.execution_payload.withdraw_request, process_execution_layer_withdraw_request)
+
+
+def process_execution_layer_withdraw_request(
+        state: BeaconState,
+        execution_layer_withdraw_request: ExecutionLayerWithdrawRequest
+    ) -> None:
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_index = ValidatorIndex(validator_pubkeys.index(execution_layer_withdraw_request.validator_pubkey))
+    validator = state.validators[validator_index]
+
+    # Same conditions as in EIP7002 https://github.com/ethereum/consensus-specs/pull/3349/files#diff-7a6e2ba480d22d8bd035bd88ca91358456caf9d7c2d48a74e1e900fe63d5c4f8R223
+    # Verify withdrawal credentials
+    is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_withdraw_request.source_address
+    if not (is_execution_address and is_correct_source_address):
+        return
+    # Verify the validator is active
+    if not is_active_validator(validator, get_current_epoch(state)):
+        return
+    # Verify exit has not been initiated, and slashed
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    # Verify the validator has been active long enough
+    if get_current_epoch(state) < validator.activation_epoch + config.SHARD_COMMITTEE_PERIOD:
+        return
+
+    pending_balance_to_withdraw = sum(item.balance for item in state.pending_balance_withdrawals if item.index == validator_index)
+    # TODO: Should substract `MIN_ACTIVATION_BALANCE` or ejection balance?
+    available_balance = state.balances[validator_index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw
+    if available_balance < execution_layer_withdraw_request.balance:
+        return
+
+    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(
+        index=validator_index,
+        amount=execution_layer_withdraw_request.balance,
+        is_exit=False,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+    ))
 
 
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
