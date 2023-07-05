@@ -705,6 +705,7 @@ class BeaconState(Container):
     pending_balance_deposits: List[PendingBalanceDeposit]
     pending_balance_withdrawals: List[PendingBalanceWithdrawal]
     eligible_balance_withdrawals: List[PendingBalanceWithdrawal]
+    eligible_slashing_withdrawals: List[PendingBalanceWithdrawal]
 
 
 @dataclass(eq=True, frozen=True)
@@ -1640,8 +1641,10 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
         exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
         withdrawable_epoch = Epoch(exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 
-        # Process full exit
-        if pending_balance_withdrawal.is_exit:
+        # Process slashed exits.
+        if validator.slashed:
+            withdrawable_epoch = validator.withdrawable_epoch
+        elif pending_balance_withdrawal.is_exit: # Process voluntary exits.
             validator.exit_epoch = exit_epoch
             validator.withdrawable_epoch = withdrawable_epoch
 
@@ -1649,7 +1652,10 @@ def process_pending_balance_withdrawals(state: BeaconState) -> None:
         pending_balance_withdrawal.amount = exiting_balance
         pending_balance_withdrawal.withdrawable_epoch = withdrawable_epoch
 
-        state.eligible_balance_withdrawals.append(pending_balance_withdrawal)
+        if validator.slashed:
+            state.eligible_slashing_withdrawals.append(pending_balance_withdrawal)
+        else:
+            state.eligible_balance_withdrawals.append(pending_balance_withdrawal)
         state.withdrawal_balance_to_consume -= exiting_balance
         consumed += 1
     state.pending_balance_withdrawals = state.pending_balance_withdrawals[consumed:]
