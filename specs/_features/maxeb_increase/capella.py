@@ -3739,7 +3739,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
 
-        consumed = i
+        consumed += 1
 
         validator = state.validators[withdrawal.index]
         if not validator.slashed and state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE:
