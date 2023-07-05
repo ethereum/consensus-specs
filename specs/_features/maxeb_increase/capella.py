@@ -3742,7 +3742,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
         consumed += 1
 
         validator = state.validators[withdrawal.index]
-        if not validator.slashed and state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE:
+        if validator.exit_epoch == FAR_FUTURE_EPOCH and state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE:
             withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
