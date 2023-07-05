@@ -3721,6 +3721,21 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
     consumed = 0
+    for withdrawal in state.eligible_slashing_withdrawals:
+        if withdrawal.withdrawable_epoch > epoch or consumed == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+
+        validator = state.validators[withdrawal.index]
+        withdrawable_balance = state.balances[validator.index]
+        if withdrawable_balance > Gwei(0):
+            withdrawals.append(Withdrawal(
+                index=withdrawal_index,
+                validator_index=validator_index,
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                amount=withdrawable_balance,
+            ))
+            withdrawal_index += WithdrawalIndex(1)
+        consumed += 1
     for withdrawal in state.eligible_balance_withdrawals:
         if withdrawal.withdrawable_epoch > epoch or consumed == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
