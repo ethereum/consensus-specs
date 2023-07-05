@@ -684,7 +684,7 @@ class BeaconState(Container):
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     deposit_balance_to_consume: Gwei
     withdrawal_balance_to_consume: Gwei
-    exit_balance_to_consume: Gwei  # Should be initialized get_validator_churn_limit(state)
+    exit_balance_to_consume: Gwei  # Should be initialized with get_validator_churn_limit(state)
     earliest_exit_epoch: Epoch  # Should be initialized with the max([v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]) + 1
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -1170,9 +1170,9 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
 
 
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
-    nearest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-    if state.earliest_exit_epoch < nearest_exit_epoch
-        state.earliest_exit_epoch = nearest_exit_epoch
+    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    if state.earliest_exit_epoch < earliest_exit_epoch
+        state.earliest_exit_epoch = earliest_exit_epoch
         state.exit_balance_to_consume = get_validator_churn_limit(state)
 
     if state.exit_balance_to_consume < exit_balance:
