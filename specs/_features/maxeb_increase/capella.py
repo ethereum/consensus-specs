@@ -401,13 +401,6 @@ class PendingBalanceDeposit(Container):
     amount: Gwei
 
 
-class PendingBalanceWithdrawal(Container):
-    index: ValidatorIndex
-    amount: Gwei
-    is_exit: bool
-    withdrawable_epoch: Epoch
-
-
 class PartialWithdrawal(Container):
     index: ValidatorIndex
     amount: Gwei
@@ -711,9 +704,6 @@ class BeaconState(Container):
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]  # [New in Capella]
     pending_balance_deposits: List[PendingBalanceDeposit]
-    pending_balance_withdrawals: List[PendingBalanceWithdrawal]
-    eligible_balance_withdrawals: List[PendingBalanceWithdrawal]
-    eligible_slashing_withdrawals: List[PendingBalanceWithdrawal]
     pending_partial_withdrawals: List[PartialWithdrawal]
 
 
@@ -1631,46 +1621,6 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
         next_pending_deposit_index += 1
 
     state.pending_balance_deposits = state.pending_balance_deposits[next_pending_deposit_index:]
-
-
-def process_pending_balance_withdrawals(state: BeaconState) -> None:
-    state.withdrawal_balance_to_consume += get_validator_churn_limit(state)
-    consumed = 0
-    for pending_balance_withdrawal in state.pending_balance_withdrawals:
-        validator = state.validators[pending_balance_withdrawal.index]
-
-        # Compute exiting balance
-        exiting_balance = Gwei(0)
-        if validator.is_exit:
-            exiting_balance = state.balances[validator.index]
-        elif state.balances[validator.index] > MIN_ACTIVATION_BALANCE:
-            exiting_balance = min(state.balances[validator.index] - MIN_ACTIVATION_BALANCE, pending_balance_withdrawal.amount)
-
-        # Check the churn limitation
-        if state.withdrawal_balance_to_consume < exiting_balance:
-            break
-
-        exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-        withdrawable_epoch = Epoch(exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
-
-        # Process slashed exits.
-        if validator.slashed:
-            withdrawable_epoch = validator.withdrawable_epoch
-        elif pending_balance_withdrawal.is_exit: # Process voluntary exits.
-            validator.exit_epoch = exit_epoch
-            validator.withdrawable_epoch = withdrawable_epoch
-
-        # Update withdrawal with exited balance and withdrawable epoch
-        pending_balance_withdrawal.amount = exiting_balance
-        pending_balance_withdrawal.withdrawable_epoch = withdrawable_epoch
-
-        if validator.slashed:
-            state.eligible_slashing_withdrawals.append(pending_balance_withdrawal)
-        else:
-            state.eligible_balance_withdrawals.append(pending_balance_withdrawal)
-        state.withdrawal_balance_to_consume -= exiting_balance
-        consumed += 1
-    state.pending_balance_withdrawals = state.pending_balance_withdrawals[consumed:]
 
 
 def process_effective_balance_updates(state: BeaconState) -> None:
