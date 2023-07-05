@@ -3686,7 +3686,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
     consumed = 0
     for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD // 2:
             break
 
         validator = state.validators[withdrawal.index]
@@ -3703,8 +3703,6 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
         consumed += 1
 
     state.pending_partial_withdrawals = state.pending_partial_withdrawals[consumed:] 
-    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        return withdrawals
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
