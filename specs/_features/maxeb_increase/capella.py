@@ -3715,7 +3715,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
     for i, withdrawal in enumerate(state.pending_balance_withdrawals):
         if withdrawal.withdrawable_epoch > epoch:
-            break
+            continue
 
         validator = state.validators[withdrawal.index]
 
