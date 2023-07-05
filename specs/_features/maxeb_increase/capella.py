@@ -408,6 +408,12 @@ class PendingBalanceWithdrawal(Container):
     withdrawable_epoch: Epoch
 
 
+class PartialWithdrawal(Container):
+    index: ValidatorIndex
+    amount: Gwei
+    withdrawable_epoch: Epoch
+
+
 class ExecutionLayerWithdrawRequest(Container):
     source_address: ExecutionAddress
     validator_pubkey: BLSPubkey
@@ -678,6 +684,8 @@ class BeaconState(Container):
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     deposit_balance_to_consume: Gwei
     withdrawal_balance_to_consume: Gwei
+    exit_balance_to_consume: Gwei  # Should be initialized get_validator_churn_limit(state)
+    earliest_exit_epoch: Epoch  # Should be initialized with the max([v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]) + 1
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
@@ -706,6 +714,7 @@ class BeaconState(Container):
     pending_balance_withdrawals: List[PendingBalanceWithdrawal]
     eligible_balance_withdrawals: List[PendingBalanceWithdrawal]
     eligible_slashing_withdrawals: List[PendingBalanceWithdrawal]
+    pending_partial_withdrawals: List[PartialWithdrawal]
 
 
 @dataclass(eq=True, frozen=True)
@@ -1160,6 +1169,22 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
     state.balances[index] = 0 if delta > state.balances[index] else state.balances[index] - delta
 
 
+def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
+    nearest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    if state.earliest_exit_epoch < nearest_exit_epoch
+        state.earliest_exit_epoch = nearest_exit_epoch
+        state.exit_balance_to_consume = get_validator_churn_limit(state)
+
+    if state.exit_balance_to_consume < exit_balance:
+        exit_balance -= state.exit_balance_to_consume
+        state.earliest_exit_epoch += 1
+        state.exit_balance_to_consume = get_validator_churn_limit(state)
+
+    state.exit_balance_to_consume -= exit_balance
+
+    return state.earliest_exit_epoch
+
+
 def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Initiate the exit of the validator with index ``index``.
@@ -1169,22 +1194,11 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(
-        index=index,
-        amount=Gwei(0),
-        is_exit=True,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-    ))
+    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, state.balances[index])
 
-
-def cancel_validator_withdrawals(state: BeaconState,
-                                 slashed_index: ValidatorIndex) -> None:
-    for i, withdrawal in enumerate(state.pending_balance_withdrawals):
-        if withdrawal.index == slashed_index:
-                state.pending_balance_withdrawals = state.pending_balance_withdrawals[:i] + state.pending_balance_withdrawals[i+1:]
-    for i, withdrawal in enumerate(state.eligible_balance_withdrawals):
-        if withdrawal.index == slashed_index:
-                state.pending_balance_withdrawals = state.pending_balance_withdrawals[:i] + state.pending_balance_withdrawals[i+1:]
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = exit_queue_epoch
+    validator.withdrawable_epoch = Epoch(validator.exit_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 
 
 def slash_validator(state: BeaconState,
@@ -1194,7 +1208,6 @@ def slash_validator(state: BeaconState,
     Slash the validator with index ``slashed_index``.
     """
     epoch = get_current_epoch(state)
-    cancel_validator_withdrawals(state, slashed_index)
     validator = state.validators[slashed_index]
     # Reset the exit epoch for a new exit.
     validator.exit_epoch = FAR_FUTURE_EPOCH
@@ -1320,7 +1333,6 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings(state)
     process_eth1_data_reset(state)
     process_pending_balance_deposits(state)
-    process_pending_balance_withdrawals(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
@@ -1794,17 +1806,19 @@ def process_execution_layer_withdraw_request(
     if get_current_epoch(state) < validator.activation_epoch + config.SHARD_COMMITTEE_PERIOD:
         return
 
-    pending_balance_to_withdraw = sum(item.balance for item in state.pending_balance_withdrawals if item.index == validator_index)
+    pending_balance_to_withdraw = sum(item.amount for item in state.pending_partial_withdrawals if item.index == validator_index)
     # TODO: Should substract `MIN_ACTIVATION_BALANCE` or ejection balance?
     available_balance = state.balances[validator_index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw
     if available_balance < execution_layer_withdraw_request.balance:
         return
 
-    state.pending_balance_withdrawals.append(PendingBalanceWithdrawal(
+    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, available_balance)
+    withdrawable_epoch = Epoch(exit_queue_epoch + config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+
+    state.pending_partial_withdrawals.append(PartialWithdrawal(
         index=validator_index,
-        amount=execution_layer_withdraw_request.balance,
-        is_exit=False,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        amount=available_balance,
+        withdrawable_epoch=withdrawable_epoch,
     ))
 
 
@@ -3721,44 +3735,23 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
     consumed = 0
-    for withdrawal in state.eligible_slashing_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or consumed == MAX_WITHDRAWALS_PER_PAYLOAD:
+    for i, withdrawal in enumerate(state.pending_partial_withdrawals):
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
 
+        consumed = i
+
         validator = state.validators[withdrawal.index]
-        withdrawable_balance = state.balances[validator.index]
-        if withdrawable_balance > Gwei(0):
+        if not validator.slashed and state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE:
+            withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
-                validator_index=validator_index,
+                validator_index=withdrawal.index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawable_balance,
             ))
             withdrawal_index += WithdrawalIndex(1)
-        consumed += 1
-    for withdrawal in state.eligible_balance_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or consumed == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
 
-        validator = state.validators[withdrawal.index]
-
-        # Compute withdrawing balance
-        withdrawable_balance = Gwei(0)
-        if withdrawal.is_exit:
-            withdrawable_balance = state.balances[validator.index]
-        elif state.balances[validator.index] > MIN_ACTIVATION_BALANCE:
-            withdrawable_balance = min(state.balances[validator.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-
-        if withdrawable_balance > Gwei(0):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
-                validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=withdrawable_balance,
-            ))
-            withdrawal_index += WithdrawalIndex(1)
-        consumed += 1
-    
     state.pending_balance_withdrawals = state.pending_balance_withdrawals[consumed:] 
     if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
         return withdrawals
@@ -3768,7 +3761,15 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     for _ in range(bound):
         validator = state.validators[validator_index]
         balance = state.balances[validator_index]
-        if is_partially_withdrawable_validator(validator, balance):
+        if is_fully_withdrawable_validator(validator, balance, epoch):
+            withdrawals.append(Withdrawal(
+                index=withdrawal_index,
+                validator_index=validator_index,
+                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                amount=balance,
+            ))
+            withdrawal_index += WithdrawalIndex(1)
+        elif is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=validator_index,
