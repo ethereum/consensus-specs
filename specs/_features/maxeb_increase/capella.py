@@ -1179,11 +1179,10 @@ def cancel_partial_withdrawals_and_update_exit(state: BeaconState,
                                                slashed_index: ValidatorIndex) -> None:
     for i, withdrawal in state.pending_balance_withdrawals:
         if withdrawal.index == slashed_index:
-            if not withdrawal.is_exit:
-                state.pending_balance_withdrawals = state.pending_balance_withdrawals[:i] + state.pending_balance_withdrawals[i+1:]
-            elif withdrawal.withdrawable_epoch != FAR_FUTURE_EPOCH:
+            if withdrawal.is_exit and withdrawal.withdrawable_epoch != FAR_FUTURE_EPOCH:
                 withdrawal.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
-
+            else:
+                state.pending_balance_withdrawals = state.pending_balance_withdrawals[:i] + state.pending_balance_withdrawals[i+1:]
 
 
 def slash_validator(state: BeaconState,
