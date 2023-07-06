@@ -1161,17 +1161,20 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
 
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
     earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-    if state.earliest_exit_epoch < earliest_exit_epoch
+    per_epoch_churn = get_validator_churn_limit(state)
+    # New epoch for exits.
+    if state.earliest_exit_epoch < earliest_exit_epoch:
         state.earliest_exit_epoch = earliest_exit_epoch
-        state.exit_balance_to_consume = get_validator_churn_limit(state)
+        state.exit_balance_to_consume = per_epoch_churn
 
-    if state.exit_balance_to_consume < exit_balance:
-        exit_balance -= state.exit_balance_to_consume
-        state.earliest_exit_epoch += 1
-        state.exit_balance_to_consume = get_validator_churn_limit(state)
-
-    state.exit_balance_to_consume -= exit_balance
-
+    # Exit fits in the current earliest epoch.
+    if exit_balance < state.exit_balance_to_consume:
+        state.exit_balance_to_consume -= exit_balance
+    else: # Exit doesn't fit in the current earliest epoch.
+        balance_to_process = exit_balance - state.exit_balance_to_consume
+        additional_epochs, remainder = divmod(balance_to_process, per_epoch_churn)
+        state.earliest_exit_epoch += additional_epochs
+        state.exit_balance_to_consume = per_epoch_churn - remainder
     return state.earliest_exit_epoch
 
 
