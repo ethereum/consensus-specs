@@ -3702,8 +3702,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 amount=withdrawable_balance,
             ))
             withdrawal_index += WithdrawalIndex(1)
-
-        consumed += 1
+            consumed += 1
 
     state.pending_partial_withdrawals = state.pending_partial_withdrawals[consumed:] 
 
