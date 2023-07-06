@@ -3701,7 +3701,6 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawable_balance,
             ))
-            decrease_balance(state, withdrawal.index, withdrawable_balance)
             withdrawal_index += WithdrawalIndex(1)
             consumed += 1
 
