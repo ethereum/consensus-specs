@@ -106,7 +106,9 @@ pyspec:
 
 # installs the packages to run pyspec tests
 install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install --upgrade wheel pip setuptools; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
+	python3 -m venv venv; . venv/bin/activate; python3 -m pip install --upgrade wheel pip setuptools; \
+	python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]; \
+	python3 -m pip install -e "git+https://github.com/nalinbhardwaj/curdleproofs.pie@0507a660a73529f5b33b58376ca05bd8b1ce8d28#egg=curdleproofs&subdirectory=curdleproofs"
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
