@@ -1187,6 +1187,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
+    # Compute exit queue epoch
     exit_queue_epoch = compute_exit_epoch_and_update_churn(state, state.balances[index])
 
     # Set validator exit epoch and withdrawable epoch
@@ -1201,10 +1202,8 @@ def slash_validator(state: BeaconState,
     Slash the validator with index ``slashed_index``.
     """
     epoch = get_current_epoch(state)
-    validator = state.validators[slashed_index]
-    # Reset the exit epoch for a new exit.
-    validator.exit_epoch = FAR_FUTURE_EPOCH
     initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
