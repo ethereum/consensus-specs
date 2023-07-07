@@ -676,7 +676,6 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     deposit_balance_to_consume: Gwei
-    withdrawal_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei  # Should be initialized with get_validator_churn_limit(state)
     earliest_exit_epoch: Epoch  # Should be initialized with the max([v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]) + 1
     # Randomness
