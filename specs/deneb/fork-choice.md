@@ -84,7 +84,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
-    state = pre_state.copy()
+    state = pre_state
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
