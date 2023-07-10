@@ -1,4 +1,3 @@
-import logging
 import random
 
 from eth2spec.test.context import (
@@ -496,7 +495,7 @@ def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
 @spec_test
 @single_phase
 def test_compute_subscribed_subnets_random_1(spec):
-    rng = random.Random(8888)
+    rng = random.Random(1111)
     run_compute_subscribed_subnets_arguments(spec, rng)
 
 
