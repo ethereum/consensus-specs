@@ -80,7 +80,8 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
     if start_slot > end_slot:
         return Gwei(0)
 
-    if end_epoch > start_epoch + 1:
+    if (end_epoch > start_epoch + 1 or
+       (end_epoch == start_epoch + 1 and start_slot == 0)):
         return total_active_balance
 
     committee_weight = total_active_balance // SLOTS_PER_EPOCH
