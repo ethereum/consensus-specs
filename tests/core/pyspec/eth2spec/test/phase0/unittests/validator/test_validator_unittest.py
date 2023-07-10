@@ -1,3 +1,4 @@
+import logging
 import random
 
 from eth2spec.test.context import (
@@ -485,7 +486,7 @@ def test_get_aggregate_and_proof_signature(spec, state):
 
 
 def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
-    node_id = rng.randint(0, 2**40 - 1)  # try VALIDATOR_REGISTRY_LIMIT
+    node_id = rng.randint(0, 2**256 - 1)
     epoch = rng.randint(0, 2**64 - 1)
     subnets = spec.compute_subscribed_subnets(node_id, epoch)
     assert len(subnets) == spec.config.SUBNETS_PER_NODE
@@ -495,7 +496,7 @@ def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
 @spec_test
 @single_phase
 def test_compute_subscribed_subnets_random_1(spec):
-    rng = random.Random(1111)
+    rng = random.Random(8888)
     run_compute_subscribed_subnets_arguments(spec, rng)
 
 
