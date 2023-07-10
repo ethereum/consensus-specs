@@ -83,11 +83,9 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
     if (end_epoch > start_epoch + 1 or
        (end_epoch == start_epoch + 1 and start_slot == 0)):
         return total_active_balance
-
-    committee_weight = total_active_balance // SLOTS_PER_EPOCH
     
     if start_epoch == end_epoch:
-        return Gwei((end_slot - start_slot + 1) * committee_weight)
+        return Gwei((end_slot - start_slot + 1) * int(total_active_balance)) // SLOTS_PER_EPOCH
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
@@ -98,13 +96,15 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         # Then, calculate the number of slots in the previous epoch
         num_slots_in_previous_epoch = int(SLOTS_PER_EPOCH - (start_slot % SLOTS_PER_EPOCH))
 
+        current_epoch_weight_mul_by_slots_per_epoch = num_slots_in_current_epoch * int(total_active_balance)
+        previous_epoch_weight_mul_by_slots_per_epoch = (
+            num_slots_in_previous_epoch * remaining_slots_in_current_epoch * 
+            int(total_active_balance) // SLOTS_PER_EPOCH)
+
         # Each committee from the previous epoch only contributes a pro-rated weight
         return Gwei(
-            (num_slots_in_current_epoch * int(committee_weight)) + 
-            (
-                num_slots_in_previous_epoch * remaining_slots_in_current_epoch *
-                int(committee_weight) // SLOTS_PER_EPOCH
-            )
+            (current_epoch_weight_mul_by_slots_per_epoch + previous_epoch_weight_mul_by_slots_per_epoch) 
+            // SLOTS_PER_EPOCH
         )
 ```
 
