@@ -39,26 +39,27 @@
 ## Introduction
 
 This document specifies a fast block confirmation rule for the Ethereum protocol.
-*Note:* Confirmation is not a substitute for finality! The safety of confirmations is weaker than that of finality.
+
+*Note*: Confirmation is not a substitute for finality! The safety of confirmations is weaker than that of finality.
 
 The research paper for this rule is attached in this [ethresear.ch post](https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454).
 
 This rule makes the following network synchrony assumption: starting from the current slot, attestations created by honest validators in any slot are received by the end of that slot.
-Consequently, this rule provides confirmations to users who believe in the above assumption. If this assumption is broken, confirmed blocks can be reorged without any adversarial behavior, and without slashing.
+Consequently, this rule provides confirmations to users who believe in the above assumption. If this assumption is broken, confirmed blocks can be reorged without any adversarial behavior and without slashing.
 
 There are two algorithms in the document:
 - [**Confirmation Rule**](#confirmation-rule): Given a block and confirmation safety parameters, outputs whether the block is confirmed.
 - [**Confirmation Score**](#confirmation-score): Given a block, outputs the confirmation score for the block, i.e., the maximum possible confirmation safety parameters to deem the block confirmed.
 
-*Note:* These algorithms use unbounded integer arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that results fit into length-limited fields - a property crucial for consensus objects (such as the `BeaconBlockBody`). This document describes a local confirmation rule that does not require storing anything in length-limited fields. Using unbounded integer arithmetic here prevents possible overflowing issues.
+*Note*: These algorithms use unbounded integer arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that results fit into length-limited fields - a property crucial for consensus objects (such as the `BeaconBlockBody`). This document describes a local confirmation rule that does not require storing anything in length-limited fields. Using unbounded integer arithmetic here prevents possible overflowing issues.
 
 ## Confirmation Rule
 
 This section specifies an algorithm to determine whether a block is confirmed. The confirmation rule can be configured to the desired tolerance of Byzantine validators, for which the algorithm takes the following input parameters:
 | Input Parameter                    | Type     | Max. Value                         | Description                                                            |
 | ---------------------------------- | -------- |:---------------------------------- | ---------------------------------------------------------------------- |
-| `confirmation_byzantine_threshold` | `uint64` | `33`                               | the maximum percentage of Byzantine validators among the validator set |
-| `confirmation_slashing_threshold`  | `uint64` | `confirmation_byzantine_threshold` | the maximum percentage of slashings among the validator set            |
+| `confirmation_byzantine_threshold` | `uint64` | `33`                               | assumed maximum percentage of Byzantine validators among the validator set |
+| `confirmation_slashing_threshold`  | `uint64` | `confirmation_byzantine_threshold` | assumed maximum percentage of slashings among the validator set            |
 
 
 ### Helper Functions
@@ -67,7 +68,8 @@ This section specifies an algorithm to determine whether a block is confirmed. T
 
 ```python
 def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end_slot: Slot) -> Gwei:
-    """Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both)..
+    """
+    Returns the total weight of committees between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
     total_active_balance = get_total_active_balance(state)
 
@@ -167,7 +169,8 @@ def get_total_active_balance_for_block_root(store: Store, block_root: Root) -> G
 
 ```python
 def get_remaining_weight_in_current_epoch(store: Store, block_root: Root) -> Gwei:
-    """ Returns the total weight of votes for this epoch from future committees after the current slot
+    """ 
+    Returns the total weight of votes for this epoch from future committees after the current slot.
     """
     assert block_root in store.block_states
 
@@ -222,9 +225,8 @@ def get_epoch_participating_indices(
 ```python
 def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     """
-    Returns the total weight supporting the checkpoint in the block's chain at block's epoch
+    Returns the total weight supporting the checkpoint in the block's chain at block's epoch.
     """
-
     block = store.blocks[block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
     current_epoch = get_current_store_epoch(store)
@@ -269,9 +271,8 @@ def is_ffg_confirmed_current_epoch(
     confirmation_slashing_threshold: int,   
 ) -> bool:
     """
-    Returns whether the branch will justify it's current epoch checkpoint at the end of this epoch
+    Returns whether the branch will justify its current epoch checkpoint at the end of this epoch.
     """
-
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
             (total_active_balance * confirmation_byzantine_threshold - 1) // 100 + 1,
@@ -305,9 +306,8 @@ def is_ffg_confirmed_previous_epoch(
     confirmation_slashing_threshold: int,    
 ) -> bool:
     """
-    Returns whether the `block_root`'s checkpoint is justified
+    Returns whether the `block_root`'s checkpoint is justified.
     """
-
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
             (total_active_balance * confirmation_byzantine_threshold - 1) // 100 + 1,
