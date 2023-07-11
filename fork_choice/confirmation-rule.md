@@ -364,16 +364,16 @@ def is_confirmed(store: Store,
 
     block = store.blocks[block_root]
     block_state = store.block_states[block_root]
-    block_justified_checkpoint = block_state.current_justified_checkpoint.epoch
+    block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
     block_epoch = compute_epoch_at_slot(block.slot)
 
     # This function is only applicable to current and previous epoch blocks
     assert current_epoch in [block_epoch, block_epoch + 1]
 
-    if block_epoch == current_epoch and block_justified_checkpoint + 1 != current_epoch:
+    if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
         return False
 
-    if block_epoch != current_epoch and block_justified_checkpoint + 2 < current_epoch:
+    if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
         return False
 
     return (
