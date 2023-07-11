@@ -203,11 +203,9 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 #### `get_current_epoch_participating_indices`
 
 ```python
-def get_epoch_participating_indices(
-    state: BeaconState, 
-    active_validator_indices: Sequence[ValidatorIndex],
-    current_epoch: bool
-) -> Set[ValidatorIndex]: 
+def get_epoch_participating_indices(state: BeaconState, 
+                                    active_validator_indices: Sequence[ValidatorIndex],
+                                    current_epoch: bool) -> Set[ValidatorIndex]: 
     if current_epoch:
         epoch_participation = state.current_epoch_participation
     else:
@@ -262,13 +260,11 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 #### `is_ffg_confirmed_current_epoch`
 
 ```python
-def is_ffg_confirmed_current_epoch(
-    total_active_balance: int,
-    ffg_support_for_checkpoint: int,
-    remaining_ffg_weight: int,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,   
-) -> bool:
+def is_ffg_confirmed_current_epoch(total_active_balance: int,
+                                   ffg_support_for_checkpoint: int,
+                                   remaining_ffg_weight: int,
+                                   confirmation_byzantine_threshold: int,
+                                   confirmation_slashing_threshold: int) -> bool:
     """
     Returns whether the branch will justify its current epoch checkpoint at the end of this epoch.
     """
@@ -298,12 +294,10 @@ def is_ffg_confirmed_current_epoch(
 #### `is_ffg_confirmed_previous_epoch`
 
 ```python
-def is_ffg_confirmed_previous_epoch(
-    total_active_balance: int,
-    ffg_support_for_checkpoint: int,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,    
-) -> bool:
+def is_ffg_confirmed_previous_epoch(total_active_balance: int,
+                                    ffg_support_for_checkpoint: int,
+                                    confirmation_byzantine_threshold: int,
+                                    confirmation_slashing_threshold: int) -> bool:
     """
     Returns whether the `block_root`'s checkpoint is justified.
     """
@@ -321,12 +315,10 @@ def is_ffg_confirmed_previous_epoch(
 #### `is_ffg_confirmed`
 
 ```python
-def is_ffg_confirmed(
-    store: Store,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,
-    block_root: Root,
-) -> bool:
+def is_ffg_confirmed(store: Store,
+                     confirmation_byzantine_threshold: int,
+                     confirmation_slashing_threshold: int,
+                     block_root: Root) -> bool:
     """
     Returns whether the `block_root`'s checkpoint is justified
     """
@@ -364,12 +356,10 @@ def is_ffg_confirmed(
 ### `is_confirmed`
 
 ```python
-def is_confirmed(
-    store: Store,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,
-    block_root: Root
-) -> bool:
+def is_confirmed(store: Store,
+                 confirmation_byzantine_threshold: int,
+                 confirmation_slashing_threshold: int,
+                 block_root: Root) -> bool:
     current_epoch = get_current_store_epoch(store)
 
     block = store.blocks[block_root]
@@ -407,12 +397,10 @@ This function is used to compute the value of the `safeBlockHash` field which is
 #### `find_confirmed_block`
 
 ```python
-def find_confirmed_block(
-    store: Store,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int,
-    block_root: Root
-) -> Root:
+def find_confirmed_block(store: Store,
+                         confirmation_byzantine_threshold: int,
+                         confirmation_slashing_threshold: int,
+                         block_root: Root) -> Root:
 
     block = store.blocks[block_root]
     current_epoch = get_current_store_epoch(store)
@@ -431,11 +419,9 @@ def find_confirmed_block(
 ### `get_safe_execution_payload_hash`
 
 ```python
-def get_safe_execution_payload_hash(
-    store: Store,
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int
-) -> Hash32:
+def get_safe_execution_payload_hash(store: Store,
+                                    confirmation_byzantine_threshold: int,
+                                    confirmation_slashing_threshold: int) -> Hash32:
     head_root = get_head(store)
 
     confirmed_block_root = find_confirmed_block(store, confirmation_byzantine_threshold,
@@ -504,12 +490,10 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
 #### `get_ffg_confirmation_score_current_epoch`
 
 ```python
-def get_ffg_confirmation_score_current_epoch(
-    total_active_balance: int,
-    ffg_support_for_checkpoint: int,
-    min_ffg_support_slash_th: int,
-    remaining_ffg_weight: int
-) -> int:
+def get_ffg_confirmation_score_current_epoch(total_active_balance: int,
+                                             ffg_support_for_checkpoint: int,
+                                             min_ffg_support_slash_th: int,
+                                             remaining_ffg_weight: int) -> int:
     assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
     
     """
@@ -559,11 +543,9 @@ def get_ffg_confirmation_score_current_epoch(
 #### `get_ffg_confirmation_score_previous_epoch`
 
 ```python
-def get_ffg_confirmation_score_previous_epoch(
-    total_active_balance: int,
-    ffg_support_for_checkpoint: int,
-    min_ffg_support_slash_th: int
-) -> int:
+def get_ffg_confirmation_score_previous_epoch(total_active_balance: int,
+                                              ffg_support_for_checkpoint: int,
+                                              min_ffg_support_slash_th: int) -> int:
     assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
     """
     Return the max possible ffg_confirmation_score such that:
@@ -597,11 +579,9 @@ def get_ffg_confirmation_score_previous_epoch(
 #### `get_ffg_confirmation_score`
 
 ```python
-def get_ffg_confirmation_score(
-    store: Store, 
-    confirmation_slashing_threshold: int,
-    block_root: Root
-) -> int:
+def get_ffg_confirmation_score(store: Store, 
+                               confirmation_slashing_threshold: int,
+                               block_root: Root) -> int:
 
     current_epoch = get_current_store_epoch(store)
 
@@ -637,11 +617,9 @@ def get_ffg_confirmation_score(
 ### `get_confirmation_score`
 
 ```python
-def get_confirmation_score(
-    store: Store,
-    confirmation_slashing_threshold: int,
-    block_root: Root
-) -> int:
+def get_confirmation_score(store: Store,
+                           confirmation_slashing_threshold: int,
+                           block_root: Root) -> int:
     """
     Return -1 in the case that `block_root` cannot be confirmed even by assuming no adversary weight,
     otherwise it returns the maximum percentage of adversary weight that is admissible in order to
