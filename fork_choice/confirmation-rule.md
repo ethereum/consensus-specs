@@ -231,7 +231,6 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
     # This function is only applicable to current and previous epoch blocks
     assert current_epoch in [block_epoch, block_epoch + 1]
 
-    current_epoch = get_current_store_epoch(store)
     checkpoint_root = get_checkpoint_block(store, block_root, block_epoch)
     checkpoint = Checkpoint(root=checkpoint_root, epoch=block_epoch)
 
