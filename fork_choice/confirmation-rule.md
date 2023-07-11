@@ -239,7 +239,7 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
     checkpoint_state = store.checkpoint_states[checkpoint]
 
-    leave_roots = get_leaf_block_roots(store, block_root)
+    leaf_roots = get_leaf_block_roots(store, block_root)
 
     active_validator_indices = get_active_validator_indices(checkpoint_state, block_epoch)
     participating_indices = set().union(*[
@@ -248,7 +248,7 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
             active_validator_indices, 
             block_epoch == current_epoch
         )
-        for root in leave_roots
+        for root in leaf_roots
     ])
 
     return get_total_balance(checkpoint_state, participating_indices)
@@ -265,7 +265,8 @@ def is_ffg_confirmed_current_epoch(total_active_balance: int,
                                    confirmation_byzantine_threshold: int,
                                    confirmation_slashing_threshold: int) -> bool:
     """
-    Returns whether the branch will justify its current epoch checkpoint at the end of this epoch.
+    Helper function of `is_ffg_confirmed` dealing with the case that the block to be confirmed is
+    from the current epoch.
     """
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
@@ -298,7 +299,8 @@ def is_ffg_confirmed_previous_epoch(total_active_balance: int,
                                     confirmation_byzantine_threshold: int,
                                     confirmation_slashing_threshold: int) -> bool:
     """
-    Returns whether the `block_root`'s checkpoint is justified.
+    Helper function of `is_ffg_confirmed` dealing with the case that the block to be confirmed is
+    from the previous epoch.
     """
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
@@ -319,7 +321,7 @@ def is_ffg_confirmed(store: Store,
                      confirmation_slashing_threshold: int,
                      block_root: Root) -> bool:
     """
-    Returns whether the `block_root`'s checkpoint is justified
+    Returns whether the `block_root`'s checkpoint will be justified by the end of this epoch.
     """
     current_epoch = get_current_store_epoch(store)
 
