@@ -160,7 +160,6 @@ def is_lmd_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
 def get_total_active_balance_for_block_root(store: Store, block_root: Root) -> Gwei:
     assert block_root in store.block_states
 
-    # Alternatively, fetch the state from the block's checkpoint
     state = store.block_states[block_root]
 
     return get_total_active_balance(state)
@@ -175,7 +174,6 @@ def get_remaining_weight_in_current_epoch(store: Store, block_root: Root) -> Gwe
     """
     assert block_root in store.block_states
 
-    # Alternatively, fetches the state from the block's checkpoint
     state = store.block_states[block_root]
 
     current_slot = get_current_slot(store)
