@@ -208,6 +208,7 @@ VALIDATOR_REGISTRY_LIMIT = uint64(1099511627776)
 BASE_REWARD_FACTOR = uint64(64)
 WHISTLEBLOWER_REWARD_QUOTIENT = uint64(512)
 PROPOSER_REWARD_QUOTIENT = uint64(8)
+PROPOSER_EQUIVOCATION_PENALTY_FACTOR = uint64(4)
 INACTIVITY_PENALTY_QUOTIENT = uint64(67108864)
 MIN_SLASHING_PENALTY_QUOTIENT = uint64(128)
 PROPORTIONAL_SLASHING_MULTIPLIER = uint64(1)
@@ -1219,6 +1220,24 @@ def slash_validator(state: BeaconState,
     increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 
 
+def slash_proposer(state: BeaconState,
+                   slashed_index: ValidatorIndex) -> None:
+    """
+    Slash the proposer with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    slashing_penalty = PROPOSER_EQUIVOCATION_PENALTY_FACTOR * EFFECTIVE_BALANCE_INCREMENT
+    decrease_balance(state, slashed_index, slashing_penalty)
+
+    # Apply proposer reward
+    proposer_index = get_beacon_proposer_index(state)
+    proposer_reward = Gwei(slashing_penalty // WHISTLEBLOWER_REWARD_QUOTIENT * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
+    increase_balance(state, proposer_index, proposer_reward)
+
+
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit],
@@ -1792,7 +1811,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    slash_validator(state, header_1.proposer_index)
+    slash_proposer(state, header_1.proposer_index)
 
 
 def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
