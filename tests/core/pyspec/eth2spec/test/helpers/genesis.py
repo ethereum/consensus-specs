@@ -1,11 +1,11 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, WHISK,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002, WHISK,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_whisk
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
@@ -50,11 +50,14 @@ def get_sample_genesis_execution_payload_header(spec,
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
     deposit_receipts_trie_root = None
+    exits_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_eip6110(spec):
         deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_eip7002(spec):
+        exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
@@ -62,6 +65,7 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_trie_root,
         withdrawals_trie_root,
         deposit_receipts_trie_root,
+        exits_trie_root,
     )
     return payload_header
 
@@ -87,6 +91,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == EIP6110:
         previous_version = spec.config.DENEB_FORK_VERSION
         current_version = spec.config.EIP6110_FORK_VERSION
+    elif spec.fork == EIP7002:
+        previous_version = spec.config.CAPELLA_FORK_VERSION
+        current_version = spec.config.EIP7002_FORK_VERSION
     elif spec.fork == WHISK:
         previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.WHISK_FORK_VERSION
