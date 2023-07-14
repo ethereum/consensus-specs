@@ -36,26 +36,26 @@ commands:
     steps:
       - restore_cached_venv:
           venv_name: v24-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
           venv_name: v24-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
           venv_path: ./venv
   restore_deposit_contract_tester_cached_venv:
     description: "Restore the venv from cache for the deposit contract tester"
     steps:
       - restore_cached_venv:
           venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
   save_deposit_contract_tester_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract tester"
     steps:
       - save_cached_venv:
           venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
           venv_path: ./solidity_deposit_contract/web3_tester/venv
 jobs:
   checkout_specs:
