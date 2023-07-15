@@ -94,7 +94,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 
 ### Curdleproofs and opening proofs
 
-Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/) repository.
+Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev) repository.
 
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
@@ -103,7 +103,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/master/curdleproofs/curdleproofs/whisk_interface.py.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
@@ -115,7 +115,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
                              tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/master/curdleproofs/curdleproofs/whisk_interface.py.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
