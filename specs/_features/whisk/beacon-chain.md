@@ -304,7 +304,7 @@ class BeaconBlockBody(capella.BeaconBlockBody):
 ```python
 def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     """
-    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
+    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set.
     """
     indices = []
     for i in range(0, WHISK_VALIDATORS_PER_SHUFFLE):
