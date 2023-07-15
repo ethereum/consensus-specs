@@ -461,7 +461,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Whisk testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified purely for Whisk testing.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
