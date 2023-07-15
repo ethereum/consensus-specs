@@ -31,7 +31,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the Whisk SSLE,
+This document details the beacon chain additions and changes of to support the Whisk SSLE.
 
 *Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
@@ -150,7 +150,7 @@ class BeaconState(Container):
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Whisk]
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
