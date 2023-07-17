@@ -138,6 +138,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     data_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_data_gas: uint64  # [New in Deneb:EIP4844]
+    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4844]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -163,6 +164,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     data_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_data_gas: uint64  # [New in Deneb:EIP4844]
+    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4844]
 ```
 
 ## Helper functions
@@ -229,20 +231,6 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-##### `is_valid_block_hash`
-
-*Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
-
-```python
-def is_valid_block_hash(self: ExecutionEngine,
-                        execution_payload: ExecutionPayload,
-                        parent_beacon_block_root: Root) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
-    """
-    ...
-```
-
 ##### `is_valid_versioned_hashes`
 
 ```python
@@ -250,20 +238,6 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
     ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
-    """
-    ...
-```
-
-##### Modified `notify_new_payload`
-
-*Note*: The function `notify_new_payload` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
-
-```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       parent_beacon_block_root: Root) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
     ...
 ```
@@ -279,16 +253,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
 
-    # [Modified in Deneb:EIP4788]
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    # [New in Deneb:EIP4844]
+    assert parent_beacon_block_root == execution_payload.parent_beacon_block_root
+
+    if not self.is_valid_block_hash(execution_payload):
         return False
 
     # [New in Deneb:EIP4844]
     if not self.is_valid_versioned_hashes(new_payload_request):
         return False
 
-    # [Modified in Deneb:EIP4788]
-    if not self.notify_new_payload(execution_payload, parent_beacon_block_root):
+    if not self.notify_new_payload(execution_payload):
         return False
 
     return True
@@ -358,7 +333,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
-    # [Modified in Deneb:EIP4788] Pass `parent_beacon_block_root` to Execution Engine
+    # [Modified in Deneb:EIP4788] Verify `parent_beacon_block_root` with executon payload's
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
