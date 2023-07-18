@@ -16,8 +16,6 @@
     - [`get_leaf_block_roots`](#get_leaf_block_roots)
     - [`get_current_epoch_participating_indices`](#get_current_epoch_participating_indices)
     - [`get_ffg_support`](#get_ffg_support)
-    - [`is_ffg_confirmed_current_epoch`](#is_ffg_confirmed_current_epoch)
-    - [`is_ffg_confirmed_previous_epoch`](#is_ffg_confirmed_previous_epoch)
     - [`is_ffg_confirmed`](#is_ffg_confirmed)
   - [`is_confirmed`](#is_confirmed)
 - [Safe Block Hash](#safe-block-hash)
@@ -29,7 +27,6 @@
     - [`get_one_confirmation_score`](#get_one_confirmation_score)
     - [`get_lmd_confirmation_score`](#get_lmd_confirmation_score)
     - [`get_ffg_confirmation_score_current_epoch`](#get_ffg_confirmation_score_current_epoch)
-    - [`get_ffg_confirmation_score_previous_epoch`](#get_ffg_confirmation_score_previous_epoch)
     - [`get_ffg_confirmation_score`](#get_ffg_confirmation_score)
   - [`get_confirmation_score`](#get_confirmation_score)
 
@@ -255,64 +252,6 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 ```
 
 
-
-#### `is_ffg_confirmed_current_epoch`
-
-```python
-def is_ffg_confirmed_current_epoch(total_active_balance: int,
-                                   ffg_support_for_checkpoint: int,
-                                   remaining_ffg_weight: int,
-                                   confirmation_byzantine_threshold: int,
-                                   confirmation_slashing_threshold: int) -> bool:
-    """
-    Helper function of `is_ffg_confirmed` dealing with the case that the block to be confirmed is
-    from the current epoch.
-    """
-    max_adversarial_ffg_support_for_checkpoint = int(
-        min(
-            (total_active_balance * confirmation_byzantine_threshold - 1) // 100 + 1,
-            confirmation_slashing_threshold,
-            ffg_support_for_checkpoint
-        )
-    )
-
-    """
-    Returns whether the following condition is true using only integer arithmetic
-    2 / 3 * total_active_balance <= (
-        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
-    )
-    """
-
-    return (
-        200 * total_active_balance <=
-        ffg_support_for_checkpoint * 300 + (300 - 3 * confirmation_byzantine_threshold) *
-        remaining_ffg_weight - max_adversarial_ffg_support_for_checkpoint * 300
-    )
-```
-
-#### `is_ffg_confirmed_previous_epoch`
-
-```python
-def is_ffg_confirmed_previous_epoch(total_active_balance: int,
-                                    ffg_support_for_checkpoint: int,
-                                    confirmation_byzantine_threshold: int,
-                                    confirmation_slashing_threshold: int) -> bool:
-    """
-    Helper function of `is_ffg_confirmed` dealing with the case that the block to be confirmed is
-    from the previous epoch.
-    """
-    max_adversarial_ffg_support_for_checkpoint = int(
-        min(
-            (total_active_balance * confirmation_byzantine_threshold - 1) // 100 + 1,
-            confirmation_slashing_threshold,
-            ffg_support_for_checkpoint
-        )
-    )    
-
-    return 2 * total_active_balance <= (ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint) * 3
-```
-
 #### `is_ffg_confirmed`
 
 ```python
@@ -337,20 +276,30 @@ def is_ffg_confirmed(store: Store,
 
     if block_epoch == current_epoch:
         remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
-        return is_ffg_confirmed_current_epoch(
-            total_active_balance,
-            ffg_support_for_checkpoint,
-            remaining_ffg_weight,
-            confirmation_byzantine_threshold,
-            confirmation_slashing_threshold
-        )
     else:
-        return is_ffg_confirmed_previous_epoch(
-            total_active_balance,
-            ffg_support_for_checkpoint,
-            confirmation_byzantine_threshold,
-            confirmation_slashing_threshold
-        )  
+        remaining_ffg_weight = 0
+
+    max_adversarial_ffg_support_for_checkpoint = int(
+        min(
+            (total_active_balance * confirmation_byzantine_threshold - 1) // 100 + 1,
+            confirmation_slashing_threshold,
+            ffg_support_for_checkpoint
+        )
+    )
+
+    """
+    Returns whether the following condition is true using only integer arithmetic
+    2 / 3 * total_active_balance <= (
+        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
+        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+    )
+    """
+
+    return (
+        200 * total_active_balance <=
+        ffg_support_for_checkpoint * 300 + (300 - 3 * confirmation_byzantine_threshold) *
+        remaining_ffg_weight - max_adversarial_ffg_support_for_checkpoint * 300
+    )
 ```
 
 ### `is_confirmed`
@@ -489,10 +438,10 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
 #### `get_ffg_confirmation_score_current_epoch`
 
 ```python
-def get_ffg_confirmation_score_current_epoch(total_active_balance: int,
-                                             ffg_support_for_checkpoint: int,
-                                             min_ffg_support_slash_th: int,
-                                             remaining_ffg_weight: int) -> int:
+def get_ffg_confirmation_score_helper(total_active_balance: int,
+                                      ffg_support_for_checkpoint: int,
+                                      min_ffg_support_slash_th: int,
+                                      remaining_ffg_weight: int) -> int:
     assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
     
     """
@@ -506,9 +455,24 @@ def get_ffg_confirmation_score_current_epoch(total_active_balance: int,
     """
     Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
 
+    In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
+
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
         remaining_ffg_weight
+
+    If remaining_ffg_weight > 0, then first we compute ffg_confirmation_score and then check that the condition for
+    this case is satisfied. If it is, then we return the calculated ffg_confirmation_score. If not, we proceed to the
+    next case.
+
+    If remaining_ffg_weight == 0, then the problem further reduces to whether the following condition, which is
+    independent of ffg_confirmation_score, is satisfied:
+
+    2 / 3 * total_active_balance <= ffg_support_for_checkpoint - min_ffg_support_slash_th
+
+    If it is satisfied, then it means that ffg_support_for_checkpoint can be as high as the maximum fraction of
+    adversarial stake that the consensus protocol can deal with, i.e., < 1/3.
+    If it not satisfied, then we proceed to the next case.
     """
     if remaining_ffg_weight > 0:
         ffg_confirmation_score = (
@@ -526,6 +490,8 @@ def get_ffg_confirmation_score_current_epoch(total_active_balance: int,
     """
     Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
 
+    In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
+
     2 / 3 * total_active_balance <= \
         ffg_support_for_checkpoint - \
         total_active_balance * ffg_confirmation_score / 100 + \
@@ -536,42 +502,6 @@ def get_ffg_confirmation_score_current_epoch(total_active_balance: int,
         (3 * (remaining_ffg_weight + total_active_balance))
     )
     assert ffg_support_for_checkpoint * 100 > total_active_balance * ffg_confirmation_score
-    return max(ffg_confirmation_score, -1)
-```
-
-#### `get_ffg_confirmation_score_previous_epoch`
-
-```python
-def get_ffg_confirmation_score_previous_epoch(total_active_balance: int,
-                                              ffg_support_for_checkpoint: int,
-                                              min_ffg_support_slash_th: int) -> int:
-    assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
-    """
-    Return the max possible ffg_confirmation_score such that:
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - \
-        min(min_ffg_support_slash_th, total_active_balance * ffg_confirmation_score / 100)
-    """
-
-    """
-    Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
-
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - min_ffg_support_slash_th
-    """
-    if 2 * int(total_active_balance) <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
-        return 100 // 3
-
-    """
-    Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
-
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - total_active_balance * ffg_confirmation_score / 100
-    """
-    ffg_confirmation_score = (
-        (300 * (ffg_support_for_checkpoint) - 200 * int(total_active_balance)) //
-        (3 * (total_active_balance))
-    )
     return max(ffg_confirmation_score, -1)
 ```
 
@@ -598,18 +528,15 @@ def get_ffg_confirmation_score(store: Store,
 
     if block_epoch == current_epoch:
         remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
-        return get_ffg_confirmation_score_current_epoch(
-            total_active_balance,
-            ffg_support_for_checkpoint,
-            min_ffg_support_slash_th,
-            remaining_ffg_weight
-        )
     else:
-        return get_ffg_confirmation_score_previous_epoch(
-            total_active_balance,
-            ffg_support_for_checkpoint,
-            min_ffg_support_slash_th
-        )
+        remaining_ffg_weight = 0  
+
+    return get_ffg_confirmation_score_helper(
+        total_active_balance,
+        ffg_support_for_checkpoint,
+        min_ffg_support_slash_th,
+        remaining_ffg_weight
+    )          
 ```
 
 ### `get_confirmation_score`
