@@ -171,13 +171,20 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="if set re-generate and overwrite test files if they already exist",
     )
     parser.add_argument(
-        "-l",
         "--preset-list",
         dest="preset_list",
         nargs='*',
         type=str,
         required=False,
         help="specify presets to run with. Allows all if no preset names are specified.",
+    )
+    parser.add_argument(
+        "--fork-list",
+        dest="fork_list",
+        nargs='*',
+        type=str,
+        required=False,
+        help="specify forks to run with. Allows all if no fork names are specified.",
     )
     parser.add_argument(
         "-c",
@@ -199,12 +206,21 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     print(f"Generating tests into {output_dir}")
     print(f'Error log file: {log_file}')
 
+    # preset_list arg
     presets = args.preset_list
     if presets is None:
         presets = []
 
     if len(presets) != 0:
         print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
+
+    # fork_list arg
+    forks = args.fork_list
+    if forks is None:
+        forks = []
+
+    if len(presets) != 0:
+        print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
     collect_only = args.collect_only
 
@@ -222,6 +238,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
             if len(presets) != 0 and test_case.preset_name not in presets:
+                continue
+
+            # If fork list is assigned, filter by forks.
+            if len(forks) != 0 and test_case.fork_name not in forks:
                 continue
 
             case_dir = get_test_case_dir(test_case, output_dir)
