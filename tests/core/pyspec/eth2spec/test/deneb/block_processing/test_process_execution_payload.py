@@ -78,14 +78,14 @@ def test_incorrect_blob_tx_type(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
-def test_incorrect_transaction_length_1_byte(spec, state):
+def test_incorrect_transaction_length_1_extra_byte(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
-    opaque_tx = opaque_tx + b'\x12'  # incorrect tx length
+    opaque_tx = opaque_tx + b'\x12'  # incorrect tx length, longer
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
@@ -95,7 +95,41 @@ def test_incorrect_transaction_length_1_byte(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
-def test_incorrect_transaction_length_32_bytes(spec, state):
+def test_incorrect_transaction_length_1_byte_short(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx = opaque_tx[:-1]  # incorrect tx length, shorter
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_incorrect_transaction_length_empty(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx = opaque_tx[0:0]  # incorrect tx length, empty
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
@@ -105,6 +139,22 @@ def test_incorrect_transaction_length_32_bytes(spec, state):
     opaque_tx = opaque_tx + b'\x12' * 32  # incorrect tx length
 
     execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_no_transactions_with_commitments(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    _, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+
+    execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
