@@ -59,6 +59,13 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
     assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
 
 
+"""
+Tests with incorrect blob transactions in the execution payload, but the execution client returns
+VALID, and the purpose of these tests is that the beacon client must not reject the block by
+attempting to do a validation of its own.
+"""
+
+
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_blob_tx_type(spec, state):
