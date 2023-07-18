@@ -1,3 +1,5 @@
+import random
+
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     next_epoch_via_block,
@@ -15,6 +17,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
+    get_random_tx,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
@@ -24,7 +27,8 @@ from eth2spec.test.helpers.sharding import (
 )
 
 
-def run_block_with_blobs(spec, state, blob_count, data_gas_used=1, excess_data_gas=1, valid=True, tx_count=1):
+def run_block_with_blobs(spec, state, blob_count, tx_count=1, data_gas_used=1, excess_data_gas=1,
+                         non_blob_tx_count=0, rng=random.Random(7777), valid=True):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -34,6 +38,9 @@ def run_block_with_blobs(spec, state, blob_count, data_gas_used=1, excess_data_g
         opaque_tx, _, commits, _ = get_sample_opaque_tx(spec, blob_count=blob_count)
         txs.append(opaque_tx)
         blob_kzg_commitments += commits
+
+    for _ in range(non_blob_tx_count):
+        txs.append(get_random_tx(rng=rng))
 
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = txs
@@ -96,6 +103,12 @@ def test_invalid_max_blobs_per_block_two_txs(spec, state):
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=spec.MAX_BLOBS_PER_BLOCK + 1, valid=False)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_mix_blob_tx_and_non_blob_tx(spec, state):
+    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=1, non_blob_tx_count=1)
 
 
 @with_phases([DENEB])

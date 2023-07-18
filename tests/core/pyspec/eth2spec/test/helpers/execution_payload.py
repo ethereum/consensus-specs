@@ -259,7 +259,7 @@ def build_randomized_execution_payload(spec, state, rng):
 
     num_transactions = rng.randint(0, 100)
     execution_payload.transactions = [
-        spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
+        get_random_tx(rng)
         for _ in range(num_transactions)
     ]
 
@@ -290,3 +290,7 @@ def build_state_with_execution_payload_header(spec, state, execution_payload_hea
     pre_state.latest_execution_payload_header = execution_payload_header
 
     return pre_state
+
+
+def get_random_tx(rng):
+    return get_random_bytes_list(rng, rng.randint(0, 1000))
