@@ -119,11 +119,9 @@ def is_one_confirmed(store: Store, confirmation_byzantine_threshold: int, block_
     )
     proposer_score = int(get_proposer_score(store))
 
-    """
-    Returns whether the following condition is true using only integer arithmetic
-    support / maximum_support >
-    0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
-    """
+    # Returns whether the following condition is true using only integer arithmetic
+    # support / maximum_support >
+    # 0.5 * (1 + proposer_score / maximum_support) + confirmation_byzantine_threshold / 100
 
     return (
         100 * support > 
@@ -287,13 +285,11 @@ def is_ffg_confirmed(store: Store,
         )
     )
 
-    """
-    Returns whether the following condition is true using only integer arithmetic
-    2 / 3 * total_active_balance <= (
-        ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
-        (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
-    )
-    """
+    # Returns whether the following condition is true using only integer arithmetic
+    # 2 / 3 * total_active_balance <= (
+    #     ffg_support_for_checkpoint - max_adversarial_ffg_support_for_checkpoint +
+    #     (1 - confirmation_byzantine_threshold / 100) * remaining_ffg_weight
+    # )
 
     return (
         200 * total_active_balance <=
@@ -407,11 +403,10 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     )
     proposer_score = int(get_proposer_score(store))
 
-    """
-    Return the max possible one_confirmation_score such that:
-    support / maximum_support > \
-        0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
-    """
+    # Return the max possible one_confirmation_score such that:
+    # support / maximum_support > \
+    #     0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
+
     return max((100 * support - 50 * proposer_score - 1) // maximum_support - 50, -1)
 ```
 
@@ -452,28 +447,27 @@ def get_ffg_confirmation_score_helper(total_active_balance: int,
         (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
     """
 
-    """
-    Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
+    # Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
+    #
+    # In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
+    #
+    # 2 / 3 * total_active_balance <= \
+    #     ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
+    #     remaining_ffg_weight
+    #
+    # If remaining_ffg_weight > 0, then first we compute ffg_confirmation_score and then check that the condition for
+    # this case is satisfied. If it is, then we return the calculated ffg_confirmation_score. If not, we proceed to the
+    # next case.
+    #
+    # If remaining_ffg_weight == 0, then the problem further reduces to whether the following condition, which is
+    # independent of ffg_confirmation_score, is satisfied:
+    #
+    # 2 / 3 * total_active_balance <= ffg_support_for_checkpoint - min_ffg_support_slash_th
+    #
+    # If it is satisfied, then it means that ffg_support_for_checkpoint can be as high as the maximum fraction of
+    # adversarial stake that the consensus protocol can deal with, i.e., < 1/3.
+    # If it not satisfied, then we proceed to the next case.
 
-    In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
-
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
-        remaining_ffg_weight
-
-    If remaining_ffg_weight > 0, then first we compute ffg_confirmation_score and then check that the condition for
-    this case is satisfied. If it is, then we return the calculated ffg_confirmation_score. If not, we proceed to the
-    next case.
-
-    If remaining_ffg_weight == 0, then the problem further reduces to whether the following condition, which is
-    independent of ffg_confirmation_score, is satisfied:
-
-    2 / 3 * total_active_balance <= ffg_support_for_checkpoint - min_ffg_support_slash_th
-
-    If it is satisfied, then it means that ffg_support_for_checkpoint can be as high as the maximum fraction of
-    adversarial stake that the consensus protocol can deal with, i.e., < 1/3.
-    If it not satisfied, then we proceed to the next case.
-    """
     if remaining_ffg_weight > 0:
         ffg_confirmation_score = (
             100 * (
@@ -487,16 +481,15 @@ def get_ffg_confirmation_score_helper(total_active_balance: int,
         if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
             return 100 // 3
 
-    """
-    Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
+    # Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
+    #
+    # In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
+    #
+    # 2 / 3 * total_active_balance <= \
+    #     ffg_support_for_checkpoint - \
+    #     total_active_balance * ffg_confirmation_score / 100 + \
+    #     (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
 
-    In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
-
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - \
-        total_active_balance * ffg_confirmation_score / 100 + \
-        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
-    """
     ffg_confirmation_score = (
         100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) //
         (3 * (remaining_ffg_weight + total_active_balance))
