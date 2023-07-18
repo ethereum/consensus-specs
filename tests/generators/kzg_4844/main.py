@@ -509,6 +509,17 @@ def case06_verify_blob_kzg_proof_batch():
         'output': None
     }
 
+    # Empty lists
+    assert spec.verify_blob_kzg_proof_batch([], [], [])
+    yield 'verify_blob_kzg_proof_batch_case_empty_lists', {
+        'input': {
+            'blob': encode_hex_list([]),
+            'commitment': encode_hex_list([]),
+            'proof': encode_hex_list([]),
+        },
+        'output': True
+    }
+
 
 def create_provider(fork_name: SpecForkName,
                     handler_name: str,
