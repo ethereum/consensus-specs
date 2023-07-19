@@ -40,7 +40,9 @@ def run_block_with_blobs(spec, state, blob_count, tx_count=1, data_gas_used=1, e
         blob_kzg_commitments += commits
 
     for _ in range(non_blob_tx_count):
-        txs.append(get_random_tx(rng=rng))
+        txs.append(get_random_tx(rng))
+
+    rng.shuffle(txs)
 
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = txs
