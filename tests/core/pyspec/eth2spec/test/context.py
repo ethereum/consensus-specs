@@ -21,6 +21,7 @@ from .helpers.constants import (
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
+    ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
@@ -418,12 +419,12 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
-def with_all_phases_from(earliest_phase):
+def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
     def decorator(fn):
-        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
+        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
     return decorator
 
 
@@ -549,7 +550,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_eip6110_and_later = with_all_phases_from(EIP6110)
 with_eip7002_and_later = with_all_phases_from(EIP7002)
-with_whisk_and_later = with_all_phases_from(WHISK)
+with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):
