@@ -226,7 +226,6 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
 ```
 
 #### Engine APIs
@@ -251,10 +250,6 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-
-    # [New in Deneb:EIP4844]
-    assert parent_beacon_block_root == execution_payload.parent_beacon_block_root
 
     if not self.is_valid_block_hash(execution_payload):
         return False
@@ -327,19 +322,19 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # [New in Deneb:EIP4788] Verify consistency of payload's parent_beacon_block_root
+    assert payload.parent_beacon_block_root == state.latest_block_header.parent_root
 
     # [New in Deneb:EIP4844] Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
 
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
-    # [Modified in Deneb:EIP4788] Verify `parent_beacon_block_root` with executon payload's
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
         )
     )
 
