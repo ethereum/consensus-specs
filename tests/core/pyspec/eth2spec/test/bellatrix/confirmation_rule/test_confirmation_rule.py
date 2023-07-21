@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, with_presets, with_all_phases
+from eth2spec.test.context import spec_state_test, with_config_overrides, with_all_phases, with_presets
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation_at_slot,
     next_epoch_with_attestations,
@@ -115,82 +115,30 @@ def get_valid_attestation_for_block(spec, store, block_root, perc):
     )
 
 
-class ConfirmationRuleWrapper:
-    def __init__(self, spec, confirmation_byzantine_threshold, confirmation_slashing_threshold):
-        self.spec = spec
-        self.confirmation_byzantine_threshold = confirmation_byzantine_threshold
-        self.confirmation_slashing_threshold = confirmation_slashing_threshold
+def check_is_confirmed(spec, store, block_root, test_steps, expected=None):
+    confirmed = int(spec.is_confirmed(store, block_root))
 
-    def check_is_confirmed(self, store, block_root, test_steps, expected=None):
-        confirmed = self.spec.is_confirmed(
-            store, self.confirmation_byzantine_threshold, self.confirmation_slashing_threshold, block_root
-        )
-        if expected is not None:
-            assert confirmed == expected
-        test_steps.append({"check_is_confirmed": {"result": confirmed, "block_root": str(block_root)}})
-
-    def is_lmd_confirmed(
-        self,
-        store,
-        block_root,
-    ):
-        return self.spec.is_lmd_confirmed(store, self.confirmation_byzantine_threshold, block_root)
-
-    def is_ffg_confirmed(
-        self,
-        store,
-        block_root,
-    ):
-        return self.spec.is_ffg_confirmed(
-            store, self.confirmation_byzantine_threshold, self.confirmation_slashing_threshold, block_root
-        )
-
-    def check_get_confirmation_score(self, store, block_root, test_steps, expected=None):
-        confirmation_score = int(
-            self.spec.get_confirmation_score(store, self.confirmation_slashing_threshold, block_root)
-        )
-        if expected is not None:
-            assert confirmation_score == expected
-        test_steps.append(
-            {"check_get_confirmation_score": {"result": confirmation_score, "block_root": str(block_root)}}
-        )
-
-    def get_confirmation_score(self, store, block_root):
-        return self.spec.get_confirmation_score(store, self.confirmation_slashing_threshold, block_root)
-
-    def get_lmd_confirmation_score(self, store, block_root):
-        return self.spec.get_lmd_confirmation_score(store, self.confirmation_slashing_threshold, block_root)
-
-    def get_ffg_confirmation_score(self, store, block_root):
-        return self.spec.get_lmd_confirmation_score(store, self.confirmation_slashing_threshold, block_root)
+    if expected is not None:
+        assert confirmed == expected
+    test_steps.append({"check_is_confirmed": {"result": confirmed, "block_root": str(block_root)}})
 
 
-def confirmation_rule_setup(confirmation_byzantine_threshold: int, confirmation_slashing_threshold: int):
-    def decorator(func):
-        def wrapped(*args, **kwargs):
-            yield "setup", {
-                "confirmation_byzantine_threshold": confirmation_byzantine_threshold,
-                "confirmation_slashing_threshold": confirmation_slashing_threshold,
-            }
-            yield from func(
-                *args,
-                conf_rule_wrapper=ConfirmationRuleWrapper(
-                    spec=kwargs["spec"],
-                    confirmation_slashing_threshold=confirmation_slashing_threshold,
-                    confirmation_byzantine_threshold=confirmation_byzantine_threshold,
-                ),
-                **kwargs
-            )
-
-        return wrapped
-
-    return decorator
+def check_get_confirmation_score(spec, store, block_root, test_steps, expected=None):
+    confirmation_score = int(spec.get_confirmation_score(store, block_root))
+    if expected is not None:
+        assert confirmation_score == expected
+    test_steps.append(
+        {"check_get_confirmation_score": {"result": confirmation_score, "block_root": str(block_root)}}
+    )
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=0)
-def test_confirm_current_epoch_no_byz(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_confirm_current_epoch_no_byz(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -220,15 +168,18 @@ def test_confirm_current_epoch_no_byz(spec, state, conf_rule_wrapper):
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, True)
+    check_is_confirmed(spec, store, root, test_steps, True)
 
     yield "steps", test_steps
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=0)
-def test_confirm_previous_epoch_no_byz(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_confirm_previous_epoch_no_byz(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -254,15 +205,18 @@ def test_confirm_previous_epoch_no_byz(spec, state, conf_rule_wrapper):
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, True)
+    check_is_confirmed(spec, store, root, test_steps, True)
 
     yield "steps", test_steps
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=0)
-def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -292,19 +246,22 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state, conf_
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    assert conf_rule_wrapper.is_lmd_confirmed(store, root)
-    assert conf_rule_wrapper.is_ffg_confirmed(store, root)
+    assert spec.is_lmd_confirmed(store, root)
+    assert spec.is_ffg_confirmed(store, root)
 
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, -1)
+    check_is_confirmed(spec, store, root, test_steps, False)
+    check_get_confirmation_score(spec, store, root, test_steps, -1)
 
     yield "steps", test_steps
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=0)
-def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -329,18 +286,21 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state, conf
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
-    assert conf_rule_wrapper.is_lmd_confirmed(store, root)
-    assert conf_rule_wrapper.is_ffg_confirmed(store, root)
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, -1)
+    assert spec.is_lmd_confirmed(store, root)
+    assert spec.is_ffg_confirmed(store, root)
+    check_is_confirmed(spec, store, root, test_steps, False)
+    check_get_confirmation_score(spec, store, root, test_steps, -1)
 
     yield "steps", test_steps
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=30, confirmation_slashing_threshold=0)
-def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 30,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -369,20 +329,23 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state, conf_rule_wrapp
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    assert conf_rule_wrapper.is_ffg_confirmed(store, root)
+    assert spec.is_ffg_confirmed(store, root)
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 1 == spec.get_current_store_epoch(store)
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
-    assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
+    check_is_confirmed(spec, store, root, test_steps, False)
+    assert spec.get_confirmation_score(store, root) < 30
+    check_get_confirmation_score(spec, store, root, test_steps)
 
     yield "steps", test_steps
 
 
 @with_all_phases
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=30, confirmation_slashing_threshold=0)
-def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 30,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -408,12 +371,12 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state, conf_rule_wrap
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
-    assert conf_rule_wrapper.is_ffg_confirmed(store, root)
+    assert spec.is_ffg_confirmed(store, root)
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 2 == spec.get_current_store_epoch(store)
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
-    assert conf_rule_wrapper.get_confirmation_score(store, root) < 30
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
+    check_is_confirmed(spec, store, root, test_steps, False)
+    assert spec.get_confirmation_score(store, root) < 30
+    check_get_confirmation_score(spec, store, root, test_steps)
 
     yield "steps", test_steps
 
@@ -421,8 +384,11 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state, conf_rule_wrap
 @with_all_phases
 @with_presets([MINIMAL])
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=15, confirmation_slashing_threshold=2048000000000)
-def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 15,
+    'CONFIRMATION_SLASHING_THRESHOLD': 2048000000000
+})
+def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -451,13 +417,13 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state, conf_rule_wrapp
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    assert conf_rule_wrapper.is_lmd_confirmed(store, root)
+    assert spec.is_lmd_confirmed(store, root)
     block_state = store.block_states[root]
     assert block_state.current_justified_checkpoint.epoch + 1 == spec.get_current_store_epoch(store)
 
-    conf_rule_wrapper.check_is_confirmed(store, root, test_steps, False)
-    assert conf_rule_wrapper.get_confirmation_score(store, root) < 15
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps)
+    check_is_confirmed(spec, store, root, test_steps, False)
+    assert spec.get_confirmation_score(store, root) < 15
+    check_get_confirmation_score(spec, store, root, test_steps)
 
     yield "steps", test_steps
 
@@ -512,8 +478,11 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state, conf_rule_wrapp
 @with_all_phases
 @with_presets([MINIMAL])
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=0)
-def test_current_get_confirmation_score_no_slashing_threshold(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_current_get_confirmation_score_no_slashing_threshold(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -542,7 +511,7 @@ def test_current_get_confirmation_score_no_slashing_threshold(spec, state, conf_
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, 23)
+    check_get_confirmation_score(spec, store, root, test_steps, 23)
 
     yield "steps", test_steps
 
@@ -550,8 +519,11 @@ def test_current_get_confirmation_score_no_slashing_threshold(spec, state, conf_
 @with_all_phases
 @with_presets([MINIMAL])
 @spec_state_test
-@confirmation_rule_setup(confirmation_byzantine_threshold=0, confirmation_slashing_threshold=2048000000000)
-def test_current_get_confirmation_score_slashing_threshold(spec, state, conf_rule_wrapper):
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 2048000000000
+})
+def test_current_get_confirmation_score_slashing_threshold(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
     test_steps = []
@@ -580,6 +552,6 @@ def test_current_get_confirmation_score_slashing_threshold(spec, state, conf_rul
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
-    conf_rule_wrapper.check_get_confirmation_score(store, root, test_steps, 13)
+    check_get_confirmation_score(spec, store, root, test_steps, 13)
 
     yield "steps", test_steps

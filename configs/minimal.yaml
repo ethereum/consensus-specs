@@ -87,6 +87,12 @@ CHURN_LIMIT_QUOTIENT: 32
 # 40%
 PROPOSER_SCORE_BOOST: 40
 
+# Confirmation rule
+# ---------------------------------------------------------------
+# 20%
+CONFIRMATION_BYZANTINE_THRESHOLD: 20
+# 0 Gwei
+CONFIRMATION_SLASHING_THRESHOLD: 0
 
 # Deposit contract
 # ---------------------------------------------------------------

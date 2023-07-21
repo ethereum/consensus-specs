@@ -1,4 +1,4 @@
-# Confirmation tests
+# Confirmation rule tests
 
 The aim of the confirmation rule tests is to provide test coverage of the various components of the confirmation rule.
 
@@ -18,17 +18,6 @@ An SSZ-snappy encoded `BeaconState`, the state to initialize store with `get_for
 ### `anchor_block.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconBlock`, the block to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
-
-### `setup.yaml`
-
-The setup parameters for the confirmation rule algorithm
-
-```yaml
-{
-    confirmation_byzantine_threshold: int,
-    confirmation_slashing_threshold: int
-}
-```
 
 ### `steps.yaml`
 
