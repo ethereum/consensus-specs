@@ -74,6 +74,35 @@ The confirmation rule can be configured to the desired tolerance of Byzantine va
 
 ### Helper Functions
 
+### `committee_spans_full_epoch`
+
+```python
+def committee_spans_full_epoch(start_slot: Slot, end_slot: Slot) -> bool:
+    """
+    Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes and entire epoch
+    """
+    start_epoch = compute_epoch_at_slot(start_slot)
+    end_epoch = compute_epoch_at_slot(end_slot)
+
+    return (
+        end_epoch > start_epoch + 1 or
+        (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0))
+```
+
+### `committee_for_block_spans_full_epoch`
+
+```python
+def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool:
+    """
+    Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes and entire epoch
+    """
+    current_slot = get_current_slot(store)
+    block = store.blocks[block_root]
+    parent_block = store.blocks[block.parent_root]
+    
+    return committee_spans_full_epoch(Slot(parent_block.slot + 1), current_slot)
+```
+
 #### `get_committee_weight_between_slots`
 
 ```python
@@ -83,15 +112,14 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
     """
     total_active_balance = get_total_active_balance(state)
 
-    # If an entire epoch is covered by the range, return the total active balance
     start_epoch = compute_epoch_at_slot(start_slot)
     end_epoch = compute_epoch_at_slot(end_slot)
 
     if start_slot > end_slot:
         return Gwei(0)
 
-    if (end_epoch > start_epoch + 1 or
-       (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0)):
+    # If an entire epoch is covered by the range, return the total active balance
+    if committee_spans_full_epoch(start_slot, end_slot):
         return total_active_balance
     
     if start_epoch == end_epoch:
@@ -148,18 +176,15 @@ def is_one_confirmed(store: Store, block_root: Root) -> bool:
 def is_lmd_confirmed(store: Store, block_root: Root) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True
+
+    if committee_for_block_spans_full_epoch(store, block_root):
+        return is_one_confirmed(store, block_root)
     else:
         block = store.blocks[block_root]
-        finalized_block = store.blocks[store.finalized_checkpoint.root]
-        if block.slot <= finalized_block.slot:
-            # This block is not in the finalized chain.
-            return False
-        else:
-            # Check is_one_confirmed for this block and is_lmd_confirmed for the preceding chain.
-            return (
-                is_one_confirmed(store, block_root) and
-                is_lmd_confirmed(store, block.parent_root)
-            )
+        return (
+            is_one_confirmed(store, block_root) and
+            is_lmd_confirmed(store, block.parent_root)
+        )
 ```
 
 #### `get_total_active_balance_for_block_root`
