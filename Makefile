@@ -34,7 +34,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb eip6110
+ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb eip6110 whisk
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), ./eth2spec/$S)
@@ -104,9 +104,15 @@ generate_tests: $(GENERATOR_TARGETS)
 pyspec:
 	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
 
+# check the setup tool requirements
+preinstallation:
+	python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -r requirements_preinstallation.txt
+
 # installs the packages to run pyspec tests
-install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
+install_test: preinstallation
+	python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
@@ -146,8 +152,8 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
 	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
-	&& mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
+	&& python -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
+	&& python -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \

@@ -4,6 +4,7 @@ from .typing import SpecForkName, PresetBaseName
 #
 # SpecForkName
 #
+
 # Some of the Spec module functionality is exposed here to deal with phase-specific changes.
 PHASE0 = SpecForkName('phase0')
 ALTAIR = SpecForkName('altair')
@@ -16,16 +17,28 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
+EIP7002 = SpecForkName('eip7002')
 
+#
+# SpecFork settings
+#
+
+# The forks that are deployed on Mainnet
+MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA)
+LATEST_FORK = MAINNET_FORKS[-1]
 # The forks that pytest can run with.
 ALL_PHASES = (
     # Formal forks
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    *MAINNET_FORKS,
+    DENEB,
     # Experimental patches
     EIP6110,
+    EIP7002,
 )
+# The forks that have light client specs
+LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110)
+TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110)
 
 ALL_FORK_UPGRADES = {
     # pre_fork_name: post_fork_name
@@ -46,7 +59,7 @@ AFTER_DENEB_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
 AFTER_DENEB_PRE_POST_FORKS = AFTER_DENEB_UPGRADES.items()
 
 #
-# Config
+# Config and Preset
 #
 MAINNET = PresetBaseName('mainnet')
 MINIMAL = PresetBaseName('minimal')

@@ -53,17 +53,17 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
 ### 4. Add `fork.md`
 You can refer to the previous fork's `fork.md` file.
 ### 5. Make it executable
-- Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
-- Update [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py):
-    - Add a new `SpecBuilder` with the new feature name constant. e.g., `EIP9999SpecBuilder`
-    - Add the new `SpecBuilder` to `spec_builders` list.
-    - Add the path of the new markdown files in `finalize_options` function.
+- Update Pyspec [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
+- Update helpers for [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py) for building the spec:
+    - Update [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) with the new feature name as Pyspec `constants.py` defined.
+    - Update [`pysetup/spec_builders/__init__.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/spec_builders/__init__.py). Implement a new `<FEATURE_NAME>SpecBuilder` in `pysetup/spec_builders/<FEATURE_NAME>.py` with the new feature name. e.g., `EIP9999SpecBuilder`. Append it to the `spec_builders` list.
+    - Update [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py): add the path of the new markdown files in `get_md_doc_paths` function if needed.
 
 ## B: Make it executable for pytest and test generator
 
-### 1. Add `light-client/*` docs if you updated the content of `BeaconBlock`
+### 1. [Optional] Add `light-client/*` docs if you updated the content of `BeaconBlock`
 - You can refer to the previous fork's `light-client/*` file.
-- Add the path of the new markdown files in `setup.py`'s `finalize_options` function.
+- Add the path of the new markdown files in [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py)'s `get_md_doc_paths` function.
 
 ### 2. Add the mainnet and minimal presets and update the configs
 - Add presets: `presets/mainnet/<new-feature-name>.yaml` and `presets/minimal/<new-feature-name>.yaml`

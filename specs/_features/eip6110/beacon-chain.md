@@ -91,7 +91,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
 ```
 
@@ -116,7 +117,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    excess_data_gas: uint256
+    data_gas_used: uint64
+    excess_data_gas: uint64
     deposit_receipts_root: Root  # [New in EIP6110]
 ```
 
@@ -176,14 +178,12 @@ class BeaconState(Container):
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in EIP6110]
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_blob_kzg_commitments(state, block.body)
 ```
 
 #### Modified `process_operations`
@@ -212,8 +212,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
     # [New in EIP6110]
-    if is_execution_enabled(state, body):
-        for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
+    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
 #### New `process_deposit_receipt`
@@ -225,7 +224,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         state.deposit_receipts_start_index = deposit_receipt.index
 
     apply_deposit(
-        state=state, 
+        state=state,
         pubkey=deposit_receipt.pubkey,
         withdrawal_credentials=deposit_receipt.withdrawal_credentials,
         amount=deposit_receipt.amount,
@@ -238,16 +237,26 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 *Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
+    )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -265,6 +274,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
+        data_gas_used=payload.data_gas_used,
         excess_data_gas=payload.excess_data_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
     )

@@ -4,9 +4,12 @@ from typing import Optional
 from eth2spec.test.helpers.pow_block import (
     prepare_random_pow_chain,
 )
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+)
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_and_later,
+    with_phases,
 )
 
 
@@ -30,7 +33,7 @@ expected_results = [
 # it would return the first block (IS_HEAD_PARENT_BLOCK).
 
 
-@with_bellatrix_and_later
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_get_pow_block_at_terminal_total_difficulty(spec, state):
     for result in expected_results:
@@ -90,7 +93,7 @@ prepare_execution_payload_expected_results = [
 ]
 
 
-@with_bellatrix_and_later
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_prepare_execution_payload(spec, state):
     for result in prepare_execution_payload_expected_results:
@@ -157,11 +160,11 @@ def test_prepare_execution_payload(spec, state):
 
         payload_id = spec.prepare_execution_payload(
             state=state,
-            pow_chain=pow_chain.to_dict(),
             safe_block_hash=safe_block_hash,
             finalized_block_hash=finalized_block_hash,
             suggested_fee_recipient=suggested_fee_recipient,
             execution_engine=TestEngine(),
+            pow_chain=pow_chain.to_dict(),
         )
         assert payload_id == result_payload_id
 
