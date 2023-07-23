@@ -132,6 +132,14 @@ def check_get_confirmation_score(spec, store, block_root, test_steps, expected=N
     )
 
 
+def check_get_safe_beacon_block_root(spec, store, test_steps, expected=None):
+    safe_beacon_block_root = spec.get_safe_beacon_block_root(store)
+
+    if expected is not None:
+        assert safe_beacon_block_root == expected
+    test_steps.append({"check_get_safe_beacon_block_root": {"result": str(safe_beacon_block_root)}})
+
+
 @with_all_phases
 @spec_state_test
 @with_config_overrides({
@@ -164,11 +172,12 @@ def test_confirm_current_epoch_no_byz(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
     check_is_confirmed(spec, store, root, test_steps, True)
+    check_get_safe_beacon_block_root(spec, store, test_steps, root)
 
     yield "steps", test_steps
 
@@ -201,11 +210,12 @@ def test_confirm_previous_epoch_no_byz(spec, state):
         )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
     check_is_confirmed(spec, store, root, test_steps, True)
+    check_get_safe_beacon_block_root(spec, store, test_steps, root)
 
     yield "steps", test_steps
 
@@ -242,7 +252,7 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
@@ -251,6 +261,10 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
 
     check_is_confirmed(spec, store, root, test_steps, False)
     check_get_confirmation_score(spec, store, root, test_steps, -1)
+
+    confirmed_block = get_block_root_from_head(spec, store, 3)
+    assert spec.compute_epoch_at_slot(store.blocks[confirmed_block].slot) == spec.get_current_store_epoch(store) - 1
+    check_get_safe_beacon_block_root(spec, store, test_steps, confirmed_block)
 
     yield "steps", test_steps
 
@@ -282,7 +296,7 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state):
         )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
@@ -290,6 +304,7 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state):
     assert spec.is_ffg_confirmed(store, root)
     check_is_confirmed(spec, store, root, test_steps, False)
     check_get_confirmation_score(spec, store, root, test_steps, -1)
+    check_get_safe_beacon_block_root(spec, store, test_steps, spec.hash_tree_root(anchor_block))
 
     yield "steps", test_steps
 
@@ -325,7 +340,7 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
@@ -335,6 +350,7 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state):
     check_is_confirmed(spec, store, root, test_steps, False)
     assert spec.get_confirmation_score(store, root) < 30
     check_get_confirmation_score(spec, store, root, test_steps)
+    check_get_safe_beacon_block_root(spec, store, test_steps, spec.hash_tree_root(anchor_block))
 
     yield "steps", test_steps
 
@@ -367,7 +383,7 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state):
         )
 
     root = get_block_root_from_head(spec, store, 1)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
@@ -377,6 +393,7 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state):
     check_is_confirmed(spec, store, root, test_steps, False)
     assert spec.get_confirmation_score(store, root) < 30
     check_get_confirmation_score(spec, store, root, test_steps)
+    check_get_safe_beacon_block_root(spec, store, test_steps, get_block_root_from_head(spec, store, 3))
 
     yield "steps", test_steps
 
@@ -413,7 +430,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 2)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
@@ -424,6 +441,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
     check_is_confirmed(spec, store, root, test_steps, False)
     assert spec.get_confirmation_score(store, root) < 15
     check_get_confirmation_score(spec, store, root, test_steps)
+    check_get_safe_beacon_block_root(spec, store, test_steps, spec.hash_tree_root(anchor_block))
 
     yield "steps", test_steps
 
@@ -460,7 +478,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
 #             spec, state, store, True, True, test_steps=test_steps)
 
 #     root = get_block_root_from_head(spec, store, 1)
-#     block = store.block_states[root]
+#     block = store.blocks[root]
 
 #     assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
 
@@ -507,7 +525,7 @@ def test_current_get_confirmation_score_no_slashing_threshold(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 2)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 
@@ -548,7 +566,7 @@ def test_current_get_confirmation_score_slashing_threshold(spec, state):
     )
 
     root = get_block_root_from_head(spec, store, 2)
-    block = store.block_states[root]
+    block = store.blocks[root]
 
     assert spec.compute_epoch_at_slot(block.slot) == spec.get_current_store_epoch(store)
 

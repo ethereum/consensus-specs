@@ -73,6 +73,7 @@ The parameter that is required for executing `on_attester_slashing(store, attest
                             To execute `on_attester_slashing(store, attester_slashing)` with the given attester slashing.
 }
 ```
+
 The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
@@ -83,15 +84,21 @@ The checks to verify the execution of the confirmation rule algorithm
 
 ```yaml
     check_is_confirmed: {
-        result: bool,          -- return value of is_confirmed using the setup parameters
-        block_root: string     -- block to execute is_confirmed ont
+        result: bool,          -- return value of `is_confirmed(store, block_root)`
+        block_root: string     -- block to execute is_confirmed on
     }
 ```
 
 ```yaml
     check_get_confirmation_score: {
-        result: bool,          -- return value of get_confirmation_score using setup parameters
+        result: bool,          -- return value of `get_confirmation_score(store, block_root)`
         block_root: string     -- block to execute get_confirmation_score on
+    }
+```
+
+```yaml
+    check_get_safe_beacon_block_root: {
+        result: string          -- return value of `check_get_safe_beacon_block_root()`
     }
 ```
 
