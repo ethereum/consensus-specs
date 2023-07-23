@@ -267,8 +267,10 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 
     if any(children):
         # Get leaves of all children and add to the set.
-        leaves = set().union(*[get_leaf_block_roots(store, child) for child in children])
-        return leaves
+        leaf_block_roots: Set[Root] = set()
+        for child_leaf_block_roots in [get_leaf_block_roots(store, child) for child in children]:
+            leaf_block_roots = leaf_block_roots.union(child_leaf_block_roots)
+        return leaf_block_roots
     else:
         # This block is a leaf.
         return set([block_root])
