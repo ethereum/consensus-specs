@@ -27,6 +27,7 @@
 - [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
     - [`find_confirmed_block`](#find_confirmed_block)
+    - [`get_safe_beacon_block_root``](#get_safe_beacon_block_root)
   - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-2)
@@ -417,7 +418,10 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
     block = store.blocks[block_root]
     current_epoch = get_current_store_epoch(store)
 
-    if compute_epoch_at_slot(block.slot) != current_epoch:
+    block_epoch = compute_epoch_at_slot(block.slot)
+
+    # If `block_epoch` is not either the current or previous epoch, then return `store.finalized_checkpoint.root`
+    if current_epoch not in [block_epoch, block_epoch + 1]:
         return store.finalized_checkpoint.root
 
     if is_confirmed(store, block_root):
@@ -427,17 +431,25 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 
 ```
 
+#### `get_safe_beacon_block_root``
+
+```python
+def get_safe_beacon_block_root(store: Store) -> Root:
+    head_root = get_head(store)
+
+    return find_confirmed_block(store, head_root)
+```
+
 ### `get_safe_execution_payload_hash`
 
 ```python
 def get_safe_execution_payload_hash(store: Store) -> Hash32:
-    head_root = get_head(store)
+    safe_block_root = get_safe_beacon_block_root(store)
+    safe_block = store.blocks[safe_block_root]
 
-    confirmed_block_root = find_confirmed_block(store, head_root)
-    confirmed_block = store.blocks[confirmed_block_root]
-
-    if compute_epoch_at_slot(confirmed_block.slot) >= BELLATRIX_FORK_EPOCH:
-        return confirmed_block.body.execution_payload.block_hash
+    # Return Hash32() if no payload is yet justified
+    if compute_epoch_at_slot(safe_block.slot) >= BELLATRIX_FORK_EPOCH:
+        return safe_block.body.execution_payload.block_hash
     else:
         return Hash32()
 ```
