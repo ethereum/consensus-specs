@@ -318,11 +318,11 @@ def get_ffg_support(store: Store, block_root: Root) -> Gwei:
 
     leaf_roots = get_leaf_block_roots(store, block_root)
 
-    active_validator_indices = get_active_validator_indices(checkpoint_state, block_epoch)
+    active_checkpoint_indices = get_active_validator_indices(checkpoint_state, block_epoch)
     participating_indices = set().union(*[
         get_epoch_participating_indices(
             store.block_states[root], 
-            active_validator_indices, 
+            active_checkpoint_indices, 
             block_epoch == current_epoch
         )
         for root in leaf_roots
