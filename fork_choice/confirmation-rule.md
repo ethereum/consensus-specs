@@ -63,7 +63,7 @@ This section specifies an algorithm to determine whether a block is confirmed.
 
 ### Constants
 
-The following values are (non-configurable) constants used throughout thise specification.
+The following values are (non-configurable) constants used throughout this specification.
 
 | Name                                            | Value     | Description                                                                                                                                                                                                                                                                                                          |
 |-------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
