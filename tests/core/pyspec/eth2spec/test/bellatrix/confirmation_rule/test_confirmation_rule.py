@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, with_config_overrides, with_all_phases, with_presets
+from eth2spec.test.context import spec_state_test, with_config_overrides, with_presets, with_bellatrix_and_later
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation_at_slot,
     next_epoch_with_attestations,
@@ -140,7 +140,7 @@ def check_get_safe_beacon_block_root(spec, store, test_steps, expected=None):
     test_steps.append({"check_get_safe_beacon_block_root": {"result": str(safe_beacon_block_root)}})
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
@@ -182,7 +182,7 @@ def test_confirm_current_epoch_no_byz(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
@@ -220,7 +220,7 @@ def test_confirm_previous_epoch_no_byz(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
@@ -269,7 +269,7 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
@@ -309,7 +309,7 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 30,
@@ -355,7 +355,7 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @spec_state_test
 @with_config_overrides({
     'CONFIRMATION_BYZANTINE_THRESHOLD': 30,
@@ -398,7 +398,7 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @with_presets([MINIMAL])
 @spec_state_test
 @with_config_overrides({
@@ -446,7 +446,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
     yield "steps", test_steps
 
 
-# @with_all_phases
+# @with_bellatrix_and_later
 # @with_presets([MINIMAL])
 # @spec_state_test
 # @confirmation_rule_setup(confirmation_byzantine_threshold=15, confirmation_slashing_threshold=2048000000000)
@@ -493,7 +493,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
 #     yield 'steps', test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @with_presets([MINIMAL])
 @spec_state_test
 @with_config_overrides({
@@ -534,7 +534,7 @@ def test_current_get_confirmation_score_no_slashing_threshold(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases
+@with_bellatrix_and_later
 @with_presets([MINIMAL])
 @spec_state_test
 @with_config_overrides({
