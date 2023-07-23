@@ -166,22 +166,22 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         # See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 
         # for an explanation of the formula used below.
 
-        # First, calculate the number of committees in the current epoch
-        num_slots_in_current_epoch = int(compute_slots_since_epoch_start(end_slot) + 1)
-        # Next, calculate the number of slots remaining in the current epoch
-        remaining_slots_in_current_epoch = int(SLOTS_PER_EPOCH - num_slots_in_current_epoch)
-        # Then, calculate the number of slots in the previous epoch
-        num_slots_in_previous_epoch = int(SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot))
+        # First, calculate the number of committees in the start epoch
+        num_slots_in_end_epoch = int(compute_slots_since_epoch_start(end_slot) + 1)
+        # Next, calculate the number of slots remaining in the start epoch
+        remaining_slots_in_end_epoch = int(SLOTS_PER_EPOCH - num_slots_in_end_epoch)
+        # Then, calculate the number of slots in the end epoch
+        num_slots_in_start_epoch = int(SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot))
 
-        current_epoch_weight_mul_by_slots_per_epoch = num_slots_in_current_epoch * int(total_active_balance)
-        previous_epoch_weight_mul_by_slots_per_epoch = (
-            num_slots_in_previous_epoch * remaining_slots_in_current_epoch * 
+        start_epoch_weight_mul_by_slots_per_epoch = num_slots_in_end_epoch * int(total_active_balance)
+        end_epoch_weight_mul_by_slots_per_epoch = (
+            num_slots_in_start_epoch * remaining_slots_in_end_epoch * 
             int(total_active_balance) // SLOTS_PER_EPOCH)
 
-        # Each committee from the previous epoch only contributes a pro-rated weight
+        # Each committee from the end epoch only contributes a pro-rated weight
         return adjust_committee_weight_estimate_to_ensure_safety(
             Gwei(ceil_div(
-                current_epoch_weight_mul_by_slots_per_epoch + previous_epoch_weight_mul_by_slots_per_epoch, 
+                start_epoch_weight_mul_by_slots_per_epoch + end_epoch_weight_mul_by_slots_per_epoch, 
                 SLOTS_PER_EPOCH
             ))
         )
