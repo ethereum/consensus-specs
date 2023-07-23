@@ -10,10 +10,10 @@
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helper Functions](#helper-functions)
-  - [`committee_spans_full_epoch`](#committee_spans_full_epoch)
-  - [`committee_for_block_spans_full_epoch`](#committee_for_block_spans_full_epoch)
-  - [`ceil_div`](#ceil_div)
-  - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
+    - [`committee_spans_full_epoch`](#committee_spans_full_epoch)
+    - [`committee_for_block_spans_full_epoch`](#committee_for_block_spans_full_epoch)
+    - [`ceil_div`](#ceil_div)
+    - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
     - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
     - [`is_one_confirmed`](#is_one_confirmed)
     - [`is_lmd_confirmed`](#is_lmd_confirmed)
@@ -27,7 +27,7 @@
 - [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
     - [`find_confirmed_block`](#find_confirmed_block)
-    - [`get_safe_beacon_block_root``](#get_safe_beacon_block_root)
+  - [`get_safe_beacon_block_root``](#get_safe_beacon_block_root)
   - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-2)
@@ -83,7 +83,7 @@ The confirmation rule can be configured to the desired tolerance of Byzantine va
 
 ### Helper Functions
 
-### `committee_spans_full_epoch`
+#### `committee_spans_full_epoch`
 
 ```python
 def committee_spans_full_epoch(start_slot: Slot, end_slot: Slot) -> bool:
@@ -98,7 +98,7 @@ def committee_spans_full_epoch(start_slot: Slot, end_slot: Slot) -> bool:
         (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0))
 ```
 
-### `committee_for_block_spans_full_epoch`
+#### `committee_for_block_spans_full_epoch`
 
 ```python
 def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool:
@@ -112,7 +112,7 @@ def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool
     return committee_spans_full_epoch(Slot(parent_block.slot + 1), current_slot)
 ```
 
-### `ceil_div`
+#### `ceil_div`
 
 ```python
 def ceil_div(numerator: int, denominator: int) -> int:
@@ -125,7 +125,7 @@ def ceil_div(numerator: int, denominator: int) -> int:
     return result
 ```
 
-### `adjust_committee_weight_estimate_to_ensure_safety`
+#### `adjust_committee_weight_estimate_to_ensure_safety`
 
 ```python
 def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
@@ -431,7 +431,7 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 
 ```
 
-#### `get_safe_beacon_block_root``
+### `get_safe_beacon_block_root``
 
 ```python
 def get_safe_beacon_block_root(store: Store) -> Root:
