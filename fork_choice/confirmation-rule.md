@@ -7,7 +7,13 @@
 
 - [Introduction](#introduction)
 - [Confirmation Rule](#confirmation-rule)
+  - [Constants](#constants)
+  - [Configuration](#configuration)
   - [Helper Functions](#helper-functions)
+  - [`committee_spans_full_epoch`](#committee_spans_full_epoch)
+  - [`committee_for_block_spans_full_epoch`](#committee_for_block_spans_full_epoch)
+  - [`ceil_div`](#ceil_div)
+  - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
     - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
     - [`is_one_confirmed`](#is_one_confirmed)
     - [`is_lmd_confirmed`](#is_lmd_confirmed)
@@ -58,18 +64,20 @@ This section specifies an algorithm to determine whether a block is confirmed.
 
 The following values are (non-configurable) constants used throughout thise specification.
 
-| Name                     | Value     | Description                                                                                                                                  |
-|--------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| `UNCONFIRMED_SCORE`      | `int(-1)` | Value returned by the `get_*_score` methods to indicate that the block passed in input cannot be confirmed even if all validators are honest |
-| `MAX_CONFIRMATION_SCORE` | `int(33)` | Maximum possible value of the confirmation score corresponding to the maximum percentage of Byzantine stake                                  |
+| Name                                            | Value     | Description                                                                                                                                                                                                                                                                                                          |
+|-------------------------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `UNCONFIRMED_SCORE`                             | `int(-1)` | Value returned by the `get_*_score` methods to indicate that the block passed in input cannot be confirmed even if all validators are honest.                                                                                                                                                                        |
+| `MAX_CONFIRMATION_SCORE`                        | `int(33)` | Maximum possible value of the confirmation score corresponding to the maximum percentage of Byzantine stake.                                                                                                                                                                                                         |
+| `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `int(5)`  | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
 
 ### Configuration
+
 The confirmation rule can be configured to the desired tolerance of Byzantine validators, for which the algorithm takes the following input parameters:
 
-| Input Parameter                    | Type     | Max. Value               | Description                                                                                            |
-|------------------------------------|----------|:-------------------------|--------------------------------------------------------------------------------------------------------|
-| `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64` | `MAX_CONFIRMATION_SCORE` | assumed maximum percentage of Byzantine validators among the validator set                             |
-| `CONFIRMATION_SLASHING_THRESHOLD`  | `Gwei`   | `2**64 - 1`              | assumed maximum amount of stake that the adversary is willing to get slashed in order to reorg a block |
+| Input Parameter                    | Type     | Max. Value               | Description                                                                                             |
+|------------------------------------|----------|:-------------------------|---------------------------------------------------------------------------------------------------------|
+| `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64` | `MAX_CONFIRMATION_SCORE` | assumed maximum percentage of Byzantine validators among the validator set.                             |
+| `CONFIRMATION_SLASHING_THRESHOLD`  | `Gwei`   | `2**64 - 1`              | assumed maximum amount of stake that the adversary is willing to get slashed in order to reorg a block. |
 
 
 ### Helper Functions
@@ -103,6 +111,33 @@ def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool
     return committee_spans_full_epoch(Slot(parent_block.slot + 1), current_slot)
 ```
 
+### `ceil_div`
+
+```python
+def ceil_div(numerator: int, denominator: int) -> int:
+    """
+    Returns ``ceil(numerator / denominator)`` using only integer arithmetic
+    """
+    result = numerator // denominator
+    if numerator % denominator != 0:
+        result = result + 1
+    return result
+```
+
+### `adjust_committee_weight_estimate_to_ensure_safety`
+
+```python
+def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
+    """
+    Adjusts the ``estimate`` of the weight of a committee for a sequence of slots not covering a full epoch to
+    ensure the safety of the confirmation rule with high probability.
+
+    See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for an explanation of why this is 
+    required.
+    """
+    return Gwei(ceil_div(int(estimate * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR)), 1000))
+```
+
 #### `get_committee_weight_between_slots`
 
 ```python
@@ -127,6 +162,10 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
+
+        # See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 
+        # for an explanation of the formula used below.
+
         # First, calculate the number of committees in the current epoch
         num_slots_in_current_epoch = int((end_slot % SLOTS_PER_EPOCH) + 1)
         # Next, calculate the number of slots remaining in the current epoch
@@ -140,9 +179,11 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
             int(total_active_balance) // SLOTS_PER_EPOCH)
 
         # Each committee from the previous epoch only contributes a pro-rated weight
-        return Gwei(
-            (current_epoch_weight_mul_by_slots_per_epoch + previous_epoch_weight_mul_by_slots_per_epoch) 
-            // SLOTS_PER_EPOCH
+        return adjust_committee_weight_estimate_to_ensure_safety(
+            Gwei(ceil_div(
+                current_epoch_weight_mul_by_slots_per_epoch + previous_epoch_weight_mul_by_slots_per_epoch, 
+                SLOTS_PER_EPOCH
+            ))
         )
 ```
 
