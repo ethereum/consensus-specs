@@ -138,7 +138,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     data_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_data_gas: uint64  # [New in Deneb:EIP4844]
-    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4844]
+    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4788]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -164,7 +164,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     data_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_data_gas: uint64  # [New in Deneb:EIP4844]
-    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4844]
+    parent_beacon_block_root: Bytes32  # [New in Deneb:EIP4788]
 ```
 
 ## Helper functions
