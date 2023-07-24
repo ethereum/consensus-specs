@@ -383,7 +383,13 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     # to next epoch
     next_epoch(spec, state)
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    if is_justifying_previous_epoch:
+        assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+    else:
+        assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+
     next_epoch(spec, state)
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
