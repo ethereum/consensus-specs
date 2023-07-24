@@ -100,7 +100,6 @@ Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and al
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
-                             M: BLSG1Point,
                              shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
@@ -110,7 +109,6 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
         CURDLEPROOFS_CRS,
         pre_shuffle_trackers,
         post_shuffle_trackers,
-        M,
         shuffle_proof,
     )
 ```
@@ -299,7 +297,6 @@ class BeaconBlockBody(Container):
     whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
-    whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in Whisk]
@@ -330,7 +327,6 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
         # Require trackers set to zero during cooldown
         assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
-        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
         assert body.whisk_shuffle_proof == WhiskShuffleProof()
         post_shuffle_trackers = pre_shuffle_trackers
     else:
@@ -338,7 +334,6 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
         assert IsValidWhiskShuffleProof(
             pre_shuffle_trackers,
             body.whisk_post_shuffle_trackers,
-            body.whisk_shuffle_proof_M_commitment,
             body.whisk_shuffle_proof,
         )
         post_shuffle_trackers = body.whisk_post_shuffle_trackers

@@ -263,7 +263,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
         constant_vars['CURDLEPROOFS_CRS_G1'] = VariableDefinition(constant_vars['CURDLEPROOFS_CRS_G1'].value, str(ALL_KZG_SETUPS['mainnet'][0][0:crs_len]), "noqa: E501", None)
         constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
             None,
-            "curdleproofs.CurdleproofsCrs.from_points_compressed(WHISK_VALIDATORS_PER_SHUFFLE, CURDLEPROOFS_N_BLINDERS, CURDLEPROOFS_CRS_G1)",
+            "curdleproofs.CurdleproofsCrs.from_random_points(WHISK_VALIDATORS_PER_SHUFFLE, CURDLEPROOFS_N_BLINDERS, [G1Point.from_compressed_bytes_unchecked(p) for p in CURDLEPROOFS_CRS_G1])",
             "noqa: E501", None
         )
         constant_vars['BLS_G1_GENERATOR'] = VariableDefinition(

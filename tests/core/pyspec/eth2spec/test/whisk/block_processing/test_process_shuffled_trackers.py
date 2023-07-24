@@ -7,10 +7,9 @@ from curdleproofs import GenerateWhiskShuffleProof
 def set_correct_shuffle_proofs(spec, state, body):
     pre_shuffle_trackers = get_and_populate_pre_shuffle_trackers(spec, state, body)
 
-    post_trackers, m, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
+    post_trackers, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
     body.whisk_post_shuffle_trackers = post_trackers
     body.whisk_shuffle_proof = shuffle_proof
-    body.whisk_shuffle_proof_M_commitment = m
 
 
 def get_and_populate_pre_shuffle_trackers(spec, state, body):
@@ -87,18 +86,8 @@ def test_shuffle_during_selection_gap(spec, state):
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
 # Invalid cases on shuffle
-# - wrong m
 # - wrong proof
 # - wrong post shuffle
-
-
-@with_whisk_and_later
-@spec_state_test
-def test_invalid_shuffle_bad_m(spec, state):
-    body = empty_block_body(spec)
-    set_correct_shuffle_proofs(spec, state, body)
-    body.whisk_shuffle_proof_M_commitment = spec.BLSG1Point()
-    yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
 
 @with_whisk_and_later
@@ -132,19 +121,7 @@ def test_invalid_shuffle_bad_trackers_zero(spec, state):
 
 # Invalid things on gap
 # - not empty shuffle trackers
-# - not empty m
 # - not empty proof
-
-
-@with_whisk_and_later
-@spec_state_test
-def test_invalid_gap_non_zero_m(spec, state):
-    body = empty_block_body(spec)
-    body.whisk_shuffle_proof_M_commitment = spec.BLSG1Point(
-        '0xc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
-    )
-    set_state_epoch_selection_gap(spec, state)
-    yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
 
 @with_whisk_and_later

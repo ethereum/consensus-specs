@@ -1,5 +1,10 @@
 from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
-from eth2spec.test.helpers.whisk import set_as_first_proposal, compute_whisk_k_commitment, set_registration
+from eth2spec.test.helpers.whisk import (
+    set_as_first_proposal,
+    compute_whisk_k_commitment,
+    set_registration,
+    register_tracker
+)
 
 
 def empty_block_body(spec):
@@ -26,10 +31,10 @@ def run_process_whisk_registration(spec, state, body, valid=True):
 
 
 IDENTITY_R = 1
-OTHER_R = 2
+OTHER_R = 100_000_2  # Large enough values to not collide with initial k values
+OTHER_K = 100_000_2
 PROPOSER_INDEX = 0
 OTHER_INDEX = 1
-OTHER_K = 2
 
 # First proposal
 
@@ -88,6 +93,9 @@ def test_first_proposal_invalid_proof(spec, state):
 @spec_state_test
 def test_second_proposal_ok(spec, state):
     body = empty_block_body(spec)
+    # An empty body has the correct values for a second proposal
+    # Set tracker to != G1 generator for second proposal condition
+    register_tracker(state, PROPOSER_INDEX, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body)
 
 
@@ -96,4 +104,5 @@ def test_second_proposal_ok(spec, state):
 def test_second_proposal_not_zero(spec, state):
     body = empty_block_body(spec)
     set_registration(body, OTHER_K, OTHER_R)
+    register_tracker(state, PROPOSER_INDEX, OTHER_K, OTHER_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)

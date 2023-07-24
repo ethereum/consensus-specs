@@ -22,6 +22,7 @@ from eth2spec.test.helpers.whisk import (
     is_first_proposal,
     resolve_known_tracker
 )
+from py_arkworks_bls12381 import Scalar
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 
@@ -139,7 +140,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
 
-        empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(proposer_tracker, k_initial)
+        empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(proposer_tracker, Scalar(k_initial))
         if not IsValidWhiskOpeningProof(proposer_tracker, proposer_k_commitment, empty_block.body.whisk_opening_proof):
             raise Exception(
                 "produced opening proof is not valid",
@@ -154,23 +155,20 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         shuffle_indices = spec.get_shuffle_indices(empty_block.body.randao_reveal)
         pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
 
-        post_trackers, m, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
+        post_trackers, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
         empty_block.body.whisk_post_shuffle_trackers = post_trackers
         empty_block.body.whisk_shuffle_proof = shuffle_proof
-        empty_block.body.whisk_shuffle_proof_M_commitment = m
 
         if not IsValidWhiskShuffleProof(
             spec.CURDLEPROOFS_CRS,
             pre_shuffle_trackers,
             empty_block.body.whisk_post_shuffle_trackers,
-            empty_block.body.whisk_shuffle_proof_M_commitment,
             empty_block.body.whisk_shuffle_proof,
         ):
             raise Exception(
                 "produced shuffle proof is not valid",
                 pre_shuffle_trackers,
                 empty_block.body.whisk_post_shuffle_trackers,
-                empty_block.body.whisk_shuffle_proof_M_commitment,
                 empty_block.body.whisk_shuffle_proof,
             )
 
@@ -184,7 +182,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
             # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
             r = 2
             tracker, k_commitment = compute_whisk_tracker_and_commitment(k_final, r)
-            empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(tracker, k_final)
+            empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(tracker, Scalar(k_final))
             empty_block.body.whisk_tracker = tracker
             empty_block.body.whisk_k_commitment = k_commitment
 
