@@ -159,7 +159,7 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         return total_active_balance
     
     if start_epoch == end_epoch:
-        return Gwei((end_slot - start_slot + 1) * int(total_active_balance)) // SLOTS_PER_EPOCH
+        return Gwei(ceil_div((end_slot - start_slot + 1) * int(total_active_balance), SLOTS_PER_EPOCH))
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
