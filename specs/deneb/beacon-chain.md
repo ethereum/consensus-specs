@@ -85,7 +85,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | `MAX_BLOBS_PER_BLOCK`            | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
-and are limited by `MAX_DATA_GAS_PER_BLOCK // DATA_GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
+and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 ## Configuration
 
@@ -136,8 +136,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32  # Hash of execution block
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    data_gas_used: uint64  # [New in Deneb:EIP4844]
-    excess_data_gas: uint64  # [New in Deneb:EIP4844]
+    blob_gas_used: uint64  # [New in Deneb:EIP4844]
+    excess_blob_gas: uint64  # [New in Deneb:EIP4844]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -161,8 +161,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
     withdrawals_root: Root
-    data_gas_used: uint64  # [New in Deneb:EIP4844]
-    excess_data_gas: uint64  # [New in Deneb:EIP4844]
+    blob_gas_used: uint64  # [New in Deneb:EIP4844]
+    excess_blob_gas: uint64  # [New in Deneb:EIP4844]
 ```
 
 ## Helper functions
@@ -385,8 +385,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        data_gas_used=payload.data_gas_used,  # [New in Deneb:EIP4844]
-        excess_data_gas=payload.excess_data_gas,  # [New in Deneb:EIP4844]
+        blob_gas_used=payload.blob_gas_used,  # [New in Deneb:EIP4844]
+        excess_blob_gas=payload.excess_blob_gas,  # [New in Deneb:EIP4844]
     )
 ```
 
