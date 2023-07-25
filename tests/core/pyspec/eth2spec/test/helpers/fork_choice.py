@@ -10,11 +10,18 @@ from eth2spec.test.helpers.attestations import (
 
 
 class BlobData(NamedTuple):
+    """
+    The return values of ``retrieve_blobs_and_proofs`` helper.
+    """
     blobs: Sequence[Any]
     proofs: Sequence[bytes]
 
 
 def with_blob_data(spec, blob_data, func):
+    """
+    This helper runs the given ``func`` with monkeypatched ``retrieve_blobs_and_proofs``
+    that returns ``blob_data.blobs, blob_data.proofs``.
+    """
     def retrieve_blobs_and_proofs(beacon_block_root):
         return blob_data.blobs, blob_data.proofs
 
