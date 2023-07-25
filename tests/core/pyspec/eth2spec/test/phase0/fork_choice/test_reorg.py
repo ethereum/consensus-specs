@@ -286,34 +286,43 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, True, True, test_steps=test_steps)
+
     if is_justifying_previous_epoch:
+        # build chain with head in epoch 3 and justified checkpoint in epoch 2
         block_a = build_empty_block_for_next_slot(spec, state)
         signed_block_a = state_transition_and_sign_block(spec, state, block_a)
         yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+        assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 3
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 2
     else:
-        # fill one more epoch
+        # build chain with head in epoch 4 and justified checkpoint in epoch 3
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, True, True, test_steps=test_steps)
         signed_block_a = state_transition_with_full_block(spec, state, True, True)
         yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+        assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-
     spec.get_head(store) == signed_block_a.message.hash_tree_root()
-
     state = store.block_states[spec.get_head(store)].copy()
-    if is_justifying_previous_epoch:
-        assert state.current_justified_checkpoint.epoch == 2
-    else:
-        assert state.current_justified_checkpoint.epoch == 3
     state_a = state.copy()
 
     if is_justifying_previous_epoch:
-        # try to find the block that can justify epoch 3
-        _, justifying_slot = find_next_justifying_slot(spec, state, False, True)
+        assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 3
+        assert spec.compute_epoch_at_slot(state.slot) == 3
+        assert state.current_justified_checkpoint.epoch == 2
     else:
-        # try to find the block that can justify epoch 4
+        assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
+        assert spec.compute_epoch_at_slot(state.slot) == 4
+        assert state.current_justified_checkpoint.epoch == 3
+
+    if is_justifying_previous_epoch:
+        # try to find the block that can justify epoch 3 by including only previous epoch attesations
+        _, justifying_slot = find_next_justifying_slot(spec, state, False, True)
+        assert spec.compute_epoch_at_slot(justifying_slot) == 4
+    else:
+        # try to find the block that can justify epoch 4 by including current epoch attestations
         _, justifying_slot = find_next_justifying_slot(spec, state, True, True)
+        assert spec.compute_epoch_at_slot(justifying_slot) == 4
 
     last_slot_of_z = justifying_slot if enough_ffg else justifying_slot - 1
     last_slot_of_y = justifying_slot if is_justifying_previous_epoch else last_slot_of_z - 1
@@ -324,15 +333,14 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     # build an empty chain to the slot prior epoch boundary
     signed_blocks_of_empty_chain = []
     states_of_empty_chain = []
-
     for slot in range(state.slot + 1, last_slot_of_y + 1):
         block = build_empty_block(spec, state, slot=slot)
         signed_block = state_transition_and_sign_block(spec, state, block)
         signed_blocks_of_empty_chain.append(signed_block)
         states_of_empty_chain.append(state.copy())
         signed_blocks_of_y.append(signed_block)
-
     signed_block_y = signed_blocks_of_empty_chain[-1]
+    assert spec.compute_epoch_at_slot(signed_block_y.message.slot) == 4
 
     # create 2/3 votes for the empty chain
     attestations_for_y = []
@@ -345,7 +353,6 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
 
     state = state_a.copy()
     signed_block_z = None
-
     for slot in range(state_a.slot + 1, last_slot_of_z + 1):
         # apply chain y, the empty chain
         if slot <= last_slot_of_y and len(signed_blocks_of_y) > 0:
@@ -368,12 +375,21 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         if is_ready_to_justify(spec, state):
             break
 
-    assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
+    assert spec.compute_epoch_at_slot(signed_block_y.message.slot) == 4
+    assert spec.compute_epoch_at_slot(signed_block_z.message.slot) == 4
 
+    # y is not filtered out & wins the LMD competition, so y should be the head
+    y_voting_source_epoch = spec.get_voting_source(store, signed_block_y.message.hash_tree_root()).epoch
     if is_justifying_previous_epoch:
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 2
+        assert y_voting_source_epoch == 2
+        assert y_voting_source_epoch == store.justified_checkpoint.epoch
     else:
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+        assert y_voting_source_epoch == 3
+        assert y_voting_source_epoch == store.justified_checkpoint.epoch
+    assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
 
     if enough_ffg:
         assert is_ready_to_justify(spec, state)
@@ -384,22 +400,75 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     next_epoch(spec, state)
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
+
+    y_voting_source_epoch = spec.get_voting_source(store, signed_block_y.message.hash_tree_root()).epoch
+    if is_justifying_previous_epoch:
+        # y is filtered out & so z should be the head
+        assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+        assert y_voting_source_epoch == 2
+        assert y_voting_source_epoch != store.justified_checkpoint.epoch
+        assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+        assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+    else:
+        if enough_ffg:
+            # y is not filtered out & wins the LMD competition, so y should be the head
+            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
+            assert y_voting_source_epoch == 3
+            assert y_voting_source_epoch != store.justified_checkpoint.epoch
+            assert y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store))
+            assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+        else:
+            # y is not filtered out & wins the LMD competition, so y should be the head
+            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+            assert y_voting_source_epoch == 3
+            assert y_voting_source_epoch == store.justified_checkpoint.epoch
+            assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+
+    # to next epoch
     next_epoch(spec, state)
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
 
-    if enough_ffg:
-        # reorg
-        assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
-        if is_justifying_previous_epoch:
-            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-        else:
-            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
-    else:
-        # no reorg
-        assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+    y_voting_source_epoch = spec.get_voting_source(store, signed_block_y.message.hash_tree_root()).epoch
+    if is_justifying_previous_epoch:
+        # y is filtered out & so z should be the head
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+        assert y_voting_source_epoch == 2
+        assert y_voting_source_epoch != store.justified_checkpoint.epoch
+        assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+        assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+    else:
+        if enough_ffg:
+            # y is filtered out & so z should be the head
+            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
+            assert y_voting_source_epoch == 3
+            assert y_voting_source_epoch != store.justified_checkpoint.epoch
+            assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+            assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+        else:
+            # y is not filtered out & wins the LMD competition, so y should be the head
+            assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+            assert y_voting_source_epoch == 3
+            assert y_voting_source_epoch == store.justified_checkpoint.epoch
+            assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+
+    # if enough_ffg:
+    #     if is_justifying_previous_epoch:
+    #         # y is filtered out & so z should be the head
+    #         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+    #         assert y_voting_source_epoch == 2
+    #         assert y_voting_source_epoch != store.justified_checkpoint.epoch
+    #         assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+    #         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+    #     else:
+    #         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
+    #         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
+    # else:
+    #     # no reorg
+    #     assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
+    #     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     yield 'steps', test_steps
 
