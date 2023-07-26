@@ -408,7 +408,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
         assert y_voting_source_epoch == 2
         assert y_voting_source_epoch != store.justified_checkpoint.epoch
-        assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+        assert not (y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
     else:
         if enough_ffg:
@@ -437,7 +437,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
         assert y_voting_source_epoch == 2
         assert y_voting_source_epoch != store.justified_checkpoint.epoch
-        assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+        assert not (y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
     else:
         if enough_ffg:
@@ -445,7 +445,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
             assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
             assert y_voting_source_epoch == 3
             assert y_voting_source_epoch != store.justified_checkpoint.epoch
-            assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
+            assert not (y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
             assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
         else:
             # y is not filtered out & wins the LMD competition, so y should be the head
