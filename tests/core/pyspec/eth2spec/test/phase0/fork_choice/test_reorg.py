@@ -454,22 +454,6 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
             assert y_voting_source_epoch == store.justified_checkpoint.epoch
             assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
 
-    # if enough_ffg:
-    #     if is_justifying_previous_epoch:
-    #         # y is filtered out & so z should be the head
-    #         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-    #         assert y_voting_source_epoch == 2
-    #         assert y_voting_source_epoch != store.justified_checkpoint.epoch
-    #         assert not(y_voting_source_epoch + 2 >= spec.compute_epoch_at_slot(spec.get_current_slot(store)))
-    #         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
-    #     else:
-    #         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
-    #         assert spec.get_head(store) == signed_block_z.message.hash_tree_root()
-    # else:
-    #     # no reorg
-    #     assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
-    #     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-
     yield 'steps', test_steps
 
 
