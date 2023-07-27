@@ -178,7 +178,7 @@ def get_current_slot(store: Store) -> Slot:
 #### `get_current_store_epoch`
 
 ```python
-def get_current_store_epoch(store: Store) -> Slot:
+def get_current_store_epoch(store: Store) -> Epoch:
     return compute_epoch_at_slot(get_current_slot(store))
 ```
 
