@@ -9,7 +9,7 @@ def uint_case_fn(rng: Random, mode: RandomizationMode, typ: Type[BasicView]):
     return get_random_ssz_object(rng, typ,
                                  max_bytes_length=typ.type_byte_length(),
                                  max_list_length=1,
-                                 mode=mode, chaos=False)
+                                 mode=mode, chaos=True)
 
 
 UINT_TYPES = [uint8, uint16, uint32, uint64, uint128, uint256]
