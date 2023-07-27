@@ -111,8 +111,9 @@ preinstallation:
 
 # installs the packages to run pyspec tests
 install_test: preinstallation
-	python3 -m venv venv; . venv/bin/activate; \
-	python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
+	. venv/bin/activate; \
+	python3 -m pip install -e .; \
+	python3 -m pip install -e .[lint,test]
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
