@@ -173,10 +173,12 @@ def add_block(spec,
 
     # Check blob_data
     if blob_data is not None:
-        assert len(blob_data.blobs) == len(blob_data.proofs)
         blobs = spec.List[spec.Blob, spec.MAX_BLOBS_PER_BLOCK](blob_data.blobs)
-        blobs_root = blobs.hash_tree_root()
-        yield get_blobs_file_name(blobs_root=blobs_root), blobs
+        if len(blobs) > 0:
+            blobs_root = blobs.hash_tree_root()
+            yield get_blobs_file_name(blobs_root=blobs_root), blobs
+        else:
+            blobs_root = None
 
     is_blob_data_test = blob_data is not None
 
@@ -184,7 +186,7 @@ def add_block(spec,
         if is_blob_data_test:
             test_steps.append({
                 'block': get_block_file_name(signed_block),
-                'blobs': get_blobs_file_name(blobs_root=blobs_root),
+                'blobs': None if blobs_root is None else get_blobs_file_name(blobs_root=blobs_root),
                 'proofs': [encode_hex(proof) for proof in blob_data.proofs],
                 'valid': valid,
             })
