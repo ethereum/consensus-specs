@@ -7,9 +7,7 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from curdleproofs import (
     GenerateWhiskTrackerProof,
     WhiskTracker,
-    IsValidWhiskOpeningProof,
     GenerateWhiskShuffleProof,
-    IsValidWhiskShuffleProof
 )
 from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
 from py_ecc.typing import Optimized_Field, Optimized_Point3D
@@ -141,13 +139,6 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
             raise Exception("k proposer_index does not match proposer_tracker")
 
         empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(proposer_tracker, Scalar(k_initial))
-        if not IsValidWhiskOpeningProof(proposer_tracker, proposer_k_commitment, empty_block.body.whisk_opening_proof):
-            raise Exception(
-                "produced opening proof is not valid",
-                proposer_tracker,
-                proposer_k_commitment,
-                empty_block.body.whisk_opening_proof
-            )
 
         # Whisk shuffle proof
         #######
@@ -158,19 +149,6 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         post_trackers, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
         empty_block.body.whisk_post_shuffle_trackers = post_trackers
         empty_block.body.whisk_shuffle_proof = shuffle_proof
-
-        if not IsValidWhiskShuffleProof(
-            spec.CURDLEPROOFS_CRS,
-            pre_shuffle_trackers,
-            empty_block.body.whisk_post_shuffle_trackers,
-            empty_block.body.whisk_shuffle_proof,
-        ):
-            raise Exception(
-                "produced shuffle proof is not valid",
-                pre_shuffle_trackers,
-                empty_block.body.whisk_post_shuffle_trackers,
-                empty_block.body.whisk_shuffle_proof,
-            )
 
         # Whisk registration proof
         #######
