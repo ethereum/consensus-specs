@@ -10,8 +10,8 @@
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helper Functions](#helper-functions)
-    - [`committee_spans_full_epoch`](#committee_spans_full_epoch)
-    - [`committee_for_block_spans_full_epoch`](#committee_for_block_spans_full_epoch)
+    - [`is_full_validator_set_covered`](#is_full_validator_set_covered)
+    - [`is_full_validator_set_for_block_covered`](#is_full_validator_set_for_block_covered)
     - [`ceil_div`](#ceil_div)
     - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
     - [`get_committee_weight_between_slots`](#get_committee_weight_between_slots)
@@ -83,10 +83,10 @@ The confirmation rule can be configured to the desired tolerance of Byzantine va
 
 ### Helper Functions
 
-#### `committee_spans_full_epoch`
+#### `is_full_validator_set_covered`
 
 ```python
-def committee_spans_full_epoch(start_slot: Slot, end_slot: Slot) -> bool:
+def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     """
     Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes and entire epoch
     """
@@ -98,10 +98,10 @@ def committee_spans_full_epoch(start_slot: Slot, end_slot: Slot) -> bool:
         (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0))
 ```
 
-#### `committee_for_block_spans_full_epoch`
+#### `is_full_validator_set_for_block_covered`
 
 ```python
-def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool:
+def is_full_validator_set_for_block_covered(store: Store, block_root: Root) -> bool:
     """
     Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes and entire epoch
     """
@@ -109,7 +109,7 @@ def committee_for_block_spans_full_epoch(store: Store, block_root: Root) -> bool
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
     
-    return committee_spans_full_epoch(Slot(parent_block.slot + 1), current_slot)
+    return is_full_validator_set_covered(Slot(parent_block.slot + 1), current_slot)
 ```
 
 #### `ceil_div`
@@ -155,7 +155,7 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         return Gwei(0)
 
     # If an entire epoch is covered by the range, return the total active balance
-    if committee_spans_full_epoch(start_slot, end_slot):
+    if is_full_validator_set_covered(start_slot, end_slot):
         return total_active_balance
     
     if start_epoch == end_epoch:
@@ -220,7 +220,7 @@ def is_lmd_confirmed(store: Store, block_root: Root) -> bool:
     if block_root == store.finalized_checkpoint.root:
         return True
 
-    if committee_for_block_spans_full_epoch(store, block_root):
+    if is_full_validator_set_for_block_covered(store, block_root):
         return is_one_confirmed(store, block_root)
     else:
         block = store.blocks[block_root]
