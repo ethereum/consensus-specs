@@ -119,10 +119,10 @@ def ceil_div(numerator: int, denominator: int) -> int:
     """
     Returns ``ceil(numerator / denominator)`` using only integer arithmetic
     """
-    result = numerator // denominator
-    if numerator % denominator != 0:
-        result = result + 1
-    return result
+    if numerator % denominator == 0:
+        return numerator // denominator
+    else:
+        return (numerator // denominator) + 1
 ```
 
 #### `adjust_committee_weight_estimate_to_ensure_safety`
