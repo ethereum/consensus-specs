@@ -31,10 +31,10 @@
   - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-2)
-    - [`get_one_confirmation_score`](#get_one_confirmation_score)
-    - [`get_lmd_confirmation_score`](#get_lmd_confirmation_score)
-    - [`get_ffg_confirmation_score_current_epoch`](#get_ffg_confirmation_score_current_epoch)
-    - [`get_ffg_confirmation_score`](#get_ffg_confirmation_score)
+    - [`compute_one_confirmation_score`](#compute_one_confirmation_score)
+    - [`compute_lmd_confirmation_score`](#compute_lmd_confirmation_score)
+    - [`compute_ffg_confirmation_score_current_epoch`](#compute_ffg_confirmation_score_current_epoch)
+    - [`compute_ffg_confirmation_score`](#compute_ffg_confirmation_score)
   - [`get_confirmation_score`](#get_confirmation_score)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -465,10 +465,10 @@ prevent a block from being confirmed.
 
 ### Helper Functions
 
-#### `get_one_confirmation_score`
+#### `compute_one_confirmation_score`
 
 ```python
-def get_one_confirmation_score(store: Store, block_root: Root) -> int:
+def compute_one_confirmation_score(store: Store, block_root: Root) -> int:
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
@@ -486,10 +486,10 @@ def get_one_confirmation_score(store: Store, block_root: Root) -> int:
     return max((100 * support - 50 * proposer_score - 1) // maximum_support - 50, UNCONFIRMED_SCORE)
 ```
 
-#### `get_lmd_confirmation_score`
+#### `compute_lmd_confirmation_score`
 
 ```python
-def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
+def compute_lmd_confirmation_score(store: Store, block_root: Root) -> int:
     if block_root == store.finalized_checkpoint.root:
         return MAX_CONFIRMATION_SCORE
     else:
@@ -501,18 +501,18 @@ def get_lmd_confirmation_score(store: Store, block_root: Root) -> int:
         else:
             # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
             return min(
-                get_one_confirmation_score(store, block_root),
-                get_lmd_confirmation_score(store, block.parent_root)
+                compute_one_confirmation_score(store, block_root),
+                compute_lmd_confirmation_score(store, block.parent_root)
             )
 ```
 
-#### `get_ffg_confirmation_score_current_epoch`
+#### `compute_ffg_confirmation_score_current_epoch`
 
 ```python
-def get_ffg_confirmation_score_helper(total_active_balance: int,
-                                      ffg_support_for_checkpoint: int,
-                                      min_ffg_support_slash_th: int,
-                                      remaining_ffg_weight: int) -> int:
+def compute_ffg_confirmation_score_helper(total_active_balance: int,
+                                          ffg_support_for_checkpoint: int,
+                                          min_ffg_support_slash_th: int,
+                                          remaining_ffg_weight: int) -> int:
     assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
     
     """
@@ -574,10 +574,10 @@ def get_ffg_confirmation_score_helper(total_active_balance: int,
     return max(ffg_confirmation_score, UNCONFIRMED_SCORE)
 ```
 
-#### `get_ffg_confirmation_score`
+#### `compute_ffg_confirmation_score`
 
 ```python
-def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
+def compute_ffg_confirmation_score(store: Store, block_root: Root) -> int:
 
     current_epoch = get_current_store_epoch(store)
 
@@ -598,7 +598,7 @@ def get_ffg_confirmation_score(store: Store, block_root: Root) -> int:
     else:
         remaining_ffg_weight = 0  
 
-    return get_ffg_confirmation_score_helper(
+    return compute_ffg_confirmation_score_helper(
         total_active_balance,
         ffg_support_for_checkpoint,
         min_ffg_support_slash_th,
@@ -633,7 +633,7 @@ def get_confirmation_score(store: Store, block_root: Root) -> int:
         return UNCONFIRMED_SCORE
 
     return min(
-        get_lmd_confirmation_score(store, block_root),
-        get_ffg_confirmation_score(store, block_root)
+        compute_lmd_confirmation_score(store, block_root),
+        compute_ffg_confirmation_score(store, block_root)
     )            
 ```
