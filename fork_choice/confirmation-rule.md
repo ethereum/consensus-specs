@@ -167,11 +167,11 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         # See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 
         # for an explanation of the formula used below.
 
-        # First, calculate the number of committees in the start epoch
+        # First, calculate the number of committees in the end epoch
         num_slots_in_end_epoch = int(compute_slots_since_epoch_start(end_slot) + 1)
-        # Next, calculate the number of slots remaining in the start epoch
+        # Next, calculate the number of slots remaining in the end epoch
         remaining_slots_in_end_epoch = int(SLOTS_PER_EPOCH - num_slots_in_end_epoch)
-        # Then, calculate the number of slots in the end epoch
+        # Then, calculate the number of slots in the start epoch
         num_slots_in_start_epoch = int(SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot))
 
         start_epoch_weight_mul_by_slots_per_epoch = num_slots_in_end_epoch * int(total_active_balance)
