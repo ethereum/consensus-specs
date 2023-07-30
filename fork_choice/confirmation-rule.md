@@ -359,7 +359,7 @@ def is_ffg_confirmed(store: Store, block_root: Root) -> bool:
 
     max_adversarial_ffg_support_for_checkpoint = int(
         min(
-            (total_active_balance * CONFIRMATION_BYZANTINE_THRESHOLD - 1) // 100 + 1,
+            ceil_div(total_active_balance * CONFIRMATION_BYZANTINE_THRESHOLD, 100),
             CONFIRMATION_SLASHING_THRESHOLD,
             ffg_support_for_checkpoint
         )
