@@ -85,9 +85,8 @@ The parameter that is required for executing `on_block(store, block)`.
 {
     block: string           -- the name of the `block_<32-byte-root>.ssz_snappy` file.
                               To execute `on_block(store, block)` with the given attestation.
-    blobs: string or `null` -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
+    blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
                                The blobs file content is a `List[Blob, MAX_BLOBS_PER_BLOCK]` SSZ object.
-                               If it's `null`, `blobs` is an empty list.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
@@ -96,7 +95,7 @@ The parameter that is required for executing `on_block(store, block)`.
 
 The file is located in the same folder (see below).
 
-`blobs` and `proofs` are new fields from Deneb EIP-4844. These are the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper.
+`blobs` and `proofs` are new fields from Deneb EIP-4844. These fields indicate the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper. If these two fields are not provided, `retrieve_blobs_and_proofs()` returns empty lists.
 
 After this step, the `store` object may have been updated.
 
