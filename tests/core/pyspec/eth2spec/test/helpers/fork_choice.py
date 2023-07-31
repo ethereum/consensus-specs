@@ -73,6 +73,13 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     return post_state
 
 
+def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data, valid=True):
+    def run_func():
+        yield from tick_and_add_block(spec, store, signed_block, test_steps, blob_data=blob_data, valid=valid)
+
+    yield from with_blob_data(spec, blob_data, run_func)
+
+
 def add_attestation(spec, store, attestation, test_steps, is_from_block=False):
     spec.on_attestation(store, attestation, is_from_block=is_from_block)
     yield get_attestation_file_name(attestation), attestation
