@@ -27,7 +27,7 @@ from eth2spec.test.helpers.sharding import (
 )
 
 
-def run_block_with_blobs(spec, state, blob_count, tx_count=1, data_gas_used=1, excess_data_gas=1,
+def run_block_with_blobs(spec, state, blob_count, tx_count=1, blob_gas_used=1, excess_blob_gas=1,
                          non_blob_tx_count=0, rng=random.Random(7777), valid=True):
     yield 'pre', state
 
@@ -46,8 +46,8 @@ def run_block_with_blobs(spec, state, blob_count, tx_count=1, data_gas_used=1, e
 
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = txs
-    block.body.execution_payload.data_gas_used = data_gas_used
-    block.body.execution_payload.excess_data_gas = excess_data_gas
+    block.body.execution_payload.blob_gas_used = blob_gas_used
+    block.body.execution_payload.excess_blob_gas = excess_blob_gas
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
     if valid:
