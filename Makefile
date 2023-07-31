@@ -104,9 +104,15 @@ generate_tests: $(GENERATOR_TARGETS)
 pyspec:
 	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
 
+# check the setup tool requirements
+preinstallation:
+	python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -r requirements_preinstallation.txt
+
 # installs the packages to run pyspec tests
-install_test:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
+install_test: preinstallation
+	python3 -m venv venv; . venv/bin/activate; \
+	python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec

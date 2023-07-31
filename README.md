@@ -42,6 +42,7 @@ Features are researched and developed in parallel, and then consolidated into se
 Additional specifications and standards outside of requisite client functionality can be found in the following repos:
 
 * [Beacon APIs](https://github.com/ethereum/beacon-apis)
+* [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 * [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
 
 ## Design goals
