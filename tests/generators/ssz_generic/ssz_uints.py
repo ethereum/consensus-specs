@@ -23,10 +23,10 @@ def valid_cases():
         yield f'uint_{byte_len * 8}_last_byte_empty', \
               valid_test_case(lambda: uint_type((2 ** ((byte_len - 1) * 8)) - 1))
         for variation in range(5):
-            yield f'uint_{byte_len * 8}_{mode.to_name()}_{variation}',\
+            yield f'uint_{byte_len * 8}_{mode.to_name()}_{variation}', \
                 valid_test_case(lambda: uint_case_fn(rng, mode, uint_type))
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
-            yield f'uint_{byte_len * 8}_{mode.to_name()}',\
+            yield f'uint_{byte_len * 8}_{mode.to_name()}', \
                 valid_test_case(lambda: uint_case_fn(rng, mode, uint_type))
 
 

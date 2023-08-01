@@ -71,9 +71,8 @@ def valid_cases():
 
         modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
         if len(offsets) != 0:
-            modes.extend([RandomizationMode.mode_nil_count,
-                          RandomizationMode.mode_one_count,
-                          RandomizationMode.mode_max_count])
+            modes = list(RandomizationMode)
+
         for mode in modes:
             for variation in range(3):
                 yield f'{name}_{mode.to_name()}_chaos_{variation}', \
@@ -86,11 +85,7 @@ def valid_cases():
             # Notes: ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max`` are
             # pseudo-random modes for containers that contains List of Bitlist
             # (because the length of List and Bitlist are randoms).
-            modes.extend([RandomizationMode.mode_nil_count,
-                          RandomizationMode.mode_one_count,
-                          RandomizationMode.mode_max_count,
-                          RandomizationMode.mode_zero,
-                          RandomizationMode.mode_max])
+            modes = list(RandomizationMode)
         for mode in modes:
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
