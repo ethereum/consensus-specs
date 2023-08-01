@@ -68,12 +68,16 @@ def valid_cases():
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f'{name}_{mode.to_name()}', valid_test_case(lambda: container_case_fn(rng, mode, typ))
-        random_modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        modes = [RandomizationMode.mode_random]
         if len(offsets) != 0:
-            random_modes.extend([RandomizationMode.mode_nil_count,
-                                 RandomizationMode.mode_one_count,
-                                 RandomizationMode.mode_max_count])
-        for mode in random_modes:
+            # Notes: ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max`` are
+            # pseudo-random modes here because the length of List and Bitlist  are randoms.
+            modes.extend([RandomizationMode.mode_nil_count,
+                          RandomizationMode.mode_one_count,
+                          RandomizationMode.mode_max_count,
+                          RandomizationMode.mode_zero,
+                          RandomizationMode.mode_max])
+        for mode in modes:
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
                       valid_test_case(lambda: container_case_fn(rng, mode, typ))
