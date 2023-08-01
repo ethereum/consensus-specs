@@ -431,7 +431,7 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 
 ```
 
-### `get_safe_beacon_block_root``
+### `get_safe_beacon_block_root`
 
 ```python
 def get_safe_beacon_block_root(store: Store) -> Root:
@@ -555,7 +555,7 @@ def compute_ffg_confirmation_score_helper(total_active_balance: int,
             return ffg_confirmation_score
     else:
         if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
-            return 100 // 3
+            return MAX_CONFIRMATION_SCORE
 
     # Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
     #
