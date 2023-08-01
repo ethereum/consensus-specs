@@ -68,10 +68,24 @@ def valid_cases():
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f'{name}_{mode.to_name()}', valid_test_case(lambda: container_case_fn(rng, mode, typ))
+
+        modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        if len(offsets) != 0:
+            modes.extend([RandomizationMode.mode_nil_count,
+                          RandomizationMode.mode_one_count,
+                          RandomizationMode.mode_max_count])
+        for mode in modes:
+            for variation in range(3):
+                yield f'{name}_{mode.to_name()}_chaos_{variation}', \
+                      valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
+        # Notes: Below is the second wave of iteration, and only the random mode is selected
+        # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
+        # are deterministic.
         modes = [RandomizationMode.mode_random]
         if len(offsets) != 0:
             # Notes: ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max`` are
-            # pseudo-random modes here because the length of List and Bitlist  are randoms.
+            # pseudo-random modes for containers that contains List of Bitlist
+            # (because the length of List and Bitlist are randoms).
             modes.extend([RandomizationMode.mode_nil_count,
                           RandomizationMode.mode_one_count,
                           RandomizationMode.mode_max_count,
@@ -81,9 +95,6 @@ def valid_cases():
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
                       valid_test_case(lambda: container_case_fn(rng, mode, typ))
-            for variation in range(3):
-                yield f'{name}_{mode.to_name()}_chaos_{variation}', \
-                      valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
 
 
 def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
