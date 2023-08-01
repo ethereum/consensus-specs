@@ -46,11 +46,11 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View]):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool=False):
     return get_random_ssz_object(rng, typ,
                                  max_bytes_length=2000,
                                  max_list_length=2000,
-                                 mode=mode, chaos=False)
+                                 mode=mode, chaos=chaos)
 
 
 PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
@@ -79,7 +79,7 @@ def valid_cases():
                       valid_test_case(lambda: container_case_fn(rng, mode, typ))
             for variation in range(3):
                 yield f'{name}_{mode.to_name()}_chaos_{variation}', \
-                      valid_test_case(lambda: container_case_fn(rng, mode, typ))
+                      valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
 
 
 def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
