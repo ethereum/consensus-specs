@@ -23,11 +23,12 @@
     - [`get_current_epoch_participating_indices`](#get_current_epoch_participating_indices)
     - [`get_ffg_support`](#get_ffg_support)
     - [`is_ffg_confirmed`](#is_ffg_confirmed)
+  - [`get_first_descendants_in_previous_or_current_epoch`](#get_first_descendants_in_previous_or_current_epoch)
   - [`is_confirmed`](#is_confirmed)
 - [Safe Block Hash](#safe-block-hash)
   - [Helper Functions](#helper-functions-1)
     - [`find_confirmed_block`](#find_confirmed_block)
-  - [`get_safe_beacon_block_root``](#get_safe_beacon_block_root)
+  - [`get_safe_beacon_block_root`](#get_safe_beacon_block_root)
   - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
 - [Confirmation Score](#confirmation-score)
   - [Helper Functions](#helper-functions-2)
@@ -378,6 +379,34 @@ def is_ffg_confirmed(store: Store, block_root: Root) -> bool:
     )
 ```
 
+### `get_first_descendants_in_previous_or_current_epoch`
+
+```python
+def get_first_descendants_in_previous_or_current_epoch(store: Store, block_root: Root) -> Set[Root]:
+    """
+    Returns the set of first descendants in each possible branch that are from either the current or previous epoch
+    """
+    current_epoch = get_current_store_epoch(store)
+
+    block = store.blocks[block_root]
+    block_epoch = compute_epoch_at_slot(block.slot)
+
+    if current_epoch in [block_epoch, block_epoch + 1]:
+        return set([block_root])
+
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ]
+
+    leaf_block_roots: Set[Root] = set()
+    for child_leaf_block_roots in [get_first_descendants_in_previous_or_current_epoch(store, child) 
+                                   for child in children]:
+        leaf_block_roots = leaf_block_roots.union(child_leaf_block_roots)
+
+    return leaf_block_roots
+```
+
 ### `is_confirmed`
 
 ```python
@@ -389,19 +418,24 @@ def is_confirmed(store: Store, block_root: Root) -> bool:
     block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
     block_epoch = compute_epoch_at_slot(block.slot)
 
-    # This function is only applicable to current and previous epoch blocks
-    assert current_epoch in [block_epoch, block_epoch + 1]
+    if current_epoch in [block_epoch, block_epoch + 1]:
+        if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
+            return False
 
-    if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
-        return False
+        if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
+            return False
 
-    if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
-        return False
-
-    return (
-        is_lmd_confirmed(store, block_root)
-        and is_ffg_confirmed(store, block_root)
-    )
+        return (
+            is_lmd_confirmed(store, block_root)
+            and is_ffg_confirmed(store, block_root)
+        )
+    else:
+        first_descendants_in_previous_or_current_epoch = get_first_descendants_in_previous_or_current_epoch(
+            store, block_root)
+        
+        return any(
+            descendant for descendant in first_descendants_in_previous_or_current_epoch 
+            if is_confirmed(store, descendant))
 ```
 
 ## Safe Block Hash

@@ -226,6 +226,43 @@ def test_confirm_previous_epoch_no_byz(spec, state):
     'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
     'CONFIRMATION_SLASHING_THRESHOLD': 0
 })
+def test_confirm_prior_to_previous_epoch_no_byz(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    next_epoch(spec, state)
+    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+
+    # Fill epoch 1 to 3
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, True, test_steps=test_steps
+        )
+
+    root = get_block_root_from_head(spec, store, spec.SLOTS_PER_EPOCH + 1)
+    block = store.blocks[root]
+
+    assert spec.compute_epoch_at_slot(block.slot) + 2 == spec.get_current_store_epoch(store)
+
+    check_is_confirmed(spec, store, root, test_steps, True)
+
+    yield "steps", test_steps
+
+
+@with_bellatrix_and_later
+@spec_state_test
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
 def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
