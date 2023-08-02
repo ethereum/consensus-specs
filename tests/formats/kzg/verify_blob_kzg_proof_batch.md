@@ -8,9 +8,9 @@ The test data is declared in a `data.yaml` file:
 
 ```yaml
 input:
-  blob: List[Blob] -- the data blob
-  commitment: List[KZGCommitment] -- the KZG commitment to the data blob
-  proof: List[KZGProof] -- The KZG proof
+  blobs: List[Blob] -- the data blob
+  commitments: List[KZGCommitment] -- the KZG commitment to the data blob
+  proofs: List[KZGProof] -- The KZG proof
 output: bool -- true (all proofs are valid) or false (some proofs incorrect)
 ```
 
