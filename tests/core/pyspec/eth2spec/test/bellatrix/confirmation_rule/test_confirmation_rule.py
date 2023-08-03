@@ -610,3 +610,77 @@ def test_current_get_confirmation_score_slashing_threshold(spec, state):
     check_get_confirmation_score(spec, store, root, test_steps, 13)
 
     yield "steps", test_steps
+
+
+@with_bellatrix_and_later
+@with_presets([MINIMAL])
+@spec_state_test
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_previous_epoch_get_confirmation_score_no_slashing_threshold(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    next_epoch(spec, state)
+    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, True, test_steps=test_steps
+        )
+
+    root = get_block_root_from_head(spec, store, spec.SLOTS_PER_EPOCH // 2)
+    block = store.blocks[root]
+
+    assert spec.compute_epoch_at_slot(block.slot) + 1 == spec.get_current_store_epoch(store)
+
+    check_get_confirmation_score(spec, store, root, test_steps, 33)
+
+    yield "steps", test_steps
+
+
+@with_bellatrix_and_later
+@with_presets([MINIMAL])
+@spec_state_test
+@with_config_overrides({
+    'CONFIRMATION_BYZANTINE_THRESHOLD': 0,
+    'CONFIRMATION_SLASHING_THRESHOLD': 0
+})
+def test_prior_to_previous_epoch_get_confirmation_score_no_slashing_threshold(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
+    test_steps = []
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    next_epoch(spec, state)
+    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec, state, store, True, True, test_steps=test_steps
+        )
+
+    root = get_block_root_from_head(spec, store, spec.SLOTS_PER_EPOCH + 1)
+    block = store.blocks[root]
+
+    assert spec.compute_epoch_at_slot(block.slot) + 2 == spec.get_current_store_epoch(store)
+
+    check_get_confirmation_score(spec, store, root, test_steps, 33)
+
+    yield "steps", test_steps

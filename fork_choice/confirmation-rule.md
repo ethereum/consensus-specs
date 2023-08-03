@@ -654,20 +654,25 @@ def get_confirmation_score(store: Store, block_root: Root) -> int:
     block = store.blocks[block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
 
-    # This function is only applicable to current and previous epoch blocks
-    assert current_epoch in [block_epoch, block_epoch + 1]
+    if current_epoch in [block_epoch, block_epoch + 1]:
 
-    block_state = store.block_states[block_root]
-    block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
+        block_state = store.block_states[block_root]
+        block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
 
-    if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
-        return UNCONFIRMED_SCORE
+        if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
+            return UNCONFIRMED_SCORE
 
-    if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
-        return UNCONFIRMED_SCORE
+        if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
+            return UNCONFIRMED_SCORE
 
-    return min(
-        compute_lmd_confirmation_score(store, block_root),
-        compute_ffg_confirmation_score(store, block_root)
-    )            
+        return min(
+            compute_lmd_confirmation_score(store, block_root),
+            compute_ffg_confirmation_score(store, block_root)
+        ) 
+    else:   
+        first_descendants_in_previous_or_current_epoch = get_first_descendants_in_previous_or_current_epoch(
+            store, block_root)
+        
+        return max(
+            get_confirmation_score(store, descendant) for descendant in first_descendants_in_previous_or_current_epoch)                
 ```
