@@ -69,8 +69,9 @@ def valid_cases():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f'{name}_{mode.to_name()}', valid_test_case(lambda: container_case_fn(rng, mode, typ))
 
-        modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
-        if len(offsets) != 0:
+        if len(offsets) == 0:
+            modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        else:
             modes = list(RandomizationMode)
 
         for mode in modes:
@@ -80,12 +81,7 @@ def valid_cases():
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
         # are deterministic.
-        modes = [RandomizationMode.mode_random]
-        if len(offsets) != 0:
-            # Notes: ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max`` are
-            # pseudo-random modes for containers that contains List of Bitlist
-            # (because the length of List and Bitlist are randoms).
-            modes = list(RandomizationMode)
+        modes = [RandomizationMode.mode_random] if len(offsets) != 0 else list(RandomizationMode)
         for mode in modes:
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
