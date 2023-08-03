@@ -398,6 +398,8 @@ Up to `MAX_ATTESTER_SLASHINGS`, [`AttesterSlashing`](./beacon-chain.md#attesters
 
 Up to `MAX_ATTESTATIONS`, aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](./beacon-chain.md#attestations). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
 
+The validator should add all the aggregate attestations that arrive before the start of the slot to the block. In other words, the validator should not exclude any aggregate attestation that arrives just before the start of the slot, even though it can delay the block construction.
+
 ##### Deposits
 
 If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](./beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [deposit contract](./deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](./beacon-chain.md#deposits).
@@ -549,6 +551,8 @@ def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_si
 If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
 
 Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator. If `len(attestations) > 0`, create an `aggregate_attestation: Attestation` with the following fields.
+
+The validator should aggregate all the attestations that arrive before `2 / INTERVALS_PER_SLOT` of the `slot` has transpired (`SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds after the start of `slot`). It should not exclude any attestation that arrive before that time.
 
 ##### Data
 
