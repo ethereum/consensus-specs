@@ -81,7 +81,7 @@ def valid_cases():
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
         # are deterministic.
-        modes = [RandomizationMode.mode_random] if len(offsets) != 0 else list(RandomizationMode)
+        modes = [RandomizationMode.mode_random] if len(offsets) == 0 else list(RandomizationMode)
         for mode in modes:
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
