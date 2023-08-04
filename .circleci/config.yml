@@ -36,26 +36,26 @@ commands:
     steps:
       - restore_cached_venv:
           venv_name: v24-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
           venv_name: v24-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
           venv_path: ./venv
   restore_deposit_contract_tester_cached_venv:
     description: "Restore the venv from cache for the deposit contract tester"
     steps:
       - restore_cached_venv:
           venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
   save_deposit_contract_tester_cached_venv:
     description: "Save the venv to cache for later use of the deposit contract tester"
     steps:
       - save_cached_venv:
           venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
           venv_path: ./solidity_deposit_contract/web3_tester/venv
 jobs:
   checkout_specs:
@@ -157,7 +157,7 @@ jobs:
           path: tests/core/pyspec/test-reports
   test-eip6110:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.9
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -168,6 +168,19 @@ jobs:
           command: make citest fork=eip6110
       - store_test_results:
           path: tests/core/pyspec/test-reports
+  test-eip7002:
+    docker:
+      - image: circleci/python:3.9
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_pyspec_cached_venv
+      - run:
+          name: Run py-tests
+          command: make citest fork=eip7002
+      - store_test_results:
+          path: tests/core/pyspec/test-reports
   table_of_contents:
     docker:
       - image: circleci/node:10.16.3
@@ -176,7 +189,7 @@ jobs:
       - checkout
       - run:
           name: Check table of contents
-          command: sudo npm install -g doctoc@2 && make check_toc
+          command: sudo npm install -g doctoc@2.2.0 && make check_toc
   codespell:
     docker:
       - image: circleci/python:3.9
@@ -289,6 +302,9 @@ workflows:
           requires:
             - install_pyspec_test
       - test-eip6110:
+          requires:
+            - install_pyspec_test
+      - test-eip7002:
           requires:
             - install_pyspec_test
       - table_of_contents

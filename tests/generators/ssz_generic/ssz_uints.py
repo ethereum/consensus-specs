@@ -18,13 +18,16 @@ UINT_TYPES = [uint8, uint16, uint32, uint64, uint128, uint256]
 def valid_cases():
     rng = Random(1234)
     for uint_type in UINT_TYPES:
+        mode = RandomizationMode.mode_random
         byte_len = uint_type.type_byte_length()
         yield f'uint_{byte_len * 8}_last_byte_empty', \
               valid_test_case(lambda: uint_type((2 ** ((byte_len - 1) * 8)) - 1))
         for variation in range(5):
-            for mode in [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]:
-                yield f'uint_{byte_len * 8}_{mode.to_name()}_{variation}', \
-                      valid_test_case(lambda: uint_case_fn(rng, mode, uint_type))
+            yield f'uint_{byte_len * 8}_{mode.to_name()}_{variation}', \
+                valid_test_case(lambda: uint_case_fn(rng, mode, uint_type))
+        for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
+            yield f'uint_{byte_len * 8}_{mode.to_name()}', \
+                valid_test_case(lambda: uint_case_fn(rng, mode, uint_type))
 
 
 def invalid_cases():
