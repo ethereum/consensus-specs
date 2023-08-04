@@ -95,8 +95,8 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     end_epoch = compute_epoch_at_slot(end_slot)
 
     return (
-        end_epoch > start_epoch + 1 or
-        (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0))
+        end_epoch > start_epoch + 1
+        or (end_epoch == start_epoch + 1 and start_slot % SLOTS_PER_EPOCH == 0))
 ```
 
 #### `is_full_validator_set_for_block_covered`
@@ -226,8 +226,8 @@ def is_lmd_confirmed(store: Store, block_root: Root) -> bool:
     else:
         block = store.blocks[block_root]
         return (
-            is_one_confirmed(store, block_root) and
-            is_lmd_confirmed(store, block.parent_root)
+            is_one_confirmed(store, block_root)
+            and is_lmd_confirmed(store, block.parent_root)
         )
 ```
 
@@ -284,8 +284,8 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 ```python
 def get_epoch_participating_indices(state: BeaconState, 
                                     active_validator_indices: Sequence[ValidatorIndex],
-                                    current_epoch: bool) -> Set[ValidatorIndex]: 
-    if current_epoch:
+                                    is_current_epoch: bool) -> Set[ValidatorIndex]: 
+    if is_current_epoch:
         epoch_participation = state.current_epoch_participation
     else:
         epoch_participation = state.previous_epoch_participation
