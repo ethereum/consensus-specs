@@ -465,31 +465,6 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 
 ```
 
-### `get_safe_beacon_block_root`
-
-```python
-def get_safe_beacon_block_root(store: Store) -> Root:
-    head_root = get_head(store)
-
-    return find_confirmed_block(store, head_root)
-```
-
-### `get_safe_execution_payload_hash`
-
-```python
-def get_safe_execution_payload_hash(store: Store) -> Hash32:
-    safe_block_root = get_safe_beacon_block_root(store)
-    safe_block = store.blocks[safe_block_root]
-
-    # Return Hash32() if no payload is yet justified
-    if compute_epoch_at_slot(safe_block.slot) >= BELLATRIX_FORK_EPOCH:
-        return safe_block.body.execution_payload.block_hash
-    else:
-        return Hash32()
-```
-
-*Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
-
 ## Confirmation Score
 
 The confirmation score for a block is the maximum adversarial percentage weight that a confirmed block can tolerate.

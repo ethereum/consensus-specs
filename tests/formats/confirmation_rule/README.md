@@ -96,12 +96,6 @@ The checks to verify the execution of the confirmation rule algorithm
     }
 ```
 
-```yaml
-    check_get_safe_beacon_block_root: {
-        result: string          -- return value of `check_get_safe_beacon_block_root()`
-    }
-```
-
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to initialize the local store object by with `get_forkchoice_store(anchor_state, anchor_block)` helper.
