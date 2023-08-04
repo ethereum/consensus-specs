@@ -46,11 +46,11 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View]):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool=False):
     return get_random_ssz_object(rng, typ,
                                  max_bytes_length=2000,
                                  max_list_length=2000,
-                                 mode=mode, chaos=False)
+                                 mode=mode, chaos=chaos)
 
 
 PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
@@ -68,17 +68,23 @@ def valid_cases():
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f'{name}_{mode.to_name()}', valid_test_case(lambda: container_case_fn(rng, mode, typ))
-        random_modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
-        if len(offsets) != 0:
-            random_modes.extend([RandomizationMode.mode_nil_count,
-                                 RandomizationMode.mode_one_count,
-                                 RandomizationMode.mode_max_count])
-        for mode in random_modes:
-            for variation in range(10):
-                yield f'{name}_{mode.to_name()}_{variation}', \
-                      valid_test_case(lambda: container_case_fn(rng, mode, typ))
+
+        if len(offsets) == 0:
+            modes = [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        else:
+            modes = list(RandomizationMode)
+
+        for mode in modes:
             for variation in range(3):
                 yield f'{name}_{mode.to_name()}_chaos_{variation}', \
+                      valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
+        # Notes: Below is the second wave of iteration, and only the random mode is selected
+        # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
+        # are deterministic.
+        modes = [RandomizationMode.mode_random] if len(offsets) == 0 else list(RandomizationMode)
+        for mode in modes:
+            for variation in range(10):
+                yield f'{name}_{mode.to_name()}_{variation}', \
                       valid_test_case(lambda: container_case_fn(rng, mode, typ))
 
 
