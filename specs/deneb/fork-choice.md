@@ -7,6 +7,7 @@
 
 - [Introduction](#introduction)
 - [Containers](#containers)
+- [Constants](#constants)
 - [Helpers](#helpers)
     - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
@@ -20,6 +21,12 @@
 This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Containers
+
+## Constants
+
+| Name                   | Value       |
+| ---------------------- | ----------- |
+| `LATE_BLOCK_CUTOFF_MS` | `6000`      |
 
 ## Helpers
 
@@ -95,8 +102,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // 2
-    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+    is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
+    if get_current_slot(store) == block.slot and is_before_late_block_cutoff:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

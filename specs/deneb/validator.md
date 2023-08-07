@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Constants](#constants)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -42,6 +43,15 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Constants
+
+| Name                  | Value       |
+| --------------------- | ----------- |
+| `ATTESTATION_DUE_MS`  | `6000`      |
+| `AGGREGATE_DUE_MS`    | `9000`      |
+| `SYNC_MESSAGE_DUE_MS` | `6000`      |
+| `CONTRIBUTION_DUE_MS` | `9000`      |
 
 ## Helpers
 
@@ -169,16 +179,20 @@ The timing for sending attestation, aggregate, sync committee messages and contr
 
 A validator must create and broadcast the `attestation` to the associated attestation subnet as soon as the validator has received a valid block from the expected block proposer for the assigned `slot`.
 
-If the block has not been observed at `SECONDS_PER_SLOT / 2` seconds into the slot, the validator should send the attestation voting for its current head as selected by fork choice.
+If the block has not been observed at `ATTESTATION_DUE_MS` milliseconds into the slot, the validator should send the attestation voting for its current head as selected by fork choice.
+
+Within each slot, clients must be prepared to receive attestations out of order with respect to the block that it's voting for.
 
 #### Aggregates
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `SECONDS_PER_SLOT * 3 / 4` seconds after the start of the slot.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `AGGREGATE_DUE_MS` milliseconds after the start of the slot.
+
+Within each slot, clients must be prepared to receive aggregates out of order with respect to the block that it's voting for.
 
 #### Sync committee messages
 
-This logic is triggered upon the same conditions as when producing an attestation.
+This logic is triggered upon the same conditions as when producing an attestation, using `SYNC_MESSAGE_DUE_MS` as cutoff time.
 
 #### Sync committee contributions
 
-This logic is triggered upon the same conditions as when producing an aggregate.
+This logic is triggered upon the same conditions as when producing an aggregate, , using `CONTRIBUTION_DUE_MS` as cutoff time.
