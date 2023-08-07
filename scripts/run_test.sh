@@ -29,9 +29,9 @@ do
     esac
 done
 
-# Get IDs of container that run the image `consensus-specs:$version`.
+# Get IDs of container that run the image `consensus-specs:$version` and are exited.
 get_container_name() {
-  echo $(docker ps -a -q --filter ancestor="consensus-specs:$version" --format="{{.ID}}")
+  echo $(docker ps -a -q --filter ancestor="consensus-specs:$version" --filter status="exited" --format="{{.ID}}")
 }
 
 # Stop and remove all container that use the `consensus-specs:$version` image
