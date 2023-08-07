@@ -501,18 +501,16 @@ def compute_one_confirmation_score(store: Store, block_root: Root) -> int:
 def compute_lmd_confirmation_score(store: Store, block_root: Root) -> int:
     if block_root == store.finalized_checkpoint.root:
         return MAX_CONFIRMATION_SCORE
+
+    if is_full_validator_set_for_block_covered(store, block_root):
+        return compute_one_confirmation_score(store, block_root)
     else:
         block = store.blocks[block_root]
-        finalized_block = store.blocks[store.finalized_checkpoint.root]
-        if block.slot <= finalized_block.slot:
-            # This block is not in the finalized chain.
-            return UNCONFIRMED_SCORE
-        else:
-            # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
-            return min(
-                compute_one_confirmation_score(store, block_root),
-                compute_lmd_confirmation_score(store, block.parent_root)
-            )
+        # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
+        return min(
+            compute_one_confirmation_score(store, block_root),
+            compute_lmd_confirmation_score(store, block.parent_root)
+        )
 ```
 
 #### `compute_ffg_confirmation_score_current_epoch`
