@@ -9,9 +9,3 @@ milagro_bls_binding==1.9.0
 trie==2.0.2
 eth-hash==0.5.2
 pycryptodome==3.15.0
-
-# test generators dependencies
-ruamel.yaml==0.17.32
-filelock==3.12.2
-python-snappy==0.6.1
-pathos==0.3.1
