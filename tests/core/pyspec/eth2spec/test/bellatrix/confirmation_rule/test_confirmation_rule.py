@@ -1,13 +1,13 @@
 from eth2spec.test.context import spec_state_test, with_config_overrides, with_presets, with_bellatrix_and_later
 from eth2spec.test.helpers.attestations import (
-    get_valid_attestation_at_slot,
-    next_epoch_with_attestations,
-    next_slots_with_attestations,
+    get_valid_attestation_at_slot
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.fork_choice import (
-    add_block,
+    apply_next_epoch_with_attestations,
+    apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
+    on_tick_and_append_step
 )
 
 from eth2spec.test.helpers.state import (
@@ -15,76 +15,31 @@ from eth2spec.test.helpers.state import (
 )
 
 
-def on_tick_step(spec, store, time, test_steps):
-    spec.on_tick(store, time)
-    test_steps.append({"tick": int(time)})
+def on_tick_and_append_step_no_checks(spec, store, time, test_steps):
+    on_tick_and_append_step(spec, store, time, test_steps, store_checks=False)
 
 
 def tick_to_next_slot(spec, store, test_steps):
     time = store.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
-    on_tick_step(spec, store, time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, time, test_steps)
 
 
-def tick_and_add_block(
-    spec, store, signed_block, test_steps, valid=True, merge_block=False, block_not_found=False, is_optimistic=False
-):
-    pre_state = store.block_states[signed_block.message.parent_root]
-    if merge_block:
-        assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
-
-    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
-    while store.time < block_time:
-        time = pre_state.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
-        on_tick_step(spec, store, time, test_steps)
-
-    post_state = yield from add_block(
-        spec,
-        store,
-        signed_block,
-        test_steps,
-        valid=valid,
-        block_not_found=block_not_found,
-        is_optimistic=is_optimistic,
-    )
-
-    return post_state
-
-
-def apply_next_epoch_with_attestations(
+def apply_next_epoch_with_attestations_no_checks_and_optimistic(
     spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None
 ):
-    if test_steps is None:
-        test_steps = []
-
-    _, new_signed_blocks, post_state = next_epoch_with_attestations(
-        spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn
-    )
-    for signed_block in new_signed_blocks:
-        block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, is_optimistic=True)
-        block_root = block.hash_tree_root()
-        assert store.blocks[block_root] == block
-        last_signed_block = signed_block
-
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    post_state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
+        spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn,
+        test_steps=test_steps, is_optimistic=True, store_checks=False)
 
     return post_state, store, last_signed_block
 
 
-def apply_next_slots_with_attestations(
+def apply_next_slots_with_attestations_no_checks_and_optimistic(
     spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=None
 ):
-    _, new_signed_blocks, post_state = next_slots_with_attestations(
-        spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn
-    )
-    for signed_block in new_signed_blocks:
-        block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, is_optimistic=True)
-        block_root = block.hash_tree_root()
-        assert store.blocks[block_root] == block
-        last_signed_block = signed_block
-
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    post_state, store, last_signed_block = yield from apply_next_slots_with_attestations(
+        spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=participation_fn,
+        is_optimistic=True, store_checks=False)
 
     return post_state, store, last_signed_block
 
@@ -147,19 +102,20 @@ def test_confirm_current_epoch_no_byz(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     # Fill epoch 1 to 2
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 2, True, True, test_steps=test_steps
     )
 
@@ -188,15 +144,16 @@ def test_confirm_previous_epoch_no_byz(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     # Fill epoch 1 to 3
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
@@ -225,15 +182,16 @@ def test_confirm_prior_to_previous_epoch_no_byz(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     # Fill epoch 1 to 3
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
@@ -262,19 +220,20 @@ def test_no_confirm_current_epoch_due_to_justified_checkpoint(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     # Fill epoch 1 to 2
     for _ in range(1):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 2, True, True, test_steps=test_steps
     )
 
@@ -310,14 +269,15 @@ def test_no_confirm_previous_epoch_due_to_justified_checkpoint(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
@@ -349,18 +309,19 @@ def test_no_confirm_current_epoch_but_ffg_confirmed(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 2, True, True, test_steps=test_steps
     )
 
@@ -394,15 +355,16 @@ def test_no_confirm_previous_epoch_but_ffg_confirmed(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     # Fill epoch 1 to 3
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
@@ -437,18 +399,19 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 3, True, True, test_steps=test_steps
     )
 
@@ -496,7 +459,7 @@ def test_no_confirm_current_epoch_but_lmd_confirmed(spec, state):
 
 #     # Fill epoch 1 to 3
 #     for _ in range(3):
-#         state, store, _ = yield from apply_next_epoch_with_attestations(
+#         state, store, _ = yield from apply_next_epoch_with_attestations_no_checks(
 #             spec, state, store, True, True, test_steps=test_steps)
 
 #     root = get_block_root_from_head(spec, store, 1)
@@ -531,18 +494,19 @@ def test_current_get_confirmation_score_no_slashing_threshold(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 3, True, True, test_steps=test_steps
     )
 
@@ -572,18 +536,19 @@ def test_current_get_confirmation_score_slashing_threshold(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(2):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
-    state, store, _ = yield from apply_next_slots_with_attestations(
+    state, store, _ = yield from apply_next_slots_with_attestations_no_checks_and_optimistic(
         spec, state, store, 3, True, True, test_steps=test_steps
     )
 
@@ -613,14 +578,15 @@ def test_previous_epoch_get_confirmation_score_no_slashing_threshold(spec, state
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
@@ -650,14 +616,15 @@ def test_prior_to_previous_epoch_get_confirmation_score_no_slashing_threshold(sp
     yield "anchor_state", state
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_step(spec, store, current_time, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step_no_checks(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT,
+                                      test_steps)
 
     for _ in range(3):
-        state, store, _ = yield from apply_next_epoch_with_attestations(
+        state, store, _ = yield from apply_next_epoch_with_attestations_no_checks_and_optimistic(
             spec, state, store, True, True, test_steps=test_steps
         )
 
