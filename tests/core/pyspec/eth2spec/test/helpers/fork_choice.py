@@ -146,13 +146,6 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
         return f"blobs_{encode_hex(blobs_root)}"
 
 
-def get_blobs_file_name(blobs=None, blobs_root=None):
-    if blobs:
-        return f"blobs_{encode_hex(blobs.hash_tree_root())}"
-    else:
-        return f"blobs_{encode_hex(blobs_root)}"
-
-
 def on_tick_and_append_step(spec, store, time, test_steps, store_checks=True):
     spec.on_tick(store, time)
     test_steps.append({'tick': int(time)})
