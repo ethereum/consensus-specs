@@ -580,19 +580,7 @@ setup(
     cmdclass=commands,
     python_requires=">=3.9, <4",
     extras_require={
-        "test": [
-            "pytest>=4.4",
-            "pytest-cov",
-            "pytest-xdist",
-            "lru-dict",
-            "remerkleable",
-            "py_ecc",
-            "py_arkworks_bls12381",
-            "milagro_bls_binding",
-            "trie",
-            "eth-hash",
-            "pycryptodome",
-        ],
+        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
         "generator": ["python-snappy==0.6.1", "filelock", "pathos==0.3.0"],
         "docs": [
