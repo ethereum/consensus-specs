@@ -1,12 +1,20 @@
-# /bin/sh
+#! /bin/sh
 
-# Run 'consensus-specs' tests from a container instance
-# Be sure to launch Docker before running this script
+# Run 'consensus-specs' tests from a container instance.
+# *Be sure to launch Docker before running this script.*
+#
+# It does the bellow:
+#   1. Run pytest for consensus-specs in a container.
+#   2. Copy and paste the coverage report.
+#   3. Remove all exited containers that use the consensus-specs:<TAG> images.
+
 
 # Constants
 ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "eip6110" "whisk")
 TEST_PRESET_TYPE=minimal
 WORKDIR="//consensus-specs//tests//core//pyspec"
+ETH2SPEC_FOLDER_NAME="eth2spec"
+CONTAINER_NAME="consensus-specs-tests"
 
 COV_HTML_OUT=.htmlcov
 
@@ -15,11 +23,10 @@ version=latest
 number_of_core=4
 
 # Generates coverage scope
-name="eth2spec"
 coverage_scope=()
 for spec in "${ALL_EXECUTABLE_SPECS[@]}"
 do
-    coverage_scope+=("--cov=${name}.${spec}.${TEST_PRESET_TYPE}")
+    coverage_scope+=("--cov=${ETH2SPEC_FOLDER_NAME}.${spec}.${TEST_PRESET_TYPE}")
 done
 
 display_help() {
@@ -43,31 +50,26 @@ do
     esac
 done
 
-# Get IDs of container that run the image `consensus-specs:$version` and are exited.
-get_container_name() {
-  echo $(docker ps -a -q --filter ancestor="consensus-specs:$version" --filter status="exited" --format="{{.ID}}")
-}
-
-# Stop and remove all exited container that use the `consensus-specs:$version` image
+# Stop and remove the 'consensus-specs-dockerfile-test' container.
+# If this container doesn't exist, then a error message is printed
+#  (but the process is not stopped).
 cleanup() {
-  echo "Stop and remove non running containers."
-  docker rm $(docker stop $(get_container_name))
+  echo "Stop and remove the 'consensus-specs-tests' container."
+  docker stop $CONTAINER_NAME || true && docker rm $CONTAINER_NAME || true
 }
 
 # Copy the coverage report from the container to the local
 copy_coverage_report() {
-  docker cp $(get_container_name):$WORKDIR/$COV_HTML_OUT ./$COV_HTML_OUT
+  docker cp $$CONTAINER_NAME:$WORKDIR/$COV_HTML_OUT ./$COV_HTML_OUT
 }
 
+cleanup
 # Equivalent to `make test`
-docker run -w $WORKDIR consensus-specs:$version \
+docker run -w $WORKDIR --name $CONTAINER_NAME consensus-specs:$version \
     pytest -n $number_of_core --disable-bls $coverage_scope --cov-report="html:${COV_HTML_OUT}" --cov-branch eth2spec
 
 # Get coverage report form container instance
 $(copy_coverage_report)
-
-# Stop and remove all containers that use the `consensus-specs:$version` image when exiting
-#  the script. It helps user to limit container instances.
-trap cleanup EXIT
+cleanup
 
 $SHELL
