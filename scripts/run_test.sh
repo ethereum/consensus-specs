@@ -70,6 +70,7 @@ docker run -w $WORKDIR --name $CONTAINER_NAME consensus-specs:$version \
 
 # Get coverage report form container instance
 $(copy_coverage_report)
-cleanup
+# Only clean container after user exit console
+trap cleanup EXIT
 
 $SHELL
