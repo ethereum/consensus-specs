@@ -31,7 +31,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the Whisk SSLE,
+This document details the beacon chain additions and changes of to support the Whisk SSLE.
 
 *Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
@@ -94,7 +94,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 
 ### Curdleproofs and opening proofs
 
-Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
+Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev) repository.
 
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
@@ -103,7 +103,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
@@ -115,7 +115,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
                              tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
@@ -150,7 +150,7 @@ class BeaconState(Container):
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Whisk]
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -304,7 +304,7 @@ class BeaconBlockBody(capella.BeaconBlockBody):
 ```python
 def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     """
-    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
+    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set.
     """
     indices = []
     for i in range(0, WHISK_VALIDATORS_PER_SHUFFLE):
@@ -461,7 +461,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Whisk testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified purely for Whisk testing.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,

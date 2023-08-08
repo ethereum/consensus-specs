@@ -21,9 +21,9 @@ T = TypeVar('T')  # For generic function
     @classmethod
     def sundry_functions(cls) -> str:
         return '''
-def retrieve_blobs_and_proofs(beacon_block_root: Root) -> PyUnion[Tuple[Blob, KZGProof], Tuple[str, str]]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
     # pylint: disable=unused-argument
-    return ("TEST", "TEST")'''
+    return [], []'''
 
     @classmethod
     def execution_engine_cls(cls) -> str:
