@@ -12,5 +12,5 @@ RUN python -m pip install --upgrade pip
 
 COPY . .
 
-RUN pip install -r requirements-dev.txt -r requirements_preinstallation.txt
+RUN pip install -r requirements_preinstallation.txt -e .[test]
 RUN python setup.py pyspecdev
