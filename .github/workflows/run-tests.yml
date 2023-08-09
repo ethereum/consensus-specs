@@ -91,7 +91,7 @@ jobs:
           tags: localhost:5000/${{ env.TEST_TAG }}
       - name: Test the image
         run: |
-          docker run localhost:5000/${{ env.TEST_TAG }} flake8 --config ./linter.ini .
+          docker run localhost:5000/${{ env.TEST_TAG }} pylint --rcfile ./linter.ini pysetup
 
   pyspec-tests:
     runs-on: self-hosted
