@@ -1,3 +1,5 @@
+from typing import NamedTuple, Sequence, Any
+
 from eth_utils import encode_hex
 from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.test.helpers.attestations import (
@@ -5,6 +7,40 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+
+
+class BlobData(NamedTuple):
+    """
+    The return values of ``retrieve_blobs_and_proofs`` helper.
+    """
+    blobs: Sequence[Any]
+    proofs: Sequence[bytes]
+
+
+def with_blob_data(spec, blob_data, func):
+    """
+    This helper runs the given ``func`` with monkeypatched ``retrieve_blobs_and_proofs``
+    that returns ``blob_data.blobs, blob_data.proofs``.
+    """
+    def retrieve_blobs_and_proofs(beacon_block_root):
+        return blob_data.blobs, blob_data.proofs
+
+    retrieve_blobs_and_proofs_backup = spec.retrieve_blobs_and_proofs
+    spec.retrieve_blobs_and_proofs = retrieve_blobs_and_proofs
+
+    class AtomicBoolean():
+        value = False
+    is_called = AtomicBoolean()
+
+    def wrap(flag: AtomicBoolean):
+        yield from func()
+        flag.value = True
+
+    try:
+        yield from wrap(is_called)
+    finally:
+        spec.retrieve_blobs_and_proofs = retrieve_blobs_and_proofs_backup
+    assert is_called.value
 
 
 def get_anchor_root(spec, state):
@@ -15,7 +51,8 @@ def get_anchor_root(spec, state):
 
 
 def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
-                       merge_block=False, block_not_found=False, is_optimistic=False):
+                       merge_block=False, block_not_found=False, is_optimistic=False,
+                       blob_data=None):
     pre_state = store.block_states[signed_block.message.parent_root]
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
@@ -30,9 +67,17 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
         valid=valid,
         block_not_found=block_not_found,
         is_optimistic=is_optimistic,
+        blob_data=blob_data,
     )
 
     return post_state
+
+
+def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data, valid=True):
+    def run_func():
+        yield from tick_and_add_block(spec, store, signed_block, test_steps, blob_data=blob_data, valid=valid)
+
+    yield from with_blob_data(spec, blob_data, run_func)
 
 
 def add_attestation(spec, store, attestation, test_steps, is_from_block=False):
@@ -94,6 +139,13 @@ def get_attester_slashing_file_name(attester_slashing):
     return f"attester_slashing_{encode_hex(attester_slashing.hash_tree_root())}"
 
 
+def get_blobs_file_name(blobs=None, blobs_root=None):
+    if blobs:
+        return f"blobs_{encode_hex(blobs.hash_tree_root())}"
+    else:
+        return f"blobs_{encode_hex(blobs_root)}"
+
+
 def on_tick_and_append_step(spec, store, time, test_steps):
     spec.on_tick(store, time)
     test_steps.append({'tick': int(time)})
@@ -119,35 +171,52 @@ def add_block(spec,
               test_steps,
               valid=True,
               block_not_found=False,
-              is_optimistic=False):
+              is_optimistic=False,
+              blob_data=None):
     """
     Run on_block and on_attestation
     """
     yield get_block_file_name(signed_block), signed_block
 
+    # Check blob_data
+    if blob_data is not None:
+        blobs = spec.List[spec.Blob, spec.MAX_BLOBS_PER_BLOCK](blob_data.blobs)
+        blobs_root = blobs.hash_tree_root()
+        yield get_blobs_file_name(blobs_root=blobs_root), blobs
+
+    is_blob_data_test = blob_data is not None
+
+    def _append_step(is_blob_data_test, valid=True):
+        if is_blob_data_test:
+            test_steps.append({
+                'block': get_block_file_name(signed_block),
+                'blobs': get_blobs_file_name(blobs_root=blobs_root),
+                'proofs': [encode_hex(proof) for proof in blob_data.proofs],
+                'valid': valid,
+            })
+        else:
+            test_steps.append({
+                'block': get_block_file_name(signed_block),
+                'valid': valid,
+            })
+
     if not valid:
         if is_optimistic:
             run_on_block(spec, store, signed_block, valid=True)
-            test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'valid': False,
-            })
+            _append_step(is_blob_data_test, valid=False)
         else:
             try:
                 run_on_block(spec, store, signed_block, valid=True)
             except (AssertionError, BlockNotFoundException) as e:
                 if isinstance(e, BlockNotFoundException) and not block_not_found:
                     assert False
-                test_steps.append({
-                    'block': get_block_file_name(signed_block),
-                    'valid': False,
-                })
+                _append_step(is_blob_data_test, valid=False)
                 return
             else:
                 assert False
     else:
         run_on_block(spec, store, signed_block, valid=True)
-        test_steps.append({'block': get_block_file_name(signed_block)})
+        _append_step(is_blob_data_test)
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:

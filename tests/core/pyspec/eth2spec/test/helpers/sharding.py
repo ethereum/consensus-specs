@@ -41,7 +41,7 @@ class BlobTransaction(Container):
     value: uint256
     data: ByteList[MAX_CALLDATA_SIZE]
     access_list: List[AccessTuple, MAX_ACCESS_LIST_SIZE]
-    max_fee_per_data_gas: uint256
+    max_fee_per_blob_gas: uint256
     blob_versioned_hashes: List[Bytes32, MAX_VERSIONED_HASHES_LIST_SIZE]
 
 
