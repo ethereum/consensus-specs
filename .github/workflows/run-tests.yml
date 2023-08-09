@@ -6,6 +6,7 @@ defaults:
 
 env:
   TEST_PRESET_TYPE: "minimal"
+  TEST_TAG: "consensus-specs-dockerfile-test:latest"
 
 on:
   push:
@@ -65,6 +66,27 @@ jobs:
         run: make lint
       - name: Run linter for test generators
         run: make lint_generators
+
+  dockerfile-test:
+    runs-on: self-hosted
+    needs: preclear
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v3.2.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
+      - name: Build and push to local registry
+        uses: docker/build-push-action@v4
+        with:
+          context: ../../
+          file: ./docker/Dockerfile
+          push: true
+          tags: localhost:5000/${{ env.TEST_TAG }}
+      - name: Test the image
+        run: |
+          cd ./scripts && dockerfile_test.sh -v localhost:5000/${{ env.TEST_TAG }}
 
   pyspec-tests:
     runs-on: self-hosted
