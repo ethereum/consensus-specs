@@ -70,6 +70,11 @@ jobs:
   dockerfile-test:
     runs-on: self-hosted
     needs: preclear
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
