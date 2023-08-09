@@ -80,7 +80,7 @@ jobs:
       - name: Build and push to local registry
         uses: docker/build-push-action@v4
         with:
-          context: ../../
+          context: .
           file: ./docker/Dockerfile
           push: true
           tags: localhost:5000/${{ env.TEST_TAG }}
