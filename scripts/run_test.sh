@@ -3,7 +3,7 @@
 # Run 'consensus-specs' tests from a container instance.
 # *Be sure to launch Docker before running this script.*
 #
-# It does the bellow:
+# It does the below:
 #   1. Run pytest for consensus-specs in a container.
 #   2. Copy and paste the coverage report.
 #   3. Remove all exited containers that use the consensus-specs:<TAG> images.
