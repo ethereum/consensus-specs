@@ -69,25 +69,33 @@ jobs:
   dockerfile-test:
     runs-on: self-hosted
     needs: preclear
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
       - name: get git commit hash
         id: git_commit_hash
+        shell: bash
         run: |
           echo "git_commit_hash=$(echo $(git log --pretty=format:'%h' -n 1))" >> $GITHUB_OUTPUT
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
       - name: Build and push to local registry
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./docker/Dockerfile
-          push: false
-          tags: loclahost/consensus-specs:${{ steps.git_commit_hash.outputs.git_commit_hash }}
+          push: true
+          tags: localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }}
       - name: Test the image
         run: |
-          docker run localhost/consensus-specs:${{ steps.git_commit_hash.outputs.git_commit_hash }} pylint --rcfile ./linter.ini --errors-only pysetup
+          docker run localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }} pylint --rcfile ./linter.ini --errors-only pysetup
 
   pyspec-tests:
     runs-on: self-hosted
@@ -135,4 +143,3 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-
