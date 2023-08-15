@@ -36,12 +36,9 @@ def get_spec_ssz_types(spec):
     ]
 
 
-def ssz_static_cases(fork_name: str, preset_name: str, seed: int, name, ssz_type,
+def ssz_static_cases(fork_name: str, preset_name: str, rng: Random, name, ssz_type,
                      mode: random_value.RandomizationMode, chaos: bool, count: int):
     random_mode_name = mode.to_name()
-
-    # Reproducible RNG
-    rng = Random(seed)
 
     for i in range(count):
         yield gen_typing.TestCase(
@@ -65,7 +62,9 @@ def create_provider(fork_name, preset_name: str, seed: int, mode: random_value.R
         spec = spec_targets[preset_name][fork_name]
 
         for (i, (name, ssz_type)) in enumerate(get_spec_ssz_types(spec)):
-            yield from ssz_static_cases(fork_name, preset_name, seed * 1000 + i, name, ssz_type, mode, chaos, count)
+            # Reproducible RNG
+            rng = Random(seed * 1000 + i)
+            yield from ssz_static_cases(fork_name, preset_name, rng, name, ssz_type, mode, chaos, count)
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 

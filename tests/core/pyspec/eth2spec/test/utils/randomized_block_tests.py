@@ -57,44 +57,60 @@ def _randomize_deposit_state(spec, state, stats):
     }
 
 
-def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
+def randomize_state_phase0(spec, state, stats, rng, exit_fraction=0.1, slash_fraction=0.1):
+    randomize_state_helper(spec, state, rng=rng, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
     scenario_state = _randomize_deposit_state(spec, state, stats)
     return scenario_state
 
 
-def randomize_state_altair(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    scenario_state = randomize_state(spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
+def randomize_state_altair(spec, state, stats, rng, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_phase0(
+        spec,
+        state,
+        stats,
+        rng=rng,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
     randomize_inactivity_scores(spec, state)
     return scenario_state
 
 
-def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    scenario_state = randomize_state_altair(spec,
-                                            state,
-                                            stats,
-                                            exit_fraction=exit_fraction,
-                                            slash_fraction=slash_fraction)
+def randomize_state_bellatrix(spec, state, stats, rng, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_altair(
+        spec,
+        state,
+        stats,
+        rng=rng,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
     # TODO: randomize execution payload, merge status, etc.
     return scenario_state
 
 
-def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    scenario_state = randomize_state_bellatrix(spec,
-                                               state,
-                                               stats,
-                                               exit_fraction=exit_fraction,
-                                               slash_fraction=slash_fraction)
+def randomize_state_capella(spec, state, stats, rng, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_bellatrix(
+        spec,
+        state,
+        stats,
+        rng=rng,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
     # TODO: randomize withdrawals
     return scenario_state
 
 
-def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    scenario_state = randomize_state_capella(spec,
-                                             state,
-                                             stats,
-                                             exit_fraction=exit_fraction,
-                                             slash_fraction=slash_fraction)
+def randomize_state_deneb(spec, state, stats, rng, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_capella(
+        spec,
+        state,
+        stats,
+        rng=rng,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
     # TODO: randomize execution payload
     return scenario_state
 
@@ -396,12 +412,19 @@ def _compute_statistics(scenario):
 def run_generated_randomized_test(spec, state, scenario):
     stats = _compute_statistics(scenario)
     if "setup" not in scenario:
-        state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))
+        state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state_phase0))
         scenario["setup"] = _randomized_scenario_setup(state_randomizer)
 
+    seed = scenario["seed"]
+    rng = Random(seed)
     scenario_state = {}
     for mutation, validation in scenario["setup"]:
-        additional_state = mutation(spec, state, stats)
+        # the last mutation is `state_randomizer`
+        if mutation == scenario["setup"][-1][0]:
+            # set rng
+            additional_state = mutation(spec, state, stats, rng=rng)
+        else:
+            additional_state = mutation(spec, state, stats)
         validation(spec, state)
         if additional_state:
             scenario_state.update(additional_state)

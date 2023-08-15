@@ -40,7 +40,10 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
 
 
 def prepare_expected_withdrawals(spec, state,
-                                 num_full_withdrawals=0, num_partial_withdrawals=0, rng=random.Random(5566)):
+                                 num_full_withdrawals=0, num_partial_withdrawals=0, rng=None):
+    if rng is None:
+        rng = random.Random(5566)
+
     bound = min(len(state.validators), spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     assert num_full_withdrawals + num_partial_withdrawals <= bound
     eligible_validator_indices = list(range(bound))
