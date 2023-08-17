@@ -112,7 +112,11 @@ preinstallation:
 # installs the packages to run pyspec tests
 install_test: preinstallation
 	python3 -m venv venv; . venv/bin/activate; \
-	python3 -m pip install --no-cache-dir -e .[lint]; python3 -m pip install --no-cache-dir -e .[test]
+	python3 -m pip install --no-cache-dir -e .[lint]; python3 -m pip install --no-cache-dir -e .[test]; \
+	python3 -m pip freeze; \
+	python3 -m pip uninstall -y curdleproofs; \
+	python3 -m pip install "git+https://github.com/nalinbhardwaj/curdleproofs.pie@bc4bb34961a896af6bcf4a5ff4867bb2971742c8#egg=curdleproofs&subdirectory=curdleproofs"; \
+	python3 -m pip freeze;
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
@@ -152,15 +156,7 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
         echo "TEST OUTPUT" \
-	&& python -m pip freeze \
-	&& python3 -m pip freeze \
-	&& python3 -m pip freeze --local \
-	&& python3 -m pip uninstall -y curdleproofs \
-	&& python3 -m pip install "git+https://github.com/nalinbhardwaj/curdleproofs.pie@bc4bb34961a896af6bcf4a5ff4867bb2971742c8#egg=curdleproofs&subdirectory=curdleproofs" \
-	&& python -m pip freeze \
-	&& python3 -m pip freeze \
-	&& python3 -m pip freeze --local \
-	&& python -c "import curdleproofs; print(curdleproofs.__file__)" \
+        && python -c "import curdleproofs; print(curdleproofs.__file__)" \
         && python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} stat -c "Creation: %w, Modification: %y" {}/crs.py \
 	&& python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} cat {}/crs.py \
 	&& flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
