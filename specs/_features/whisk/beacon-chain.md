@@ -238,8 +238,11 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
-    k_commitment = state.whisk_k_commitments[block.proposer_index]
-    assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
+    if block.body.whisk_opening_proof == WhiskTrackerProof():
+        assert tracker.k_r_G == tracker.r_G * get_initial_whisk_k(block.proposer_index, 0)
+    else:
+        k_commitment = state.whisk_k_commitments[block.proposer_index]
+        assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
 ```
 
 Removed `assert block.proposer_index == get_beacon_proposer_index(state)` check in Whisk.
