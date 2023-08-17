@@ -239,6 +239,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
     if block.body.whisk_opening_proof == WhiskTrackerProof():
+        # no proof signals tracker is created with insecure initial 'k'
         assert tracker.k_r_G == tracker.r_G * get_initial_whisk_k(block.proposer_index, 0)
     else:
         k_commitment = state.whisk_k_commitments[block.proposer_index]
