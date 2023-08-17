@@ -151,7 +151,10 @@ codespell:
 
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
+        echo "TEST OUTPUT" \
+	&& python -c "import curdleproofs; print(curdleproofs.__file__)" \
+	&& python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} cat {}/crs.py \
+	&& flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
 	&& python -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
 	&& python -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
 
