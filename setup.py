@@ -534,6 +534,7 @@ setup(
         "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
+        # NOTE: When changing this commit, you must update Makefile 'install_test' command too
         "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@bc4bb34961a896af6bcf4a5ff4867bb2971742c8#egg=curdleproofs&subdirectory=curdleproofs",
     ]
 )
