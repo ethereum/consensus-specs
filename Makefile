@@ -154,7 +154,6 @@ lint: pyspec
         echo "TEST OUTPUT" \
 	&& python -m pip freeze \
 	&& python -m pip show curdleproofs \
-	&& python -m pip cache purge \
 	&& python -c "import curdleproofs; print(curdleproofs.__file__)" \
         && python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} stat -c "Creation: %w, Modification: %y" {}/crs.py \
 	&& python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} cat {}/crs.py \
