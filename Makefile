@@ -112,7 +112,7 @@ preinstallation:
 # installs the packages to run pyspec tests
 install_test: preinstallation
 	python3 -m venv venv; . venv/bin/activate; \
-	python3 -m pip install -e .[lint]; python3 -m pip install -e .[test]
+	python3 -m pip install --no-cache-dir -e .[lint]; python3 -m pip install --no-cache-dir -e .[test]
 
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
@@ -152,6 +152,9 @@ codespell:
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
         echo "TEST OUTPUT" \
+	&& python -m pip freeze \
+	&& python -m pip show curdleproofs \
+	&& python -m pip cache purge \
 	&& python -c "import curdleproofs; print(curdleproofs.__file__)" \
         && python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} stat -c "Creation: %w, Modification: %y" {}/crs.py \
 	&& python -c "import curdleproofs; print(curdleproofs.__file__)" | xargs dirname | xargs -I {} cat {}/crs.py \
