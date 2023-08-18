@@ -534,7 +534,7 @@ setup(
         "lru-dict==1.2.0",
         MARKO_VERSION,
         "py_arkworks_bls12381==0.3.4",
-        "curdleproofs @ git+https://github.com/nalinbhardwaj/curdleproofs.pie@bc4bb34961a896af6bcf4a5ff4867bb2971742c8#egg=curdleproofs&subdirectory=curdleproofs",
+        "curdleproofs==0.1.0",
     ]
 )
 # Circle CI cache nonce: 1
