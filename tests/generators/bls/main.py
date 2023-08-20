@@ -15,6 +15,7 @@ from eth2spec.utils import bls
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base.settings import MODE_SINGLE_PROCESS
 from eth2spec.altair import spec
 
 
@@ -529,14 +530,18 @@ def create_provider(fork_name: SpecForkName,
 
 if __name__ == "__main__":
     bls.use_py_ecc()  # Py-ecc is chosen instead of Milagro, since the code is better understood to be correct.
-    gen_runner.run_generator("bls", [
-        # PHASE0
-        create_provider(PHASE0, 'sign', case01_sign),
-        create_provider(PHASE0, 'verify', case02_verify),
-        create_provider(PHASE0, 'aggregate', case03_aggregate),
-        create_provider(PHASE0, 'fast_aggregate_verify', case04_fast_aggregate_verify),
-        create_provider(PHASE0, 'aggregate_verify', case05_aggregate_verify),
-        # ALTAIR
-        create_provider(ALTAIR, 'eth_aggregate_pubkeys', case06_eth_aggregate_pubkeys),
-        create_provider(ALTAIR, 'eth_fast_aggregate_verify', case07_eth_fast_aggregate_verify),
-    ])
+    gen_runner.run_generator(
+        "bls",
+        [
+            # PHASE0
+            create_provider(PHASE0, 'sign', case01_sign),
+            create_provider(PHASE0, 'verify', case02_verify),
+            create_provider(PHASE0, 'aggregate', case03_aggregate),
+            create_provider(PHASE0, 'fast_aggregate_verify', case04_fast_aggregate_verify),
+            create_provider(PHASE0, 'aggregate_verify', case05_aggregate_verify),
+            # ALTAIR
+            create_provider(ALTAIR, 'eth_aggregate_pubkeys', case06_eth_aggregate_pubkeys),
+            create_provider(ALTAIR, 'eth_fast_aggregate_verify', case07_eth_fast_aggregate_verify),
+        ],
+        generator_mode=MODE_SINGLE_PROCESS,
+    )

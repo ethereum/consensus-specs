@@ -3,6 +3,7 @@ from typing import Iterable
 from inspect import getmembers, isclass
 
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base.settings import MODE_SINGLE_PROCESS
 
 from eth2spec.debug import random_value, encode
 from eth2spec.test.helpers.constants import TESTGEN_FORKS, MINIMAL, MAINNET
@@ -81,7 +82,11 @@ if __name__ == "__main__":
     settings.append((seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
     for fork in TESTGEN_FORKS:
-        gen_runner.run_generator("ssz_static", [
-            create_provider(fork, preset_name, seed, mode, chaos, cases_if_random)
-            for (seed, preset_name, mode, chaos, cases_if_random) in settings
-        ])
+        gen_runner.run_generator(
+            "ssz_static",
+                [
+                create_provider(fork, preset_name, seed, mode, chaos, cases_if_random)
+                for (seed, preset_name, mode, chaos, cases_if_random) in settings
+            ],
+            generator_mode=MODE_SINGLE_PROCESS,
+        )

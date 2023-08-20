@@ -14,6 +14,7 @@ from eth2spec.utils import bls
 from eth2spec.test.helpers.constants import DENEB
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base.settings import MODE_SINGLE_PROCESS
 from eth2spec.deneb import spec
 
 
@@ -537,12 +538,16 @@ def create_provider(fork_name: SpecForkName,
 
 if __name__ == "__main__":
     bls.use_arkworks()
-    gen_runner.run_generator("kzg", [
-        # DENEB
-        create_provider(DENEB, 'blob_to_kzg_commitment', case01_blob_to_kzg_commitment),
-        create_provider(DENEB, 'compute_kzg_proof', case02_compute_kzg_proof),
-        create_provider(DENEB, 'verify_kzg_proof', case03_verify_kzg_proof),
-        create_provider(DENEB, 'compute_blob_kzg_proof', case04_compute_blob_kzg_proof),
-        create_provider(DENEB, 'verify_blob_kzg_proof', case05_verify_blob_kzg_proof),
-        create_provider(DENEB, 'verify_blob_kzg_proof_batch', case06_verify_blob_kzg_proof_batch),
-    ])
+    gen_runner.run_generator(
+        "kzg",
+        [
+            # DENEB
+            create_provider(DENEB, 'blob_to_kzg_commitment', case01_blob_to_kzg_commitment),
+            create_provider(DENEB, 'compute_kzg_proof', case02_compute_kzg_proof),
+            create_provider(DENEB, 'verify_kzg_proof', case03_verify_kzg_proof),
+            create_provider(DENEB, 'compute_blob_kzg_proof', case04_compute_blob_kzg_proof),
+            create_provider(DENEB, 'verify_blob_kzg_proof', case05_verify_blob_kzg_proof),
+            create_provider(DENEB, 'verify_blob_kzg_proof_batch', case06_verify_blob_kzg_proof_batch),
+        ],
+        generator_mode=MODE_SINGLE_PROCESS,
+    )
