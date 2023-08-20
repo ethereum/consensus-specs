@@ -115,7 +115,7 @@ def prepare_random_genesis_deposits(spec,
     if deposit_data_list is None:
         deposit_data_list = []
     if rng is None:
-       rng = Random(3131)
+        rng = Random(3131)
     deposits = []
     for _ in range(deposit_count):
         pubkey_index = rng.randint(min_pubkey_index, max_pubkey_index)
