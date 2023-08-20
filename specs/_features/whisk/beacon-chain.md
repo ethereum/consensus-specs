@@ -12,6 +12,7 @@
 - [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
+- [Configuration](#configuration)
 - [Cryptography](#cryptography)
   - [BLS](#bls)
   - [Curdleproofs and opening proofs](#curdleproofs-and-opening-proofs)
@@ -52,11 +53,16 @@ This document details the beacon chain additions and changes of to support the W
 | `CURDLEPROOFS_N_BLINDERS`          | `uint64(4)`                | number of blinders for curdleproofs                         |
 | `WHISK_CANDIDATE_TRACKERS_COUNT`   | `uint64(2**14)` (= 16,384) | number of candidate trackers                                |
 | `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
-| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
 | `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step              |
-| `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
 | `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
 | `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
+
+## Configuration
+
+| Name                               | Value                      | Description                                                 |
+| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
+| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
+| `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
 
 ## Cryptography
 
