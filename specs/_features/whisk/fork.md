@@ -54,10 +54,9 @@ This ensures that we drop right into the beginning of the shuffling phase but wi
 
 ```python
 def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
-    # Compute initial unsafe trackers for all validators
-    ks = [get_initial_whisk_k(ValidatorIndex(validator_index), 0) for validator_index in range(len(pre.validators))]
-    whisk_k_commitments = [get_k_commitment(k) for k in ks]
-    whisk_trackers = [get_initial_tracker(k) for k in ks]
+    # Assign initial unsafe trackers for all validators
+    whisk_k_commitments = [get_k_commitment(validator.pubkey) for validator in pre.validators]
+    whisk_trackers = [validator.pubkey for validator in pre.validators]
 
     epoch = get_current_epoch(pre)
     post = BeaconState(
