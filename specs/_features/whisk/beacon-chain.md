@@ -18,6 +18,7 @@
   - [Curdleproofs and opening proofs](#curdleproofs-and-opening-proofs)
 - [Epoch processing](#epoch-processing)
   - [`WhiskTracker`](#whisktracker)
+  - [`WhiskRegistration`](#whiskregistration)
   - [`BeaconState`](#beaconstate)
 - [Block processing](#block-processing)
   - [Block header](#block-header)
@@ -137,6 +138,14 @@ class WhiskTracker(Container):
     k_r_G: BLSG1Point  # k * r * G
 ```
 
+### `WhiskRegistration`
+
+```python
+class WhiskRegistration(Container):
+    index: ValidatorIndex
+    k_commitment: BLSG1Point
+```
+
 ### `BeaconState`
 
 ```python
@@ -187,6 +196,8 @@ class BeaconState(Container):
     whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
     whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
     whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
+    whisk_current_registrations: List[WhiskRegistration, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
+    whisk_prev_registrations: List[WhiskRegistration, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
 ```
 
 ```python
@@ -218,6 +229,11 @@ def process_whisk_updates(state: BeaconState) -> None:
     if next_epoch % WHISK_EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
         select_whisk_proposer_trackers(state, next_epoch)
         select_whisk_candidate_trackers(state, next_epoch)
+        # Apply pending whisk registrations after 2 shuffle rounds
+        for registration in state.whisk_prev_registrations:
+            state.whisk_k_commitments[registratation.index] = registration.k_commitment
+        state.whisk_prev_registrations = state.whisk_current_registrations
+        state.whisk_current_registrations = []
 ```
 
 ```python
@@ -355,8 +371,8 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
     process_shuffled_trackers(state, body)
 
     # Overwrite all validator Whisk fields (first Whisk proposal) or just the permutation commitment (next proposals)
-    proposer = state.validators[get_beacon_proposer_index(state)]
-    if proposer.whisk_tracker.r_G == BLS_G1_GENERATOR:  # first Whisk proposal
+    index = get_beacon_proposer_index(state)
+    if state.whisk_trackers[index].r_G == BLS_G1_GENERATOR:  # first Whisk proposal
         assert body.whisk_tracker.r_G != BLS_G1_GENERATOR
         assert is_k_commitment_unique(state, body.whisk_k_commitment)
         assert IsValidWhiskOpeningProof(
@@ -364,8 +380,8 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
             body.whisk_k_commitment,
             body.whisk_registration_proof,
         )
-        proposer.whisk_tracker = body.whisk_tracker
-        proposer.whisk_k_commitment = body.whisk_k_commitment
+        state.whisk_trackers[index] = body.whisk_tracker
+        state.whisk_current_registrations = WhiskRegistration(index, body.whisk_k_commitment)
     else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
