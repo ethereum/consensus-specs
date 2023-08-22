@@ -8,12 +8,8 @@ CURDLEPROOFS_N_BLINDERS: 4
 WHISK_CANDIDATE_TRACKERS_COUNT: 16384
 # `uint64(2**13)` must be < WHISK_CANDIDATE_TRACKERS_COUNT
 WHISK_PROPOSER_TRACKERS_COUNT: 8192
-# `Epoch(2**8)`
-WHISK_EPOCHS_PER_SHUFFLING_PHASE: 256
 # `uint64(2**7 - CURDLEPROOFS_N_BLINDERS)`
 WHISK_VALIDATORS_PER_SHUFFLE: 124
-# `Epoch(2)`
-WHISK_PROPOSER_SELECTION_GAP: 2
 # `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
 WHISK_MAX_SHUFFLE_PROOF_SIZE: 32768
 # `uint64(2**10)` TODO: will be replaced by a fix format once there's a serialized format
