@@ -179,8 +179,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
             block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_{level}_{i}', 'UTF-8'))
             block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
             block_hashes[f'chain_{level}_{i}'] = block.body.execution_payload.block_hash
-
-            signed_block = state_transition_with_full_block(spec, state, True, True, block=block, participation_fn=participation_fn_gen(participation_indices[i]))
+            signed_block = state_transition_with_full_block(spec, state, True, True, block=block, participation_fn=participation_fn_gen(participation_indices[j]))
             signed_blocks[f'chain_{level}_{i}'] = signed_block.copy()
             yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                             status=PayloadStatusV1Status.SYNCING)
