@@ -179,7 +179,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
 
     # Create SYNC chains
     state_0 = state.copy()
-    participation_proportion = [1, 0.75, 0.5]
+    participation_proportion = [1, 0.75, 0.5] # 0.5 is useless of the branch C since ``max_committee_index=2``
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
