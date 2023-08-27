@@ -1,10 +1,15 @@
-from typing import Callable
 from eth2spec.test.context import (
     spec_state_test,
     with_bellatrix_and_later,
+    with_presets,
+    MINIMAL
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
+    get_valid_attestation,
+    build_attestation_data,
+    fill_aggregate_attestation,
+    sign_attestation,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -115,26 +120,36 @@ def test_from_syncing_to_invalid(spec, state):
     yield 'steps', test_steps
 
 
-def participation_fn_gen(indices: list[int]) -> Callable:
-    """Generate a ``participation_fn``.
+def add_attestation_and_sign_block(spec, state, store, block, index, proportion_committee_agg: float = 1):
+    attestation_data = build_attestation_data(
+        spec, state, slot=state.slot, index=index
+    )
+    beacon_committee = spec.get_beacon_committee(
+        state,
+        attestation_data.slot,
+        attestation_data.index,
+    )
+    committee_size = len(beacon_committee)
+    print(beacon_committee)
+    number_committee_attests = int(committee_size * proportion_committee_agg)
+    number_committee_no_attests = committee_size - number_committee_attests
+    aggregation_bit_list = (*([1] * number_committee_attests), *([0] * number_committee_no_attests))
+    aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*aggregation_bit_list)
+    attestation = spec.Attestation(
+        aggregation_bits=aggregation_bits,
+        data=attestation_data,
+    )
+    sign_attestation(spec, state, attestation)
+    spec.on_attestation(store, attestation, is_from_block=True)
 
-    This method must be used for the parameter `participation_fn` in
-     the method `state_transition_with_full_block`.
+    block.body.attestations.append(attestation)
 
-    :param indices: the validator indices that are going to attest.
-    :return:
-    """
-    def participation_fn(slot, index, attestation_committee):
-        attestation_committee_ln = list(attestation_committee)
-        validator_indices = []
-        for index in indices:
-            validator_indices.append(attestation_committee_ln[index])
-        return set(validator_indices)
-
-    return participation_fn
+    return state_transition_and_sign_block(spec, state, block)
 
 
 @with_bellatrix_and_later
+@with_presets([MINIMAL],
+              reason="mainnet config leads to have a very small value of 'get_committee_count_per_slot'.")
 @spec_state_test
 def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     test_steps = []
@@ -148,8 +163,9 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
 
     next_epoch(spec, state)
 
+    current_slot = spec.SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY * 10 + state.slot
     current_time = (
-        (spec.SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY * 10 + state.slot) * spec.config.SECONDS_PER_SLOT
+        current_slot * spec.config.SECONDS_PER_SLOT
         + fc_store.genesis_time
     )
     on_tick_and_append_step(spec, fc_store, current_time, test_steps)
@@ -161,13 +177,9 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps, status=PayloadStatusV1Status.VALID)
     assert spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
 
-    participation_indices= [
-        [0, 1, 2], # chain A 3 validator attestations
-        [0, 1], # chain B 2 validator attestations
-        [0] # chain C 1 validator attestations
-    ]
     # Create SYNC chains
     state_0 = state.copy()
+    participation_proportion = [1, 0.75, 0.5]
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
@@ -179,8 +191,13 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
             block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_{level}_{i}', 'UTF-8'))
             block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
             block_hashes[f'chain_{level}_{i}'] = block.body.execution_payload.block_hash
-            signed_block = state_transition_with_full_block(spec, state, True, True, block=block, participation_fn=participation_fn_gen(participation_indices[j]))
+
+            max_committee_index = spec.get_committee_count_per_slot(state, current_slot)
+            committee_index = min(j, max_committee_index-1)
+            signed_block = add_attestation_and_sign_block(spec, state, fc_store, block, committee_index,
+                                                          proportion_committee_agg=participation_proportion[j])
             signed_blocks[f'chain_{level}_{i}'] = signed_block.copy()
+
             yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                             status=PayloadStatusV1Status.SYNCING)
             assert spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
@@ -189,16 +206,17 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     # Check chain A is the optimistic head
     assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_a_2'].message.hash_tree_root())
 
+    latest_valid_hash = block_0.body.execution_payload.block_hash
+
     # Add an invalid block to chain A
     block = build_empty_block_for_next_slot(spec, state_store["a"])
     block.body.execution_payload.parent_hash = signed_blocks[f'chain_a_2'].message.body.execution_payload.block_hash
     block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_a_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    block_hashes['chain_a_3'] = block.body.execution_payload.block_hash
     signed_block = state_transition_and_sign_block(spec, state_store["a"], block)
     payload_status = PayloadStatusV1(
         status=PayloadStatusV1Status.INVALID,
-        latest_valid_hash=block_0.body.execution_payload.block_hash,
+        latest_valid_hash=latest_valid_hash,
         validation_error="invalid",
     )
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
@@ -211,11 +229,10 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     block.body.execution_payload.parent_hash = signed_blocks[f'chain_b_2'].message.body.execution_payload.block_hash
     block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_b_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    block_hashes['chain_b_3'] = block.body.execution_payload.block_hash
     signed_block = state_transition_and_sign_block(spec, state_store["b"], block)
     payload_status = PayloadStatusV1(
         status=PayloadStatusV1Status.INVALID,
-        latest_valid_hash=block_0.body.execution_payload.block_hash,
+        latest_valid_hash=latest_valid_hash,
         validation_error="invalid",
     )
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
