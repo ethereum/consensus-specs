@@ -130,7 +130,6 @@ def add_attestation_and_sign_block(spec, state, store, block, index, proportion_
         attestation_data.index,
     )
     committee_size = len(beacon_committee)
-    print(beacon_committee)
     number_committee_attests = int(committee_size * proportion_committee_agg)
     number_committee_no_attests = committee_size - number_committee_attests
     aggregation_bit_list = (*([1] * number_committee_attests), *([0] * number_committee_no_attests))
@@ -183,7 +182,6 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
-            print(f"{level}_{i}")
             block = build_empty_block_for_next_slot(spec, state)
             block.body.execution_payload.parent_hash = (
                 block_hashes[f'chain_{level}_{i - 1}'] if i != 0 else block_hashes['block_0']
