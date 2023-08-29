@@ -164,7 +164,9 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
 
     # Create SYNC chains
     state_0 = state.copy()
-    aggregation_bit_lists = [[1, 1, 1 ,1], [1, 1, 0 ,0], [0, 0, 1, 0]]
+    # Branch A has 4 attestations, B 1 attestation and C 2 attestation
+    # A >> C >> B
+    aggregation_bit_lists = [[1, 1, 1 ,1], [1, 0, 0 ,0], [0, 1, 1, 0]]
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
@@ -206,15 +208,15 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     )
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                     payload_status=payload_status)
-    # Check chain B became the optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_b_2'].message.hash_tree_root())
+    # Check chain C became the optimistic head
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_c_2'].message.hash_tree_root())
 
-    # Add an invalid block to chain B
-    block = build_empty_block_for_next_slot(spec, state_store["b"])
-    block.body.execution_payload.parent_hash = signed_blocks[f'chain_b_2'].message.body.execution_payload.block_hash
-    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_b_3', 'UTF-8'))
+    # Add an invalid block to chain C
+    block = build_empty_block_for_next_slot(spec, state_store["c"])
+    block.body.execution_payload.parent_hash = signed_blocks[f'chain_c_2'].message.body.execution_payload.block_hash
+    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_c_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-    signed_block = state_transition_and_sign_block(spec, state_store["b"], block)
+    signed_block = state_transition_and_sign_block(spec, state_store["c"], block)
     payload_status = PayloadStatusV1(
         status=PayloadStatusV1Status.INVALID,
         latest_valid_hash=latest_valid_hash,
@@ -222,8 +224,8 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     )
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                     payload_status=payload_status)
-    # Check chain C became the optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_c_2'].message.hash_tree_root())
+    # Check chain B became the optimistic head
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_b_2'].message.hash_tree_root())
 
 
 @with_bellatrix_and_later
