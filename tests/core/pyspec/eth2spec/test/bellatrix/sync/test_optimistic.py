@@ -5,6 +5,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import (
     build_attestation_data,
     sign_attestation,
+    state_transition_with_full_block,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
