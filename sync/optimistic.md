@@ -237,7 +237,7 @@ another chain.
 
 ### Re-Orgs
 
-The consensus engine MUST support any chain reorganisation which does *not*
+The consensus engine MUST support any chain reorganization which does *not*
 affect the justified checkpoint.
 
 If the justified checkpoint transitions from `NOT_VALIDATED` -> `INVALIDATED`, a
