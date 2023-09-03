@@ -76,6 +76,18 @@ Options:
 - `--disable-bls`, to disable BLS (only for tests that can run without)
 - `--bls-type`, `milagro` or `py_ecc` (default)
 
+#### With Docker
+
+Run `docker build -f ./docker/Dockerfile -t consensus-specs .` from the root of the specs repository to build the test image.
+
+Then you can run the image with the below:
+```shell
+cd ./scripts
+run_test.sh
+```
+
+This is equivalent to ``make test``.
+
 ### How to view code coverage report
 
 Run `make open_cov` from the root of the specs repository after running `make test` to open the html code coverage report.
