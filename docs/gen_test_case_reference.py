@@ -18,7 +18,7 @@ import mkdocs_gen_files
 import pytest
 from git import Repo
 
-from tests.core.eth2spec.test.helpers.constants import ALL_PHASES # not working yet
+from tests.core.eth2spec.test.helpers.constants import ALL_PHASES  # not working yet
 
 GEN_TEST_PATH = "tests\\core\\pyspec\\eth2spec\\test"
 source_directory = Path(GEN_TEST_PATH)
@@ -315,7 +315,7 @@ for directory in all_directories:
             ]:
                 assert len(dev_forks) == 1
                 # Select all phases before (included) the dev_forks
-                all_test_phases = ALL_PHASES[:ALL_PHASES.index(dev_forks[0])+1]
+                all_test_phases = ALL_PHASES[: ALL_PHASES.index(dev_forks[0]) + 1]
                 generate_fixtures_deployed = ""
                 generate_fixtures_development = (
                     GENERATE_FIXTURES_DEVELOPMENT.substitute(
