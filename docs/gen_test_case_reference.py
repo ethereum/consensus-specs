@@ -64,12 +64,13 @@ if os.environ.get("CI") != "true":  # always generate in ci/cd
         )
         sys.exit(0)
 
+
 GENERATE_FIXTURES_DEPLOYED = Template(
     textwrap.dedent(
         """
-        !!! example "Generate fixtures for these test cases $additional_title with:"
+        !!! example "Launch these test cases $additional_title with:"
             ```console
-            pytest -v $pytest_test_path
+            pytest $pytest_test_path
             ```
 
         """
@@ -79,15 +80,19 @@ GENERATE_FIXTURES_DEPLOYED = Template(
 GENERATE_FIXTURES_DEVELOPMENT = Template(
     textwrap.dedent(
         """
-        !!! example "Generate fixtures for these test cases for $fork with:"
+        !!! example "Launch these test cases for $fork with:"
             $fork only:
             ```console
-            pytest -v $pytest_test_path --fork=$fork
+            pytest $pytest_test_path --fork=$fork
+            ```
+            
+            For all forks up to and including $fork:
+            ```console
+            pytest $pytest_test_path $all_fork_before
             ```
         """
     )
 )
-
 
 # mkdocstrings filter doc:
 # https://mkdocstrings.github.io/python/usage/configuration/members/#filters
@@ -128,33 +133,8 @@ MARKDOWN_TEST_CASES_TEMPLATE = Template(
     )
 )
 
-#            options:
-#              filters: ["!^_[^_]", "![A-Z]{2,}", "!pytestmark"]
 
-
-def apply_name_filters(input_string: str):
-    """
-    Apply a list of regexes to names used in the nav section to clean
-    up nav title names.
-    """
-    regexes = [
-        # (r"^Test ", ""),
-        (r"vm", "VM"),
-        # TODO: enable standard formatting for all opcodes.
-        (r"Dup", "DUP"),
-        (r"Chainid", "CHAINID"),
-        (r"acl", "ACL"),
-        (r"eips", "EIPs"),
-        (r"eip-?([1-9]{1,5})", r"EIP-\1"),
-    ]
-
-    for pattern, replacement in regexes:
-        input_string = re.sub(pattern, replacement, input_string, flags=re.IGNORECASE)
-
-    return input_string
-
-
-def snake_to_capitalize(s):  # noqa: D103
+def snake_to_capitalize(s: str) -> str:  # noqa: D103
     return " ".join(word.capitalize() for word in s.split("_"))
 
 
@@ -197,7 +177,7 @@ def run_collect_only(test_path: Path = source_directory) -> Tuple[str, str]:
     return collect_only_command, collect_only_output
 
 
-def generate_github_url(file_path, branch_or_commit_or_tag="main"):
+def generate_github_url(file_path, branch_or_commit_or_tag="main") -> str:
     """
     Generate a link to a source file in Github.
     """
@@ -209,8 +189,9 @@ def generate_github_url(file_path, branch_or_commit_or_tag="main"):
         branch_or_commit_or_tag,
     ):
         return f"{base_url}/{username}/{repository}/tree/{branch_or_commit_or_tag}/{file_path}"
-    else:
-        return f"{base_url}/{username}/{repository}/blob/{branch_or_commit_or_tag}/{file_path}"
+    return (
+        f"{base_url}/{username}/{repository}/blob/{branch_or_commit_or_tag}/{file_path}"
+    )
 
 
 def get_current_commit_hash_or_tag(repo_path="."):
@@ -251,7 +232,9 @@ nav = mkdocs_gen_files.Nav()
 
 fork_directories = [source_directory / fork.lower() for fork in ALL_PHASES]
 fork_directories.reverse()
-all_directories = [directory for directory in fork_directories if os.path.exists(directory)]
+all_directories = [
+    directory for directory in fork_directories if os.path.exists(directory)
+]
 all_directories.insert(0, source_directory)
 
 # Loop over directories here instead of walking tests/ to ensure we
@@ -289,7 +272,7 @@ for directory in all_directories:
             nav_path = "Test Case Reference" / test_dir_relative_path / basename
             copy_file(source_file, output_file_path)
             nav_tuple = tuple(snake_to_capitalize(part) for part in nav_path.parts)
-            nav_tuple = tuple(apply_name_filters(part) for part in nav_tuple)
+            # nav_tuple = tuple(apply_name_filters(part) for part in nav_tuple)
             nav[nav_tuple] = str(output_file_path)
 
         for file in sorted(python_files):
@@ -310,7 +293,6 @@ for directory in all_directories:
                 continue
 
             nav_tuple = tuple(snake_to_capitalize(part) for part in nav_path.parts)
-            nav_tuple = tuple(apply_name_filters(part) for part in nav_tuple)
             nav[nav_tuple] = str(output_file_path)
             markdown_title = nav_tuple[-1]
 
@@ -319,7 +301,9 @@ for directory in all_directories:
                     test_path=pytest_test_path
                 )
                 if not collect_only_output:
-                    logger.warning(f"{script_name} collect_only_output for {file} is empty")
+                    logger.warning(
+                        f"{script_name} collect_only_output for {file} is empty"
+                    )
                 test_cases_output_file_path = (
                     Path(os.path.splitext(output_file_path)[0]) / "test_cases.md"
                 )
@@ -330,7 +314,8 @@ for directory in all_directories:
                             title=f"{markdown_title} - Test Cases",
                             pytest_test_path=pytest_test_path,
                             module_github_url=generate_github_url(
-                                pytest_test_path, branch_or_commit_or_tag=COMMIT_HASH_OR_TAG
+                                pytest_test_path,
+                                branch_or_commit_or_tag=COMMIT_HASH_OR_TAG,
                             ),
                             collect_only_command=collect_only_command,
                             collect_only_output=collect_only_output,
@@ -343,17 +328,29 @@ for directory in all_directories:
                     pytest_test_path=pytest_test_path,
                     additional_title=" for all forks deployed to mainnet",
                 )
-                generate_fixtures_development = GENERATE_FIXTURES_DEVELOPMENT.substitute(
-                    pytest_test_path=pytest_test_path, fork=ALL_PHASES[0]
+                generate_fixtures_development = (
+                    GENERATE_FIXTURES_DEVELOPMENT.substitute(
+                        pytest_test_path=pytest_test_path,
+                        fork=ALL_PHASES[0],
+                        all_fork_before="",
+                    )
                 )
             elif file in non_test_files_to_include:
                 generate_fixtures_deployed = ""
                 generate_fixtures_development = ""
-            elif dev_forks := [fork for fork in ALL_PHASES if fork.lower() in root.lower()]:
+            elif dev_forks := [
+                fork for fork in ALL_PHASES if fork.lower() in root.lower()
+            ]:
                 assert len(dev_forks) == 1
+                # Select all phases before (included) the dev_forks
+                all_test_phases = ALL_PHASES[:ALL_PHASES.index(dev_forks[0])+1]
                 generate_fixtures_deployed = ""
-                generate_fixtures_development = GENERATE_FIXTURES_DEVELOPMENT.substitute(
-                    pytest_test_path=pytest_test_path, fork=dev_forks[0]
+                generate_fixtures_development = (
+                    GENERATE_FIXTURES_DEVELOPMENT.substitute(
+                        pytest_test_path=pytest_test_path,
+                        fork=dev_forks[0],
+                        all_fork_before="--fork=" + " --fork=".join(all_test_phases),
+                    )
                 )
             else:
                 generate_fixtures_deployed = GENERATE_FIXTURES_DEPLOYED.substitute(
@@ -374,5 +371,3 @@ for directory in all_directories:
                         pytest_test_path=pytest_test_path,
                     )
                 )
-# with mkdocs_gen_files.open(navigation_file, "a") as nav_file:
-#     nav_file.writelines(nav.build_literate_nav())
