@@ -18,51 +18,17 @@ import mkdocs_gen_files
 import pytest
 from git import Repo
 
-
-from core.pyspec.eth2spec.test.helpers.constants import ALL_PHASES
-
-logger = logging.getLogger("mkdocs")
+from tests.core.eth2spec.test.helpers.constants import ALL_PHASES # not working yet
 
 GEN_TEST_PATH = "tests\\core\\pyspec\\eth2spec\\test"
 source_directory = Path(GEN_TEST_PATH)
 target_dir = Path(GEN_TEST_PATH)
 non_test_files_to_include = []  # __init__.py is treated separately
 
+# Locate to `consensus-specs` to determine the repository (GitPython)
+os.chdir("../")
 
-def get_script_relative_path():  # noqa: D103
-    script_path = os.path.abspath(__file__)
-    current_directory = os.getcwd()
-    return os.path.relpath(script_path, current_directory)
-
-
-"""
-The following check that allows deactivation of the Test Case Reference
-doc generation is no longer strictly necessary - it was a workaround for
-a problem who's root cause has been solved. The code is left, however,
-as it could still serve a purpose if we have many more test cases
-and test doc gen becomes very time consuming.
-
-If test doc gen is disabled, then it will not appear at all in the
-output doc and all incoming links to it will generate a warning.
-"""
-if os.environ.get("CI") != "true":  # always generate in ci/cd
-    enabled_env_var_name = "SPEC_TESTS_AUTO_GENERATE_FILES"
-    script_name = get_script_relative_path()
-    if os.environ.get(enabled_env_var_name) != "false":
-        logger.info(f"{script_name}: generating 'Test Case Reference' doc")
-        logger.info(
-            f"{script_name}: set env var {enabled_env_var_name} to 'false' and re-run "
-            "`mkdocs serve` or `mkdocs build` to  disable 'Test Case Reference' doc generation"
-        )
-    else:
-        logger.warning(
-            f"{script_name}: skipping automatic generation of 'Test Case Reference' doc"
-        )
-        logger.info(
-            f"{script_name}: set env var {enabled_env_var_name} to 'true' and re-run"
-            "`mkdocs serve` or `mkdocs build` to generate 'Test Case Reference' doc"
-        )
-        sys.exit(0)
+logger = logging.getLogger("mkdocs")
 
 
 GENERATE_FIXTURES_DEPLOYED = Template(
@@ -132,6 +98,12 @@ MARKDOWN_TEST_CASES_TEMPLATE = Template(
         """  # noqa: E501
     )
 )
+
+
+def get_script_relative_path():  # noqa: D103
+    script_path = os.path.abspath(__file__)
+    current_directory = os.getcwd()
+    return os.path.relpath(script_path, current_directory)
 
 
 def snake_to_capitalize(s: str) -> str:  # noqa: D103
@@ -302,7 +274,7 @@ for directory in all_directories:
                 )
                 if not collect_only_output:
                     logger.warning(
-                        f"{script_name} collect_only_output for {file} is empty"
+                        f"{get_script_relative_path()} collect_only_output for {file} is empty"
                     )
                 test_cases_output_file_path = (
                     Path(os.path.splitext(output_file_path)[0]) / "test_cases.md"
