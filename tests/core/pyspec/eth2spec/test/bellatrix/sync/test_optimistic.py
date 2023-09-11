@@ -123,7 +123,9 @@ def add_attestation_and_sign_block_with_aggregation_bit_list(spec, state, store,
     committee = spec.get_beacon_committee(state, attestation_data.slot, attestation_data.index)
     number_empty_aggregation = len(committee) - len(aggregation_bit_list)
     attestation = spec.Attestation(
-        aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*(*(aggregation_bit_list), *([0]*number_empty_aggregation))),
+        aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+            *(*(aggregation_bit_list), *([0] * number_empty_aggregation))
+        ),
         data=attestation_data,
     )
     sign_attestation(spec, state, attestation)
@@ -166,7 +168,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     state_0 = state.copy()
     # Branch A has 4 attestations, B 1 attestation and C 2 attestation
     # A >> C >> B
-    aggregation_bit_lists = [[1, 1, 1 ,1], [1, 0, 0 ,0], [0, 1, 1, 0]]
+    aggregation_bit_lists = [[1, 1, 1, 1], [1, 0, 0, 0], [0, 1, 1, 0]]
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
@@ -179,7 +181,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
             block_hashes[f'chain_{level}_{i}'] = block.body.execution_payload.block_hash
 
             max_committee_index = spec.get_committee_count_per_slot(state, current_slot)
-            committee_index = min(j, max_committee_index-1)
+            committee_index = min(j, max_committee_index - 1)
             signed_block = add_attestation_and_sign_block_with_aggregation_bit_list(
                 spec, state, fc_store, block, committee_index, aggregation_bit_lists[j]
             )
@@ -191,14 +193,14 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
         state_store[level] = state.copy()
 
     # Check chain A is the optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_a_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_a_2'].message.hash_tree_root())
 
     latest_valid_hash = block_0.body.execution_payload.block_hash
 
     # Add an invalid block to chain A
     block = build_empty_block_for_next_slot(spec, state_store["a"])
-    block.body.execution_payload.parent_hash = signed_blocks[f'chain_a_2'].message.body.execution_payload.block_hash
-    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_a_3', 'UTF-8'))
+    block.body.execution_payload.parent_hash = signed_blocks['chain_a_2'].message.body.execution_payload.block_hash
+    block.body.execution_payload.extra_data = spec.hash(bytes('chain_a_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state_store["a"], block)
     payload_status = PayloadStatusV1(
@@ -209,12 +211,12 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                     payload_status=payload_status)
     # Check chain C became the optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_c_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_c_2'].message.hash_tree_root())
 
     # Add an invalid block to chain C
     block = build_empty_block_for_next_slot(spec, state_store["c"])
-    block.body.execution_payload.parent_hash = signed_blocks[f'chain_c_2'].message.body.execution_payload.block_hash
-    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_c_3', 'UTF-8'))
+    block.body.execution_payload.parent_hash = signed_blocks['chain_c_2'].message.body.execution_payload.block_hash
+    block.body.execution_payload.extra_data = spec.hash(bytes('chain_c_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state_store["c"], block)
     payload_status = PayloadStatusV1(
@@ -225,7 +227,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                     payload_status=payload_status)
     # Check chain B became the optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_b_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_b_2'].message.hash_tree_root())
 
 
 @with_bellatrix_and_later
@@ -258,7 +260,7 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
 
     # Create SYNC chains
     state_0 = state.copy()
-    aggregation_bit_lists = [[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]
+    aggregation_bit_lists = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
@@ -272,7 +274,7 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
             block_hashes[f'chain_{level}_{i}'] = block.body.execution_payload.block_hash
 
             max_committee_index = spec.get_committee_count_per_slot(state, current_slot)
-            committee_index = min(j, max_committee_index-1)
+            committee_index = min(j, max_committee_index - 1)
             signed_block = add_attestation_and_sign_block_with_aggregation_bit_list(
                 spec, state, fc_store, block, committee_index, aggregation_bit_lists[j]
             )
@@ -284,14 +286,14 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
         state_store[level] = state.copy()
 
     # Last added branch is considered as optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_c_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_c_2'].message.hash_tree_root())
 
     latest_valid_hash = block_0.body.execution_payload.block_hash
 
     # Add an invalid block to chain C
     block = build_empty_block_for_next_slot(spec, state_store["c"])
-    block.body.execution_payload.parent_hash = signed_blocks[f'chain_c_2'].message.body.execution_payload.block_hash
-    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_c_3', 'UTF-8'))
+    block.body.execution_payload.parent_hash = signed_blocks['chain_c_2'].message.body.execution_payload.block_hash
+    block.body.execution_payload.extra_data = spec.hash(bytes('chain_c_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state_store["c"], block)
     payload_status = PayloadStatusV1(
@@ -302,12 +304,12 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
     yield from add_optimistic_block(spec, mega_store, signed_block, test_steps,
                                     payload_status=payload_status)
 
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_b_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_b_2'].message.hash_tree_root())
 
     # Add an invalid block to chain B
     block = build_empty_block_for_next_slot(spec, state_store["b"])
-    block.body.execution_payload.parent_hash = signed_blocks[f'chain_b_2'].message.body.execution_payload.block_hash
-    block.body.execution_payload.extra_data = spec.hash(bytes(f'chain_b_3', 'UTF-8'))
+    block.body.execution_payload.parent_hash = signed_blocks['chain_b_2'].message.body.execution_payload.block_hash
+    block.body.execution_payload.extra_data = spec.hash(bytes('chain_b_3', 'UTF-8'))
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state_store["b"], block)
     payload_status = PayloadStatusV1(
@@ -319,4 +321,4 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
                                     payload_status=payload_status)
 
     # Chain A first observed (last updated) => last optimistic head
-    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks[f'chain_a_2'].message.hash_tree_root())
+    assert mega_store.opt_store.head_block_root == spec.Root(signed_blocks['chain_a_2'].message.hash_tree_root())
