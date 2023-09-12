@@ -46,11 +46,11 @@ def get_validator_inbound_churn_limit(state: BeaconState) -> uint64:
     """
     active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
     return min(
-      MAX_PER_EPOCH_INBOUND_CHURN_LIMIT,
-      max(
-        MIN_PER_EPOCH_CHURN_LIMIT,
-        uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT
-      )
+        MAX_PER_EPOCH_INBOUND_CHURN_LIMIT,
+        max(
+            MIN_PER_EPOCH_CHURN_LIMIT,
+            uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT,
+        ),
     )
 ```
 

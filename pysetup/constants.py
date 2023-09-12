@@ -6,6 +6,7 @@ CAPELLA = 'capella'
 DENEB = 'deneb'
 EIP6110 = 'eip6110'
 EIP7002 = 'eip7002'
+EIP7668 = 'eip7668'
 WHISK = 'whisk'
 
 
