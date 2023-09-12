@@ -11,7 +11,7 @@ class WhiskSpecBuilder(BaseSpecBuilder):
         return f'''
 from eth2spec.capella import {preset_name} as capella
 import curdleproofs
-from py_arkworks_bls12381 import G1Point
+import json
 '''
 
     @classmethod

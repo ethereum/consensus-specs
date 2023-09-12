@@ -124,10 +124,26 @@ def _load_kzg_trusted_setups(preset_name):
 
     return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
 
+def _load_curdleproofs_crs(preset_name):
+    """
+    NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
+    """
+    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/curdleproofs_crs.json'
+
+    with open(file_path, 'r') as f:
+        json_data = json.load(f)
+
+    return json_data
+
 
 ALL_KZG_SETUPS = {
     'minimal': _load_kzg_trusted_setups('minimal'),
     'mainnet': _load_kzg_trusted_setups('mainnet')
+}
+
+ALL_CURDLEPROOFS_CRS = {
+    'minimal': _load_curdleproofs_crs('minimal'),
+    'mainnet': _load_curdleproofs_crs('mainnet'),
 }
 
 
@@ -258,17 +274,9 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
         _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
 
     if any('CURDLEPROOFS_CRS' in name for name in constant_vars):
-        # TODO: Use actual CRS derived from a fixed string like 'nankokita_no_kakurenbo'
-        crs_len = int(preset_vars['WHISK_VALIDATORS_PER_SHUFFLE'].value) + int(preset_vars['CURDLEPROOFS_N_BLINDERS'].value) + 3
-        constant_vars['CURDLEPROOFS_CRS_G1'] = VariableDefinition(constant_vars['CURDLEPROOFS_CRS_G1'].value, str(ALL_KZG_SETUPS['mainnet'][0][0:crs_len]), "noqa: E501", None)
         constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
             None,
-            "curdleproofs.CurdleproofsCrs.from_random_points(WHISK_VALIDATORS_PER_SHUFFLE, CURDLEPROOFS_N_BLINDERS, [G1Point.from_compressed_bytes_unchecked(p) for p in CURDLEPROOFS_CRS_G1])",
-            "noqa: E501", None
-        )
-        constant_vars['BLS_G1_GENERATOR'] = VariableDefinition(
-            constant_vars['BLS_G1_GENERATOR'].value,
-            "'0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb'",
+            'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
             "noqa: E501", None
         )
 
