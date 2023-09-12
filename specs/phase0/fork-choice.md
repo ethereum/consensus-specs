@@ -18,12 +18,14 @@
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
+    - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
+    - [`get_proposer_head`](#get_proposer_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
@@ -76,11 +78,16 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Configuration
 
-| Name                   | Value        |
-| ---------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST` | `uint64(40)` |
+| Name                                  | Value        |
+| ------------------------------------- | ------------ |
+| `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
+| `REORG_WEIGHT_THRESHOLD`              | `uint64(20)` |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
+| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
 
-- The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
+- The proposer score boost and re-org weight threshold are percentage
+  values that are measured with respect to the weight of a single committee. See
+  `calculate_committee_fraction`.
 
 ### Helpers
 
@@ -115,6 +122,7 @@ class Store(object):
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
@@ -191,6 +199,14 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     return root
 ```
 
+#### `calculate_committee_fraction`
+
+```python
+def calculate_committee_fraction(state: BeaconState, committee_percent: uint64) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return Gwei((committee_weight * committee_percent) // 100)
+```
+
 #### `get_checkpoint_block`
 
 ```python
@@ -225,8 +241,7 @@ def get_weight(store: Store, root: Root) -> Gwei:
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
     if get_ancestor(store, store.proposer_boost_root, store.blocks[root].slot) == root:
-        committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-        proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+        proposer_score = calculate_committee_fraction(state, PROPOSER_SCORE_BOOST)
     return attestation_score + proposer_score
 ```
 
@@ -247,7 +262,6 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         # The block is not from a prior epoch, therefore the voting source is not pulled up
         head_state = store.block_states[block_root]
         return head_state.current_justified_checkpoint
-
 ```
 
 #### `filter_block_tree`
@@ -341,6 +355,62 @@ def get_head(store: Store) -> Root:
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
+
+#### `get_proposer_head`
+
+_Implementing `get_proposer_head` is optional_.
+
+```python
+def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    head_block = store.blocks[head_root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+
+    # Only re-org the head block if it arrived later than the attestation deadline.
+    head_late = store.block_timeliness.get(head_root) is False
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    epochs_since_finalization = compute_epoch_at_slot(slot) - store.finalized_checkpoint.epoch
+    finalization_ok = epochs_since_finalization <= REORG_MAX_EPOCHS_SINCE_FINALIZATION
+
+    # Only re-org a single slot at most.
+    single_slot_reorg = parent_block.slot + 1 == head_block.slot and head_block.slot + 1 == slot
+
+    # Only re-org if we are proposing on-time.
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    proposing_on_time = time_into_slot <= SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
+
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = slot % SLOTS_PER_EPOCH != 0
+
+    # Ensure that the FFG information of the new head will be competitive with the current head.
+    ffg_competitive = (store.unrealized_justifications[parent_root] ==
+                       store.unrealized_justifications[head_root])
+
+    # Check that the head has few enough votes to be overpowered by our proposer boost.
+    assert store.proposer_boost_root != head_root  # ensure boost has worn off
+    head_weight = get_weight(store, head_root)
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_WEIGHT_THRESHOLD)
+    head_weak = head_weight < reorg_threshold
+
+    # Check that the missing votes are assigned to the parent and not being hoarded.
+    parent_weight = get_weight(store, parent_root)
+    parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    parent_strong = parent_weight > parent_threshold
+
+    if all([head_late, finalization_ok, single_slot_reorg, proposing_on_time, shuffling_stable,
+            ffg_competitive, head_weak, parent_strong]):
+        # We can re-org the current head by building upon its parent block.
+        return parent_root
+    else:
+        return head_root
+```
+
+> Note that the ordering of conditions is a suggestion only. Implementations are free to
+optimize by re-ordering the conditions from least to most expensive and by returning early if
+any of the early conditions are `False`.
+
 
 #### `update_checkpoints`
 
@@ -536,11 +606,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add proposer score boost if the block is timely
+    # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely and not conflicting with an existing block
     is_first_block = store.proposer_boost_root == Root()
-    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
+    if is_timely and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
