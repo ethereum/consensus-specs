@@ -18,6 +18,7 @@ CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
 EIP7002 = SpecForkName('eip7002')
+EIP7668 = SpecForkName('eip7668')
 
 #
 # SpecFork settings
@@ -34,6 +35,7 @@ ALL_PHASES = (
     # Experimental patches
     EIP6110,
     EIP7002,
+    EIP7668,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
