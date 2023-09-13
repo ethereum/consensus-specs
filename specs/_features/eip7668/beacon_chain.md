@@ -44,7 +44,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator activation churn limit for the current epoch.
     """
-    return min(MAX_PER_EPOCH_INBOUND_CHURN_LIMIT, get_validator_churn_limit(state))
+    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT, get_validator_churn_limit(state))
 ```
 
 ## Beacon chain state transition function

@@ -46,3 +46,7 @@ def is_post_eip6110(spec):
 
 def is_post_eip7002(spec):
     return is_post_fork(spec.fork, EIP7002)
+
+
+def is_post_eip7668(spec):
+    return is_post_fork(spec.fork, EIP7668)

@@ -165,14 +165,34 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
-def scaled_churn_balances(spec: Spec):
+def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     See the second argument of ``max`` in ``get_validator_churn_limit``.
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (2 + spec.config.MIN_PER_EPOCH_CHURN_LIMIT)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_equal_inbound_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_inbound_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_inbound_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_inbound_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -548,6 +568,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_eip6110_and_later = with_all_phases_from(EIP6110)
 with_eip7002_and_later = with_all_phases_from(EIP7002)
+with_eip7668_and_later = with_all_phases_from(EIP7668)
 
 
 class quoted_str(str):
