@@ -1,4 +1,4 @@
-Limit churn -- The Beacon Chain
+EIP-7668 -- The Beacon Chain
 
 ## Table of contents
 
@@ -11,7 +11,7 @@ Limit churn -- The Beacon Chain
   - [Validator cycle](#validator-cycle)
 - [Helper functions](#helper-functions)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_validator_inbound_churn_limit`](#new-get_validator_inbound_churn_limit)
+    - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Registry updates](#registry-updates)
@@ -31,27 +31,20 @@ This is the beacon chain specification to limit the max inbound churn value, mot
 
 | Name | Value |
 | - | - |
-| `MAX_PER_EPOCH_INBOUND_CHURN_LIMIT` | `uint64(12)` (= 12) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(12)` (= 12) |
 
 ## Helper functions
 
 ### Beacon state accessors
 
-#### New `get_validator_inbound_churn_limit`
+#### New `get_validator_activation_churn_limit`
 
 ```python
-def get_validator_inbound_churn_limit(state: BeaconState) -> uint64:
+def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
     """
-    Return the validator inbound churn limit for the current epoch.
+    Return the validator activation churn limit for the current epoch.
     """
-    active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return min(
-        MAX_PER_EPOCH_INBOUND_CHURN_LIMIT,
-        max(
-            MIN_PER_EPOCH_CHURN_LIMIT,
-            uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT,
-        ),
-    )
+    return min(MAX_PER_EPOCH_INBOUND_CHURN_LIMIT, get_validator_churn_limit(state))
 ```
 
 ## Beacon chain state transition function
@@ -59,6 +52,8 @@ def get_validator_inbound_churn_limit(state: BeaconState) -> uint64:
 ### Epoch processing
 
 #### Registry updates
+
+Note: The function `process_registry_updates` is modified to utilize `get_validator_inbound_churn_limit()` the rate limit the activation queue for EIP-7668.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
@@ -80,8 +75,8 @@ def process_registry_updates(state: BeaconState) -> None:
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
-    # [Modified in limit churn]
-    for index in activation_queue[:get_validator_inbound_churn_limit(state)]:
+    # [Modified in EIP7668]
+    for index in activation_queue[:get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
