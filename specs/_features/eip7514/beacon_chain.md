@@ -31,7 +31,7 @@ This is the beacon chain specification to limit the max inbound churn value, mot
 
 | Name | Value |
 | - | - |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(12)` (= 12) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(8)` (= 8) |
 
 ## Helper functions
 
