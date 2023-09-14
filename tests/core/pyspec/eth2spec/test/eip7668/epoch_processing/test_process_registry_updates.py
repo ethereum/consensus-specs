@@ -18,10 +18,12 @@ def run_process_registry_updates(spec, state):
 
 
 def run_test_inbound_churn_limit(spec, state):
-    mock_activations = 1
+    mock_activations = spec.get_validator_activation_churn_limit(state) * 2
+
+    validator_count_0 = len(state.validators)
 
     for i in range(mock_activations):
-        index = len(state.validators) + i
+        index = validator_count_0 + i
         validator = spec.Validator(
             pubkey=pubkeys[index],
             withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + b'\x56' * 20,
@@ -44,10 +46,12 @@ def run_test_inbound_churn_limit(spec, state):
 
     # Half should churn in first run of registry update
     for i in range(mock_activations):
-        if i < churn_limit_0:
-            assert state.validators[i].activation_epoch < spec.FAR_FUTURE_EPOCH
+        index = validator_count_0 + i
+        if index < validator_count_0 + churn_limit_0:
+            # The eligible validators within the activation churn limit should have been activated
+            assert state.validators[index].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:
-            assert state.validators[i].activation_epoch == spec.FAR_FUTURE_EPOCH
+            assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_eip7668_and_later
