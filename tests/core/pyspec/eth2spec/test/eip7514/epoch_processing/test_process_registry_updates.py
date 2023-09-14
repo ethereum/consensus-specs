@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    with_eip7668_and_later,
+    with_eip7514_and_later,
     spec_test,
     spec_state_test,
     single_phase,
@@ -54,7 +54,7 @@ def run_test_inbound_churn_limit(spec, state):
             assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_eip7668_and_later
+@with_eip7514_and_later
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
@@ -67,7 +67,7 @@ def test_inbound_churn_limit__greater_than_inbound_limit(spec, state):
     yield from run_test_inbound_churn_limit(spec, state)
 
 
-@with_eip7668_and_later
+@with_eip7514_and_later
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
@@ -80,7 +80,7 @@ def test_inbound_churn_limit__equal_to_inbound_limit(spec, state):
     yield from run_test_inbound_churn_limit(spec, state)
 
 
-@with_eip7668_and_later
+@with_eip7514_and_later
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_state_test

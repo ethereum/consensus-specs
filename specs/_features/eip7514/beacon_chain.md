@@ -1,4 +1,4 @@
-EIP-7668 -- The Beacon Chain
+EIP-7514 -- The Beacon Chain
 
 ## Table of contents
 
@@ -53,7 +53,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
 
 #### Registry updates
 
-Note: The function `process_registry_updates` is modified to utilize `get_validator_inbound_churn_limit()` the rate limit the activation queue for EIP-7668.
+Note: The function `process_registry_updates` is modified to utilize `get_validator_inbound_churn_limit()` the rate limit the activation queue for EIP-7514.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
@@ -75,7 +75,7 @@ def process_registry_updates(state: BeaconState) -> None:
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
-    # [Modified in EIP7668]
+    # [Modified in EIP7514]
     for index in activation_queue[:get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))

@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002, EIP7668,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002, EIP7514,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
@@ -93,9 +93,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == EIP7002:
         previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.EIP7002_FORK_VERSION
-    elif spec.fork == EIP7668:
+    elif spec.fork == EIP7514:
         previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.EIP7668_FORK_VERSION
+        current_version = spec.config.EIP7514_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
