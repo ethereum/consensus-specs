@@ -93,6 +93,9 @@ CHURN_LIMIT_QUOTIENT: 65536
 # ---------------------------------------------------------------
 # 40%
 PROPOSER_SCORE_BOOST: 40
+# 6000ms
+LATE_BLOCK_CUTOFF_MS: 6000
+
 
 # Deposit contract
 # ---------------------------------------------------------------
@@ -131,7 +134,21 @@ ATTESTATION_SUBNET_EXTRA_BITS: 0
 # ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS
 ATTESTATION_SUBNET_PREFIX_BITS: 6
 
-# Deneb
+
+# Validator duties
+# ---------------------------------------------------------------
+# 6000ms
+ATTESTATION_DUE_MS: 6000
+# 9000ms
+AGGREGATE_DUE_MS: 9000
+# 6000ms
+SYNC_MESSAGE_DUE_MS: 6000
+# 9000ms
+CONTRIBUTION_DUE_MS: 9000
+
+
+# Deneb:EIP4844
+# ---------------------------------------------------------------
 # `2**7` (=128)
 MAX_REQUEST_BLOCKS_DENEB: 128
 # MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
@@ -141,7 +158,9 @@ MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
 # `6`
 BLOB_SIDECAR_SUBNET_COUNT: 6
 
+
 # Whisk
+# ---------------------------------------------------------------
 # `Epoch(2**8)`
 WHISK_EPOCHS_PER_SHUFFLING_PHASE: 256
 # `Epoch(2)`

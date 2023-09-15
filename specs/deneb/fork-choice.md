@@ -7,7 +7,7 @@
 
 - [Introduction](#introduction)
 - [Containers](#containers)
-- [Constants](#constants)
+- [Configurations](#configurations)
 - [Helpers](#helpers)
   - [Extended `PayloadAttributes`](#extended-payloadattributes)
   - [`is_data_available`](#is_data_available)
@@ -23,7 +23,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Containers
 
-## Constants
+## Configurations
 
 | Name                   | Value       |
 | ---------------------- | ----------- |

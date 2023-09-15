@@ -10,7 +10,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Constants](#constants)
+- [Configurations](#configurations)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -45,7 +45,7 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
-## Constants
+## Configurations
 
 | Name                  | Value       |
 | --------------------- | ----------- |
