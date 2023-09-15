@@ -440,7 +440,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 
 #### Registry updates
 
-*Note*: The function `process_registry_updates` is modified to utilize `get_validator_activation_churn_limit()` the rate limit the activation queue for EIP-7514.
+*Note*: The function `process_registry_updates` is modified to utilize `get_validator_activation_churn_limit()` to rate limit the activation queue for EIP-7514.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
@@ -461,7 +461,7 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_eligible_for_activation(state, validator)
         # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
-    # Dequeued validators for activation up to churn limit
+    # Dequeued validators for activation up to activation churn limit
     # [Modified in Deneb:EIP7514]
     for index in activation_queue[:get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
