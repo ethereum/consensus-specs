@@ -9,7 +9,8 @@
 - [Containers](#containers)
 - [Constants](#constants)
 - [Helpers](#helpers)
-    - [`is_data_available`](#is_data_available)
+  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -30,7 +31,21 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-#### `is_data_available`
+### Extended `PayloadAttributes`
+
+`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+```
+
+### `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
@@ -46,11 +61,6 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     # Note: the p2p network does not guarantee sidecar retrieval outside of
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
-
-    # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
-    # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
-    if isinstance(blobs, str) or isinstance(proofs, str):
-        return True
 
     return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
@@ -103,7 +113,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
-    if get_current_slot(store) == block.slot and is_before_late_block_cutoff:
+    is_first_block = store.proposer_boost_root == Root()
+    if get_current_slot(store) == block.slot and is_before_late_block_cutoff and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

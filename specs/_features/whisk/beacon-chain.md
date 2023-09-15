@@ -10,6 +10,9 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [Domain types](#domain-types)
+- [Preset](#preset)
+- [Configuration](#configuration)
 - [Cryptography](#cryptography)
   - [BLS](#bls)
   - [Curdleproofs and opening proofs](#curdleproofs-and-opening-proofs)
@@ -29,27 +32,37 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the Whisk SSLE,
+This document details the beacon chain additions and changes of to support the Whisk SSLE.
 
 *Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
-| Name                               | Value                      | Description                                                 |
-| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
-| `WHISK_CANDIDATE_TRACKERS_COUNT`   | `uint64(2**14)` (= 16,384) | number of candidate trackers                                |
-| `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
-| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
-| `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7)` (= 128)     | number of validators shuffled per shuffle step              |
-| `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
-| `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
-| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
+### Domain types
 
 | Name                               | Value                      |
 | ---------------------------------- | -------------------------- |
 | `DOMAIN_WHISK_CANDIDATE_SELECTION` | `DomainType('0x07000000')` |
 | `DOMAIN_WHISK_SHUFFLE`             | `DomainType('0x07100000')` |
 | `DOMAIN_WHISK_PROPOSER_SELECTION`  | `DomainType('0x07200000')` |
+
+## Preset
+
+| Name                               | Value                      | Description                                                 |
+| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
+| `CURDLEPROOFS_N_BLINDERS`          | `uint64(4)`                | number of blinders for curdleproofs                         |
+| `WHISK_CANDIDATE_TRACKERS_COUNT`   | `uint64(2**14)` (= 16,384) | number of candidate trackers                                |
+| `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
+| `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step              |
+| `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
+| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
+
+## Configuration
+
+| Name                               | Value                      | Description                                                 |
+| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
+| `WHISK_EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
+| `WHISK_PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
 
 ## Cryptography
 
@@ -87,7 +100,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 
 ### Curdleproofs and opening proofs
 
-Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only) repository.
+Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev) repository.
 
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
@@ -96,7 +109,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
@@ -108,7 +121,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
                              tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
-    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/tree/verifier-only.
+    Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
     # pylint: disable=unused-argument
     return True
@@ -143,7 +156,7 @@ class BeaconState(Container):
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
     # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Whisk]
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -177,17 +190,24 @@ class BeaconState(Container):
 ```
 
 ```python
-def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
+def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
-    proposer_seed = get_seed(state, epoch - WHISK_PROPOSER_SELECTION_GAP, DOMAIN_WHISK_PROPOSER_SELECTION)
+    proposer_seed = get_seed(
+        state,
+        Epoch(saturating_sub(epoch, WHISK_PROPOSER_SELECTION_GAP)),
+        DOMAIN_WHISK_PROPOSER_SELECTION
+    )
     for i in range(WHISK_PROPOSER_TRACKERS_COUNT):
         index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
+```
 
+```python
+def select_whisk_candidate_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select candidate trackers from active validator trackers
     active_validator_indices = get_active_validator_indices(state, epoch)
     for i in range(WHISK_CANDIDATE_TRACKERS_COUNT):
-        seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(i))
+        seed = hash(get_seed(state, epoch, DOMAIN_WHISK_CANDIDATE_SELECTION) + uint_to_bytes(uint64(i)))
         candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
         state.whisk_candidate_trackers[i] = state.whisk_trackers[candidate_index]
 ```
@@ -196,7 +216,8 @@ def select_whisk_trackers(state: BeaconState, epoch: Epoch) -> None:
 def process_whisk_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     if next_epoch % WHISK_EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
-        select_whisk_trackers(state, next_epoch)
+        select_whisk_proposer_trackers(state, next_epoch)
+        select_whisk_candidate_trackers(state, next_epoch)
 ```
 
 ```python
@@ -289,7 +310,7 @@ class BeaconBlockBody(capella.BeaconBlockBody):
 ```python
 def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
     """
-    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set
+    Given a `randao_reveal` return the list of indices that got shuffled from the entire candidate set.
     """
     indices = []
     for i in range(0, WHISK_VALIDATORS_PER_SHUFFLE):
@@ -303,30 +324,25 @@ def get_shuffle_indices(randao_reveal: BLSSignature) -> Sequence[uint64]:
 
 ```python
 def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Check the shuffle proof
-    shuffle_indices = get_shuffle_indices(body.randao_reveal)
-    pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
-
     shuffle_epoch = get_current_epoch(state) % WHISK_EPOCHS_PER_SHUFFLING_PHASE
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
         # Require trackers set to zero during cooldown
         assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
         assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
         assert body.whisk_shuffle_proof == WhiskShuffleProof()
-        post_shuffle_trackers = pre_shuffle_trackers
     else:
         # Require shuffled trackers during shuffle
+        shuffle_indices = get_shuffle_indices(body.randao_reveal)
+        pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
         assert IsValidWhiskShuffleProof(
             pre_shuffle_trackers,
             body.whisk_post_shuffle_trackers,
             body.whisk_shuffle_proof_M_commitment,
             body.whisk_shuffle_proof,
         )
-        post_shuffle_trackers = body.whisk_post_shuffle_trackers
-
-    # Shuffle candidate trackers
-    for i, shuffle_index in enumerate(shuffle_indices):
-        state.whisk_candidate_trackers[shuffle_index] = post_shuffle_trackers[i]
+        # Shuffle candidate trackers
+        for i, shuffle_index in enumerate(shuffle_indices):
+            state.whisk_candidate_trackers[shuffle_index] = body.whisk_post_shuffle_trackers[i]
 ```
 
 ```python
@@ -446,7 +462,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Whisk testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified purely for Whisk testing.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,

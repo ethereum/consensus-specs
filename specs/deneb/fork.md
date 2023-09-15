@@ -57,7 +57,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
+TBD. This fork is defined for testing purposes.
 For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
 
 Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
@@ -83,8 +83,8 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        data_gas_used=uint64(0),  # [New in Deneb:EIP4844]
-        excess_data_gas=uint64(0),  # [New in Deneb:EIP4844]
+        blob_gas_used=uint64(0),  # [New in Deneb:EIP4844]
+        excess_blob_gas=uint64(0),  # [New in Deneb:EIP4844]
     )
     post = BeaconState(
         # Versioning

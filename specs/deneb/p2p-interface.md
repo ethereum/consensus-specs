@@ -23,6 +23,9 @@ The specification of these changes continues in the same format as the network s
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+      - [Attestation subnets](#attestation-subnets)
+        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -106,7 +109,11 @@ Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
 
 Topics follow the same specification as in prior upgrades.
 
-The `beacon_block` topic is modified to also support deneb blocks and new topics are added per table below. All other topics remain stable.
+The `beacon_block` topic is modified to also support Deneb blocks and new topics are added per table below.
+
+The `voluntary_exit` topic is implicitly modified due to the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
+
+The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of attestations created in epoch `N` to be gossiped through the entire range of slots in epoch `N+1` rather than only through one epoch of slots for EIP-7045.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
@@ -124,7 +131,9 @@ Deneb introduces new global topics for blob sidecars.
 
 ###### `beacon_block`
 
-The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in deneb.
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in Deneb.
+
+*[Modified in Deneb:EIP4844]*
 
 New validation:
 
@@ -150,6 +159,41 @@ The following validations MUST pass before forwarding the `signed_blob_sidecar` 
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
+###### `beacon_aggregate_and_proof`
+
+*[Modified in Deneb:EIP7045]*
+
+The following validation is removed:
+* _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
+
+The following validations are added in its place:
+* _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot <= current_slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
+* _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
+  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `compute_epoch_at_slot(aggregate.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
+
+##### Attestation subnets
+
+###### `beacon_attestation_{subnet_id}`
+
+*[Modified in Deneb:EIP7045]*
+
+The following validation is removed:
+* _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
+  (a client MAY queue future attestations for processing at the appropriate slot).
+
+The following validations are added in its place:
+* _[IGNORE]_ `attestation.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `attestation.data.slot <= current_slot`
+  (a client MAY queue future attestation for processing at the appropriate slot).
+* _[IGNORE]_ the epoch of `attestation.data.slot` is either the current or previous epoch
+  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `compute_epoch_at_slot(attestation.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
 
 #### Transitioning the gossip
 

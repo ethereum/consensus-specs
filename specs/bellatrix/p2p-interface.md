@@ -12,7 +12,6 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Warning](#warning)
   - [Modifications in Bellatrix](#modifications-in-bellatrix)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
@@ -32,11 +31,6 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
-## Warning
-
-This document is currently illustrative for early Bellatrix testnets and some parts are subject to change.
-Refer to the note in the [validator guide](./validator.md) for further details.
 
 ## Modifications in Bellatrix
 

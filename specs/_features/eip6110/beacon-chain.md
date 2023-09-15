@@ -91,8 +91,8 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    data_gas_used: uint64
-    excess_data_gas: uint64
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
 ```
 
@@ -117,8 +117,8 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    data_gas_used: uint64
-    excess_data_gas: uint64
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in EIP6110]
 ```
 
@@ -224,7 +224,7 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         state.deposit_receipts_start_index = deposit_receipt.index
 
     apply_deposit(
-        state=state, 
+        state=state,
         pubkey=deposit_receipt.pubkey,
         withdrawal_credentials=deposit_receipt.withdrawal_credentials,
         amount=deposit_receipt.amount,
@@ -251,7 +251,11 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(execution_payload=payload, versioned_hashes=versioned_hashes)
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
     )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
@@ -270,8 +274,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        data_gas_used=payload.data_gas_used,
-        excess_data_gas=payload.excess_data_gas,
+        blob_gas_used=payload.blob_gas_used,
+        excess_blob_gas=payload.excess_blob_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
     )
 ```
