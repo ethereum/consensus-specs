@@ -170,7 +170,7 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
     state_0 = state.copy()
     # Branch A has 4 attestations, B 1 attestation and C 2 attestation
     # A >> C >> B
-    aggregation_bit_lists = [[1, 1, 1, 1], [1, 0, 0, 0], [0, 1, 1, 0]]
+    aggregation_bit_lists = [[1, 1, 1, 0], [1, 0, 0, 0], [0, 0, 1, 1]]
     for j, level in enumerate(["a", "b", "c"]):
         state = state_0.copy()
         for i in range(3):
