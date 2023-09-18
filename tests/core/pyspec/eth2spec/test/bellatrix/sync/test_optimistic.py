@@ -118,7 +118,7 @@ def test_from_syncing_to_invalid(spec, state):
     yield 'steps', test_steps
 
 
-def add_attestation_and_sign_block_with_aggregation_bit_list(spec, state, store, block, index, aggregation_bit_list):
+def sign_block_with_aggregation_bit_list(spec, state, block, index, aggregation_bit_list):
     attestation_data = build_attestation_data(
         spec, state, slot=state.slot, index=index
     )
@@ -184,8 +184,8 @@ def test_multiple_branches_sync_all_invalidated_but_one(spec, state):
 
             max_committee_index = spec.get_committee_count_per_slot(state, current_slot)
             committee_index = min(j, max_committee_index - 1)
-            signed_block = add_attestation_and_sign_block_with_aggregation_bit_list(
-                spec, state, fc_store, block, committee_index, aggregation_bit_lists[j]
+            signed_block = sign_block_with_aggregation_bit_list(
+                spec, state, block, committee_index, aggregation_bit_lists[j]
             )
             signed_blocks[f'chain_{level}_{i}'] = signed_block.copy()
 
@@ -287,8 +287,8 @@ def test_multiple_branches_sync_all_invalidated_but_one_equal_weight(spec, state
 
             max_committee_index = spec.get_committee_count_per_slot(state, current_slot)
             committee_index = min(j, max_committee_index - 1)
-            signed_block = add_attestation_and_sign_block_with_aggregation_bit_list(
-                spec, state, fc_store, block, committee_index, aggregation_bit_lists[j]
+            signed_block = sign_block_with_aggregation_bit_list(
+                spec, state, block, committee_index, aggregation_bit_lists[j]
             )
             signed_blocks[f"chain_{level}_{i}"] = signed_block.copy()
             signed_blocks_message_hash[i].append(
