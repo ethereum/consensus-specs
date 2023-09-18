@@ -54,7 +54,7 @@
 Deneb is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
 * [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
-* [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
+* [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed Voluntary Exits
 * [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
 * [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
