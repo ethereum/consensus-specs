@@ -1,6 +1,6 @@
 # Test format: Verify blob KZG proof batch
 
-Use the blob KZG proofs to verify that the KZG commitments for given `blob`s are correct
+Use the blob KZG proofs to verify that the KZG commitments for given `blobs` are correct
 
 ## Test case format
 
@@ -8,13 +8,13 @@ The test data is declared in a `data.yaml` file:
 
 ```yaml
 input:
-  blob: List[Blob] -- the data blob
-  commitment: List[KZGCommitment] -- the KZG commitment to the data blob
-  proof: List[KZGProof] -- The KZG proof
+  blobs: List[Blob] -- the data blob
+  commitments: List[KZGCommitment] -- the KZG commitment to the data blob
+  proofs: List[KZGProof] -- The KZG proof
 output: bool -- true (all proofs are valid) or false (some proofs incorrect)
 ```
 
-- `blob`s here are encoded as a string: hexadecimal encoding of `4096 * 32 = 131072` bytes, prefixed with `0x`.
+- `blobs` here are encoded as a string: hexadecimal encoding of `4096 * 32 = 131072` bytes, prefixed with `0x`.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 

@@ -10,6 +10,10 @@ from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 
 
+def generate_case_fn(tfn, generator_mode, phase, preset, bls_active):
+    return lambda: tfn(generator_mode=generator_mode, phase=phase, preset=preset, bls_active=bls_active)
+
+
 def generate_from_tests(runner_name: str, handler_name: str, src: Any,
                         fork_name: SpecForkName, preset_name: PresetBaseName,
                         bls_active: bool = True,
@@ -52,7 +56,7 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
             suite_name=getattr(tfn, 'suite_name', 'pyspec_tests'),
             case_name=case_name,
             # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
-            case_fn=lambda: tfn(generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active)
+            case_fn=generate_case_fn(tfn, generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active)
         )
 
 

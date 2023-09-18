@@ -55,11 +55,6 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
-    # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
-    if isinstance(blobs, str) or isinstance(proofs, str):
-        return True
-
     return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
@@ -111,7 +106,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
-    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+    is_first_block = store.proposer_boost_root == Root()
+    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

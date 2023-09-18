@@ -3,7 +3,8 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls, with_all_phases, with_presets,
     spec_test, single_phase,
-    with_custom_state, scaled_churn_balances,
+    with_custom_state,
+    scaled_churn_balances_min_churn_limit,
 )
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import (
@@ -102,7 +103,8 @@ def test_success_exit_queue__min_churn(spec, state):
 @with_presets([MINIMAL],
               reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit,
+                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_success_exit_queue__scaled_churn(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
