@@ -131,7 +131,6 @@ def sign_block_with_aggregation_bit_list(spec, state, block, index, aggregation_
         data=attestation_data,
     )
     sign_attestation(spec, state, attestation)
-    spec.on_attestation(store, attestation, is_from_block=True)
 
     block.body.attestations.append(attestation)
 
