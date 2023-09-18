@@ -6,7 +6,10 @@ from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
     state_transition_with_full_block,
+    build_attestation_data,
+    sign_attestation,
 )
+from eth2spec.test.helpers.state import state_transition_and_sign_block
 
 
 class BlobData(NamedTuple):
@@ -388,3 +391,22 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
+
+
+def sign_block_with_aggregation_bit_list(spec, state, block, index, aggregation_bit_list):
+    attestation_data = build_attestation_data(
+        spec, state, slot=state.slot, index=index
+    )
+    committee = spec.get_beacon_committee(state, attestation_data.slot, attestation_data.index)
+    number_empty_aggregation = len(committee) - len(aggregation_bit_list)
+    attestation = spec.Attestation(
+        aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+            *(*(aggregation_bit_list), *([0] * number_empty_aggregation))
+        ),
+        data=attestation_data,
+    )
+    sign_attestation(spec, state, attestation)
+
+    block.body.attestations.append(attestation)
+
+    return state_transition_and_sign_block(spec, state, block)

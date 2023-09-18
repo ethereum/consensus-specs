@@ -4,11 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_bellatrix_and_later,
 )
-from eth2spec.test.helpers.attestations import (
-    build_attestation_data,
-    sign_attestation,
-    state_transition_with_full_block,
-)
+from eth2spec.test.helpers.attestations import state_transition_with_full_block
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -18,6 +14,7 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    sign_block_with_aggregation_bit_list,
 )
 from eth2spec.test.helpers.optimistic_sync import (
     PayloadStatusV1,
@@ -116,25 +113,6 @@ def test_from_syncing_to_invalid(spec, state):
     assert mega_store.opt_store.head_block_root == signed_blocks_a[-1].message.hash_tree_root()
 
     yield 'steps', test_steps
-
-
-def sign_block_with_aggregation_bit_list(spec, state, block, index, aggregation_bit_list):
-    attestation_data = build_attestation_data(
-        spec, state, slot=state.slot, index=index
-    )
-    committee = spec.get_beacon_committee(state, attestation_data.slot, attestation_data.index)
-    number_empty_aggregation = len(committee) - len(aggregation_bit_list)
-    attestation = spec.Attestation(
-        aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
-            *(*(aggregation_bit_list), *([0] * number_empty_aggregation))
-        ),
-        data=attestation_data,
-    )
-    sign_attestation(spec, state, attestation)
-
-    block.body.attestations.append(attestation)
-
-    return state_transition_and_sign_block(spec, state, block)
 
 
 @with_bellatrix_and_later
