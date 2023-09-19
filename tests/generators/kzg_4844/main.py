@@ -214,6 +214,22 @@ def case03_verify_kzg_proof():
                 'output': False
             }
 
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    _, y = spec.compute_kzg_proof(blob, z)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert not spec.verify_kzg_proof(commitment, z, y, proof)
+    yield 'verify_kzg_proof_case_incorrect_proof_point_at_infinity', {
+        'input': {
+            'commitment': encode_hex(commitment),
+            'z': encode_hex(z),
+            'y': encode_hex(y),
+            'proof': encode_hex(proof),
+        },
+        'output': False
+    }
+
     # Edge case: Invalid commitment
     for commitment in INVALID_G1_POINTS:
         blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
