@@ -354,6 +354,20 @@ def case05_verify_blob_kzg_proof():
             'output': False
         }
 
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
+    yield 'verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+            'proof': encode_hex(proof),
+        },
+        'output': False
+    }
+
     # Edge case: Invalid blob
     for blob in INVALID_BLOBS:
         proof = G1
@@ -399,20 +413,6 @@ def case05_verify_blob_kzg_proof():
             'output': None
         }
 
-    # Incorrect `G1_POINT_AT_INFINITY` proof
-    blob = BLOB_RANDOM_VALID1
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
-    yield 'verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity', {
-        'input': {
-            'blob': encode_hex(blob),
-            'commitment': encode_hex(commitment),
-            'proof': encode_hex(proof),
-        },
-        'output': False
-    }
-
 
 def case06_verify_blob_kzg_proof_batch():
     # Valid cases
@@ -442,6 +442,20 @@ def case06_verify_blob_kzg_proof_batch():
             'blobs': encode_hex_list(VALID_BLOBS),
             'commitments': encode_hex_list(commitments),
             'proofs': encode_hex_list(proofs_incorrect),
+        },
+        'output': False
+    }
+
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert not spec.verify_blob_kzg_proof_batch([blob], [commitment], [proof])
+    yield 'verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity', {
+        'input': {
+            'blobs': encode_hex_list([blob]),
+            'commitments': encode_hex_list([commitment]),
+            'proofs': encode_hex_list([proof]),
         },
         'output': False
     }
@@ -521,20 +535,6 @@ def case06_verify_blob_kzg_proof_batch():
             'proofs': encode_hex_list(proofs[:-1]),
         },
         'output': None
-    }
-
-    # Incorrect `G1_POINT_AT_INFINITY` proof
-    blob = BLOB_RANDOM_VALID1
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert not spec.verify_blob_kzg_proof_batch([blob], [commitment], [proof])
-    yield 'verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity', {
-        'input': {
-            'blobs': encode_hex_list([blob]),
-            'commitments': encode_hex_list([commitment]),
-            'proofs': encode_hex_list([proof]),
-        },
-        'output': False
     }
 
 
