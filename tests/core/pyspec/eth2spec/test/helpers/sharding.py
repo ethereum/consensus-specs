@@ -41,7 +41,7 @@ class BlobTransaction(Container):
     value: uint256
     data: ByteList[MAX_CALLDATA_SIZE]
     access_list: List[AccessTuple, MAX_ACCESS_LIST_SIZE]
-    max_fee_per_data_gas: uint256
+    max_fee_per_blob_gas: uint256
     blob_versioned_hashes: List[Bytes32, MAX_VERSIONED_HASHES_LIST_SIZE]
 
 
@@ -50,18 +50,15 @@ class SignedBlobTransaction(Container):
     signature: ECDSASignature
 
 
-def get_sample_blob(spec, rng=None):
-    if rng is None:
-        rng = random.Random(5566)
-
+def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
     values = [
-        rng.randint(0, spec.BLS_MODULUS - 1)
+        rng.randint(0, spec.BLS_MODULUS - 1) if is_valid_blob else spec.BLS_MODULUS
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
 
     b = bytes()
     for v in values:
-        b += v.to_bytes(32, spec.ENDIANNESS)
+        b += v.to_bytes(32, spec.KZG_ENDIANNESS)
 
     return spec.Blob(b)
 
@@ -98,15 +95,19 @@ def get_poly_in_both_forms(spec, rng=None):
     return coeffs, evals
 
 
-def get_sample_opaque_tx(spec, blob_count=1, rng=None):
+def get_sample_opaque_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blob=True):
     blobs = []
     blob_kzg_commitments = []
     blob_kzg_proofs = []
     blob_versioned_hashes = []
     for _ in range(blob_count):
-        blob = get_sample_blob(spec, rng)
-        blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
-        blob_kzg_proof = spec.compute_blob_kzg_proof(blob, blob_commitment)
+        blob = get_sample_blob(spec, rng, is_valid_blob=is_valid_blob)
+        if is_valid_blob:
+            blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
+            blob_kzg_proof = spec.compute_blob_kzg_proof(blob, blob_commitment)
+        else:
+            blob_commitment = spec.KZGCommitment()
+            blob_kzg_proof = spec.KZGProof()
         blob_versioned_hash = spec.kzg_commitment_to_versioned_hash(blob_commitment)
         blobs.append(blob)
         blob_kzg_commitments.append(blob_commitment)

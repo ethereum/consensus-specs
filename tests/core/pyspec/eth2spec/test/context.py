@@ -9,15 +9,17 @@ from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spe
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
 from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
 from eth2spec.eip6110 import mainnet as spec_eip6110_mainnet, minimal as spec_eip6110_minimal
+from eth2spec.eip7002 import mainnet as spec_eip7002_mainnet, minimal as spec_eip7002_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    EIP6110,
+    EIP6110, EIP7002,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
+    LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
 from .helpers.typing import SpecForkName, PresetBaseName
@@ -82,6 +84,7 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         CAPELLA: spec_capella_minimal,
         DENEB: spec_deneb_minimal,
         EIP6110: spec_eip6110_minimal,
+        EIP7002: spec_eip7002_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
@@ -90,6 +93,7 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         CAPELLA: spec_capella_mainnet,
         DENEB: spec_deneb_mainnet,
         EIP6110: spec_eip6110_mainnet,
+        EIP7002: spec_eip7002_mainnet,
     },
 }
 
@@ -158,14 +162,34 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
-def scaled_churn_balances(spec: Spec):
+def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     See the second argument of ``max`` in ``get_validator_churn_limit``.
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (2 + spec.config.MIN_PER_EPOCH_CHURN_LIMIT)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -428,13 +452,6 @@ def with_all_phases_except(exclusion_phases):
     return decorator
 
 
-with_altair_and_later = with_all_phases_from(ALTAIR)
-with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
-with_capella_and_later = with_all_phases_from(CAPELLA)
-with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
-
-
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET
     if 'preset' in kw:
@@ -540,6 +557,16 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
+
+with_altair_and_later = with_all_phases_from(ALTAIR)
+with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
+with_capella_and_later = with_all_phases_from(CAPELLA)
+with_deneb_and_later = with_all_phases_from(DENEB)
+with_eip6110_and_later = with_all_phases_from(EIP6110)
+with_eip7002_and_later = with_all_phases_from(EIP7002)
+
+
 class quoted_str(str):
     pass
 
@@ -560,7 +587,7 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_copy_of_spec(spec):
+def get_copy_of_spec(spec):
     fork = spec.fork
     preset = spec.config.PRESET_BASE
     module_path = f"eth2spec.{fork}.{preset}"
@@ -601,14 +628,14 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(_get_copy_of_spec(spec), config_overrides)
+            spec, output_config = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
 
             # Apply config overrides to additional phases, if present
             if 'phases' in kw:
                 phases = {}
                 for fork in kw['phases']:
                     phases[fork], output = spec_with_config_overrides(
-                        _get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                        get_copy_of_spec(kw['phases'][fork]), config_overrides)
                     if emitted_fork == fork:
                         output_config = output
                 kw['phases'] = phases

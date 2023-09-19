@@ -4,5 +4,7 @@
 # ---------------------------------------------------------------
 # [customized]
 FIELD_ELEMENTS_PER_BLOB: 4
-# `uint64(2**2)` (= 4)
-MAX_BLOBS_PER_BLOCK: 4
+# [customized]
+MAX_BLOB_COMMITMENTS_PER_BLOCK: 16
+# `uint64(6)`
+MAX_BLOBS_PER_BLOCK: 6
