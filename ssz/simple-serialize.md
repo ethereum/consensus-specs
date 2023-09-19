@@ -10,6 +10,7 @@
   - [Basic types](#basic-types)
   - [Composite types](#composite-types)
   - [Variable-size and fixed-size](#variable-size-and-fixed-size)
+  - [Byte](#byte)
   - [Aliases](#aliases)
   - [Default values](#default-values)
     - [`is_zero`](#is_zero)
@@ -25,7 +26,7 @@
 - [Merkleization](#merkleization)
 - [Summaries and expansions](#summaries-and-expansions)
 - [Implementations](#implementations)
-- [Canonical JSON mapping](#canonical-json-mapping)
+- [JSON mapping](#json-mapping)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -42,7 +43,7 @@
 ### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-* `byte`: 8-bit opaque data container, equivalent in serialization to `uint8`
+* `byte`: 8-bit opaque data container, equivalent in serialization and hashing to `uint8`
 * `boolean`: `True` or `False`
 
 ### Composite types
@@ -73,7 +74,7 @@ We recursively define "variable-size" types to be lists, unions, `Bitlist` and a
 
 ### Byte
 
-Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the former is used for opaque date while the latter is intended as a number.
+Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the former is used for opaque data while the latter is intended as a number.
 
 ### Aliases
 
