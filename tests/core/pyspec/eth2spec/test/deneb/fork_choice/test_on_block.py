@@ -58,7 +58,6 @@ def test_simple_blob_data(spec, state):
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
-    store.time = current_time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
     blob_data = BlobData(blobs, blob_kzg_proofs)
