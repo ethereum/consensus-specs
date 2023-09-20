@@ -96,5 +96,6 @@ def test_networking(spec, state):
 @with_all_phases
 @spec_state_test
 def test_fork_choice(spec, state):
-    assert spec.INTERVALS_PER_SLOT < spec.config.SECONDS_PER_SLOT
+    assert spec.ATTESTATION_DUE_MS < spec.config.SECONDS_PER_SLOT * 1000
+    assert spec.AGGREGATE_DUE_MS < spec.config.SECONDS_PER_SLOT * 1000
     assert spec.config.PROPOSER_SCORE_BOOST <= 100

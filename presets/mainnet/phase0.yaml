@@ -81,3 +81,15 @@ MAX_ATTESTATIONS: 128
 MAX_DEPOSITS: 16
 # 2**4 (= 16) voluntary exits
 MAX_VOLUNTARY_EXITS: 16
+
+# Fork choice
+# ---------------------------------------------------------------
+# 4000ms
+LATE_BLOCK_CUTOFF_MS: 4000
+
+# Validator duties
+# ---------------------------------------------------------------
+# 4000ms
+ATTESTATION_DUE_MS: 4000
+# 8000ms
+AGGREGATE_DUE_MS: 8000
