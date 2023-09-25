@@ -222,8 +222,9 @@ def case03_verify_kzg_proof():
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.G1_POINT_AT_INFINITY
         assert not spec.verify_kzg_proof(commitment, z, y, proof)
+        prefix = 'verify_kzg_proof_case_incorrect_proof_point_at_infinity'
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
-        yield f'verify_kzg_proof_case_incorrect_proof_point_at_infinity_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'z': encode_hex(z),
@@ -240,8 +241,9 @@ def case03_verify_kzg_proof():
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.G1_POINT_AT_INFINITY
         assert spec.verify_kzg_proof(commitment, z, y, proof)
+        prefix = 'verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly'
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
-        yield f'verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'z': encode_hex(z),
@@ -259,8 +261,9 @@ def case03_verify_kzg_proof():
         proof = spec.G1_POINT_AT_INFINITY
         assert spec.verify_kzg_proof(commitment, z, y, proof)
         assert y == field_element_bytes(2)
+        prefix = 'verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly'
         identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
-        yield f'verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'z': encode_hex(z),
@@ -453,8 +456,6 @@ def case05_verify_blob_kzg_proof():
         },
         'output': True
     }
-
-
 
     # Edge case: Invalid blob
     for blob in INVALID_BLOBS:
