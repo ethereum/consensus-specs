@@ -273,7 +273,7 @@ for directory in all_directories:
                 )
                 if not collect_only_output:
                     logger.warning(
-                        f"{get_script_relative_path()} collect_only_output for {file} is empty"
+                        "%s collect_only_output for %s is empty", get_script_relative_path(), file
                     )
                 test_cases_output_file_path = (
                     Path(os.path.splitext(output_file_path)[0]) / "test_cases.md"
