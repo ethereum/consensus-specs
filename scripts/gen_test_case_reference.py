@@ -8,7 +8,6 @@ import io
 import logging
 import os
 import re
-import sys
 import textwrap
 from pathlib import Path
 from string import Template
@@ -18,11 +17,10 @@ import mkdocs_gen_files
 import pytest
 from git import Repo
 
-from tests.core.eth2spec.test.helpers.constants import ALL_PHASES  # not working yet
+from eth2spec.test.helpers.constants import ALL_PHASES  # not working yet
 
-GEN_TEST_PATH = "tests\\core\\pyspec\\eth2spec\\test"
+GEN_TEST_PATH = "tests/core/pyspec/eth2spec/test"
 source_directory = Path(GEN_TEST_PATH)
-target_dir = Path(GEN_TEST_PATH)
 non_test_files_to_include = []  # __init__.py is treated separately
 
 # Locate to `consensus-specs` to determine the repository (GitPython)
@@ -134,9 +132,9 @@ def run_collect_only(test_path: Path = source_directory) -> Tuple[str, str]:
     """
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer):
-        pytest.main(["--collect-only", "-q", str(test_path)])
+        pytest.main(["-q", str(test_path)])
     output = buffer.getvalue()
-    collect_only_command = f"pytest --collect-only -q {test_path}"
+    collect_only_command = f"pytest -q {test_path}"
     # strip out the test module
     output_lines = [
         line.split("::")[1]
@@ -226,8 +224,7 @@ for directory in all_directories:
         markdown_files = [filename for filename in files if filename.endswith(".md")]
         python_files = [filename for filename in files if filename.endswith(".py")]
 
-        test_dir_relative_path = Path(root).relative_to("tests")
-        output_directory = target_dir / test_dir_relative_path
+        test_dir_relative_path = Path(root.split("eth2spec")[-1][1:])
 
         # Process Markdown files first, then Python files for nav section ordering
         for file in markdown_files:
@@ -240,7 +237,7 @@ for directory in all_directories:
                 suffix = "_"
             basename, extension = os.path.splitext(file)
             file = f"{basename}{suffix}.{extension}"
-            output_file_path = output_directory / file
+            output_file_path = test_dir_relative_path / file
             nav_path = "Test Case Reference" / test_dir_relative_path / basename
             copy_file(source_file, output_file_path)
             nav_tuple = tuple(snake_to_capitalize(part) for part in nav_path.parts)
@@ -251,13 +248,13 @@ for directory in all_directories:
             output_file_path = Path("undefined")
 
             if file == "__init__.py":
-                output_file_path = output_directory / "index.md"
+                output_file_path = test_dir_relative_path / "index.md"
                 nav_path = "Test Case Reference" / test_dir_relative_path
                 package_name = root.replace(os.sep, ".")
                 pytest_test_path = root
             elif file.startswith("test_") or file in non_test_files_to_include:
                 file_no_ext = os.path.splitext(file)[0]
-                output_file_path = output_directory / file_no_ext / "index.md"
+                output_file_path = test_dir_relative_path / file_no_ext / "index.md"
                 nav_path = "Test Case Reference" / test_dir_relative_path / file_no_ext
                 package_name = os.path.join(root, file_no_ext).replace(os.sep, ".")
                 pytest_test_path = os.path.join(root, file)
