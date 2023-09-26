@@ -132,9 +132,11 @@ def run_collect_only(test_path: Path = source_directory) -> Tuple[str, str]:
     """
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer):
-        pytest.main(["-q", str(test_path)])
+        pytest.main(["--import-mode=importlib", "--collect-only", "-q", str(test_path)])
     output = buffer.getvalue()
-    collect_only_command = f"pytest -q {test_path}"
+    collect_only_command = (
+        f"pytest --import-mode=importlib --collect-only -q {test_path}"
+    )
     # strip out the test module
     output_lines = [
         line.split("::")[1]
