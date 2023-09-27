@@ -389,29 +389,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ### Deposits
 
 ```python
-def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFieldElement:
-    # hash `validator_index || counter`
-    return BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
-```
-
-```python
-def get_unique_whisk_k(state: BeaconState, validator_index: ValidatorIndex) -> BLSFieldElement:
-    counter = 0
-    while True:
-        k = get_initial_whisk_k(validator_index, counter)
-        if is_k_commitment_unique(state, BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)):
-            return k  # unique by trial and error
-        counter += 1
-```
-
-```python
-def get_k_commitment(k: BLSFieldElement) -> BLSG1Point:
-    return BLSG1ScalarMultiply(k, BLS_G1_GENERATOR)
-```
-
-```python
-def get_initial_tracker(k: BLSFieldElement) -> WhiskTracker:
-    return WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=BLSG1ScalarMultiply(k, BLS_G1_GENERATOR))
+def get_initial_tracker(pubkey: BLSPubkey) -> WhiskTracker:
+    return WhiskTracker(r_G=BLS_G1_GENERATOR, k_r_G=pubkey)
 ```
 
 ```python
@@ -440,9 +419,8 @@ def apply_deposit(state: BeaconState,
             set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
             set_or_append_list(state.inactivity_scores, index, uint64(0))
             # [New in Whisk]
-            k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators) - 1))
-            state.whisk_trackers.append(get_initial_tracker(k))
-            state.whisk_k_commitments.append(get_k_commitment(k))
+            state.whisk_trackers.append(get_initial_tracker(pubkey))
+            state.whisk_k_commitments.append(pubkey)
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
