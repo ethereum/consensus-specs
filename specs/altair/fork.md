@@ -22,8 +22,6 @@ This document describes the process of the first upgrade of the beacon chain: th
 
 ## Configuration
 
-Warning: this configuration is not definitive.
-
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
