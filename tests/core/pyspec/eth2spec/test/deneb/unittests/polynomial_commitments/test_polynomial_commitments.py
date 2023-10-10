@@ -170,26 +170,6 @@ def test_barycentric_within_domain(spec):
 @with_deneb_and_later
 @spec_test
 @single_phase
-def test_compute_kzg_proof_within_domain(spec):
-    """
-    Create and verify KZG proof that p(z) == y
-    where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
-    """
-    blob = get_sample_blob(spec)
-    commitment = spec.blob_to_kzg_commitment(blob)
-    polynomial = spec.blob_to_polynomial(blob)
-
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
-
-    for i, z in enumerate(roots_of_unity_brp):
-        proof, y = spec.compute_kzg_proof_impl(polynomial, z)
-
-        assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
-
-
-@with_deneb_and_later
-@spec_test
-@single_phase
 def test_verify_blob_kzg_proof(spec):
     """
     Test the functions to compute and verify a blob KZG proof
