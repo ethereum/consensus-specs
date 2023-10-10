@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This upgrade updates light client data to include the Denbeb changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to Deneb.
+This upgrade updates light client data to include the Deneb changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to Deneb.
 
 Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
@@ -66,9 +66,9 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in Deneb]
+    # [New in Deneb:EIP4844]
     if epoch < DENEB_FORK_EPOCH:
-        if header.execution.excess_data_gas != uint256(0):
+        if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
             return False
 
     if epoch < CAPELLA_FORK_EPOCH:

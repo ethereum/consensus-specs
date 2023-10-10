@@ -54,7 +54,15 @@ def test_genesis_random_scores(spec, state):
 #
 
 def run_inactivity_scores_test(spec, state, participation_fn=None, inactivity_scores_fn=None, rng=Random(10101)):
-    next_epoch_via_block(spec, state)
+    while True:
+        try:
+            next_epoch_via_block(spec, state)
+        except AssertionError:
+            # If the proposer is slashed, we skip this epoch and try to propose block at the next epoch
+            next_epoch(spec, state)
+        else:
+            break
+
     if participation_fn is not None:
         participation_fn(spec, state, rng=rng)
     if inactivity_scores_fn is not None:
@@ -363,7 +371,7 @@ def test_randomized_state(spec, state):
     their inactivity score does not change.
     """
     rng = Random(10011001)
-    _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
+    yield from _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
 
 
 @with_altair_and_later
@@ -377,6 +385,6 @@ def test_randomized_state_leaking(spec, state):
     (refer ``get_eligible_validator_indices`).
     """
     rng = Random(10011002)
-    _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
+    yield from _run_randomized_state_test_for_inactivity_updates(spec, state, rng=rng)
     # Check still in leak
     assert spec.is_in_inactivity_leak(state)

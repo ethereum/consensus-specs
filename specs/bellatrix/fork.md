@@ -22,8 +22,6 @@ This document describes the process of Bellatrix upgrade.
 
 ## Configuration
 
-Warning: this configuration is not definitive.
-
 | Name | Value |
 | - | - |
 | `BELLATRIX_FORK_VERSION` | `Version('0x02000000')` |

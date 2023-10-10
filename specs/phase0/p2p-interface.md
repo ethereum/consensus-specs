@@ -20,6 +20,8 @@ It consists of four main sections:
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
+  - [Custom types](#custom-types)
+  - [Constants](#constants)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -53,6 +55,7 @@ It consists of four main sections:
     - [ENR structure](#enr-structure)
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
+  - [Attestation subnet subscription](#attestation-subnet-subscription)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
@@ -111,11 +114,11 @@ It consists of four main sections:
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-# Network fundamentals
+## Network fundamentals
 
 This section outlines the specification for the networking stack in Ethereum consensus-layer clients.
 
-## Transport
+### Transport
 
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently),
 we hereby define a profile for basic interoperability.
@@ -133,14 +136,14 @@ All listening endpoints must be publicly dialable, and thus not rely on libp2p c
 Nodes operating behind a NAT, or otherwise undialable by default (e.g. container runtime, firewall, etc.),
 MUST have their infrastructure configured to enable inbound traffic on the announced public listening endpoint.
 
-## Encryption and identification
+### Encryption and identification
 
 The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
 channel handshake with `secp256k1` identities will be used for encryption.
 
 As specified in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
-## Protocol Negotiation
+### Protocol Negotiation
 
 Clients MUST use exact equality when negotiating protocol versions to use and MAY use the version to give priority to higher version numbers.
 
@@ -148,41 +151,61 @@ Clients MUST support [multistream-select 1.0](https://github.com/multiformats/mu
 and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when the spec solidifies.
 Once all clients have implementations for multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
-## Multiplexing
+### Multiplexing
 
 During connection bootstrapping, libp2p dynamically negotiates a mutually supported multiplexing method to conduct parallel conversations.
 This applies to transports that are natively incapable of multiplexing (e.g. TCP, WebSockets, WebRTC),
 and is omitted for capable transports (e.g. QUIC).
 
 Two multiplexers are commonplace in libp2p implementations:
-[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
 Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+and MAY support [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 If both are supported by the client, yamux MUST take precedence during negotiation.
 See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
-# Consensus-layer network interaction domains
+## Consensus-layer network interaction domains
 
-## Configuration
+### Custom types
 
-This section outlines constants that are used in this spec.
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `NodeID`   | `uint256` | node identifier   |
+| `SubnetID` | `uint64`  | subnet identifier |
+
+### Constants
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
+
+### Configuration
+
+This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
-| `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
-| `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
+| `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
+| `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
+| `RESP_TIMEOUT` | `10` | The maximum duration in **seconds** for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500ms` | The maximum milliseconds of clock disparity assumed between honest nodes. |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY` | `0x00000000` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`  | `0x01000000` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
+| `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
+| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
+| `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
 
-## MetaData
+### MetaData
 
 Clients MUST locally store the following `MetaData`:
 
@@ -203,7 +226,7 @@ Where
 is entirely independent of the ENR sequence number,
 and will in most cases be out of sync with the ENR sequence number.
 
-## The gossip domain: gossipsub
+### The gossip domain: gossipsub
 
 Clients MUST support the [gossipsub v1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.0.md) libp2p Protocol
 including the [gossipsub v1.1](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md) extension.
@@ -229,7 +252,7 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 for peer scoring and other attack mitigations.
 These are currently under investigation and will be spec'd and released to mainnet when they are ready.
 
-### Topics and messages
+#### Topics and messages
 
 Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages).
 Topic strings have form: `/eth2/ForkDigestValue/Name/Encoding`.
@@ -289,7 +312,7 @@ We utilize `ACCEPT`, `REJECT`, and `IGNORE`. For each gossipsub topic, there are
 If all validations pass, return `ACCEPT`.
 If one or more validations fail while processing the items in order, return either `REJECT` or `IGNORE` as specified in the prefix of the particular condition.
 
-#### Global topics
+##### Global topics
 
 There are two primary global topics used to propagate beacon blocks (`beacon_block`)
 and aggregate attestations (`beacon_aggregate_and_proof`) to all nodes on the network.
@@ -297,7 +320,7 @@ and aggregate attestations (`beacon_aggregate_and_proof`) to all nodes on the ne
 There are three additional global topics that are used to propagate lower frequency validator messages
 (`voluntary_exit`, `proposer_slashing`, and `attester_slashing`).
 
-##### `beacon_block`
+###### `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks to all nodes on the networks.
 Signed blocks are sent in their entirety.
@@ -317,7 +340,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 - _[REJECT]_ The block is from a higher slot than its parent.
 - _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` -- i.e.
-  `get_ancestor(store, block.parent_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  `get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 - _[REJECT]_ The block is proposed by the expected `proposer_index` for the block's slot
   in the context of the current shuffling (defined by `parent_root`/`slot`).
@@ -325,7 +348,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   the block MAY be queued for later processing while proposers for the block's branch are calculated --
   in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-##### `beacon_aggregate_and_proof`
+###### `beacon_aggregate_and_proof`
 
 The `beacon_aggregate_and_proof` topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s)
 to subscribing nodes (typically validators) to be included in future blocks.
@@ -356,11 +379,11 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
-  `get_ancestor(store, aggregate.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
 
-##### `voluntary_exit`
+###### `voluntary_exit`
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary validator exits to proposers on the network.
 Signed voluntary exits are sent in their entirety.
@@ -370,7 +393,7 @@ The following validations MUST pass before forwarding the `signed_voluntary_exit
   for the validator with index `signed_voluntary_exit.message.validator_index`.
 - _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
 
-##### `proposer_slashing`
+###### `proposer_slashing`
 
 The `proposer_slashing` topic is used solely for propagating proposer slashings to proposers on the network.
 Proposer slashings are sent in their entirety.
@@ -380,7 +403,7 @@ The following validations MUST pass before forwarding the `proposer_slashing` on
   for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
 - _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
 
-##### `attester_slashing`
+###### `attester_slashing`
 
 The `attester_slashing` topic is used solely for propagating attester slashings to proposers on the network.
 Attester slashings are sent in their entirety.
@@ -392,11 +415,11 @@ Clients who receive an attester slashing on this topic MUST validate the conditi
   verify if `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
 - _[REJECT]_ All of the conditions within `process_attester_slashing` pass validation.
 
-#### Attestation subnets
+##### Attestation subnets
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network.
 
-##### `beacon_attestation_{subnet_id}`
+###### `beacon_attestation_{subnet_id}`
 
 The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated attestations
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
@@ -425,14 +448,14 @@ The following validations MUST pass before forwarding the `attestation` on the s
   (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
-  `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(attestation.data.target.epoch)) == attestation.data.target.root`
+  `get_checkpoint_block(store, attestation.data.beacon_block_root, attestation.data.target.epoch) == attestation.data.target.root`
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
-  `get_ancestor(store, attestation.data.beacon_block_root, compute_start_slot_at_epoch(store.finalized_checkpoint.epoch))
+  `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
 
 
-#### Attestations and Aggregation
+##### Attestations and Aggregation
 
 Attestation broadcasting is grouped into subnets defined by a topic.
 The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`.
@@ -445,7 +468,7 @@ Unaggregated attestations are sent as `Attestation`s to the subnet topic,
 
 Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
-### Encodings
+#### Encodings
 
 Topics are post-fixed with an encoding. Encodings define how the payload of a gossipsub message is encoded.
 
@@ -461,9 +484,9 @@ so [basic snappy block compression](https://github.com/google/snappy/blob/master
 Implementations MUST use a single encoding for gossip.
 Changing an encoding will require coordination between participating implementations.
 
-## The Req/Resp domain
+### The Req/Resp domain
 
-### Protocol identification
+#### Protocol identification
 
 Each message type is segregated into its own libp2p protocol ID, which is a case-sensitive UTF-8 string of the form:
 
@@ -485,7 +508,7 @@ With:
 This protocol segregation allows libp2p `multistream-select 1.0` / `multiselect 2.0`
 to handle the request type, version, and encoding negotiation before establishing the underlying streams.
 
-### Req/Resp interaction
+#### Req/Resp interaction
 
 We use ONE stream PER request/response interaction.
 Streams are closed when the interaction finishes, whether in success or in error.
@@ -515,7 +538,7 @@ Regardless of these type specific bounds, a global maximum uncompressed byte siz
 Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately.
 Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
-#### Requesting side
+##### Requesting side
 
 Once a new stream with the protocol ID for the request type has been negotiated, the full request message SHOULD be sent immediately.
 The request MUST be encoded according to the encoding strategy.
@@ -537,7 +560,7 @@ A requester SHOULD read from the stream until either:
 For requests consisting of a single valid `response_chunk`,
 the requester SHOULD read the chunk fully, as defined by the `encoding-dependent-header`, before closing the stream.
 
-#### Responding side
+##### Responding side
 
 Once a new stream with the protocol ID for the request type has been negotiated,
 the responder SHOULD process the incoming request and MUST validate it before processing it.
@@ -588,7 +611,7 @@ The `ErrorMessage` schema is:
 *Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes).
 Clients MUST treat as valid any byte sequences.
 
-### Encoding strategies
+#### Encoding strategies
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction.
 Only one value is possible at this time:
@@ -599,7 +622,7 @@ Only one value is possible at this time:
   For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Root`'s.
   This encoding type MUST be supported by all clients.
 
-#### SSZ-snappy encoding strategy
+##### SSZ-snappy encoding strategy
 
 The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md) outlines how objects are SSZ-encoded.
 
@@ -646,9 +669,9 @@ constituents individually as `response_chunk`s. For example, the
 `List[SignedBeaconBlock, ...]` response type sends zero or more `response_chunk`s.
 Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
-### Messages
+#### Messages
 
-#### Status
+##### Status
 
 **Protocol ID:** ``/eth2/beacon_chain/req/status/1/``
 
@@ -694,7 +717,7 @@ SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange`
 the client might need to send `Status` request again to learn if the peer has a higher head.
 Implementers are free to implement such behavior in their own way.
 
-#### Goodbye
+##### Goodbye
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
 
@@ -718,7 +741,7 @@ The request/response MUST be encoded as a single SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-#### BeaconBlocksByRange
+##### BeaconBlocksByRange
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
 
@@ -795,7 +818,7 @@ In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_roo
 After the initial block, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-#### BeaconBlocksByRoot
+##### BeaconBlocksByRoot
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/1/`
 
@@ -835,7 +858,7 @@ Clients MAY limit the number of blocks in the response.
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
-#### Ping
+##### Ping
 
 **Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
 
@@ -867,7 +890,7 @@ The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-#### GetMetaData
+##### GetMetaData
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
 
@@ -890,14 +913,14 @@ The response MUST be encoded as an SSZ-container.
 
 The response MUST consist of a single `response_chunk`.
 
-## The discovery domain: discv5
+### The discovery domain: discv5
 
 Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) (Protocol version v5.1) is used for peer discovery.
 
 `discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only.
 `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
 
-### Integration into libp2p stacks
+#### Integration into libp2p stacks
 
 `discv5` SHOULD be integrated into the client’s libp2p stack by implementing an adaptor
 to make it conform to the [service discovery](https://github.com/libp2p/go-libp2p-core/blob/master/discovery/discovery.go)
@@ -908,7 +931,7 @@ and the outputs will be multiaddrs converted from the ENR records returned by th
 
 This integration enables the libp2p stack to subsequently form connections and streams with discovered peers.
 
-### ENR structure
+#### ENR structure
 
 The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the following entries
 (exclusive of the sequence number and signature, which MUST be present in an ENR):
@@ -923,7 +946,7 @@ The ENR MAY contain the following entries:
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
-#### Attestation subnet bitfield
+##### Attestation subnet bitfield
 
 The ENR `attnets` entry signifies the attestation subnet bitfield with the following form
 to more easily discover peers participating in particular attestation gossip subnets.
@@ -936,7 +959,7 @@ If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `a
 
 If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally include the `attnets` entry or leave it out entirely.
 
-#### `eth2` field
+##### `eth2` field
 
 ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version,
 and next fork epoch to ensure connections are made with peers on the intended Ethereum network.
@@ -979,11 +1002,39 @@ Clients MAY connect to peers with the same `fork_digest` but a different `next_f
 Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients,
 these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
-# Design decision rationale
+### Attestation subnet subscription
 
-## Transport
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
 
-### Why are we defining specific transports?
+* Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
+* Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
+* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
+
+```python
+def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
+    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
+    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    permutated_prefix = compute_shuffled_index(
+        node_id_prefix,
+        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        permutation_seed,
+    )
+    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
+```
+
+```python
+def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
+    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
+```
+
+*Note*: When preparing for a hard fork, a node must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
+
+## Design decision rationale
+
+### Transport
+
+#### Why are we defining specific transports?
 
 libp2p peers can listen on multiple transports concurrently, and these can change over time.
 Multiaddrs encode not only the address but also the transport to be used to dial.
@@ -992,7 +1043,7 @@ Due to this dynamic nature, agreeing on specific transports like TCP, QUIC, or W
 
 However, it is useful to define a minimum baseline for interoperability purposes.
 
-### Can clients support other transports/handshakes than the ones mandated by the spec?
+#### Can clients support other transports/handshakes than the ones mandated by the spec?
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC transports, if available in the language of choice.
 While interoperability shall not be harmed by lack of such support, the advantages are desirable:
@@ -1007,7 +1058,7 @@ and the accompanying [QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-
 The usage of one handshake procedure or the other shall be transparent to the application layer,
 once the libp2p Host/Node object has been configured appropriately.
 
-### What are the advantages of using TCP/QUIC/Websockets?
+#### What are the advantages of using TCP/QUIC/Websockets?
 
 TCP is a reliable, ordered, full-duplex, congestion-controlled network protocol that powers much of the Internet as we know it today.
 HTTP/1.1 and HTTP/2 run atop TCP.
@@ -1027,7 +1078,7 @@ and we may only become subject to standard IP-based firewall filtering—somethi
 WebSockets and/or WebRTC transports are necessary for interaction with browsers,
 and will become increasingly important as we incorporate browser-based light clients to the Ethereum network.
 
-### Why do we not just support a single transport?
+#### Why do we not just support a single transport?
 
 Networks evolve.
 Hardcoding design decisions leads to ossification, preventing the evolution of networks alongside the state of the art.
@@ -1039,7 +1090,7 @@ Clients can adopt new transports without breaking old ones, and the multi-transp
 (e.g. browsers, embedded devices) to interact with the network as first-class citizens via suitable/native transports (e.g. WSS),
 without the need for proxying or trust delegation to servers.
 
-### Why are we not using QUIC from the start?
+#### Why are we not using QUIC from the start?
 
 The QUIC standard is still not finalized (at working draft 22 at the time of writing),
 and not all mainstream runtimes/languages have mature, standard, and/or fully-interoperable [QUIC support](https://github.com/quicwg/base-drafts/wiki/Implementations).
@@ -1052,9 +1103,9 @@ On the other hand, TLS 1.3 is the newest, simplified iteration of TLS.
 Old, insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as the sole ECDH key agreement function.
 Handshakes are faster, 1-RTT data is supported, and session resumption is a reality, amongst other features.
 
-## Multiplexing
+### Multiplexing
 
-### Why are we using mplex/yamux?
+#### Why are we using mplex/yamux?
 
 [Yamux](https://github.com/hashicorp/yamux/blob/master/spec.md) is a multiplexer invented by Hashicorp that supports stream-level congestion control.
 Implementations exist in a limited set of languages, and it’s not a trivial piece to develop.
@@ -1066,9 +1117,9 @@ It does not support stream-level congestion control and is subject to head-of-li
 Overlay multiplexers are not necessary with QUIC since the protocol provides native multiplexing,
 but they need to be layered atop TCP, WebSockets, and other transports that lack such support.
 
-## Protocol Negotiation
+### Protocol Negotiation
 
-### When is multiselect 2.0 due and why do we plan to migrate to it?
+#### When is multiselect 2.0 due and why do we plan to migrate to it?
 
 multiselect 2.0 is currently being conceptualized.
 The debate started [on this issue](https://github.com/libp2p/specs/pull/95),
@@ -1084,7 +1135,7 @@ We plan to eventually migrate to multiselect 2.0 because it will:
 3. Leverage *push data* mechanisms of underlying protocols to expedite negotiation.
 4. Provide the building blocks for enhanced censorship resistance.
 
-### What is the difference between connection-level and stream-level protocol negotiation?
+#### What is the difference between connection-level and stream-level protocol negotiation?
 
 All libp2p connections must be authenticated, encrypted, and multiplexed.
 Connections using network transports unsupportive of native authentication/encryption and multiplexing (e.g. TCP) need to undergo protocol negotiation to agree on a mutually supported:
@@ -1101,9 +1152,9 @@ When opening streams, peers pin a protocol to that stream, by conducting *stream
 At present, multistream-select 1.0 is used for both types of negotiation,
 but multiselect 2.0 will use dedicated mechanisms for connection bootstrapping process and stream protocol negotiation.
 
-## Encryption
+### Encryption
 
-### Why are we not supporting SecIO?
+#### Why are we not supporting SecIO?
 
 SecIO has been the default encryption layer for libp2p for years.
 It is used in IPFS and Filecoin. And although it will be superseded shortly, it is proven to work at scale.
@@ -1114,7 +1165,7 @@ a mechanism that multiselect 2.0 will leverage to reduce round trips during conn
 
 SecIO is not considered secure for the purposes of this spec.
 
-### Why are we using Noise?
+#### Why are we using Noise?
 
 Copied from the Noise Protocol Framework [website](http://www.noiseprotocol.org):
 
@@ -1129,7 +1180,7 @@ and are used in major cryptographic-centric projects like WireGuard, I2P, and Li
 [Various](https://www.wireguard.com/papers/kobeissi-bhargavan-noise-explorer-2018.pdf) [studies](https://eprint.iacr.org/2019/436.pdf)
 have assessed the stated security goals of several Noise handshakes with positive results.
 
-### Why are we using encryption at all?
+#### Why are we using encryption at all?
 
 Transport level encryption secures message exchange and provides properties that are useful for privacy, safety, and censorship resistance.
 These properties are derived from the following security guarantees that apply to the entire communication between two peers:
@@ -1146,9 +1197,9 @@ Note that transport-level encryption is not exclusive of application-level encry
 Transport-level encryption secures the communication itself,
 while application-level cryptography is necessary for the application’s use cases (e.g. signatures, randomness, etc.).
 
-## Gossipsub
+### Gossipsub
 
-### Why are we using a pub/sub algorithm for block and attestation propagation?
+#### Why are we using a pub/sub algorithm for block and attestation propagation?
 
 Pubsub is a technique to broadcast/disseminate data across a network rapidly.
 Such data is packaged in fire-and-forget messages that do not require a response from every recipient.
@@ -1156,18 +1207,18 @@ Peers subscribed to a topic participate in the propagation of messages in that t
 
 The alternative is to maintain a fully connected mesh (all peers connected to each other 1:1), which scales poorly (O(n^2)).
 
-### Why are we using topics to segregate encodings, yet only support one encoding?
+#### Why are we using topics to segregate encodings, yet only support one encoding?
 
 For future extensibility with almost zero overhead now (besides the extra bytes in the topic name).
 
-### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
+#### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, during a hard fork.
 
 When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a gossipsub topic,
 the node should join the topic of the future epoch in which the task is to occur in addition to listening to the topics for the current epoch.
 
-### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
+#### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
 
 Supporting multiple topics/encodings would require the presence of relayers to translate between encodings
 and topics so as to avoid network fragmentation where participants have diverging views on the gossiped state,
@@ -1182,7 +1233,7 @@ but the price here is pretty high in terms of overhead -- both computational and
 
 It is permitted for clients to publish data on alternative topics as long as they also publish on the network-wide mandatory topic.
 
-### Why are the topics strings and not hashes?
+#### Why are the topics strings and not hashes?
 
 Topic names have a hierarchical structure.
 In the future, gossipsub may support wildcard subscriptions
@@ -1195,14 +1246,14 @@ since the domain is finite anyway, and calculating a digest's preimage would be 
 Furthermore, the topic names are shorter than their digest equivalents (assuming SHA-256 hash),
 so hashing topics would bloat messages unnecessarily.
 
-### Why are we using the `StrictNoSign` signature policy?
+#### Why are we using the `StrictNoSign` signature policy?
 
 The policy omits the `from` (1), `seqno` (3), `signature` (5) and `key` (6) fields. These fields would:
 - Expose origin of sender (`from`), type of sender (based on `seqno`)
 - Add extra unused data to the gossip, since message IDs are based on `data`, not on the `from` and `seqno`.
 - Introduce more message validation than necessary, e.g. no `signature`.
 
-### Why are we overriding the default libp2p pubsub `message-id`?
+#### Why are we overriding the default libp2p pubsub `message-id`?
 
 For our current purposes, there is no need to address messages based on source peer, or track a message `seqno`.
 By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
@@ -1214,7 +1265,7 @@ Some examples of where messages could be duplicated:
   Partial aggregates could be duplicated
 * Clients re-publishing seen messages
 
-### Why are these specific gossip parameters chosen?
+#### Why are these specific gossip parameters chosen?
 
 - `D`, `D_low`, `D_high`, `D_lazy`: recommended defaults.
 - `heartbeat_interval`: 0.7 seconds, recommended for the beacon chain in the [GossipSub evaluation report by Protocol Labs](https://gateway.ipfs.io/ipfs/QmRAFP5DBnvNjdYSbWhEhVRJJDFCLpPyvew5GwCCB4VxM4).
@@ -1233,7 +1284,7 @@ Some examples of where messages could be duplicated:
   Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
 
 
-### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
+#### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 
 For some gossip channels (e.g. those for Attestations and BeaconBlocks),
 there are designated ranges of slots during which particular messages can be sent,
@@ -1247,14 +1298,14 @@ For minimum and maximum allowable slot broadcast times,
 Although messages can at times be eagerly gossiped to the network,
 the node's fork choice prevents integration of these messages into the actual consensus until the _actual local start_ of the designated slot.
 
-### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
+#### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel.
 The exact grouping will be dependent on more involved network tests.
 This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet).
 The value is currently set to be equal to `MAX_COMMITTEES_PER_SLOT` if/until network tests indicate otherwise.
 
-### Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?
+#### Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?
 
 Attestations can only be included on chain within an epoch's worth of slots so this is the natural cutoff.
 There is no utility to the chain to broadcast attestations older than one epoch,
@@ -1265,7 +1316,7 @@ In addition to this, relaying attestations requires validating the attestation i
 Thus, validating arbitrarily old attestations would put additional requirements on which states need to be readily available to the node.
 This would result in a higher resource burden and could serve as a DoS vector.
 
-### Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?
+#### Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?
 
 The dominant strategy for an individual validator is to always broadcast an aggregate containing their own attestation
 to the global channel to ensure that proposers see their attestation for inclusion.
@@ -1275,19 +1326,19 @@ the gossiped aggregate ensures that this dominant strategy will not flood the gl
 Also, an attacker can create any number of honest-looking aggregates and broadcast them to the global pubsub channel.
 Thus without some sort of proof of selection as an aggregator, the global channel can trivially be spammed.
 
-### Why are we sending entire objects in the pubsub and not just hashes?
+#### Why are we sending entire objects in the pubsub and not just hashes?
 
 Entire objects should be sent to get the greatest propagation speeds.
 If only hashes are sent, then block and attestation propagation is dependent on recursive requests from each peer.
 In a hash-only scenario, peers could receive hashes without knowing who to download the actual contents from.
 Sending entire objects ensures that they get propagated through the entire network.
 
-### Should clients gossip blocks if they *cannot* validate the proposer signature due to not yet being synced, not knowing the head block, etc?
+#### Should clients gossip blocks if they *cannot* validate the proposer signature due to not yet being synced, not knowing the head block, etc?
 
 The prohibition of unverified-block-gossiping extends to nodes that cannot verify a signature
 due to not being fully synced to ensure that such (amplified) DOS attacks are not possible.
 
-### How are we going to discover peers in a gossipsub topic?
+#### How are we going to discover peers in a gossipsub topic?
 
 In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
@@ -1295,7 +1346,7 @@ Although this method will be sufficient for early upgrade of the beacon chain, w
 ENRs should ultimately not be used for this purpose.
 They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
 
-### How should fork version be used in practice?
+#### How should fork version be used in practice?
 
 Fork versions are to be manually updated (likely via incrementing) at each hard fork.
 This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs)
@@ -1308,9 +1359,9 @@ In these cases, extra care should be taken to isolate fork versions (e.g. flip a
 A node locally stores all previous and future planned fork versions along with the each fork epoch.
 This allows for handling sync and processing messages starting from past forks/epochs.
 
-## Req/Resp
+### Req/Resp
 
-### Why segregate requests into dedicated protocol IDs?
+#### Why segregate requests into dedicated protocol IDs?
 
 Requests are segregated by protocol ID to:
 
@@ -1343,7 +1394,7 @@ Multiselect 2.0 will eventually remove this overhead by memoizing previously sel
 Fortunately, this req/resp protocol is not the expected network bottleneck in the protocol
 so the additional overhead is not expected to significantly hinder this domain.
 
-### Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?
+#### Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?
 
 We are using single-use streams where each stream is closed at the end of the message.
 Thus, libp2p transparently handles message delimiting in the underlying stream.
@@ -1361,7 +1412,7 @@ Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed wi
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length (unsigned here) ints.
 Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
 
-### Why do we version protocol strings with ordinals instead of semver?
+#### Why do we version protocol strings with ordinals instead of semver?
 
 Using semver for network protocols is confusing.
 It is never clear what a change in a field, even if backwards compatible on deserialization, actually implies.
@@ -1382,11 +1433,11 @@ because it's unclear if "backwards compatibility" and "breaking change" apply on
 
 For this reason, we remove and replace semver with ordinals that require explicit agreement and do not mandate a specific policy for changes.
 
-### Why is it called Req/Resp and not RPC?
+#### Why is it called Req/Resp and not RPC?
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
 
-### Why do we allow empty responses in block requests?
+#### Why do we allow empty responses in block requests?
 
 When requesting blocks by range or root, it may happen that there are no blocks in the selected range or the responding node does not have the requested blocks.
 
@@ -1413,7 +1464,7 @@ Failing to provide blocks that nodes "should" have is reason to trust a peer les
 -- for example, if a particular peer gossips a block, it should have access to its parent.
 If a request for the parent fails, it's indicative of poor peer quality since peers should validate blocks before gossiping them.
 
-### Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?
+#### Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time.
 By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale,
@@ -1423,7 +1474,7 @@ To avoid this race condition, we allow the responding side to choose which branc
 The requesting client then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
 
-### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
+#### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
 
 Due to economic finality and weak subjectivity requirements of a proof-of-stake blockchain, for a new node to safely join the network
 the node must provide a recent checkpoint found out-of-band. This checkpoint can be in the form of a `root` & `epoch` or it can be the entire
@@ -1438,6 +1489,8 @@ the epoch range that a new node syncing from a checkpoint must backfill.
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
 
+[0]: # (eth2spec: skip)
+
 ```python
 MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
     MIN_VALIDATOR_WITHDRAWABILITY_DELAY
@@ -1447,7 +1500,7 @@ MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
 
 Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024` (~5 months).
 
-### Why must the proposer signature be checked when backfilling blocks in the database?
+#### Why must the proposer signature be checked when backfilling blocks in the database?
 
 When backfilling blocks in a database from a know safe block/state (e.g. when starting from a weak subjectivity state),
 the node not only must ensure the `BeaconBlock`s form a chain to the known safe block,
@@ -1462,7 +1515,7 @@ Although in this particular use case this does not represent a decay in safety
 would represent invalid historic data and could be unwittingly transmitted to
 additional nodes.
 
-### What's the effect of empty slots on the sync algorithm?
+#### What's the effect of empty slots on the sync algorithm?
 
 When syncing one can only tell that a slot has been skipped on a particular branch
 by examining subsequent blocks and analyzing the graph formed by the parent root.
@@ -1472,9 +1525,9 @@ For example, if a peer responds with blocks [2, 3] when asked for [2, 3, 4], cli
 -- it merely means that the responding peer did not send it (they may not have it yet or may maliciously be trying to hide it)
 and successive blocks will be needed to determine if there exists a block at slot 4 in this particular branch.
 
-## Discovery
+### Discovery
 
-### Why are we using discv5 and not libp2p Kademlia DHT?
+#### Why are we using discv5 and not libp2p Kademlia DHT?
 
 discv5 is a standalone protocol, running on UDP on a dedicated port, meant for peer and service discovery only.
 discv5 supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are, or will be, requirements in this context.
@@ -1490,7 +1543,7 @@ It should also help light clients of both networks find nodes with specific capa
 
 discv5 is in the process of being audited.
 
-### What is the difference between an ENR and a multiaddr, and why are we using ENRs?
+#### What is the difference between an ENR and a multiaddr, and why are we using ENRs?
 
 Ethereum Node Records are self-certified node records.
 Nodes craft and disseminate ENRs for themselves, proving authorship via a cryptographic signature.
@@ -1510,7 +1563,7 @@ discv5 uses ENRs and we will presumably need to:
 2. Define a bi-directional conversion function between multiaddrs and the corresponding denormalized fields in an ENR
   (ip, ip6, tcp, tcp6, etc.), for compatibility with nodes that do not support multiaddr natively (e.g. Ethereum execution-layer nodes).
 
-### Why do we not form ENRs and find peers until genesis block/state is known?
+#### Why do we not form ENRs and find peers until genesis block/state is known?
 
 Although client software might very well be running locally prior to the solidification of the beacon chain genesis state and block,
 clients cannot form valid ENRs prior to this point.
@@ -1521,9 +1574,9 @@ Once genesis data is known, we can then form ENRs and safely find peers.
 When using a proof-of-work deposit contract for deposits, `fork_digest` will be known `GENESIS_DELAY` (7 days in mainnet configuration) before `genesis_time`,
 providing ample time to find peers and form initial connections and gossip subnets prior to genesis.
 
-## Compression/Encoding
+### Compression/Encoding
 
-### Why are we using SSZ for encoding?
+#### Why are we using SSZ for encoding?
 
 SSZ is used at the consensus layer, and all implementations should have support for SSZ-encoding/decoding,
 requiring no further dependencies to be added to client implementations.
@@ -1533,7 +1586,7 @@ The actual data in most protocols will be further compressed for efficiency.
 SSZ has well-defined schemas for consensus objects (typically sent across the wire) reducing any serialization schema data that needs to be sent.
 It also has defined all required types that are required for this network specification.
 
-### Why are we compressing, and at which layers?
+#### Why are we compressing, and at which layers?
 
 We compress on the wire to achieve smaller payloads per-message, which, in aggregate,
 result in higher efficiency, better utilization of available bandwidth, and overall reduction in network-wide traffic overhead.
@@ -1563,13 +1616,13 @@ This looks different depending on the interaction layer:
   implementers are encouraged to encapsulate the encoding and compression logic behind
   MessageReader and MessageWriter components/strategies that can be layered on top of the raw byte streams.
 
-### Why are we using Snappy for compression?
+#### Why are we using Snappy for compression?
 
 Snappy is used in Ethereum 1.0. It is well maintained by Google, has good benchmarks,
 and can calculate the size of the uncompressed object without inflating it in memory.
 This prevents DOS vectors where large uncompressed data is sent.
 
-### Can I get access to unencrypted bytes on the wire for debugging purposes?
+#### Can I get access to unencrypted bytes on the wire for debugging purposes?
 
 Yes, you can add loggers in your libp2p protocol handlers to log incoming and outgoing messages.
 It is recommended to use programming design patterns to encapsulate the logging logic cleanly.
@@ -1580,7 +1633,7 @@ you can use logging facilities in those frameworks/runtimes to enable message tr
 For specific ad-hoc testing scenarios, you can use the [plaintext/2.0.0 secure channel](https://github.com/libp2p/specs/blob/master/plaintext/README.md)
 (which is essentially no-op encryption or message authentication), in combination with tcpdump or Wireshark to inspect the wire.
 
-### What are SSZ type size bounds?
+#### What are SSZ type size bounds?
 
 The SSZ encoding outputs of each type have size bounds: each dynamic type, such as a list, has a "limit", which can be used to compute the maximum valid output size.
 Note that for some more complex dynamic-length objects, element offsets (4 bytes each) may need to be included.
@@ -1589,7 +1642,7 @@ Other types are static, they have a fixed size: no dynamic-length content is inv
 For reference, the type bounds can be computed ahead of time, [as per this example](https://gist.github.com/protolambda/db75c7faa1e94f2464787a480e5d613e).
 It is advisable to derive these lengths from the SSZ type definitions in use, to ensure that version changes do not cause out-of-sync type bounds.
 
-# libp2p implementations matrix
+## libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p features required
 by this spec across the languages in which clients are being developed.

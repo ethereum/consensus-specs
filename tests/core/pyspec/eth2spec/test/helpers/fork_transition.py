@@ -15,6 +15,8 @@ from eth2spec.test.helpers.constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
+    EIP6110,
+    EIP7002,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -47,6 +49,7 @@ def _set_operations_by_dict(block, operation_dict):
 
 def _state_transition_and_sign_block_at_slot(spec,
                                              state,
+                                             sync_aggregate=None,
                                              operation_dict=None):
     """
     Cribbed from ``transition_unsigned_block`` helper
@@ -61,6 +64,8 @@ def _state_transition_and_sign_block_at_slot(spec,
     Thus use dict to pass operations.
     """
     block = build_empty_block(spec, state)
+    if sync_aggregate is not None:
+        block.body.sync_aggregate = sync_aggregate
 
     if operation_dict:
         _set_operations_by_dict(block, operation_dict)
@@ -141,7 +146,7 @@ def state_transition_across_slots_with_ignoring_proposers(spec,
             next_slot(spec, state)
 
 
-def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=None):
+def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None):
     spec.process_slots(state, state.slot + 1)
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
@@ -155,6 +160,10 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
         state = post_spec.upgrade_to_capella(state)
     elif post_spec.fork == DENEB:
         state = post_spec.upgrade_to_deneb(state)
+    elif post_spec.fork == EIP6110:
+        state = post_spec.upgrade_to_eip6110(state)
+    elif post_spec.fork == EIP7002:
+        state = post_spec.upgrade_to_eip7002(state)
 
     assert state.fork.epoch == fork_epoch
 
@@ -170,9 +179,20 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, operation_dict=
     elif post_spec.fork == DENEB:
         assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
         assert state.fork.current_version == post_spec.config.DENEB_FORK_VERSION
+    elif post_spec.fork == EIP6110:
+        assert state.fork.previous_version == post_spec.config.DENEB_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.EIP6110_FORK_VERSION
+    elif post_spec.fork == EIP7002:
+        assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.EIP7002_FORK_VERSION
 
     if with_block:
-        return state, _state_transition_and_sign_block_at_slot(post_spec, state, operation_dict=operation_dict)
+        return state, _state_transition_and_sign_block_at_slot(
+            post_spec,
+            state,
+            sync_aggregate=sync_aggregate,
+            operation_dict=operation_dict,
+        )
     else:
         return state, None
 

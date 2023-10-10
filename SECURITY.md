@@ -8,4 +8,4 @@ Please see [Releases](https://github.com/ethereum/consensus-specs/releases/). We
 
 **Please do not file a public ticket** mentioning the vulnerability.
 
-To find out how to disclose a vulnerability in the Ethereum Consensus Layer visit [https://eth2bounty.ethereum.org](https://eth2bounty.ethereum.org) or email eth2bounty@ethereum.org. Please read the [disclosure page](https://eth2bounty.ethereum.org) for more information about publicly disclosed security vulnerabilities.
+To find out how to disclose a vulnerability in the Ethereum Consensus Layer visit [https://ethereum.org/bug-bounty](https://ethereum.org/bug-bounty) or email bounty@ethereum.org. Please read the [disclosure page](https://ethereum.org/bug-bounty) for more information about publicly disclosed security vulnerabilities.

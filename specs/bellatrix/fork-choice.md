@@ -170,10 +170,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    assert get_ancestor(store, block.parent_root, finalized_slot) == store.finalized_checkpoint.root
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
+    block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
     # [New in Bellatrix]
@@ -181,25 +187,20 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         validate_merge_block(block)
 
     # Add new block to the store
-    store.blocks[hash_tree_root(block)] = block
+    store.blocks[block_root] = block
     # Add new state for this block to the store
-    store.block_states[hash_tree_root(block)] = state
+    store.block_states[block_root] = state
 
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
-    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+    is_first_block = store.proposer_boost_root == Root()
+    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
-    # Update justified checkpoint
-    if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        if state.current_justified_checkpoint.epoch > store.best_justified_checkpoint.epoch:
-            store.best_justified_checkpoint = state.current_justified_checkpoint
-        if should_update_justified_checkpoint(store, state.current_justified_checkpoint):
-            store.justified_checkpoint = state.current_justified_checkpoint
+    # Update checkpoints in store if necessary
+    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 
-    # Update finalized checkpoint
-    if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
-        store.finalized_checkpoint = state.finalized_checkpoint
-        store.justified_checkpoint = state.current_justified_checkpoint
+    # Eagerly compute unrealized justification and finality.
+    compute_pulled_up_tip(store, block_root)
 ```

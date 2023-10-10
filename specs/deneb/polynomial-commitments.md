@@ -49,7 +49,7 @@
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
+This document specifies basic polynomial operations and KZG polynomial commitment operations that are essential for the implementation of the EIP-4844 feature in the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
 
 Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
 
@@ -65,7 +65,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `KZGCommitment` | `Bytes48` | Validation: Perform [BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5) "KeyValidate" check but do allow the identity point |
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
 | `Polynomial` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | A polynomial in evaluation form |
-| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic blob data |
+| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob |
 
 ## Constants
 
@@ -77,6 +77,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
+| `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
 
 
 ## Preset
@@ -105,7 +106,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 | `KZG_SETUP_G2_LENGTH` | `65` |
 | `KZG_SETUP_G1` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 | `KZG_SETUP_G2` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[KZGCommitment, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Helper functions
 
@@ -161,7 +162,7 @@ def hash_to_bls_field(data: bytes) -> BLSFieldElement:
     The output is not uniform over the BLS field.
     """
     hashed_data = hash(data)
-    return BLSFieldElement(int.from_bytes(hashed_data, ENDIANNESS) % BLS_MODULUS)
+    return BLSFieldElement(int.from_bytes(hashed_data, KZG_ENDIANNESS) % BLS_MODULUS)
 ```
 
 #### `bytes_to_bls_field`
@@ -172,7 +173,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     Convert untrusted bytes to a trusted and validated BLS scalar field element.
     This function does not accept inputs greater than the BLS modulus.
     """
-    field_element = int.from_bytes(b, ENDIANNESS)
+    field_element = int.from_bytes(b, KZG_ENDIANNESS)
     assert field_element < BLS_MODULUS
     return BLSFieldElement(field_element)
 ```
@@ -237,7 +238,7 @@ def compute_challenge(blob: Blob,
     """
 
     # Append the degree of the polynomial as a domain separator
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 16, KZG_ENDIANNESS)
     data = FIAT_SHAMIR_PROTOCOL_DOMAIN + degree_poly
 
     data += blob
@@ -252,10 +253,11 @@ def compute_challenge(blob: Blob,
 ```python
 def bls_modular_inverse(x: BLSFieldElement) -> BLSFieldElement:
     """
-    Compute the modular inverse of x
-    i.e. return y such that x * y % BLS_MODULUS == 1 and return 0 for x == 0
+    Compute the modular inverse of x (for x != 0)
+    i.e. return y such that x * y % BLS_MODULUS == 1
     """
-    return BLSFieldElement(pow(x, -1, BLS_MODULUS)) if x != 0 else BLSFieldElement(0)
+    assert (int(x) % BLS_MODULUS) != 0
+    return BLSFieldElement(pow(x, -1, BLS_MODULUS))
 ```
 
 #### `div`
@@ -405,15 +407,15 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
 
     # Compute a random challenge. Note that it does not have to be computed from a hash,
     # r just has to be random.
-    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, ENDIANNESS)
-    num_commitments = int.to_bytes(len(commitments), 8, ENDIANNESS)
+    degree_poly = int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, KZG_ENDIANNESS)
+    num_commitments = int.to_bytes(len(commitments), 8, KZG_ENDIANNESS)
     data = RANDOM_CHALLENGE_KZG_BATCH_DOMAIN + degree_poly + num_commitments
 
     # Append all inputs to the transcript before we hash
     for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
         data += commitment \
-            + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
-            + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, ENDIANNESS) \
+            + int.to_bytes(z, BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS) \
+            + int.to_bytes(y, BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS) \
             + proof
 
     r = hash_to_bls_field(data)
@@ -450,7 +452,7 @@ def compute_kzg_proof(blob: Blob, z_bytes: Bytes32) -> Tuple[KZGProof, Bytes32]:
     assert len(z_bytes) == BYTES_PER_FIELD_ELEMENT
     polynomial = blob_to_polynomial(blob)
     proof, y = compute_kzg_proof_impl(polynomial, bytes_to_bls_field(z_bytes))
-    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, ENDIANNESS)
+    return proof, y.to_bytes(BYTES_PER_FIELD_ELEMENT, KZG_ENDIANNESS)
 ```
 
 #### `compute_quotient_eval_within_domain`
@@ -565,7 +567,7 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Given a list of blobs and blob KZG proofs, verify that they correspond to the provided commitments.
-
+    Will return True if there are zero blobs/commitments/proofs.
     Public method.
     """
 

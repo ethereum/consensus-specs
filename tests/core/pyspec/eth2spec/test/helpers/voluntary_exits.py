@@ -1,29 +1,31 @@
 from random import Random
 from eth2spec.utils import bls
 from eth2spec.test.context import expect_assertion_error
+from eth2spec.test.helpers.forks import is_post_deneb
 from eth2spec.test.helpers.keys import privkeys
 
 
 def prepare_signed_exits(spec, state, indices, fork_version=None):
-    if fork_version is None:
-        domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT)
-    else:
-        domain = spec.compute_domain(spec.DOMAIN_VOLUNTARY_EXIT, fork_version, state.genesis_validators_root)
-
     def create_signed_exit(index):
-        exit = spec.VoluntaryExit(
+        voluntary_exit = spec.VoluntaryExit(
             epoch=spec.get_current_epoch(state),
             validator_index=index,
         )
-        signing_root = spec.compute_signing_root(exit, domain)
-        return spec.SignedVoluntaryExit(message=exit, signature=bls.Sign(privkeys[index], signing_root))
+        return sign_voluntary_exit(spec, state, voluntary_exit, privkeys[index], fork_version=fork_version)
 
     return [create_signed_exit(index) for index in indices]
 
 
 def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None):
     if fork_version is None:
-        domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
+        if is_post_deneb(spec):
+            domain = spec.compute_domain(
+                spec.DOMAIN_VOLUNTARY_EXIT,
+                spec.config.CAPELLA_FORK_VERSION,
+                state.genesis_validators_root,
+            )
+        else:
+            domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     else:
         domain = spec.compute_domain(spec.DOMAIN_VOLUNTARY_EXIT, fork_version, state.genesis_validators_root)
 

@@ -63,7 +63,6 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
       - [Aggregation bits](#aggregation-bits-1)
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
-- [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
   - [Attester slashing](#attester-slashing)
@@ -88,10 +87,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
-| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
-| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
-| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
 
 ## Containers
 
@@ -162,7 +158,7 @@ The `withdrawal_credentials` field must be such that:
 * `withdrawal_credentials[1:12] == b'\x00' * 11`
 * `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
-After the merge of the current Ethereum application layer into the Beacon Chain,
+After the merge of the current Ethereum execution layer into the Beacon Chain,
 withdrawals to `eth1_withdrawal_address` will simply be increases to the account's ETH balance that do **NOT** trigger any EVM execution.
 
 ### Submit deposit
@@ -513,7 +509,9 @@ The `subnet_id` for the `attestation` is calculated with:
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
-def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex) -> uint64:
+def compute_subnet_for_attestation(committees_per_slot: uint64,
+                                   slot: Slot,
+                                   committee_index: CommitteeIndex) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
@@ -521,7 +519,7 @@ def compute_subnet_for_attestation(committees_per_slot: uint64, slot: Slot, comm
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return uint64((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
+    return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ### Attestation aggregation
@@ -604,23 +602,11 @@ def get_aggregate_and_proof_signature(state: BeaconState,
     return bls.Sign(privkey, signing_root)
 ```
 
-## Phase 0 attestation subnet stability
-
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each validator must:
-
-* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
-* Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
-* Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
-
-*Note*: Short lived beacon committee assignments should not be added in into the ENR `attnets` entry.
-
-*Note*: When preparing for a hard fork, a validator must select and subscribe to random subnets of the future fork versioning at least `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
-
 ## How to avoid slashing
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed: [proposer slashing](#proposer-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
 
-*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
+*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can be slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
 
 ### Proposer slashing
 
