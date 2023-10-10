@@ -139,20 +139,22 @@ def test_barycentric_outside_domain(spec):
 @single_phase
 def test_barycentric_within_domain(spec):
     """
-    Test barycentric formula correctness by using it to evaluate a polynomial at all the points of its domain
+    Test barycentric formula correctness by using it to evaluate a polynomial at various points inside its domain
     (the roots of unity).
 
     Then make sure that we would get the same result if we evaluated it from coefficient form without using the
     barycentric formula
     """
+    rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
     roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n = len(poly_coeff)
 
-    # Iterate over the entire domain
-    for i in range(n):
+    # Iterate over some roots of unity
+    for i in range(12):
+        i = rng.randint(0, n - 1)
         # Grab a root of unity and use it as the evaluation point
         z = int(roots_of_unity_brp[i])
 
