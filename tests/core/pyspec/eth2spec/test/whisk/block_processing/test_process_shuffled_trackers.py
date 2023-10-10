@@ -107,19 +107,7 @@ def test_invalid_shuffle_bad_trackers_zero(spec, state):
     body.whisk_post_shuffle_trackers[0] = spec.WhiskTracker()
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
-# TODO: This test does not fail
-# @with_whisk_and_later
-# @spec_state_test
-# def test_invalid_shuffle_bad_trackers_swap(spec, state):
-#     body = empty_block_body(spec)
-#     set_correct_shuffle_proofs(spec, state, body)
-#     assert body.whisk_post_shuffle_trackers[0] != body.whisk_post_shuffle_trackers[1]
-#     tracker_0 = body.whisk_post_shuffle_trackers[0]
-#     body.whisk_post_shuffle_trackers[0] = body.whisk_post_shuffle_trackers[1]
-#     body.whisk_post_shuffle_trackers[1] = tracker_0
-#     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
-
-# Invalid things on gap
+# Invalid cases on gap
 # - not empty shuffle trackers
 # - not empty proof
 
