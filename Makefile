@@ -215,6 +215,14 @@ gen_kzg_setups:
 	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
 	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
 
+gen_roots_of_unity:
+	cd $(SCRIPTS_DIR); \
+	if ! test -d venv; then python3 -m venv venv; fi; \
+	. venv/bin/activate; \
+	pip3 install -r requirements.txt; \
+	python3 ./gen_roots_of_unity.py --g1-length=4096 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups
+	python3 ./gen_roots_of_unity.py --g1-length=4096 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
+
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)
 gen_%: $(TEST_VECTOR_DIR)

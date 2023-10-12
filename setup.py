@@ -108,21 +108,19 @@ def _is_constant_id(name: str) -> bool:
 
 
 def _load_kzg_trusted_setups(preset_name):
-    """
-    [TODO] it's not the final mainnet trusted setup.
-    We will update it after the KZG ceremony.
-    """
-    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/testing_trusted_setups.json'
+    trusted_setups_file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
+    roots_of_unity_file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096_roots_of_unity.json'
 
-    with open(file_path, 'r') as f:
+    with open(trusted_setups_file_path, 'r') as f:
         json_data = json.load(f)
+        trusted_setup_G1_lagrange = json_data['g1_lagrange']
+        trusted_setup_G2 = json_data['g2_monomial']
 
-    trusted_setup_G1 = json_data['setup_G1']
-    trusted_setup_G2 = json_data['setup_G2']
-    trusted_setup_G1_lagrange = json_data['setup_G1_lagrange']
-    roots_of_unity = json_data['roots_of_unity']
+    with open(roots_of_unity_file_path, 'r') as f:
+        json_data = json.load(f)
+        roots_of_unity = [int(x, 16) for x in json_data['roots_of_unity']]
 
-    return trusted_setup_G1, trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
+    return trusted_setup_G2, trusted_setup_G1_lagrange, roots_of_unity
 
 
 ALL_KZG_SETUPS = {
@@ -158,10 +156,9 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    constant_vars['KZG_SETUP_G1'] = VariableDefinition(constant_vars['KZG_SETUP_G1'].value, str(kzg_setups[0]), comment, None)
-    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[1]), comment, None)
-    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[2]), comment, None)
-    constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(kzg_setups[3]), comment, None)
+    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
+    constant_vars['ROOTS_OF_UNITY'] = VariableDefinition(constant_vars['ROOTS_OF_UNITY'].value, str(kzg_setups[2]), comment, None)
 
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
