@@ -113,9 +113,9 @@ def _load_kzg_trusted_setups(preset_name):
     with open(trusted_setups_file_path, 'r') as f:
         json_data = json.load(f)
         trusted_setup_G1_lagrange = json_data['g1_lagrange']
-        trusted_setup_G2 = json_data['g2_monomial']
+        trusted_setup_G2_monomial = json_data['g2_monomial']
 
-    return trusted_setup_G2, trusted_setup_G1_lagrange
+    return trusted_setup_G2_monomial, trusted_setup_G1_lagrange
 
 
 ALL_KZG_SETUPS = {
