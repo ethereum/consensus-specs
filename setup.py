@@ -151,8 +151,8 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    constant_vars['KZG_SETUP_G2'] = VariableDefinition(constant_vars['KZG_SETUP_G2'].value, str(kzg_setups[0]), comment, None)
-    constant_vars['KZG_SETUP_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
+    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
 
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:

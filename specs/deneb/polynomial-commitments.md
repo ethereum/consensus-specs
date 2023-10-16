@@ -98,8 +98,8 @@ but reusing the `mainnet` settings in public networks is a critical security req
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2_LENGTH` | `65` |
-| `KZG_SETUP_G2` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
+| `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
 
 ## Helper functions
 
@@ -107,7 +107,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 All polynomials (which are always given in Lagrange form) should be interpreted as being in
 bit-reversal permutation. In practice, clients can implement this by storing the lists
-`KZG_SETUP_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
+`KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
 have to be called once at startup.
 
 #### `is_power_of_two`
@@ -351,7 +351,7 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
     Public method.
     """
     assert len(blob) == BYTES_PER_BLOB
-    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
+    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_G1_LAGRANGE), blob_to_polynomial(blob))
 ```
 
 #### `verify_kzg_proof`
@@ -389,7 +389,10 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
     # Verify: P - y = Q * (X - z)
-    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS))
+    X_minus_z = bls.add(
+        bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1]),
+        bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS),
+    )
     P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
     return bls.pairing_check([
         [P_minus_y, bls.neg(bls.G2())],
@@ -439,7 +442,7 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
     
     return bls.pairing_check([
-        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[1]))],
+        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1]))],
         [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2()]
     ])
 ```
@@ -515,7 +518,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[
             # Compute: q(x_i) = (p(x_i) - p(z)) / (x_i - z).
             quotient_polynomial[i] = div(a, b)
 
-    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial)), y
+    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_G1_LAGRANGE), quotient_polynomial)), y
 ```
 
 #### `compute_blob_kzg_proof`
