@@ -11,7 +11,6 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)
-  - [Crypto](#crypto)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
   - [Bit-reversal permutation](#bit-reversal-permutation)
@@ -30,6 +29,7 @@
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
     - [`compute_powers`](#compute_powers)
+    - [`compute_roots_of_unity`](#compute_roots_of_unity)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
   - [KZG](#kzg)
@@ -78,7 +78,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 | `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
-
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
 
 ## Preset
 
@@ -89,12 +89,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
-
-### Crypto
-
-| Name | Value | Notes |
-| - | - | - |
-| `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 
 ### Trusted setup
 
@@ -113,7 +107,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 All polynomials (which are always given in Lagrange form) should be interpreted as being in
 bit-reversal permutation. In practice, clients can implement this by storing the lists
-`KZG_SETUP_LAGRANGE` and `ROOTS_OF_UNITY` in bit-reversal permutation, so these functions only
+`KZG_SETUP_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
 have to be called once at startup.
 
 #### `is_power_of_two`
@@ -298,6 +292,18 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
     return powers
 ```
 
+#### `compute_roots_of_unity`
+
+```python
+def compute_roots_of_unity(order: uint64) -> Sequence[BLSFieldElement]:
+    """
+    Return roots of unity of ``order``.
+    """
+    PRIMITIVE_ROOT = 7
+    assert (BLS_MODULUS - 1) % int(order) == 0
+    root_of_unity = BLSFieldElement(pow(PRIMITIVE_ROOT, (BLS_MODULUS - 1) // int(order), BLS_MODULUS))
+    return compute_powers(root_of_unity, order)
+```
 
 ### Polynomials
 
@@ -317,7 +323,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(BLSFieldElement(width))
 
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
 
     # If we are asked to evaluate within the domain, we already know the answer
     if z in roots_of_unity_brp:
@@ -463,12 +469,12 @@ def compute_quotient_eval_within_domain(z: BLSFieldElement,
                                         ) -> BLSFieldElement:
     """
     Given `y == p(z)` for a polynomial `p(x)`, compute `q(z)`: the KZG quotient polynomial evaluated at `z` for the
-    special case where `z` is in `ROOTS_OF_UNITY`.
+    special case where `z` is in roots of unity.
 
     For more details, read https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html section "Dividing
     when one of the points is zero". The code below computes q(x_m) for the roots of unity special case.
     """
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
     result = 0
     for i, omega_i in enumerate(roots_of_unity_brp):
         if omega_i == z:  # skip the evaluation point in the sum
@@ -489,7 +495,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[
     """
     Helper function for `compute_kzg_proof()` and `compute_blob_kzg_proof()`.
     """
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
 
     # For all x_i, compute p(x_i) - p(z)
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
