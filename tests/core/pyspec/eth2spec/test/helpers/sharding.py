@@ -80,7 +80,7 @@ def get_poly_in_both_forms(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.compute_roots_of_unity))
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     coeffs = [
         rng.randint(0, spec.BLS_MODULUS - 1)

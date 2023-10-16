@@ -113,7 +113,7 @@ def test_barycentric_outside_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n_samples = 12
@@ -147,7 +147,7 @@ def test_barycentric_within_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n = len(poly_coeff)
@@ -182,7 +182,7 @@ def test_compute_kzg_proof_within_domain(spec):
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     # Let's test some roots of unity
     for _ in range(6):

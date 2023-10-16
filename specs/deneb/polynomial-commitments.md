@@ -299,9 +299,8 @@ def compute_roots_of_unity(order: uint64) -> Sequence[BLSFieldElement]:
     """
     Return roots of unity of ``order``.
     """
-    PRIMITIVE_ROOT = 7
     assert (BLS_MODULUS - 1) % int(order) == 0
-    root_of_unity = BLSFieldElement(pow(PRIMITIVE_ROOT, (BLS_MODULUS - 1) // int(order), BLS_MODULUS))
+    root_of_unity = BLSFieldElement(pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(order), BLS_MODULUS))
     return compute_powers(root_of_unity, order)
 ```
 
