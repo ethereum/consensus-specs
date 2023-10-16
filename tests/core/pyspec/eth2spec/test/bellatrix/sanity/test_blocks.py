@@ -33,7 +33,7 @@ def test_empty_block_transition_no_tx(spec, state):
 
 @with_bellatrix_and_later
 @spec_state_test
-def test_empty_block_transition_randomized_payload(spec, state):
+def test_block_transition_randomized_payload(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)

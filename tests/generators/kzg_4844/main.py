@@ -67,6 +67,7 @@ INVALID_G1_POINTS = [G1_INVALID_TOO_FEW_BYTES, G1_INVALID_TOO_MANY_BYTES,
                      G1_INVALID_P1_NOT_IN_G1, G1_INVALID_P1_NOT_ON_CURVE]
 
 BLOB_ALL_ZEROS = spec.Blob()
+BLOB_ALL_TWOS = spec.Blob(b''.join([field_element_bytes(2) for n in range(4096)]))
 BLOB_RANDOM_VALID1 = spec.Blob(b''.join([field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
 BLOB_RANDOM_VALID2 = spec.Blob(b''.join([field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
 BLOB_RANDOM_VALID3 = spec.Blob(b''.join([field_element_bytes(pow(5, n + 256, spec.BLS_MODULUS)) for n in range(4096)]))
@@ -79,7 +80,7 @@ BLOB_INVALID_CLOSE = spec.Blob(b''.join(
 BLOB_INVALID_LENGTH_PLUS_ONE = BLOB_RANDOM_VALID1 + b"\x00"
 BLOB_INVALID_LENGTH_MINUS_ONE = BLOB_RANDOM_VALID1[:-1]
 
-VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2,
+VALID_BLOBS = [BLOB_ALL_ZEROS, BLOB_ALL_TWOS, BLOB_RANDOM_VALID1, BLOB_RANDOM_VALID2,
                BLOB_RANDOM_VALID3, BLOB_ALL_MODULUS_MINUS_ONE, BLOB_ALMOST_ZERO]
 INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE, BLOB_INVALID_LENGTH_PLUS_ONE, BLOB_INVALID_LENGTH_MINUS_ONE]
 
@@ -213,6 +214,64 @@ def case03_verify_kzg_proof():
                 },
                 'output': False
             }
+
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    for z in VALID_FIELD_ELEMENTS:
+        _, y = spec.compute_kzg_proof(blob, z)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        proof = spec.G1_POINT_AT_INFINITY
+        assert not spec.verify_kzg_proof(commitment, z, y, proof)
+        prefix = 'verify_kzg_proof_case_incorrect_proof_point_at_infinity'
+        identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'z': encode_hex(z),
+                'y': encode_hex(y),
+                'proof': encode_hex(proof),
+            },
+            'output': False
+        }
+
+    # Correct `G1_POINT_AT_INFINITY` proof for zero poly
+    blob = BLOB_ALL_ZEROS
+    for z in VALID_FIELD_ELEMENTS:
+        _, y = spec.compute_kzg_proof(blob, z)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        proof = spec.G1_POINT_AT_INFINITY
+        assert spec.verify_kzg_proof(commitment, z, y, proof)
+        prefix = 'verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly'
+        identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'z': encode_hex(z),
+                'y': encode_hex(y),
+                'proof': encode_hex(proof),
+            },
+            'output': True
+        }
+
+    # Correct `G1_POINT_AT_INFINITY` proof for poly of all twos
+    blob = BLOB_ALL_TWOS
+    for z in VALID_FIELD_ELEMENTS:
+        _, y = spec.compute_kzg_proof(blob, z)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        proof = spec.G1_POINT_AT_INFINITY
+        assert spec.verify_kzg_proof(commitment, z, y, proof)
+        assert y == field_element_bytes(2)
+        prefix = 'verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly'
+        identifier = f'{encode_hex(hash(blob))}_{encode_hex(z)}'
+        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'z': encode_hex(z),
+                'y': encode_hex(y),
+                'proof': encode_hex(proof),
+            },
+            'output': True
+        }
 
     # Edge case: Invalid commitment
     for commitment in INVALID_G1_POINTS:
@@ -354,6 +413,50 @@ def case05_verify_blob_kzg_proof():
             'output': False
         }
 
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
+    yield 'verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+            'proof': encode_hex(proof),
+        },
+        'output': False
+    }
+
+    # Correct `G1_POINT_AT_INFINITY` proof and commitment for zero poly
+    blob = BLOB_ALL_ZEROS
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert commitment == spec.G1_POINT_AT_INFINITY
+    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
+    yield 'verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+            'proof': encode_hex(proof),
+        },
+        'output': True
+    }
+
+    # Correct `G1_POINT_AT_INFINITY` proof for all twos poly
+    blob = BLOB_ALL_TWOS
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert commitment != spec.G1_POINT_AT_INFINITY
+    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
+    yield 'verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly', {
+        'input': {
+            'blob': encode_hex(blob),
+            'commitment': encode_hex(commitment),
+            'proof': encode_hex(proof),
+        },
+        'output': True
+    }
+
     # Edge case: Invalid blob
     for blob in INVALID_BLOBS:
         proof = G1
@@ -423,11 +526,25 @@ def case06_verify_blob_kzg_proof_batch():
     # Incorrect proof
     proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
     assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
-    yield 'verify_blob_kzg_proof_batch_case_invalid_proof', {
+    yield 'verify_blob_kzg_proof_batch_case_incorrect_proof_add_one', {
         'input': {
             'blobs': encode_hex_list(VALID_BLOBS),
             'commitments': encode_hex_list(commitments),
             'proofs': encode_hex_list(proofs_incorrect),
+        },
+        'output': False
+    }
+
+    # Incorrect `G1_POINT_AT_INFINITY` proof
+    blob = BLOB_RANDOM_VALID1
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+    assert not spec.verify_blob_kzg_proof_batch([blob], [commitment], [proof])
+    yield 'verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity', {
+        'input': {
+            'blobs': encode_hex_list([blob]),
+            'commitments': encode_hex_list([commitment]),
+            'proofs': encode_hex_list([proof]),
         },
         'output': False
     }
@@ -527,7 +644,7 @@ def create_provider(fork_name: SpecForkName,
                 preset_name='general',
                 runner_name='kzg',
                 handler_name=handler_name,
-                suite_name='small',
+                suite_name='kzg-mainnet',
                 case_name=case_name,
                 case_fn=lambda: [('data', 'data', case_content)]
             )

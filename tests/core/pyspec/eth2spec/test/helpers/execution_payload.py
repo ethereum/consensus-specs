@@ -32,8 +32,8 @@ def get_execution_payload_header(spec, execution_payload):
     if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
     if is_post_deneb(spec):
-        payload_header.data_gas_used = execution_payload.data_gas_used
-        payload_header.excess_data_gas = execution_payload.excess_data_gas
+        payload_header.blob_gas_used = execution_payload.blob_gas_used
+        payload_header.excess_blob_gas = execution_payload.excess_blob_gas
     if is_post_eip6110(spec):
         payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
     if is_post_eip7002(spec):
@@ -102,9 +102,9 @@ def compute_el_header_block_hash(spec,
         # withdrawals_root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
     if is_post_deneb(spec):
-        # excess_data_gas
-        execution_payload_header_rlp.append((big_endian_int, payload_header.data_gas_used))
-        execution_payload_header_rlp.append((big_endian_int, payload_header.excess_data_gas))
+        # excess_blob_gas
+        execution_payload_header_rlp.append((big_endian_int, payload_header.blob_gas_used))
+        execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
     if is_post_eip6110(spec):
         # deposit_receipts_root
         assert deposit_receipts_trie_root is not None
@@ -229,8 +229,8 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     if is_post_capella(spec):
         payload.withdrawals = spec.get_expected_withdrawals(state)
     if is_post_deneb(spec):
-        payload.data_gas_used = 0
-        payload.excess_data_gas = 0
+        payload.blob_gas_used = 0
+        payload.excess_blob_gas = 0
     if is_post_eip6110(spec):
         # just to be clear
         payload.deposit_receipts = []
@@ -259,7 +259,7 @@ def build_randomized_execution_payload(spec, state, rng):
 
     num_transactions = rng.randint(0, 100)
     execution_payload.transactions = [
-        spec.Transaction(get_random_bytes_list(rng, rng.randint(0, 1000)))
+        get_random_tx(rng)
         for _ in range(num_transactions)
     ]
 
@@ -290,3 +290,7 @@ def build_state_with_execution_payload_header(spec, state, execution_payload_hea
     pre_state.latest_execution_payload_header = execution_payload_header
 
     return pre_state
+
+
+def get_random_tx(rng):
+    return get_random_bytes_list(rng, rng.randint(0, 1000))

@@ -1,4 +1,4 @@
-EIP-6914 -- The Beacon Chain
+# EIP-6914 -- The Beacon Chain
 
 ## Table of contents
 

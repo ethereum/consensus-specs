@@ -22,8 +22,6 @@ This document describes the process of the Capella upgrade.
 
 ## Configuration
 
-Warning: this configuration is not definitive.
-
 | Name | Value |
 | - | - |
 | `CAPELLA_FORK_VERSION` | `Version('0x03000000')` |
