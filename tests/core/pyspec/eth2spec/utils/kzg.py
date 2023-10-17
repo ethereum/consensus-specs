@@ -116,26 +116,3 @@ def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, ou
             }, f)
 
     print(f'Generated trusted setup file: {file_path}\n')
-
-
-def dump_kzg_roots_of_unity(g1_length: int, output_dir: str) -> None:
-    bls.use_fastest()
-
-    roots_of_unity = compute_roots_of_unity(g1_length)
-    serialized_roots_of_unity = [hex(x) for x in roots_of_unity]
-
-    output_dir_path = Path(output_dir)
-
-    if not os.path.exists(output_dir_path):
-        os.makedirs(output_dir_path)
-        print("Created directory: ", output_dir_path)
-
-    file_path = output_dir_path / 'trusted_setup_4096_roots_of_unity.json'
-
-    with open(file_path, 'w+') as f:
-        json.dump(
-            {
-                "roots_of_unity": serialized_roots_of_unity,
-            }, f)
-
-    print(f'Generated trusted setup file: {file_path}\n')
