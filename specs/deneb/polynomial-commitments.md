@@ -92,14 +92,11 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 ### Trusted setup
 
-The trusted setup is part of the preset: during testing a `minimal` insecure variant may be used,
-but reusing the `mainnet` settings in public networks is a critical security requirement.
-
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2_LENGTH` | `65` |
-| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
-| `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]` |
+| `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 
 ## Helper functions
 
