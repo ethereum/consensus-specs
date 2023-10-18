@@ -89,7 +89,7 @@ FE_VALID2 = field_element_bytes(1)
 FE_VALID3 = field_element_bytes(2)
 FE_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
 FE_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
-FE_VALID6 = field_element_bytes(spec.ROOTS_OF_UNITY[1])
+FE_VALID6 = field_element_bytes(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)[1])
 VALID_FIELD_ELEMENTS = [FE_VALID1, FE_VALID2, FE_VALID3, FE_VALID4, FE_VALID5, FE_VALID6]
 
 FE_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
