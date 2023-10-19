@@ -89,21 +89,12 @@ immediately after the receipt of a new block, so an approximation of those condi
 used when deciding whether to send or suppress a fork choice notification. The exact conditions
 used may be implementation-specific, a suggested implementation is below.
 
-Let `validator_is_connected` be a function that indicates whether the validator with
-`validator_index` is connected to the node (e.g. has sent an unexpired proposer preparation
-message).
+Let `validator_is_connected(validator_index: ValidatorIndex) -> bool` be a function that indicates
+whether the validator with `validator_index` is connected to the node (e.g. has sent an unexpired
+proposer preparation message).
 
 ```python
-def validator_is_connected(_validator_index: ValidatorIndex) -> boolean:
-    ...
-```
-
-```python
-def should_override_forkchoice_update(
-    store: Store,
-    head_root: Root,
-) -> boolean:
-    justified_state = store.checkpoint_states[store.justified_checkpoint]
+def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     head_block = store.blocks[head_root]
     parent_root = head_block.parent_root
     parent_block = store.blocks[parent_root]
@@ -111,7 +102,13 @@ def should_override_forkchoice_update(
     proposal_slot = head_block.slot + Slot(1)
 
     # Only re-org the head_block block if it arrived later than the attestation deadline.
-    head_late = store.block_timeliness.get(head_root) is False
+    head_late = is_head_late(store, head_root)
+
+    # Shuffling stable.
+    shuffling_stable = is_shuffling_stable(proposal_slot)
+
+    # FFG information of the new head_block will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
 
     # Only suppress the fork choice update if we are confident that we will propose the next block.
     parent_state_advanced = store.block_states[parent_root]
@@ -120,45 +117,32 @@ def should_override_forkchoice_update(
     proposing_reorg_slot = validator_is_connected(proposer_index)
 
     # Do not re-org if the chain is not finalizing with acceptable frequency.
-    proposal_epoch = compute_epoch_at_slot(proposal_slot)
-    epochs_since_finalization = proposal_epoch - store.finalized_checkpoint.epoch
-    finalization_ok = epochs_since_finalization <= REORG_MAX_EPOCHS_SINCE_FINALIZATION
+    finalization_ok = is_finalization_ok(store, proposal_slot)
 
     # Single slot re-org.
     parent_slot_ok = parent_block.slot + 1 == head_block.slot
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    current_time_ok = (head_block.slot == current_slot or
-                       (proposal_slot == current_slot and
-                        time_into_slot <= SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2))
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Note that this condition is different from `get_proposer_head`
+    current_time_ok = (head_block.slot == current_slot
+                       or (proposal_slot == current_slot and proposing_on_time))
     single_slot_reorg = parent_slot_ok and current_time_ok
-
-    # Shuffling stable.
-    shuffling_stable = proposal_slot % SLOTS_PER_EPOCH != 0
-
-    # FFG information of the new head_block will be competitive with the current head.
-    ffg_competitive = (store.unrealized_justifications[parent_root] ==
-                       store.unrealized_justifications[head_root])
 
     # Check the head weight only if the attestations from the head slot have already been applied.
     # Implementations may want to do this in different ways, e.g. by advancing
     # `store.time` early, or by counting queued attestations during the head block's slot.
     if current_slot > head_block.slot:
-        head_weight = get_weight(store, head_root)
-        reorg_threshold = calculate_committee_fraction(justified_state, REORG_WEIGHT_THRESHOLD)
-        head_weak = head_weight < reorg_threshold
-
-        parent_weight = get_weight(store, parent_root)
-        parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
-        parent_strong = parent_weight > parent_threshold
+        head_weak = is_head_weak(store, head_root)
+        parent_strong = is_parent_strong(store, parent_root)
     else:
         head_weak = True
         parent_strong = True
 
-    return all([head_late, proposing_reorg_slot, finalization_ok, single_slot_reorg,
-                shuffling_stable, ffg_competitive, head_weak, parent_strong])
+    return all([head_late, shuffling_stable, proposing_reorg_slot, ffg_competitive, finalization_ok,
+                single_slot_reorg, head_weak, parent_strong])
 ```
 
-> Note that the ordering of conditions is a suggestion only. Implementations are free to
+*Note*: The ordering of conditions is a suggestion only. Implementations are free to
 optimize by re-ordering the conditions from least to most expensive and by returning early if
 any of the early conditions are `False`.
 

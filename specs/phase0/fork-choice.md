@@ -25,7 +25,16 @@
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
-    - [`get_proposer_head`](#get_proposer_head)
+    - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
+      - [`is_head_late`](#is_head_late)
+      - [`is_shuffling_stable`](#is_shuffling_stable)
+      - [`is_shuffling_stable`](#is_shuffling_stable-1)
+      - [`is_ffg_competitive`](#is_ffg_competitive)
+      - [`is_finalization_ok`](#is_finalization_ok)
+      - [`is_proposing_on_time`](#is_proposing_on_time)
+      - [`is_head_weak`](#is_head_weak)
+      - [`is_parent_strong`](#is_parent_strong)
+      - [`get_proposer_head`](#get_proposer_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
@@ -356,58 +365,116 @@ def get_head(store: Store) -> Root:
         head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
 
-#### `get_proposer_head`
+#### Proposer head and reorg helpers
 
-_Implementing `get_proposer_head` is optional_.
+_Implementing these helpers is optional_.
+
+##### `is_head_late`
+```python
+def is_head_late(store: Store, head_root: Root) -> bool:
+    return not store.block_timeliness.get(head_root)
+```
+
+##### `is_shuffling_stable`
+```python
+def is_shuffling_stable(slot: Slot) -> bool:
+    return slot % SLOTS_PER_EPOCH != 0
+```
+
+##### `is_shuffling_stable`
+```python
+def is_shuffling_stable(slot: Slot) -> bool:
+    return slot % SLOTS_PER_EPOCH != 0
+```
+
+##### `is_ffg_competitive`
+
+```python
+def is_ffg_competitive(store: Store, head_root: Root, parent_root: Root) -> bool:
+    return (store.unrealized_justifications[head_root] == store.unrealized_justifications[parent_root])
+```
+
+##### `is_finalization_ok`
+
+```python
+def is_finalization_ok(store: Store, slot: Slot) -> bool:
+    epochs_since_finalization = compute_epoch_at_slot(slot) - store.finalized_checkpoint.epoch
+    return epochs_since_finalization <= REORG_MAX_EPOCHS_SINCE_FINALIZATION
+```
+
+##### `is_proposing_on_time`
+
+```python
+def is_proposing_on_time(store: Store) -> bool:
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
+    return time_into_slot <= proposer_reorg_cutoff
+```
+
+##### `is_head_weak`
+
+```python
+def is_head_weak(store: Store, head_root: Root) -> bool:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_WEIGHT_THRESHOLD)
+    head_weight = get_weight(store, head_root)
+    return head_weight < reorg_threshold
+```
+
+##### `is_parent_strong`
+
+```python
+def is_parent_strong(store: Store, parent_root: Root) -> bool:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    parent_weight = get_weight(store, parent_root)
+    return parent_weight > parent_threshold
+```
+
+##### `get_proposer_head`
 
 ```python
 def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
-    justified_state = store.checkpoint_states[store.justified_checkpoint]
     head_block = store.blocks[head_root]
     parent_root = head_block.parent_root
     parent_block = store.blocks[parent_root]
 
     # Only re-org the head block if it arrived later than the attestation deadline.
-    head_late = store.block_timeliness.get(head_root) is False
-
-    # Do not re-org if the chain is not finalizing with acceptable frequency.
-    epochs_since_finalization = compute_epoch_at_slot(slot) - store.finalized_checkpoint.epoch
-    finalization_ok = epochs_since_finalization <= REORG_MAX_EPOCHS_SINCE_FINALIZATION
-
-    # Only re-org a single slot at most.
-    single_slot_reorg = parent_block.slot + 1 == head_block.slot and head_block.slot + 1 == slot
-
-    # Only re-org if we are proposing on-time.
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    proposing_on_time = time_into_slot <= SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
+    head_late = is_head_late(store, head_root)
 
     # Do not re-org on an epoch boundary where the proposer shuffling could change.
-    shuffling_stable = slot % SLOTS_PER_EPOCH != 0
+    shuffling_stable = is_shuffling_stable(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
-    ffg_competitive = (store.unrealized_justifications[parent_root] ==
-                       store.unrealized_justifications[head_root])
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org if we are proposing on-time.
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Only re-org a single slot at most.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
 
     # Check that the head has few enough votes to be overpowered by our proposer boost.
     assert store.proposer_boost_root != head_root  # ensure boost has worn off
-    head_weight = get_weight(store, head_root)
-    reorg_threshold = calculate_committee_fraction(justified_state, REORG_WEIGHT_THRESHOLD)
-    head_weak = head_weight < reorg_threshold
+    head_weak = is_head_weak(store, head_root)
 
     # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_weight = get_weight(store, parent_root)
-    parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
-    parent_strong = parent_weight > parent_threshold
+    parent_strong = is_parent_strong(store, parent_root)
 
-    if all([head_late, finalization_ok, single_slot_reorg, proposing_on_time, shuffling_stable,
-            ffg_competitive, head_weak, parent_strong]):
+    if all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
+            proposing_on_time, single_slot_reorg, head_weak, parent_strong]):
         # We can re-org the current head by building upon its parent block.
         return parent_root
     else:
         return head_root
 ```
 
-> Note that the ordering of conditions is a suggestion only. Implementations are free to
+*Note*: The ordering of conditions is a suggestion only. Implementations are free to
 optimize by re-ordering the conditions from least to most expensive and by returning early if
 any of the early conditions are `False`.
 
