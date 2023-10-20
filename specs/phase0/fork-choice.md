@@ -25,18 +25,17 @@
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_head`](#get_head)
+    - [`update_checkpoints`](#update_checkpoints)
+    - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
-      - [`is_shuffling_stable`](#is_shuffling_stable-1)
       - [`is_ffg_competitive`](#is_ffg_competitive)
       - [`is_finalization_ok`](#is_finalization_ok)
       - [`is_proposing_on_time`](#is_proposing_on_time)
       - [`is_head_weak`](#is_head_weak)
       - [`is_parent_strong`](#is_parent_strong)
       - [`get_proposer_head`](#get_proposer_head)
-    - [`update_checkpoints`](#update_checkpoints)
-    - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
       - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
     - [`on_tick` helpers](#on_tick-helpers)
@@ -365,6 +364,38 @@ def get_head(store: Store) -> Root:
         head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
 
+#### `update_checkpoints`
+
+```python
+def update_checkpoints(store: Store, justified_checkpoint: Checkpoint, finalized_checkpoint: Checkpoint) -> None:
+    """
+    Update checkpoints in store if necessary
+    """
+    # Update justified checkpoint
+    if justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.justified_checkpoint = justified_checkpoint
+
+    # Update finalized checkpoint
+    if finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
+        store.finalized_checkpoint = finalized_checkpoint
+```
+
+#### `update_unrealized_checkpoints`
+
+```python
+def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint: Checkpoint,
+                                  unrealized_finalized_checkpoint: Checkpoint) -> None:
+    """
+    Update unrealized checkpoints in store if necessary
+    """
+    # Update unrealized justified checkpoint
+    if unrealized_justified_checkpoint.epoch > store.unrealized_justified_checkpoint.epoch:
+        store.unrealized_justified_checkpoint = unrealized_justified_checkpoint
+
+    # Update unrealized finalized checkpoint
+    if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
+        store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
+```
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
@@ -372,13 +403,7 @@ _Implementing these helpers is optional_.
 ##### `is_head_late`
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
-    return not store.block_timeliness.get(head_root)
-```
-
-##### `is_shuffling_stable`
-```python
-def is_shuffling_stable(slot: Slot) -> bool:
-    return slot % SLOTS_PER_EPOCH != 0
+    return not store.block_timeliness[head_root]
 ```
 
 ##### `is_shuffling_stable`
@@ -477,41 +502,6 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 *Note*: The ordering of conditions is a suggestion only. Implementations are free to
 optimize by re-ordering the conditions from least to most expensive and by returning early if
 any of the early conditions are `False`.
-
-
-#### `update_checkpoints`
-
-```python
-def update_checkpoints(store: Store, justified_checkpoint: Checkpoint, finalized_checkpoint: Checkpoint) -> None:
-    """
-    Update checkpoints in store if necessary
-    """
-    # Update justified checkpoint
-    if justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = justified_checkpoint
-
-    # Update finalized checkpoint
-    if finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
-        store.finalized_checkpoint = finalized_checkpoint
-```
-
-#### `update_unrealized_checkpoints`
-
-```python
-def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint: Checkpoint,
-                                  unrealized_finalized_checkpoint: Checkpoint) -> None:
-    """
-    Update unrealized checkpoints in store if necessary
-    """
-    # Update unrealized justified checkpoint
-    if unrealized_justified_checkpoint.epoch > store.unrealized_justified_checkpoint.epoch:
-        store.unrealized_justified_checkpoint = unrealized_justified_checkpoint
-
-    # Update unrealized finalized checkpoint
-    if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
-        store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
-```
-
 
 #### Pull-up tip helpers
 
