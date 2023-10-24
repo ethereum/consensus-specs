@@ -177,6 +177,7 @@ finalized_checkpoint: {
     root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
+should_override_forkchoice_update: bool  -- [New in Bellatrix] the result of `should_override_forkchoice_update(store, head_root)`
 ```
 
 For example:

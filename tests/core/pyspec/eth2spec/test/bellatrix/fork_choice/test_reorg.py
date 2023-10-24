@@ -17,6 +17,7 @@ from eth2spec.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    output_store_checks,
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
@@ -56,7 +57,15 @@ def test_should_override_forkchoice_update__false(spec, state):
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
-    assert not spec.should_override_forkchoice_update(store, head_root)
+    should_override = spec.should_override_forkchoice_update(store, head_root)
+    assert not should_override
+
+    output_store_checks(spec, store, test_steps)
+    test_steps.append({
+        'checks': {
+            'should_override_forkchoice_update': should_override,
+        }
+    })
 
     yield 'steps', test_steps
 
@@ -155,8 +164,14 @@ def test_should_override_forkchoice_update__true(spec, state):
     assert spec.is_head_weak(store, head_root)
     assert spec.is_parent_strong(store, parent_root)
 
-    assert spec.should_override_forkchoice_update(store, head_root)
+    should_override = spec.should_override_forkchoice_update(store, head_root)
+    assert should_override
 
-    # TODO: export the `should_override_forkchoice_update` result to test vectors?
+    output_store_checks(spec, store, test_steps)
+    test_steps.append({
+        'checks': {
+            'should_override_forkchoice_update': should_override,
+        }
+    })
 
     yield 'steps', test_steps
