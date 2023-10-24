@@ -110,14 +110,14 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     # FFG information of the new head_block will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
 
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, proposal_slot)
+
     # Only suppress the fork choice update if we are confident that we will propose the next block.
-    parent_state_advanced = store.block_states[parent_root]
+    parent_state_advanced = store.block_states[parent_root].copy()
     process_slots(parent_state_advanced, proposal_slot)
     proposer_index = get_beacon_proposer_index(parent_state_advanced)
     proposing_reorg_slot = validator_is_connected(proposer_index)
-
-    # Do not re-org if the chain is not finalizing with acceptable frequency.
-    finalization_ok = is_finalization_ok(store, proposal_slot)
 
     # Single slot re-org.
     parent_slot_ok = parent_block.slot + 1 == head_block.slot
@@ -138,8 +138,9 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
         head_weak = True
         parent_strong = True
 
-    return all([head_late, shuffling_stable, proposing_reorg_slot, ffg_competitive, finalization_ok,
-                single_slot_reorg, head_weak, parent_strong])
+    return all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
+                proposing_reorg_slot, single_slot_reorg,
+                head_weak, parent_strong])
 ```
 
 *Note*: The ordering of conditions is a suggestion only. Implementations are free to
