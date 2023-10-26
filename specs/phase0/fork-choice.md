@@ -89,7 +89,7 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 | Name                                  | Value        |
 | ------------------------------------- | ------------ |
 | `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
-| `REORG_WEIGHT_THRESHOLD`              | `uint64(20)` |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)` |
 | `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
 | `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
 
@@ -431,6 +431,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
+    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
     return time_into_slot <= proposer_reorg_cutoff
@@ -441,7 +442,7 @@ def is_proposing_on_time(store: Store) -> bool:
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
-    reorg_threshold = calculate_committee_fraction(justified_state, REORG_WEIGHT_THRESHOLD)
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
     head_weight = get_weight(store, head_root)
     return head_weight < reorg_threshold
 ```

@@ -154,8 +154,8 @@ of the block to be proposed (due to withdrawals).
 
 If `should_override_forkchoice_update` returns `True` but `get_proposer_head` later chooses the
 canonical head rather than its parent, then this is a misprediction that will cause the node
-to construct a payload with less notice. The result of `get_proposer_head` MUST be honoured in
-preference to the heuristic method.
+to construct a payload with less notice. The result of `get_proposer_head` MUST be preferred over
+the result of `should_override_forkchoice_update` (when proposer reorgs are enabled).
 
 ## Helpers
 
