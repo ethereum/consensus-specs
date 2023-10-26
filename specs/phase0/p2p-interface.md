@@ -158,11 +158,11 @@ This applies to transports that are natively incapable of multiplexing (e.g. TCP
 and is omitted for capable transports (e.g. QUIC).
 
 Two multiplexers are commonplace in libp2p implementations:
-[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
 Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+and MAY support [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 If both are supported by the client, yamux MUST take precedence during negotiation.
 See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 

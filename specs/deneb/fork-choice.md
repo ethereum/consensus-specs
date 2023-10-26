@@ -47,6 +47,8 @@ Initially, verification requires every verifying actor to retrieve all matching 
 
 The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
 
+*Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
+
 ```python
 def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
@@ -91,6 +93,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this block MAY be queued and subsequently considered when blob data becomes available
+    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
+    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state

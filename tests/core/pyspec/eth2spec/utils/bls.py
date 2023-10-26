@@ -48,8 +48,8 @@ class fastest_bls:
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
-# To change bls implementation, default to PyECC for correctness. Milagro is a good faster alternative.
-bls = py_ecc_bls
+# Default to fastest_bls
+bls = fastest_bls
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48

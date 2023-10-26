@@ -16,6 +16,7 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -26,6 +27,7 @@
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
+    - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
@@ -40,6 +42,8 @@
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
+  - [Epoch processing](#epoch-processing)
+    - [Registry updates](#registry-updates)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -50,8 +54,9 @@
 Deneb is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
 * [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
-* [EIP-7044](https://github.com/ethereum/EIPs/pull/7044): Perpetually Valid Signed Voluntary Exits
+* [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed Voluntary Exits
 * [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
+* [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
 ## Custom types
 
@@ -88,6 +93,12 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 ## Configuration
+
+### Validator cycle
+
+| Name | Value |
+| - | - |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
 
 ## Containers
 
@@ -209,6 +220,16 @@ def get_attestation_participation_flag_indices(state: BeaconState,
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
 
     return participation_flag_indices
+```
+
+#### New `get_validator_activation_churn_limit`
+
+```python
+def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
+    """
+    Return the validator activation churn limit for the current epoch.
+    """
+    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT, get_validator_churn_limit(state))
 ```
 
 ## Beacon chain state transition function
@@ -413,6 +434,38 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
+```
+
+### Epoch processing
+
+#### Registry updates
+
+*Note*: The function `process_registry_updates` is modified to utilize `get_validator_activation_churn_limit()` to rate limit the activation queue for EIP-7514.
+
+```python
+def process_registry_updates(state: BeaconState) -> None:
+    # Process activation eligibility and ejections
+    for index, validator in enumerate(state.validators):
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
+
+        if (
+            is_active_validator(validator, get_current_epoch(state))
+            and validator.effective_balance <= EJECTION_BALANCE
+        ):
+            initiate_validator_exit(state, ValidatorIndex(index))
+
+    # Queue validators eligible for activation and not yet dequeued for activation
+    activation_queue = sorted([
+        index for index, validator in enumerate(state.validators)
+        if is_eligible_for_activation(state, validator)
+        # Order by the sequence of activation_eligibility_epoch setting and then index
+    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    # Dequeued validators for activation up to activation churn limit
+    # [Modified in Deneb:EIP7514]
+    for index in activation_queue[:get_validator_activation_churn_limit(state)]:
+        validator = state.validators[index]
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 ## Testing
