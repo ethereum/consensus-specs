@@ -159,7 +159,7 @@ The checks to verify the current status of `store`.
 checks: {<store_attibute>: value}  -- the assertions.
 ```
 
-`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. Currently, the possible fields included:
+`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
 
 ```yaml
 head: {
@@ -177,7 +177,13 @@ finalized_checkpoint: {
     root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
-should_override_forkchoice_update: bool  -- [New in Bellatrix] the result of `should_override_forkchoice_update(store, head_root)`
+```
+
+Additionally, these fields if `get_proposer_head` and `should_override_forkchoice_update` features are implemented:
+
+```yaml
+get_proposer_head: string     -- Encoded 32-byte value from get_proposer_head(store)
+should_override_forkchoice_update: bool  -- [New in Bellatrix] the result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
 ```
 
 For example:
@@ -188,6 +194,8 @@ For example:
     justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
     finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
+    get_proposer_head: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
+    should_override_forkchoice_update: false
 ```
 
 *Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.

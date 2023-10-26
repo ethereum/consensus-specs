@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # PowBlock's which should be resolved by `get_pow_block(hash: Hash32) -> PowBlock` function
     _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.fork_choice.test_' + key for key in [
         'on_merge_block',
-        'reorg',
+        'should_override_forkchoice_update',
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
     capella_mods = bellatrix_mods  # No additional Capella specific fork choice tests

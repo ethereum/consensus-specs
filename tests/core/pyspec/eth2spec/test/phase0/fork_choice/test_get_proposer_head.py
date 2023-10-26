@@ -1,3 +1,4 @@
+from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -13,6 +14,7 @@ from eth2spec.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    output_store_checks,
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
@@ -51,8 +53,14 @@ def test_basic_is_head_root(spec, state):
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     proposer_head = spec.get_proposer_head(store, head_root, slot)
-
     assert proposer_head == head_root
+
+    output_store_checks(spec, store, test_steps)
+    test_steps.append({
+        'checks': {
+            'get_proposer_head': encode_hex(proposer_head),
+        }
+    })
 
     yield 'steps', test_steps
 
@@ -149,6 +157,11 @@ def test_basic_is_parent_root(spec, state):
     proposer_head = spec.get_proposer_head(store, head_root, state.slot)
     assert proposer_head == parent_root
 
-    # TODO: export the `proposer_head` result to test vectors?
+    output_store_checks(spec, store, test_steps)
+    test_steps.append({
+        'checks': {
+            'get_proposer_head': encode_hex(proposer_head),
+        }
+    })
 
     yield 'steps', test_steps
