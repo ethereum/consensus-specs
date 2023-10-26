@@ -63,7 +63,10 @@ def test_should_override_forkchoice_update__false(spec, state):
     output_store_checks(spec, store, test_steps)
     test_steps.append({
         'checks': {
-            'should_override_forkchoice_update': should_override,
+            'should_override_forkchoice_update': {
+                'validator_is_connected': True,
+                'result': should_override,
+            },
         }
     })
 
@@ -153,7 +156,10 @@ def test_should_override_forkchoice_update__true(spec, state):
     assert spec.is_ffg_competitive(store, head_root, parent_root)
     assert spec.is_finalization_ok(store, proposal_slot)
 
-    # TODO: proposing_reorg_slot
+    parent_state_advanced = store.block_states[parent_root].copy()
+    spec.process_slots(parent_state_advanced, proposal_slot)
+    proposer_index = spec.get_beacon_proposer_index(parent_state_advanced)
+    assert spec.validator_is_connected(proposer_index)
 
     # Single slot re-org.
     parent_slot_ok = parent_block.slot + 1 == head_block.slot
@@ -170,7 +176,10 @@ def test_should_override_forkchoice_update__true(spec, state):
     output_store_checks(spec, store, test_steps)
     test_steps.append({
         'checks': {
-            'should_override_forkchoice_update': should_override,
+            'should_override_forkchoice_update': {
+                'validator_is_connected': True,
+                'result': should_override,
+            },
         }
     })
 
