@@ -16,7 +16,6 @@ The specification of these changes continues in the same format as the network s
     - [`BlobSidecar`](#blobsidecar)
     - [`BlobIdentifier`](#blobidentifier)
     - [Helpers](#helpers)
-      - [`verify_blob_sidecar_signature`](#verify_blob_sidecar_signature)
       - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
       - [`is_valid_merkle_path`](#is_valid_merkle_path)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -82,17 +81,6 @@ class BlobIdentifier(Container):
 ```
 
 #### Helpers
-
-##### `verify_blob_sidecar_signature`
-
-```python
-def verify_blob_sidecar_signature(state: BeaconState, blob_sidecar: BlobSidecar) -> bool:
-    block_header = blob_sidecar.signed_block_header.message
-    proposer = state.validators[block_header.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
-    signing_root = compute_signing_root(block_header, domain)
-    return bls.Verify(proposer.pubkey, signing_root, blob_sidecar.signed_block_header.signature)
-```
 
 ##### `verify_blob_sidecar_inclusion_proof`
 
@@ -175,7 +163,7 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `block_header.parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
-- _[REJECT]_ The proposer signature in `blob_sidecar.signed_block_header`, is valid as verified by `verify_blob_sidecar_signature`.
+- _[REJECT]_ The proposer signature in `blob_sidecar.signed_block_header`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof`.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(hash_tree_root(block_header), sidecar.index)`.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`).

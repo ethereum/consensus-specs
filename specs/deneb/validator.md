@@ -152,7 +152,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
         slot=block.slot,
         proposer_index=block.proposer_index,
         parent_root=block.parent_root,
-        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        state_root=block.state_root,
         body_root=hash_tree_root(block.body),
     )
     signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
