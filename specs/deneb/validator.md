@@ -22,7 +22,7 @@
       - [ExecutionPayload](#executionpayload)
       - [Blob KZG commitments](#blob-kzg-commitments)
     - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
-      - [BlobSidecar](#blob-sidecar)
+      - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
