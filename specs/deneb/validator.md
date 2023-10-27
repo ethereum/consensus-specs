@@ -21,8 +21,8 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [ExecutionPayload](#executionpayload)
       - [Blob KZG commitments](#blob-kzg-commitments)
-    - [Constructing the `SignedBlobSidecar`s](#constructing-the-signedblobsidecars)
-      - [Sidecar](#sidecar)
+    - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+      - [BlobSidecar](#blob-sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -133,47 +133,45 @@ use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_
 via `get_payload(payload_id).blobs_bundle`.
 2. Set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
 
-#### Constructing the `SignedBlobSidecar`s
+#### Constructing the `BlobSidecar`s
 
 *[New in Deneb:EIP4844]*
 
-To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
+To construct a `BlobSidecar`, a `blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
 ##### Sidecar
 
-Blobs associated with a block are packaged into sidecar objects for distribution to the network.
+Blobs associated with a block are packaged into sidecar objects for distribution to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 
 Each `sidecar` is obtained from:
 ```python
-def get_blob_sidecars(block: BeaconBlock,
+def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+    block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        body_root=hash_tree_root(block.body),
+    )
+    signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
     return [
         BlobSidecar(
-            block_root=hash_tree_root(block),
             index=index,
-            slot=block.slot,
-            block_parent_root=block.parent_root,
             blob=blob,
-            kzg_commitment=block.body.blob_kzg_commitments[index],
+            kzg_commitment=signed_block.message.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
+            commitment_inclusion_proof=compute_commitment_inclusion_proof(
+                signed_block.message.body,
+                signed_block.message.body.blob_kzg_commitments[index],
+                index,
+            ),
+            signed_block_header=signed_block_header,
         )
         for index, blob in enumerate(blobs)
     ]
 
-```
-
-Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
-
-`signature` is obtained from:
-
-```python
-def get_blob_sidecar_signature(state: BeaconState,
-                               sidecar: BlobSidecar,
-                               privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
-    signing_root = compute_signing_root(sidecar, domain)
-    return bls.Sign(privkey, signing_root)
 ```
 
 The `subnet_id` for the `signed_sidecar` is calculated with:
