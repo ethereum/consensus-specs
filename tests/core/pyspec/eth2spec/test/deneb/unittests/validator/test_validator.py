@@ -12,16 +12,48 @@ from eth2spec.test.helpers.sharding import (
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot
 )
-from eth2spec.test.helpers.keys import (
-    pubkey_to_privkey
-)
+from tests.core.pyspec.eth2spec.utils.ssz.ssz_impl import hash_tree_root
+
+
+def get_blob_sidecars(spec, signed_block, blobs, blob_kzg_proofs):
+    block = signed_block.message
+    block_header = spec.BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=block.state_root,
+        body_root=hash_tree_root(block.body),
+    )
+    signed_block_header = spec.SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
+    return [
+        spec.BlobSidecar(
+            index=index,
+            blob=blob,
+            kzg_commitment=signed_block.message.body.blob_kzg_commitments[index],
+            kzg_proof=blob_kzg_proofs[index],
+            commitment_inclusion_proof=compute_commitment_inclusion_proof(
+                spec,
+                signed_block.message.body,
+                signed_block.message.body.blob_kzg_commitments[index],
+                index,
+            ),
+            signed_block_header=signed_block_header,
+        )
+        for index, blob in enumerate(blobs)
+    ]
+
+
+def compute_commitment_inclusion_proof(spec, body, kzg_commitment, index):
+    gindex = (spec.BeaconBlockBody / 'blob_kzg_commitments' / index).gindex()
+    raise Exception('todo, does remerkleable expose an API to compute proofs?')
+    return gindex
 
 
 @with_deneb_and_later
 @spec_state_test
-def test_blob_sidecar_signature(spec, state):
+def test_blob_sidecar_inclusion_proof(spec, state):
     """
-    Test `get_blob_sidecar_signature`
+    Test `verify_blob_sidecar_inclusion_proof`
     """
     blob_count = 4
     block = build_empty_block_for_next_slot(spec, state)
@@ -30,22 +62,16 @@ def test_blob_sidecar_signature(spec, state):
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
-    blob_sidecars = spec.get_blob_sidecars(block, blobs, proofs)
-    proposer = state.validators[blob_sidecars[1].proposer_index]
-    privkey = pubkey_to_privkey[proposer.pubkey]
-    sidecar_signature = spec.get_blob_sidecar_signature(state,
-                                                        blob_sidecars[1],
-                                                        privkey)
+    blob_sidecars = spec.get_blob_sidecars(spec, block, blobs, proofs)
 
-    signed_blob_sidecar = spec.SignedBlobSidecar(message=blob_sidecars[1], signature=sidecar_signature)
-
-    assert spec.verify_blob_sidecar_signature(state, signed_blob_sidecar)
+    for blob_sidecar in blob_sidecars:
+        assert spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
 
 
 @with_deneb_and_later
 @spec_state_test
 @always_bls
-def test_blob_sidecar_signature_incorrect(spec, state):
+def test_blob_sidecar_inclusion_proof_incorrect(spec, state):
     """
     Test `get_blob_sidecar_signature`
     """
@@ -56,12 +82,9 @@ def test_blob_sidecar_signature_incorrect(spec, state):
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
-    blob_sidecars = spec.get_blob_sidecars(block, blobs, proofs)
+    blob_sidecars = spec.get_blob_sidecars(spec, block, blobs, proofs)
 
-    sidecar_signature = spec.get_blob_sidecar_signature(state,
-                                                        blob_sidecars[1],
-                                                        123)
-
-    signed_blob_sidecar = spec.SignedBlobSidecar(message=blob_sidecars[1], signature=sidecar_signature)
-
-    assert not spec.verify_blob_sidecar_signature(state, signed_blob_sidecar)
+    for blob_sidecar in blob_sidecars:
+        block = blob_sidecar.signed_block_header.message
+        block = block.body_root = hash_tree_root(block.body_root)  # mutate body root to break proof
+        assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)

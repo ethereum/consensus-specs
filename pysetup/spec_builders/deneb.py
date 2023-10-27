@@ -23,7 +23,17 @@ T = TypeVar('T')  # For generic function
         return '''
 def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
     # pylint: disable=unused-argument
-    return [], []'''
+    return [], []
+
+
+def compute_commitment_inclusion_proof(
+    body: BeaconBlockBody,
+    blob_kzg_commitments: Sequence[KZGCommitment],
+    index: int
+) -> List[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]:
+    # pylint: disable=unused-argument
+    return []
+'''
 
     @classmethod
     def execution_engine_cls(cls) -> str:
@@ -68,4 +78,5 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
+            'MAX_BLOB_COMMITMENTS_PER_BLOCK': spec_object.preset_vars['MAX_BLOB_COMMITMENTS_PER_BLOCK'].value,
         }

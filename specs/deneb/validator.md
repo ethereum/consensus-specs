@@ -148,6 +148,7 @@ Each `sidecar` is obtained from:
 def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+    block = signed_block.message
     block_header = BeaconBlockHeader(
         slot=block.slot,
         proposer_index=block.proposer_index,
@@ -160,18 +161,17 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
         BlobSidecar(
             index=index,
             blob=blob,
-            kzg_commitment=signed_block.message.body.blob_kzg_commitments[index],
+            kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
             commitment_inclusion_proof=compute_commitment_inclusion_proof(
-                signed_block.message.body,
-                signed_block.message.body.blob_kzg_commitments[index],
+                block.body,
+                block.body.blob_kzg_commitments[index],
                 index,
             ),
             signed_block_header=signed_block_header,
         )
         for index, blob in enumerate(blobs)
     ]
-
 ```
 
 The `subnet_id` for the `signed_sidecar` is calculated with:
