@@ -26,10 +26,7 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], 
     return [], []
 
 
-def compute_commitment_inclusion_proof(
-    body: BeaconBlockBody,
-    index: GeneralizedIndex
-) -> Sequence[Bytes32]:
+def compute_commitment_inclusion_proof(body: BeaconBlockBody, index: GeneralizedIndex) -> Sequence[Bytes32]:
     return build_proof(body.get_backing(), index)
 '''
 
