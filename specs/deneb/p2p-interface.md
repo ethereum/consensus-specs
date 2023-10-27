@@ -151,7 +151,7 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[REJECT]_ The proposer signature in `blob_sidecar.signed_block_header`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof`.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(hash_tree_root(block_header), sidecar.index)`.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `parent_root`/`slot`).
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ###### `beacon_aggregate_and_proof`
