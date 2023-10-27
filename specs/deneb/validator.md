@@ -165,8 +165,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
             kzg_proof=blob_kzg_proofs[index],
             commitment_inclusion_proof=compute_commitment_inclusion_proof(
                 block.body,
-                block.body.blob_kzg_commitments[index],
-                index,
+                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),
             ),
             signed_block_header=signed_block_header,
         )

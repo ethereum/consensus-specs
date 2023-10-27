@@ -34,7 +34,6 @@ def get_blob_sidecars(spec, signed_block, blobs, blob_kzg_proofs):
             commitment_inclusion_proof=compute_commitment_inclusion_proof(
                 spec,
                 signed_block.message.body,
-                signed_block.message.body.blob_kzg_commitments[index],
                 index,
             ),
             signed_block_header=signed_block_header,
@@ -43,10 +42,9 @@ def get_blob_sidecars(spec, signed_block, blobs, blob_kzg_proofs):
     ]
 
 
-def compute_commitment_inclusion_proof(spec, body, kzg_commitment, index):
-    gindex = (spec.BeaconBlockBody / 'blob_kzg_commitments' / index).gindex()
-    raise Exception('todo, does remerkleable expose an API to compute proofs?')
-    return gindex
+def compute_commitment_inclusion_proof(spec, body, index):
+    gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', index)
+    return spec.build_proof(body, gindex)
 
 
 @with_deneb_and_later

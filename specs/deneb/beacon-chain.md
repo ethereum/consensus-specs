@@ -187,6 +187,19 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
+#### `is_valid_merkle_path`
+
+```python
+def is_valid_merkle_path(leaf: Bytes32, branch: Sequence[Bytes32], gindex: int, root: Root) -> bool:
+    value = leaf
+    for i in range(len(branch)):
+        if (gindex >> i) & 1 == 0:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return value == root
+```
+
 ### Beacon state accessors
 
 #### Modified `get_attestation_participation_flag_indices`

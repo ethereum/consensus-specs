@@ -28,11 +28,9 @@ def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], 
 
 def compute_commitment_inclusion_proof(
     body: BeaconBlockBody,
-    blob_kzg_commitments: Sequence[KZGCommitment],
-    index: int
-) -> List[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]:
-    # pylint: disable=unused-argument
-    return []
+    index: GeneralizedIndex
+) -> Sequence[Bytes32]:
+    return build_proof(body.get_backing(), index)
 '''
 
     @classmethod

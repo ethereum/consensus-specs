@@ -51,7 +51,7 @@ The specification of these changes continues in the same format as the network s
 | `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request  |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
 | `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
-| `BLOB_KZG_COMMITMENTS_GINDEX`            | `4 ** 2 + 11` (= 27)              | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container  |
+| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')`  (= 27) | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container  |
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `floorlog2(BLOB_KZG_COMMITMENTS_GINDEX) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)  # noqa: E501` | Merkle proof for `blob_kzg_commitments` list item |
 
 ### Containers
@@ -86,27 +86,12 @@ class BlobIdentifier(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    commitment_item_gindex = MAX_BLOB_COMMITMENTS_PER_BLOCK + blob_sidecar.index
-    gindex = BLOB_KZG_COMMITMENTS_GINDEX + commitment_item_gindex << floorlog2(BLOB_KZG_COMMITMENTS_GINDEX)
     return is_valid_merkle_path(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.commitment_inclusion_proof,
-        gindex=gindex,
+        gindex=get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index),
         root=blob_sidecar.signed_block_header.message.body_root,
     )
-```
-
-#### `is_valid_merkle_path`
-
-```python
-def is_valid_merkle_path(leaf: Bytes32, branch: Sequence[Bytes32], gindex: int, root: Root) -> bool:
-    value = leaf
-    for i in range(len(branch)):
-        if (gindex >> i) & 1 == 0:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
 ```
 
 ### The gossip domain: gossipsub
