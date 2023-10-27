@@ -51,8 +51,8 @@ The specification of these changes continues in the same format as the network s
 | `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request  |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
 | `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `17`                              | Merkle proof for `blob_kzg_commitments` list item                   |        
-| `BLOB_KZG_COMMITMENT_GINDEX`             | `27`                              | Gindex path to `blob_kzg_commitments` on `BeaconBlockBody` container 
+| `BLOB_KZG_COMMITMENTS_GINDEX`            | `4 ** 2 + 11` (= 27)              | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container  |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `floorlog2(BLOB_KZG_COMMITMENTS_GINDEX) + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK) + 1` | Merkle proof for `blob_kzg_commitments` list item |
 
 ### Containers
 
@@ -87,7 +87,7 @@ class BlobIdentifier(Container):
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     commitment_item_gindex = MAX_BLOB_COMMITMENTS_PER_BLOCK + blob_sidecar.index
-    gindex = BLOB_KZG_COMMITMENT_GINDEX + commitment_item_gindex << floorlog2(BLOB_ZKG_COMMITMENT_GINDEX)
+    gindex = BLOB_KZG_COMMITMENTS_GINDEX + commitment_item_gindex << floorlog2(BLOB_KZG_COMMITMENTS_GINDEX)
     return is_valid_merkle_path(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.commitment_inclusion_proof,
