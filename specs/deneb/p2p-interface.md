@@ -17,7 +17,6 @@ The specification of these changes continues in the same format as the network s
     - [`BlobIdentifier`](#blobidentifier)
     - [Helpers](#helpers)
       - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
-    - [`is_valid_merkle_path`](#is_valid_merkle_path)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)

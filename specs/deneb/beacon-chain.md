@@ -25,6 +25,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
+    - [`is_valid_merkle_path`](#is_valid_merkle_path)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
