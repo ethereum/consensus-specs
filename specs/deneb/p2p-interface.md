@@ -51,8 +51,8 @@ The specification of these changes continues in the same format as the network s
 | `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request  |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
 | `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
-| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')`  (= 27) | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container  |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `floorlog2(BLOB_KZG_COMMITMENTS_GINDEX) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)  # noqa: E501` | Merkle proof for `blob_kzg_commitments` list item |
+| `BLOB_KZG_COMMITMENTS_GINDEX`            | `2**4 + 11`  (= 27)               | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container  |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `4 + 1 + floorlog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)` | Merkle proof for `blob_kzg_commitments` list item |
 
 ### Containers
 
