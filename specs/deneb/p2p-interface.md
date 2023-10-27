@@ -292,6 +292,10 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
+In the event of equivocating blobs, clients MUST serve only blobs with matching KZG commitments if they have seen the block.
+
+If clients have not seen the block, they MUST serve the first valid blobs they encounter.
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
