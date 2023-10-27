@@ -66,7 +66,7 @@ class BlobSidecar(Container):
     blob: Blob
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
-    commitment_inclusion_proof: [Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    commitment_inclusion_proof: List[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
     signed_block_header: SignedBeaconBlockHeader
 ```
 
