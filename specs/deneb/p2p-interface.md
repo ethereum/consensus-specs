@@ -155,6 +155,7 @@ The following validations MUST pass before forwarding the `signed_blob_sidecar` 
 - _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `sidecar.block_parent_root`).
+- _[REJECT]_ If the sidecar's block root (defined by `sidecar.block_root`) has been seen, the sidecar's kzg commiment should match the block. (ie. sidecar.kzg_commitment == block_body.blob_kzg_commitments[sidecar.index])
 - _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid as verified by `verify_blob_sidecar_signature`.
 - _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.block_root, sidecar.index)`.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
