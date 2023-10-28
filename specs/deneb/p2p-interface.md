@@ -11,6 +11,8 @@ The specification of these changes continues in the same format as the network s
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Modifications in Deneb](#modifications-in-deneb)
+  - [Constant](#constant)
+  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
