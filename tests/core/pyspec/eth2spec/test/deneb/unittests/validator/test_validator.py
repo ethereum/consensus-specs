@@ -13,7 +13,6 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block
 )
-from tests.core.pyspec.eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 @with_deneb_and_later
