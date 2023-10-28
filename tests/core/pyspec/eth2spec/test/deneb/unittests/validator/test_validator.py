@@ -55,5 +55,5 @@ def test_blob_sidecar_inclusion_proof_incorrect(spec, state):
 
     for blob_sidecar in blob_sidecars:
         block = blob_sidecar.signed_block_header.message
-        block = block.body_root = hash_tree_root(block.body_root)  # mutate body root to break proof
+        block.body_root = spec.hash(block.body_root)  # mutate body root to break proof
         assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)

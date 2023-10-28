@@ -101,10 +101,12 @@ class BlobIdentifier(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    return is_valid_merkle_path(
+    gindex = get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index)
+    return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.commitment_inclusion_proof,
-        gindex=get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index),
+        depth=floorlog2(gindex),
+        index=get_subtree_index(gindex),
         root=blob_sidecar.signed_block_header.message.body_root,
     )
 ```
