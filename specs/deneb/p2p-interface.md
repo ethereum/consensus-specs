@@ -40,13 +40,21 @@ The specification of these changes continues in the same format as the network s
 
 ## Modifications in Deneb
 
+### Constant
+
+*[New in Deneb:EIP4844]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')` (= 27) | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container |
+
 ### Preset
 
 *[New in Deneb:EIP4844]*
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `int(4 + 1 + floorlog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` | Merkle proof depth for `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(BLOB_KZG_COMMITMENTS_GINDEX) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
 ### Configuration
 

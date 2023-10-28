@@ -1,3 +1,4 @@
+from typing import Dict
 from .base import BaseSpecBuilder
 from ..constants import DENEB
 
@@ -68,10 +69,22 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
         return {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
             'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
             'MAX_BLOB_COMMITMENTS_PER_BLOCK': spec_object.preset_vars['MAX_BLOB_COMMITMENTS_PER_BLOCK'].value,
+        }
+
+    @classmethod
+    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+        return {
+            'BLOB_KZG_COMMITMENTS_GINDEX': 'GeneralizedIndex(27)',
+        }
+
+    @classmethod
+    def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
+        return {
+            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENT_INCLUSION_PROOF_DEPTH'].value,
         }

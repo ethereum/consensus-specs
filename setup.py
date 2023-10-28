@@ -162,6 +162,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     preset_vars: Dict[str, VariableDefinition] = {}
     config_vars: Dict[str, VariableDefinition] = {}
     ssz_dep_constants: Dict[str, str] = {}
+    func_dep_presets: Dict[str, str] = {}
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
     custom_types: Dict[str, str] = {}
@@ -214,6 +215,16 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
                     value_cell = cells[1]
                     value = value_cell.children[0].children
+
+                    description = None
+                    if len(cells) >= 3:
+                        description_cell = cells[2]
+                        if len(description_cell.children) > 0:
+                            description = description_cell.children[0].children
+                            if isinstance(description, list):
+                                # marko parses `**X**` as a list containing a X
+                                description = description[0].children
+
                     if isinstance(value, list):
                         # marko parses `**X**` as a list containing a X
                         value = value[0].children
@@ -227,6 +238,9 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     if value.startswith("get_generalized_index"):
                         ssz_dep_constants[name] = value
                         continue
+
+                    if description is not None and description.startswith("<!-- predefined -->"):
+                        func_dep_presets[name] = value
 
                     value_def = _parse_value(name, value)
                     if name in preset:
@@ -256,6 +270,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
         preset_vars=preset_vars,
         config_vars=config_vars,
         ssz_dep_constants=ssz_dep_constants,
+        func_dep_presets=func_dep_presets,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
     )
