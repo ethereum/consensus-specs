@@ -1,5 +1,5 @@
+import random
 from eth2spec.test.context import (
-    always_bls,
     spec_state_test,
     with_deneb_and_later,
 )
@@ -15,21 +15,30 @@ from eth2spec.test.helpers.block import (
 )
 
 
+def _get_sample_sidecars(spec, state, rng):
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # 2 txs, each has 2 blobs
+    blob_count = 2
+    opaque_tx_1, blobs_1, blob_kzg_commitments_1, proofs_1 = get_sample_opaque_tx(spec, blob_count=blob_count, rng=rng)
+    opaque_tx_2, blobs_2, blob_kzg_commitments_2, proofs_2 = get_sample_opaque_tx(spec, blob_count=blob_count, rng=rng)
+    assert opaque_tx_1 != opaque_tx_2
+
+    block.body.blob_kzg_commitments = blob_kzg_commitments_1 + blob_kzg_commitments_2
+    block.body.execution_payload.transactions = [opaque_tx_1, opaque_tx_2]
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+
+    blobs = blobs_1 + blobs_2
+    proofs = proofs_1 + proofs_2
+    signed_block = sign_block(spec, state, block, proposer_index=0)
+    return spec.get_blob_sidecars(signed_block, blobs, proofs)
+
+
 @with_deneb_and_later
 @spec_state_test
 def test_blob_sidecar_inclusion_proof_correct(spec, state):
-    """
-    Test `verify_blob_sidecar_inclusion_proof`
-    """
-    blob_count = 4
-    block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, blobs, blob_kzg_commitments, proofs = get_sample_opaque_tx(spec, blob_count=blob_count)
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-
-    signed_block = sign_block(spec, state, block, proposer_index=0)
-    blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, proofs)
+    rng = random.Random(1234)
+    blob_sidecars = _get_sample_sidecars(spec, state, rng)
 
     for blob_sidecar in blob_sidecars:
         assert spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
@@ -37,22 +46,23 @@ def test_blob_sidecar_inclusion_proof_correct(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
-@always_bls
-def test_blob_sidecar_inclusion_proof_incorrect(spec, state):
-    """
-    Test `get_blob_sidecar_signature`
-    """
-    blob_count = 4
-    block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, blobs, blob_kzg_commitments, proofs = get_sample_opaque_tx(spec, blob_count=blob_count)
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
-
-    signed_block = sign_block(spec, state, block, proposer_index=0)
-    blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, proofs)
+def test_blob_sidecar_inclusion_proof_incorrect_wrong_body(spec, state):
+    rng = random.Random(1234)
+    blob_sidecars = _get_sample_sidecars(spec, state, rng)
 
     for blob_sidecar in blob_sidecars:
         block = blob_sidecar.signed_block_header.message
         block.body_root = spec.hash(block.body_root)  # mutate body root to break proof
+        assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_blob_sidecar_inclusion_proof_incorrect_wrong_proof(spec, state):
+    rng = random.Random(1234)
+    blob_sidecars = _get_sample_sidecars(spec, state, rng)
+
+    for blob_sidecar in blob_sidecars:
+        # wrong proof
+        blob_sidecar.commitment_inclusion_proof = spec.compute_merkle_proof(spec.BeaconBlockBody(), 0)
         assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
