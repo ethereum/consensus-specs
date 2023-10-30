@@ -7,6 +7,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Union,
     boolean,
     uint256, uint64,
+    uint8,
 )
 from eth2spec.utils.ssz.ssz_impl import serialize
 
@@ -18,6 +19,9 @@ MAX_CALLDATA_SIZE = 2**24
 MAX_VERSIONED_HASHES_LIST_SIZE = 2**24
 MAX_ACCESS_LIST_STORAGE_KEYS = 2**24
 MAX_ACCESS_LIST_SIZE = 2**24
+
+
+BLOB_TX_TYPE = uint8(0x03)
 
 
 class AccessTuple(Container):
@@ -120,5 +124,5 @@ def get_sample_opaque_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_b
         )
     )
     serialized_tx = serialize(signed_blob_tx)
-    opaque_tx = spec.uint_to_bytes(spec.BLOB_TX_TYPE) + serialized_tx
+    opaque_tx = spec.uint_to_bytes(BLOB_TX_TYPE) + serialized_tx
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
