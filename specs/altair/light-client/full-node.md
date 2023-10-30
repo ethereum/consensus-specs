@@ -10,7 +10,7 @@
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
-  - [`compute_merkle_proof_for_state`](#compute_merkle_proof_for_state)
+  - [`compute_merkle_proof`](#compute_merkle_proof)
   - [`block_to_light_client_header`](#block_to_light_client_header)
 - [Deriving light client data](#deriving-light-client-data)
   - [`create_light_client_bootstrap`](#create_light_client_bootstrap)
@@ -27,11 +27,13 @@ This document provides helper functions to enable full nodes to serve light clie
 
 ## Helper functions
 
-### `compute_merkle_proof_for_state`
+### `compute_merkle_proof`
+
+This function return the Merkle proof of the given SSZ object `object` at generalized index `index`.
 
 ```python
-def compute_merkle_proof_for_state(state: BeaconState,
-                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+def compute_merkle_proof(object: SSZObject,
+                         index: GeneralizedIndex) -> Sequence[Bytes32]:
     ...
 ```
 
@@ -73,7 +75,7 @@ def create_light_client_bootstrap(state: BeaconState,
     return LightClientBootstrap(
         header=block_to_light_client_header(block),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX),
+        current_sync_committee_branch=compute_merkle_proof(state, CURRENT_SYNC_COMMITTEE_INDEX),
     )
 ```
 
@@ -120,8 +122,7 @@ def create_light_client_update(state: BeaconState,
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = compute_merkle_proof_for_state(
-            attested_state, NEXT_SYNC_COMMITTEE_INDEX)
+        update.next_sync_committee_branch = compute_merkle_proof(attested_state, NEXT_SYNC_COMMITTEE_INDEX)
 
     # Indicate finality whenever possible
     if finalized_block is not None:
@@ -130,8 +131,7 @@ def create_light_client_update(state: BeaconState,
             assert hash_tree_root(update.finalized_header.beacon) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
-        update.finality_branch = compute_merkle_proof_for_state(
-            attested_state, FINALIZED_ROOT_INDEX)
+        update.finality_branch = compute_merkle_proof(attested_state, FINALIZED_ROOT_INDEX)
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot

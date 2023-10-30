@@ -34,9 +34,9 @@ def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariab
     return GeneralizedIndex(ssz_path.gindex())
 
 
-def compute_merkle_proof_for_state(state: BeaconState,
-                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
-    return build_proof(state.get_backing(), index)'''
+def compute_merkle_proof(object: SSZObject,
+                         index: GeneralizedIndex) -> Sequence[Bytes32]:
+    return build_proof(object.get_backing(), index)'''
 
 
     @classmethod

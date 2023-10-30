@@ -68,8 +68,7 @@ def objects_to_spec(preset_name: str,
         if k in [
             "ceillog2",
             "floorlog2",
-            "compute_merkle_proof_for_block_body",
-            "compute_merkle_proof_for_state",
+            "compute_merkle_proof",
         ]:
             del spec_object.functions[k]
 
