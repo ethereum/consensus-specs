@@ -48,7 +48,7 @@ The specification of these changes continues in the same format as the network s
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')` (= 27) | `blob_kzg_commitments` field gindex on `BeaconBlockBody` container |
+| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')` (= 27) | `blob_kzg_commitments` field generalized index on `BeaconBlockBody` container |
 
 ### Preset
 
