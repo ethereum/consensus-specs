@@ -128,10 +128,8 @@ def prepare_execution_payload(state: BeaconState,
 
 *[New in Deneb:EIP4844]*
 
-1. After retrieving the execution payload from the execution engine as specified above,
-use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
-via `get_payload(payload_id).blobs_bundle`.
-2. Set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `blobs_bundle` entry containing the corresponding `blobs`, `commitments`, and `proofs`.
+2. Set `block.body.blob_kzg_commitments = commitments`.
 
 #### Constructing the `SignedBlobSidecar`s
 
