@@ -167,7 +167,7 @@ def get_item_position(typ: SSZType, index_or_variable_name: Union[int, SSZVariab
 ```
 
 ```python
-def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
+def get_generalized_index(typ: SSZType, *path: PyUnion[int, SSZVariableName]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.

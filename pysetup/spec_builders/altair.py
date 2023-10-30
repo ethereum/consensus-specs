@@ -27,7 +27,7 @@ GeneralizedIndex = NewType('GeneralizedIndex', int)
     @classmethod
     def sundry_functions(cls) -> str:
         return '''
-def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariableName]]) -> GeneralizedIndex:
+def get_generalized_index(ssz_class: Any, *path: PyUnion[int, SSZVariableName]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item

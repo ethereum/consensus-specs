@@ -163,18 +163,18 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
+            signed_block_header=signed_block_header,
             commitment_inclusion_proof=compute_merkle_proof(
                 block.body,
-                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),  # type: ignore
+                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),
             ),
-            signed_block_header=signed_block_header,
         )
         for index, blob in enumerate(blobs)
     ]
 ```
 
-The `subnet_id` for the `signed_sidecar` is calculated with:
-- Let `blob_index = signed_sidecar.message.index`.
+The `subnet_id` for the `blob_sidecar` is calculated with:
+- Let `blob_index = blob_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
 
 ```python
