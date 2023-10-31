@@ -354,7 +354,7 @@ The `beacon_aggregate_and_proof` topic is used to propagate aggregated attestati
 to subscribing nodes (typically validators) to be included in future blocks.
 
 The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network.
-(We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
+(We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message`, `aggregate = aggregate_and_proof.aggregate` and `index = get_attestation_index(aggregate)`)
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
@@ -364,12 +364,11 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-- _[REJECT]_ The attestation has participants --
-  that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
+- _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot --
-  i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+  i.e. `is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is within the committee --
-  i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
+  i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, index)`.
 - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature
   of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
@@ -425,9 +424,10 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.
-- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`.
+(We define the following for convenience -- `index = get_attestation_index(attestation)`)
+- _[REJECT]_ The committee index is within the expected range -- i.e. `index < get_committee_count_per_slot(state, data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
-  i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
+  i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
   which may be pre-computed along with the committee information for the signature check.
 - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots
@@ -439,7 +439,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The attestation is unaggregated --
   that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.

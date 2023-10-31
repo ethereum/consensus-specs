@@ -316,12 +316,13 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
+    index = get_attestation_index(attestation)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot  # [Modified in Deneb:EIP7045]
-    assert data.index < get_committee_count_per_slot(state, data.target.epoch)
+    assert index < get_committee_count_per_slot(state, data.target.epoch)
 
-    committee = get_beacon_committee(state, data.slot, data.index)
+    committee = get_beacon_committee(state, data.slot, index)
     assert len(attestation.aggregation_bits) == len(committee)
 
     # Participation flag indices
@@ -337,7 +338,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+    for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
