@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Configurations](#configurations)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -23,6 +24,11 @@
       - [Blob KZG commitments](#blob-kzg-commitments)
     - [Constructing the `SignedBlobSidecar`s](#constructing-the-signedblobsidecars)
       - [Sidecar](#sidecar)
+  - [Validator duties](#validator-duties)
+    - [Attestations](#attestations)
+    - [Aggregates](#aggregates)
+    - [Sync committee messages](#sync-committee-messages)
+    - [Sync committee contributions](#sync-committee-contributions)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -38,6 +44,15 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Configurations
+
+| Name                  | Value       |
+| --------------------- | ----------- |
+| `ATTESTATION_DUE_MS`  | `6000`      |
+| `AGGREGATE_DUE_MS`    | `9000`      |
+| `SYNC_MESSAGE_DUE_MS` | `6000`      |
+| `CONTRIBUTION_DUE_MS` | `9000`      |
 
 ## Helpers
 
@@ -189,3 +204,29 @@ The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUEST
 to ensure the data-availability of these blobs throughout the network.
 
 After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop serving them.
+
+### Validator duties
+
+The timing for sending attestation, aggregate, sync committee messages and contributions change.
+
+#### Attestations
+
+A validator must create and broadcast the `attestation` to the associated attestation subnet as soon as the validator has received a valid block from the expected block proposer for the assigned `slot`.
+
+If the block has not been observed at `ATTESTATION_DUE_MS` milliseconds into the slot, the validator should send the attestation voting for its current head as selected by fork choice.
+
+Within each slot, clients must be prepared to receive attestations out of order with respect to the block that it's voting for.
+
+#### Aggregates
+
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `AGGREGATE_DUE_MS` milliseconds after the start of the slot.
+
+Within each slot, clients must be prepared to receive aggregates out of order with respect to the block that it's voting for.
+
+#### Sync committee messages
+
+This logic is triggered upon the same conditions as when producing an attestation, using `SYNC_MESSAGE_DUE_MS` as cutoff time.
+
+#### Sync committee contributions
+
+This logic is triggered upon the same conditions as when producing an aggregate, , using `CONTRIBUTION_DUE_MS` as cutoff time.

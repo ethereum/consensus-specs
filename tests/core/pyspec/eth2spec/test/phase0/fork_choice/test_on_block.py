@@ -28,6 +28,9 @@ from eth2spec.test.helpers.fork_choice import (
     is_ready_to_justify,
     find_next_justifying_slot,
 )
+from eth2spec.test.helpers.forks import (
+    is_post_deneb,
+)
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slots,
@@ -523,8 +526,13 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on untimely arrival in the same slot
-    time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
+    if not is_post_deneb(spec):
+        time = (store.genesis_time + block. slot * spec.config.SECONDS_PER_SLOT +
+                spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
+    else:
+        time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
+                spec.config.LATE_BLOCK_CUTOFF_MS // 1000)
+
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
 
