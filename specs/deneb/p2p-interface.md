@@ -281,6 +281,8 @@ It may be less in the case that the responding peer is missing blocks or sidecar
 The response is unsigned, i.e. `BlobSidecar`, as the signature of the beacon block proposer
 may not be available beyond the initial distribution via gossip.
 
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted and correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof_batch`.
+
 No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
