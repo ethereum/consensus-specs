@@ -77,7 +77,6 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name | Value |
 | - | - |
-| `BLOB_TX_TYPE` | `uint8(0x03)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
