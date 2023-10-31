@@ -24,3 +24,11 @@ EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
 # SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8)
 UPDATE_TIMEOUT: 64
+
+
+# Validator duties
+# ---------------------------------------------------------------
+# [customized] 2000ms
+SYNC_MESSAGE_DUE_MS: 2000
+# [customized] 4000ms
+CONTRIBUTION_DUE_MS: 4000

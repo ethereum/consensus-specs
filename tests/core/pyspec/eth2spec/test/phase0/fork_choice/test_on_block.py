@@ -465,7 +465,7 @@ def test_proposer_boost(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
+            (spec.LATE_BLOCK_CUTOFF_MS - 1) // 1000)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
@@ -524,7 +524,7 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
 
     # Process block on untimely arrival in the same slot
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
-            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
+            spec.LATE_BLOCK_CUTOFF_MS // 1000)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
 
@@ -559,7 +559,7 @@ def test_proposer_boost_is_first_block(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     time = (store.genesis_time + block_a.slot * spec.config.SECONDS_PER_SLOT +
-            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
+            (spec.LATE_BLOCK_CUTOFF_MS - 1) // 1000)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_a, test_steps)
     # `proposer_boost_root` is now `block_a`

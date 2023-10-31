@@ -7,7 +7,7 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
+  - [Presets](#presets)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
@@ -68,11 +68,11 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
 
-### Constant
+### Presets
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `INTERVALS_PER_SLOT` | `uint64(3)` |
+| Name                   | Value       |
+| ---------------------- | ----------- |
+| `LATE_BLOCK_CUTOFF_MS` | `4000`      |
 
 ### Configuration
 
@@ -538,9 +538,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
     is_first_block = store.proposer_boost_root == Root()
-    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
+    if get_current_slot(store) == block.slot and is_before_late_block_cutoff and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
