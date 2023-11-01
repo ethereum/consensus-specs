@@ -82,7 +82,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
     signed_block_header: SignedBeaconBlockHeader
-    commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```
 
 #### `BlobIdentifier`
@@ -104,7 +104,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     gindex = get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index)
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
-        branch=blob_sidecar.commitment_inclusion_proof,
+        branch=blob_sidecar.kzg_commitment_inclusion_proof,
         depth=floorlog2(gindex),
         index=get_subtree_index(gindex),
         root=blob_sidecar.signed_block_header.message.body_root,
