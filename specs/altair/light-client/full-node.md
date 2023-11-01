@@ -73,7 +73,7 @@ def create_light_client_bootstrap(state: BeaconState,
     return LightClientBootstrap(
         header=block_to_light_client_header(block),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX),
+        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_GINDEX),
     )
 ```
 
@@ -121,7 +121,7 @@ def create_light_client_update(state: BeaconState,
     if update_attested_period == update_signature_period:
         update.next_sync_committee = attested_state.next_sync_committee
         update.next_sync_committee_branch = compute_merkle_proof_for_state(
-            attested_state, NEXT_SYNC_COMMITTEE_INDEX)
+            attested_state, NEXT_SYNC_COMMITTEE_GINDEX)
 
     # Indicate finality whenever possible
     if finalized_block is not None:
@@ -131,7 +131,7 @@ def create_light_client_update(state: BeaconState,
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
         update.finality_branch = compute_merkle_proof_for_state(
-            attested_state, FINALIZED_ROOT_INDEX)
+            attested_state, FINALIZED_ROOT_GINDEX)
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot

@@ -42,9 +42,9 @@ def compute_merkle_proof_for_state(state: BeaconState,
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {
-            'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
-            'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
-            'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
+            'FINALIZED_ROOT_GINDEX': 'GeneralizedIndex(105)',
+            'CURRENT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(54)',
+            'NEXT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(55)',
         }
 
     @classmethod
