@@ -11,13 +11,14 @@ The specification of these changes continues in the same format as the network s
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Modifications in Deneb](#modifications-in-deneb)
+  - [Constant](#constant)
+  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
-    - [`SignedBlobSidecar`](#signedblobsidecar)
     - [`BlobIdentifier`](#blobidentifier)
     - [Helpers](#helpers)
-      - [`verify_blob_sidecar_signature`](#verify_blob_sidecar_signature)
+      - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -41,6 +42,18 @@ The specification of these changes continues in the same format as the network s
 
 ## Modifications in Deneb
 
+### Constant
+
+*[New in Deneb:EIP4844]*
+
+### Preset
+
+*[New in Deneb:EIP4844]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+
 ### Configuration
 
 *[New in Deneb:EIP4844]*
@@ -60,24 +73,12 @@ The specification of these changes continues in the same format as the network s
 
 ```python
 class BlobSidecar(Container):
-    block_root: Root
     index: BlobIndex  # Index of blob in block
-    slot: Slot
-    block_parent_root: Root  # Proposer shuffling determinant
-    proposer_index: ValidatorIndex
     blob: Blob
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
-```
-
-#### `SignedBlobSidecar`
-
-*[New in Deneb:EIP4844]*
-
-```python
-class SignedBlobSidecar(Container):
-    message: BlobSidecar
-    signature: BLSSignature
+    signed_block_header: SignedBeaconBlockHeader
+    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```
 
 #### `BlobIdentifier`
@@ -92,13 +93,18 @@ class BlobIdentifier(Container):
 
 #### Helpers
 
-##### `verify_blob_sidecar_signature`
+##### `verify_blob_sidecar_inclusion_proof`
 
 ```python
-def verify_blob_sidecar_signature(state: BeaconState, signed_blob_sidecar: SignedBlobSidecar) -> bool:
-    proposer = state.validators[signed_blob_sidecar.message.proposer_index]
-    signing_root = compute_signing_root(signed_blob_sidecar.message, get_domain(state, DOMAIN_BLOB_SIDECAR))
-    return bls.Verify(proposer.pubkey, signing_root, signed_blob_sidecar.signature)
+def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
+    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index))
+    return is_valid_merkle_branch(
+        leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
+        branch=blob_sidecar.kzg_commitment_inclusion_proof,
+        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
+        index=gindex,
+        root=blob_sidecar.signed_block_header.message.body_root,
+    )
 ```
 
 ### The gossip domain: gossipsub
@@ -123,7 +129,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `blob_sidecar_{subnet_id}` | `SignedBlobSidecar` [New in Deneb:EIP4844] |
+| `blob_sidecar_{subnet_id}` | `BlobSidecar` [New in Deneb:EIP4844] |
 
 ##### Global topics
 
@@ -146,19 +152,21 @@ New validation:
 
 This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.
 
-The following validations MUST pass before forwarding the `signed_blob_sidecar` on the network, assuming the alias `sidecar = signed_blob_sidecar.message`:
+The following validations MUST pass before forwarding the `blob_sidecar` on the network, assuming the alias `block_header = blob_sidecar.signed_block_header.message`:
 
-- _[REJECT]_ The sidecar's index is consistent with `MAX_BLOBS_PER_BLOCK` -- i.e. `sidecar.index < MAX_BLOBS_PER_BLOCK`.
-- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_blob_sidecar(sidecar.index) == subnet_id`.
-- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `sidecar.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `sidecar.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[IGNORE]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
-- _[REJECT]_ The sidecar's block's parent (defined by `sidecar.block_parent_root`) passes validation.
-- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `sidecar.block_parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block's parent -- i.e. `get_checkpoint_block(store, sidecar.block_parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The proposer signature, `signed_blob_sidecar.signature`, is valid as verified by `verify_blob_sidecar_signature`.
-- _[IGNORE]_ The sidecar is the only sidecar with valid signature received for the tuple `(sidecar.block_root, sidecar.index)`.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_parent_root`/`slot`).
+- _[REJECT]_ The sidecar's index is consistent with `MAX_BLOBS_PER_BLOCK` -- i.e. `blob_sidecar.index < MAX_BLOBS_PER_BLOCK`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_blob_sidecar(blob_sidecar.index) == subnet_id`.
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `blob_sidecar.signed_block_header`, is valid with respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by `block_header.parent_root`) passes validation.
+- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
+- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof(blob_sidecar)`.
+- _[REJECT]_ The sidecar's blob is valid as verified by `verify_blob_kzg_proof(blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof)`.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple (block_header.slot, block_header.proposer_index, blob_sidecar.index) with valid header signature, sidecar inclusion proof, and kzg proof.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ###### `beacon_aggregate_and_proof`
