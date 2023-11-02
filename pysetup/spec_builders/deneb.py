@@ -74,12 +74,6 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         }
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
-        return {
-            'BLOB_KZG_COMMITMENTS_GINDEX': 'GeneralizedIndex(27)',
-        }
-
-    @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
         return {
             'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENT_INCLUSION_PROOF_DEPTH'].value,

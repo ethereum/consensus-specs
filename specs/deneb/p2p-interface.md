@@ -46,17 +46,13 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Deneb:EIP4844]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `BLOB_KZG_COMMITMENTS_GINDEX`            | `get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')` (= 27) | `blob_kzg_commitments` field generalized index on `BeaconBlockBody` container |
-
 ### Preset
 
 *[New in Deneb:EIP4844]*
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(BLOB_KZG_COMMITMENTS_GINDEX) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
 ### Configuration
 
@@ -101,12 +97,11 @@ class BlobIdentifier(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    gindex = get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index)
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.kzg_commitment_inclusion_proof,
-        depth=floorlog2(gindex),
-        index=get_subtree_index(gindex),
+        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
+        index=get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index)),
         root=blob_sidecar.signed_block_header.message.body_root,
     )
 ```
