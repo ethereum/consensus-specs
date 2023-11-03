@@ -150,7 +150,7 @@ New validation:
 
 *[New in Deneb:EIP4844]*
 
-This topic is used to propagate signed blob sidecars, where each blob index maps to some `subnet_id`.
+This topic is used to propagate blob sidecars, where each blob index maps to some `subnet_id`.
 
 The following validations MUST pass before forwarding the `blob_sidecar` on the network, assuming the alias `block_header = blob_sidecar.signed_block_header.message`:
 
@@ -341,7 +341,7 @@ The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
 Let `blob_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`.
-Clients MUST keep a record of signed blob sidecars seen on the epoch range `blob_serve_range`
+Clients MUST keep a record of blob sidecars seen on the epoch range `blob_serve_range`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 
