@@ -11,7 +11,6 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
   - [Blob](#blob)
 - [Preset](#preset)
   - [Execution](#execution)
@@ -66,12 +65,6 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | `BlobIndex` | `uint64` | *[New in Deneb:EIP4844]* |
 
 ## Constants
-
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOB_SIDECAR` | `DomainType('0x0B000000')` |
 
 ### Blob
 
