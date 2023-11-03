@@ -11,7 +11,6 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
   - [Blob](#blob)
 - [Preset](#preset)
   - [Execution](#execution)
