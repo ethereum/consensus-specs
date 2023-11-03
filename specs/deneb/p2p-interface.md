@@ -286,7 +286,7 @@ Requests sidecars by block root and index.
 The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
 It may be less in the case that the responding peer is missing blocks or sidecars.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid proposer signature and valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
 
 No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
 
@@ -331,7 +331,7 @@ Response Content:
 
 Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, leading up to the current head block as selected by fork choice.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid proposer signature and valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
 
