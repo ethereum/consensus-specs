@@ -57,7 +57,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
+TBD. This fork is defined for testing purposes.
 For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
 
 Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
@@ -83,7 +83,8 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        excess_data_gas=uint256(0),  # [New in Deneb]
+        blob_gas_used=uint64(0),  # [New in Deneb:EIP4844]
+        excess_blob_gas=uint64(0),  # [New in Deneb:EIP4844]
     )
     post = BeaconState(
         # Versioning
@@ -125,7 +126,7 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Deneb]
+        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Deneb:EIP4844]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,

@@ -1,11 +1,11 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -47,17 +47,24 @@ def get_sample_genesis_execution_payload_header(spec,
     )
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    withdrawals_trie_root = None
+    deposit_receipts_trie_root = None
+    exits_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    else:
-        withdrawals_trie_root = None
+    if is_post_eip6110(spec):
+        deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_eip7002(spec):
+        exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
+        deposit_receipts_trie_root,
+        exits_trie_root,
     )
     return payload_header
 
@@ -80,6 +87,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     elif spec.fork == DENEB:
         previous_version = spec.config.CAPELLA_FORK_VERSION
         current_version = spec.config.DENEB_FORK_VERSION
+    elif spec.fork == EIP6110:
+        previous_version = spec.config.DENEB_FORK_VERSION
+        current_version = spec.config.EIP6110_FORK_VERSION
+    elif spec.fork == EIP7002:
+        previous_version = spec.config.CAPELLA_FORK_VERSION
+        current_version = spec.config.EIP7002_FORK_VERSION
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -128,5 +141,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             spec,
             eth1_block_hash=eth1_block_hash,
         )
+
+    if is_post_eip6110(spec):
+        state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
 
     return state

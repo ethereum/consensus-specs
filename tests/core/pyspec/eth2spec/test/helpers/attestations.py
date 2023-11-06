@@ -5,7 +5,7 @@ from typing import List
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair
+from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -51,19 +51,21 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-def build_attestation_data(spec, state, slot, index, shard=None):
+def build_attestation_data(spec, state, slot, index, beacon_block_root=None, shard=None):
     assert state.slot >= slot
 
-    if slot == state.slot:
-        block_root = build_empty_block_for_next_slot(spec, state).parent_root
+    if beacon_block_root is not None:
+        pass
+    elif slot == state.slot:
+        beacon_block_root = build_empty_block_for_next_slot(spec, state).parent_root
     else:
-        block_root = spec.get_block_root_at_slot(state, slot)
+        beacon_block_root = spec.get_block_root_at_slot(state, slot)
 
     current_epoch_start_slot = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
-        epoch_boundary_root = block_root
+        epoch_boundary_root = beacon_block_root
     else:
         epoch_boundary_root = spec.get_block_root(state, spec.get_current_epoch(state))
 
@@ -77,7 +79,7 @@ def build_attestation_data(spec, state, slot, index, shard=None):
     data = spec.AttestationData(
         slot=slot,
         index=index,
-        beacon_block_root=block_root,
+        beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
     )
@@ -91,6 +93,7 @@ def get_valid_attestation(spec,
                           slot=None,
                           index=None,
                           filter_participant_set=None,
+                          beacon_block_root=None,
                           signed=False):
     # If filter_participant_set filters everything, the attestation has 0 participants, and cannot be signed.
     # Thus strictly speaking invalid when no participant is added later.
@@ -99,9 +102,7 @@ def get_valid_attestation(spec,
     if index is None:
         index = 0
 
-    attestation_data = build_attestation_data(
-        spec, state, slot=slot, index=index
-    )
+    attestation_data = build_attestation_data(spec, state, slot=slot, index=index, beacon_block_root=beacon_block_root)
 
     beacon_committee = spec.get_beacon_committee(
         state,
@@ -158,6 +159,14 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
     return bls.Sign(privkey, signing_root)
 
 
+def compute_max_inclusion_slot(spec, attestation):
+    if is_post_deneb(spec):
+        next_epoch = spec.compute_epoch_at_slot(attestation.data.slot) + 1
+        end_of_next_epoch = spec.compute_start_slot_at_epoch(next_epoch + 1) - 1
+        return end_of_next_epoch
+    return attestation.data.slot + spec.SLOTS_PER_EPOCH
+
+
 def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_participant_set=None):
     """
      `signed`: Signing is optional.
@@ -187,7 +196,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
         spec.process_attestation(state, attestation)
 
 
-def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None):
+def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None):
     committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
     for index in range(committees_per_slot):
         def participants_filter(comm):
@@ -202,7 +211,8 @@ def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=
             slot_to_attest,
             index=index,
             signed=True,
-            filter_participant_set=participants_filter
+            filter_participant_set=participants_filter,
+            beacon_block_root=beacon_block_root,
         )
 
 

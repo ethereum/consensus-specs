@@ -15,6 +15,8 @@ from eth2spec.test.helpers.constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
+    EIP6110,
+    EIP7002,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -158,6 +160,10 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=
         state = post_spec.upgrade_to_capella(state)
     elif post_spec.fork == DENEB:
         state = post_spec.upgrade_to_deneb(state)
+    elif post_spec.fork == EIP6110:
+        state = post_spec.upgrade_to_eip6110(state)
+    elif post_spec.fork == EIP7002:
+        state = post_spec.upgrade_to_eip7002(state)
 
     assert state.fork.epoch == fork_epoch
 
@@ -173,6 +179,12 @@ def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=
     elif post_spec.fork == DENEB:
         assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
         assert state.fork.current_version == post_spec.config.DENEB_FORK_VERSION
+    elif post_spec.fork == EIP6110:
+        assert state.fork.previous_version == post_spec.config.DENEB_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.EIP6110_FORK_VERSION
+    elif post_spec.fork == EIP7002:
+        assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
+        assert state.fork.current_version == post_spec.config.EIP7002_FORK_VERSION
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(

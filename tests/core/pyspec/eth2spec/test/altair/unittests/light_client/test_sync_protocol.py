@@ -3,7 +3,7 @@ from copy import deepcopy
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
     with_presets,
-    with_altair_and_later,
+    with_light_client,
 )
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
@@ -29,7 +29,7 @@ def setup_test(spec, state):
     return (trusted_block, store)
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
     genesis_block, store = setup_test(spec, state)
@@ -61,7 +61,7 @@ def test_process_light_client_update_not_timeout(spec, state):
     assert store.current_max_active_participants > 0
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
@@ -96,7 +96,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     assert store.current_max_active_participants > 0
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
@@ -131,7 +131,7 @@ def test_process_light_client_update_timeout(spec, state):
     assert store.current_max_active_participants > 0
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):

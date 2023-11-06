@@ -43,7 +43,9 @@ def compute_fork_version(epoch: Epoch) -> Version:
     Return the fork version at the given ``epoch``.
     """
     if epoch >= EIP6110_FORK_EPOCH:
-        return EIP6110_FORK_EPOCH
+        return EIP6110_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
         return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
@@ -68,8 +70,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to EIP-6110.
 
 ```python
-def upgrade_to_eip6110(pre: capella.BeaconState) -> BeaconState:
-    epoch = capella.get_current_epoch(pre)
+def upgrade_to_eip6110(pre: deneb.BeaconState) -> BeaconState:
+    epoch = deneb.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
@@ -86,6 +88,8 @@ def upgrade_to_eip6110(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
+        blob_gas_used=uint64(0),
+        excess_blob_gas=uint64(0),
         deposit_receipts_root=Root(),  # [New in EIP-6110]
     )
     post = BeaconState(

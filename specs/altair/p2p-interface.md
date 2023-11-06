@@ -13,7 +13,6 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Warning](#warning)
 - [Modifications in Altair](#modifications-in-altair)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -38,14 +37,9 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-## Warning
+## Modifications in Altair
 
-This document is currently illustrative for early Altair testnets and some parts are subject to change.
-Refer to the note in the [validator guide](./validator.md) for further details.
-
-# Modifications in Altair
-
-## MetaData
+### MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to communicate the sync committee subnet subscriptions:
 
@@ -62,12 +56,12 @@ Where
 - `seq_number` and `attnets` have the same meaning defined in the Phase 0 document.
 - `syncnets` is a `Bitvector` representing the node's sync committee subnet subscriptions. This field should mirror the data in the node's ENR as outlined in the [validator guide](./validator.md#sync-committee-subnet-stability).
 
-## The gossip domain: gossipsub
+### The gossip domain: gossipsub
 
 Gossip meshes are added in Altair to support the consensus activities of the sync committees.
 Validators use an aggregation scheme to balance the processing and networking load across all of the relevant actors.
 
-### Topics and messages
+#### Topics and messages
 
 Topics follow the same specification as in the Phase 0 document.
 New topics are added in Altair to support the sync committees and the beacon block topic is updated with the modified type.
@@ -103,11 +97,11 @@ Definitions of these new types can be found in the [Altair validator guide](./va
 
 Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
 
-#### Global topics
+##### Global topics
 
 Altair changes the type of the global beacon block topic and adds one global topic to propagate partially aggregated sync committee messages to all potential proposers of beacon blocks.
 
-##### `beacon_block`
+###### `beacon_block`
 
 The existing specification for this topic does not change from the Phase 0 document,
 but the type of the payload does change to the (modified) `SignedBeaconBlock`.
@@ -115,7 +109,7 @@ This type changes due to the inclusion of the inner `BeaconBlockBody` that is mo
 
 See the [state transition document](./beacon-chain.md#beaconblockbody) for Altair for further details.
 
-##### `sync_committee_contribution_and_proof`
+###### `sync_committee_contribution_and_proof`
 
 This topic is used to propagate partially aggregated sync committee messages to be included in future blocks.
 
@@ -152,11 +146,11 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
 - _[REJECT]_ The aggregator signature, `signed_contribution_and_proof.signature`, is valid.
 - _[REJECT]_ The aggregate signature is valid for the message `beacon_block_root` and aggregate pubkey derived from the participation info in `aggregation_bits` for the subcommittee specified by the `contribution.subcommittee_index`.
 
-#### Sync committee subnets
+##### Sync committee subnets
 
 Sync committee subnets are used to propagate unaggregated sync committee messages to subsections of the network.
 
-##### `sync_committee_{subnet_id}`
+###### `sync_committee_{subnet_id}`
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync committee messages to the subnet `subnet_id` to be aggregated before being gossiped to the global `sync_committee_contribution_and_proof` topic.
 
@@ -170,7 +164,7 @@ The following validations MUST pass before forwarding the `sync_committee_messag
   Note this validation is _per topic_ so that for a given `slot`, multiple messages could be forwarded with the same `validator_index` as long as the `subnet_id`s are distinct.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for the validator referenced by `validator_index`.
 
-#### Sync committees and aggregation
+##### Sync committees and aggregation
 
 The aggregation scheme closely follows the design of the attestation aggregation scheme.
 Sync committee messages are broadcast into "subnets" defined by a topic.
@@ -182,7 +176,7 @@ Unaggregated messages (along with metadata) are sent as `SyncCommitteeMessage`s 
 
 Aggregated sync committee messages are packaged into (signed) `SyncCommitteeContribution` along with proofs and gossiped to the `sync_committee_contribution_and_proof` topic.
 
-### Transitioning the gossip
+#### Transitioning the gossip
 
 With any fork, the fork version, and thus the `ForkDigestValue`, change.
 Message types are unique per topic, and so for a smooth transition a node must temporarily subscribe to both the old and new topics.
@@ -205,9 +199,9 @@ Post-fork:
   E.g. an attestation on the both the old and new topic is ignored like any duplicate.
 - Two epochs after the fork, pre-fork topics SHOULD be unsubscribed from. This is well after the configured `seen_ttl`.
 
-## The Req/Resp domain
+### The Req/Resp domain
 
-### Req-Resp interaction
+#### Req-Resp interaction
 
 An additional `<context-bytes>` field is introduced to the `response_chunk` as defined in the Phase 0 document:
 
@@ -221,7 +215,7 @@ On a non-zero `<result>` with `ErrorMessage` payload, the `<context-bytes>` is a
 In Altair and later forks, `<context-bytes>` functions as a short meta-data,
 defined per req-resp method, and can parametrize the payload decoder.
 
-#### `ForkDigest`-context
+##### `ForkDigest`-context
 
 Starting with Altair, and in future forks, SSZ type definitions may change.
 For this common case, we define the `ForkDigest`-context:
@@ -229,9 +223,9 @@ For this common case, we define the `ForkDigest`-context:
 A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the chunk:
  `compute_fork_digest(fork_version, genesis_validators_root)`.
 
-### Messages
+#### Messages
 
-#### BeaconBlocksByRange v2
+##### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -246,7 +240,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 
-#### BeaconBlocksByRoot v2
+##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -261,7 +255,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
 
-#### GetMetaData v2
+##### GetMetaData v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/2/`
 
@@ -279,7 +273,7 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from phase 0 in Altair. Other conditions for the `GetMetaData`
 protocol are unchanged from the phase 0 p2p networking document.
 
-### Transitioning from v1 to v2
+#### Transitioning from v1 to v2
 
 In advance of the fork, implementations can opt in to both run the v1 and v2 for a smooth transition.
 This is non-breaking, and is recommended as soon as the fork specification is stable.
@@ -291,7 +285,7 @@ The v1 method MAY be unregistered at the fork boundary.
 In the event of a request on v1 for an Altair specific payload,
 the responder MUST return the **InvalidRequest** response code.
 
-## The discovery domain: discv5
+### The discovery domain: discv5
 
 The `attnets` key of the ENR is used as defined in the Phase 0 document.
 

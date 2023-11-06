@@ -10,7 +10,6 @@
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
-  - [`compute_merkle_proof_for_block_body`](#compute_merkle_proof_for_block_body)
   - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -21,14 +20,6 @@
 This upgrade adds information about the execution payload to light client data as part of the Capella upgrade.
 
 ## Helper functions
-
-### `compute_merkle_proof_for_block_body`
-
-```python
-def compute_merkle_proof_for_block_body(body: BeaconBlockBody,
-                                        index: GeneralizedIndex) -> Sequence[Bytes32]:
-    ...
-```
 
 ### Modified `block_to_light_client_header`
 
@@ -55,7 +46,7 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             transactions_root=hash_tree_root(payload.transactions),
             withdrawals_root=hash_tree_root(payload.withdrawals),
         )
-        execution_branch = compute_merkle_proof_for_block_body(block.message.body, EXECUTION_PAYLOAD_INDEX)
+        execution_branch = compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_INDEX)
     else:
         # Note that during fork transitions, `finalized_header` may still point to earlier forks.
         # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),

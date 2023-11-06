@@ -9,7 +9,7 @@ from eth2spec.test.context import (
     with_phases,
     with_presets,
     with_state,
-    with_altair_and_later,
+    with_light_client,
 )
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
@@ -290,7 +290,7 @@ def compute_start_slot_at_next_sync_committee_period(spec, state):
     return compute_start_slot_at_sync_committee_period(spec, sync_committee_period + 1)
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync(spec, state):
@@ -512,7 +512,7 @@ def test_light_client_sync(spec, state):
     yield from finish_test(test)
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_supply_sync_committee_from_past_update(spec, state):
@@ -542,7 +542,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
     yield from finish_test(test)
 
 
-@with_altair_and_later
+@with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_advance_finality_without_sync_committee(spec, state):

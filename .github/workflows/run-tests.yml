@@ -6,10 +6,8 @@ defaults:
 
 env:
   TEST_PRESET_TYPE: "minimal"
-  DEFAULT_BRANCH: "dev"
 
-# Run tests on workflow_Dispatch
-on: 
+on:
   push:
     branches:
       - dev 
@@ -22,10 +20,6 @@ on:
         description: Type of test to run, either mainnet or minimal
         type: string
         required: true
-      commitRef:
-        description: The branch, tag or SHA to checkout and build from
-        default: dev
-        required: true  
   schedule:
     - cron: '0 0 * * *'
 
@@ -47,10 +41,8 @@ jobs:
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
-        with:
-          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Check table of contents
-        run: sudo npm install -g doctoc@2 && make check_toc
+        run: sudo npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
    runs-on: self-hosted
@@ -58,8 +50,6 @@ jobs:
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
-        with:
-          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Check codespell
         run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
@@ -69,8 +59,6 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
-        with:
-          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: Install pyspec requirements
         run: make install_test
       - name: Run linter for pyspec
@@ -83,12 +71,10 @@ jobs:
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "eip6110", "eip7002"]
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
-        with:
-          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
       - name: set TEST_PRESET_TYPE
         if: github.event.inputs.test_preset_type != ''        
         run: |

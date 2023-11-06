@@ -352,8 +352,11 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
         # NOTE: Do not call `on_tick` here
         yield from add_block(spec, store, block, test_steps)
 
-    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    ancestor_at_finalized_slot = spec.get_checkpoint_block(
+        store,
+        pre_store_justified_checkpoint_root,
+        store.finalized_checkpoint.epoch
+    )
     assert ancestor_at_finalized_slot != store.finalized_checkpoint.root
 
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
@@ -428,8 +431,11 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     for block in all_blocks:
         yield from tick_and_add_block(spec, store, block, test_steps)
 
-    finalized_slot = spec.compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    ancestor_at_finalized_slot = spec.get_ancestor(store, pre_store_justified_checkpoint_root, finalized_slot)
+    ancestor_at_finalized_slot = spec.get_checkpoint_block(
+        store,
+        pre_store_justified_checkpoint_root,
+        store.finalized_checkpoint.epoch
+    )
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
     assert store.finalized_checkpoint == another_state.finalized_checkpoint
@@ -524,6 +530,56 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
 
     assert store.proposer_boost_root == spec.Root()
 
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
+
+    yield 'steps', test_steps
+
+
+@with_altair_and_later
+@spec_state_test
+def test_proposer_boost_is_first_block(spec, state):
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+
+    # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
+    state = genesis_state.copy()
+    next_slots(spec, state, 3)
+    pre_state = state.copy()
+    block_a = build_empty_block_for_next_slot(spec, state)
+    signed_block_a = state_transition_and_sign_block(spec, state, block_a)
+
+    # Process block on timely arrival just before end of boost interval
+    time = (store.genesis_time + block_a.slot * spec.config.SECONDS_PER_SLOT +
+            spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
+    on_tick_and_append_step(spec, store, time, test_steps)
+    yield from add_block(spec, store, signed_block_a, test_steps)
+    # `proposer_boost_root` is now `block_a`
+    assert store.proposer_boost_root == spec.hash_tree_root(block_a)
+    assert spec.get_weight(store, spec.hash_tree_root(block_a)) > 0
+    test_steps.append({
+        'checks': {
+            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+        }
+    })
+
+    # make a different block at the same slot
+    state = pre_state.copy()
+    block_b = block_a.copy()
+    block_b.body.graffiti = b'\x34' * 32
+    signed_block_b = state_transition_and_sign_block(spec, state, block_b)
+    yield from add_block(spec, store, signed_block_b, test_steps)
+    # `proposer_boost_root` is still `block_a`
+    assert store.proposer_boost_root == spec.hash_tree_root(block_a)
+    assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0
     test_steps.append({
         'checks': {
             'proposer_boost_root': encode_hex(store.proposer_boost_root),
@@ -857,10 +913,18 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    finalized_slot = spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
-    assert spec.get_ancestor(store, last_block_root, finalized_slot) == state.finalized_checkpoint.root
-    justified_slot = spec.compute_start_slot_at_epoch(state.current_justified_checkpoint.epoch)
-    assert spec.get_ancestor(store, last_block_root, justified_slot) != state.current_justified_checkpoint.root
+    finalized_checkpoint_block = spec.get_checkpoint_block(
+        store,
+        last_block_root,
+        state.finalized_checkpoint.epoch,
+    )
+    assert finalized_checkpoint_block == state.finalized_checkpoint.root
+    justified_checkpoint_block = spec.get_checkpoint_block(
+        store,
+        last_block_root,
+        state.current_justified_checkpoint.epoch,
+    )
+    assert justified_checkpoint_block != state.current_justified_checkpoint.root
     assert store.finalized_checkpoint.epoch == 4
     assert store.justified_checkpoint.epoch == 6
 
@@ -934,10 +998,18 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    finalized_slot = spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
-    assert spec.get_ancestor(store, last_block_root, finalized_slot) == state.finalized_checkpoint.root
-    justified_slot = spec.compute_start_slot_at_epoch(state.current_justified_checkpoint.epoch)
-    assert spec.get_ancestor(store, last_block_root, justified_slot) != state.current_justified_checkpoint.root
+    finalized_checkpoint_block = spec.get_checkpoint_block(
+        store,
+        last_block_root,
+        state.finalized_checkpoint.epoch,
+    )
+    assert finalized_checkpoint_block == state.finalized_checkpoint.root
+    justified_checkpoint_block = spec.get_checkpoint_block(
+        store,
+        last_block_root,
+        state.current_justified_checkpoint.epoch,
+    )
+    assert justified_checkpoint_block != state.current_justified_checkpoint.root
     assert store.finalized_checkpoint.epoch == 4
     assert store.justified_checkpoint.epoch == 6
 
