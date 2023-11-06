@@ -48,5 +48,9 @@ class BaseSpecBuilder(ABC):
         return {}
 
     @classmethod
+    def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
+        return {}
+
+    @classmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
         return functions

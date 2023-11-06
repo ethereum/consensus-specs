@@ -10,8 +10,7 @@ from eth2spec.test.context import (
 @spec_state_test
 def test_current_sync_committee_merkle_proof(spec, state):
     yield "object", state
-    current_sync_committee_branch = spec.compute_merkle_proof_for_state(
-        state, spec.CURRENT_SYNC_COMMITTEE_GINDEX)
+    current_sync_committee_branch = spec.compute_merkle_proof(state, spec.CURRENT_SYNC_COMMITTEE_GINDEX)
     yield "proof", {
         "leaf": "0x" + state.current_sync_committee.hash_tree_root().hex(),
         "leaf_index": spec.CURRENT_SYNC_COMMITTEE_GINDEX,
@@ -31,8 +30,7 @@ def test_current_sync_committee_merkle_proof(spec, state):
 @spec_state_test
 def test_next_sync_committee_merkle_proof(spec, state):
     yield "object", state
-    next_sync_committee_branch = spec.compute_merkle_proof_for_state(
-        state, spec.NEXT_SYNC_COMMITTEE_GINDEX)
+    next_sync_committee_branch = spec.compute_merkle_proof(state, spec.NEXT_SYNC_COMMITTEE_GINDEX)
     yield "proof", {
         "leaf": "0x" + state.next_sync_committee.hash_tree_root().hex(),
         "leaf_index": spec.NEXT_SYNC_COMMITTEE_GINDEX,
@@ -52,8 +50,7 @@ def test_next_sync_committee_merkle_proof(spec, state):
 @spec_state_test
 def test_finality_root_merkle_proof(spec, state):
     yield "object", state
-    finality_branch = spec.compute_merkle_proof_for_state(
-        state, spec.FINALIZED_ROOT_GINDEX)
+    finality_branch = spec.compute_merkle_proof(state, spec.FINALIZED_ROOT_GINDEX)
     yield "proof", {
         "leaf": "0x" + state.finalized_checkpoint.root.hex(),
         "leaf_index": spec.FINALIZED_ROOT_GINDEX,
