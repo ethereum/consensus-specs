@@ -294,5 +294,3 @@ Aliases are encoded as their underlying type.
 `List` and `Vector` of `byte` (and aliases thereof) are encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
 `Union` is encoded as an object with a `selector` and `data` field, where the contents of `data` change according to the selector.
-
-> This encoding is used in [beacon-APIs](https://github.com/ethereum/beacon-APIs) with one exception: the `ParticipationFlags` type for the `getStateV2` response, although it is an alias of `uint8`, is encoded as a list of numbers. Future versions of the beacon API may address this incompatibility.
