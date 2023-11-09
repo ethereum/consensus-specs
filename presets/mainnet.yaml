@@ -1,0 +1,270 @@
+# Mainnet preset - Phase0
+
+# Misc
+# ---------------------------------------------------------------
+# 2**6 (= 64)
+MAX_COMMITTEES_PER_SLOT: 64
+# 2**7 (= 128)
+TARGET_COMMITTEE_SIZE: 128
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
+# See issue 563
+SHUFFLE_ROUND_COUNT: 90
+# 4
+HYSTERESIS_QUOTIENT: 4
+# 1 (minus 0.25)
+HYSTERESIS_DOWNWARD_MULTIPLIER: 1
+# 5 (plus 1.25)
+HYSTERESIS_UPWARD_MULTIPLIER: 5
+
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+MIN_DEPOSIT_AMOUNT: 1000000000
+# 2**5 * 10**9 (= 32,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE: 32000000000
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+EFFECTIVE_BALANCE_INCREMENT: 1000000000
+
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**0 (= 1) slots 12 seconds
+MIN_ATTESTATION_INCLUSION_DELAY: 1
+# 2**5 (= 32) slots 6.4 minutes
+SLOTS_PER_EPOCH: 32
+# 2**0 (= 1) epochs 6.4 minutes
+MIN_SEED_LOOKAHEAD: 1
+# 2**2 (= 4) epochs 25.6 minutes
+MAX_SEED_LOOKAHEAD: 4
+# 2**6 (= 64) epochs ~6.8 hours
+EPOCHS_PER_ETH1_VOTING_PERIOD: 64
+# 2**13 (= 8,192) slots ~27 hours
+SLOTS_PER_HISTORICAL_ROOT: 8192
+# 2**2 (= 4) epochs 25.6 minutes
+MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+
+
+# State list lengths
+# ---------------------------------------------------------------
+# 2**16 (= 65,536) epochs ~0.8 years
+EPOCHS_PER_HISTORICAL_VECTOR: 65536
+# 2**13 (= 8,192) epochs ~36 days
+EPOCHS_PER_SLASHINGS_VECTOR: 8192
+# 2**24 (= 16,777,216) historical roots, ~26,131 years
+HISTORICAL_ROOTS_LIMIT: 16777216
+# 2**40 (= 1,099,511,627,776) validator spots
+VALIDATOR_REGISTRY_LIMIT: 1099511627776
+
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+# 2**6 (= 64)
+BASE_REWARD_FACTOR: 64
+# 2**9 (= 512)
+WHISTLEBLOWER_REWARD_QUOTIENT: 512
+# 2**3 (= 8)
+PROPOSER_REWARD_QUOTIENT: 8
+# 2**26 (= 67,108,864)
+INACTIVITY_PENALTY_QUOTIENT: 67108864
+# 2**7 (= 128) (lower safety margin at Phase 0 genesis)
+MIN_SLASHING_PENALTY_QUOTIENT: 128
+# 1 (lower safety margin at Phase 0 genesis)
+PROPORTIONAL_SLASHING_MULTIPLIER: 1
+
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_PROPOSER_SLASHINGS: 16
+# 2**1 (= 2)
+MAX_ATTESTER_SLASHINGS: 2
+# 2**7 (= 128)
+MAX_ATTESTATIONS: 128
+# 2**4 (= 16)
+MAX_DEPOSITS: 16
+# 2**4 (= 16)
+MAX_VOLUNTARY_EXITS: 16
+
+# Mainnet preset - Altair
+
+# Updated penalty values
+# ---------------------------------------------------------------
+# 3 * 2**24 (= 50,331,648)
+INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
+# 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
+# 2
+PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
+
+
+# Sync committee
+# ---------------------------------------------------------------
+# 2**9 (= 512)
+SYNC_COMMITTEE_SIZE: 512
+# 2**8 (= 256)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+
+
+# Sync protocol
+# ---------------------------------------------------------------
+# 1
+MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 32 * 256)
+UPDATE_TIMEOUT: 8192
+
+
+# Mainnet preset - Bellatrix
+
+# Updated penalty values
+# ---------------------------------------------------------------
+# 2**24 (= 16,777,216)
+INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 16777216
+# 2**5 (= 32)
+MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX: 32
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX: 3
+
+# Execution
+# ---------------------------------------------------------------
+# 2**30 (= 1,073,741,824)
+MAX_BYTES_PER_TRANSACTION: 1073741824
+# 2**20 (= 1,048,576)
+MAX_TRANSACTIONS_PER_PAYLOAD: 1048576
+# 2**8 (= 256)
+BYTES_PER_LOGS_BLOOM: 256
+# 2**5 (= 32)
+MAX_EXTRA_DATA_BYTES: 32
+
+
+# Mainnet preset - Capella
+
+# Misc
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_BLS_TO_EXECUTION_CHANGES: 16
+
+# Execution
+# ---------------------------------------------------------------
+# 2**4 (= 16) withdrawals
+MAX_WITHDRAWALS_PER_PAYLOAD: 16
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# 2**14 (= 16384) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16384
+
+
+# Mainnet preset - Deneb
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(4096)`
+FIELD_ELEMENTS_PER_BLOB: 4096
+# `uint64(2**12)` (= 4096)
+MAX_BLOB_COMMITMENTS_PER_BLOCK: 4096
+# `uint64(6)`
+MAX_BLOBS_PER_BLOCK: 6
+# `floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)` = 4 + 1 + 12 = 17
+KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 17
+
+
+# Mainnet preset - Custody Game
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**1 (= 2) epochs, 12.8 minutes
+RANDAO_PENALTY_EPOCHS: 2
+# 2**15 (= 32,768) epochs, ~146 days
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 32768
+# 2**14 (= 16,384) epochs ~73 days
+EPOCHS_PER_CUSTODY_PERIOD: 16384
+# 2**11 (= 2,048) epochs, ~9 days
+CUSTODY_PERIOD_TO_RANDAO_PADDING: 2048
+# 2**15 (= 32,768) epochs, ~146 days
+MAX_CHUNK_CHALLENGE_DELAY: 32768
+
+
+# Max operations
+# ---------------------------------------------------------------
+# 2**8 (= 256)
+MAX_CUSTODY_KEY_REVEALS: 256
+# 2**0 (= 1)
+MAX_EARLY_DERIVED_SECRET_REVEALS: 1
+# 2**2 (= 2)
+MAX_CUSTODY_CHUNK_CHALLENGES: 4
+# 2** 4 (= 16)
+MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 16
+# 2**0 (= 1)
+MAX_CUSTODY_SLASHINGS: 1
+
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE: 2
+# 2**8 (= 256)
+MINOR_REWARD_QUOTIENT: 256
+
+
+# Mainnet preset - EIP6110
+
+# Execution
+# ---------------------------------------------------------------
+# 2**13 (= 8192) receipts
+MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 8192
+
+
+# Mainnet preset - Sharding
+
+# Misc
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+MAX_SHARDS: 1024
+# 2**6 (= 64)
+INITIAL_ACTIVE_SHARDS: 64
+# 2**3 (= 8)
+SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT: 8
+# 2**4 (= 16)
+MAX_SHARD_PROPOSER_SLASHINGS: 16
+#
+MAX_SHARD_HEADERS_PER_SHARD: 4
+# 2**8 (= 256)
+SHARD_STATE_MEMORY_SLOTS: 256
+# 2**40 (= 1,099,511,627,776)
+BLOB_BUILDER_REGISTRY_LIMIT: 1099511627776
+
+# Shard blob samples
+# ---------------------------------------------------------------
+# 2**11 (= 2,048)
+MAX_SAMPLES_PER_BLOCK: 2048
+# 2**10 (= 1,1024)
+TARGET_SAMPLES_PER_BLOCK: 1024
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**33 (= 8,589,934,592) Gwei
+MAX_SAMPLE_PRICE: 8589934592
+# 2**3 (= 8) Gwei
+MIN_SAMPLE_PRICE: 8
+
+
+# Mainnet preset - Whisk
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(4)`
+CURDLEPROOFS_N_BLINDERS: 4
+# `uint64(2**14)`
+WHISK_CANDIDATE_TRACKERS_COUNT: 16384
+# `uint64(2**13)` must be < WHISK_CANDIDATE_TRACKERS_COUNT
+WHISK_PROPOSER_TRACKERS_COUNT: 8192
+# `uint64(2**7 - CURDLEPROOFS_N_BLINDERS)`
+WHISK_VALIDATORS_PER_SHUFFLE: 124
+# `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
+WHISK_MAX_SHUFFLE_PROOF_SIZE: 32768
+# `uint64(2**10)` TODO: will be replaced by a fix format once there's a serialized format
+WHISK_MAX_OPENING_PROOF_SIZE: 1024
+
+

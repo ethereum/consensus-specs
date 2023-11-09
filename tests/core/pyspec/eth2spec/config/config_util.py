@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Iterable, Union, BinaryIO, TextIO, Any
+from typing import Dict, Union, BinaryIO, TextIO, Any
 from ruamel.yaml import YAML
 
 
@@ -19,24 +19,6 @@ def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
         else:
             out[k] = v
     return out
-
-
-def load_preset(preset_files: Iterable[Union[Path, BinaryIO, TextIO]]) -> Dict[str, Any]:
-    """
-    Loads the a directory of preset files, merges the result into one preset.
-    """
-    preset = {}
-    for fork_file in preset_files:
-        yaml = YAML(typ='base')
-        fork_preset: dict = yaml.load(fork_file)
-        if fork_preset is None:  # for empty YAML files
-            continue
-        if not set(fork_preset.keys()).isdisjoint(preset.keys()):
-            duplicates = set(fork_preset.keys()).intersection(set(preset.keys()))
-            raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
-        preset.update(fork_preset)
-    assert preset != {}
-    return parse_config_vars(preset)
 
 
 def load_config_file(config_path: Union[Path, BinaryIO, TextIO]) -> Dict[str, Any]:

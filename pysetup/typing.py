@@ -29,5 +29,5 @@ class SpecObject(NamedTuple):
 
 class BuildTarget(NamedTuple):
     name: str
-    preset_paths: List[Path]
+    preset_path: Path
     config_path: Path

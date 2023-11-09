@@ -276,24 +276,6 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     )
 
 
-def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
-    """
-    Loads the a directory of preset files, merges the result into one preset.
-    """
-    preset = {}
-    for fork_file in preset_files:
-        yaml = YAML(typ='base')
-        fork_preset: dict = yaml.load(fork_file)
-        if fork_preset is None:  # for empty YAML files
-            continue
-        if not set(fork_preset.keys()).isdisjoint(preset.keys()):
-            duplicates = set(fork_preset.keys()).intersection(set(preset.keys()))
-            raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
-        preset.update(fork_preset)
-    assert preset != {}
-    return parse_config_vars(preset)
-
-
 def load_config(config_path: Path) -> Dict[str, str]:
     """
     Loads the given configuration file.
@@ -306,9 +288,9 @@ def load_config(config_path: Path) -> Dict[str, str]:
 def build_spec(fork: str,
                preset_name: str,
                source_files: Sequence[Path],
-               preset_files: Sequence[Path],
+               preset_file: Path,
                config_file: Path) -> str:
-    preset = load_preset(preset_files)
+    preset = load_config(preset_file)
     config = load_config(config_file)
     all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
 
@@ -354,8 +336,8 @@ class PySpecCommand(Command):
         self.md_doc_paths = ''
         self.out_dir = 'pyspec_output'
         self.build_targets = """
-                minimal:presets/minimal:configs/minimal.yaml
-                mainnet:presets/mainnet:configs/mainnet.yaml
+                minimal:presets/minimal.yaml:configs/minimal.yaml
+                mainnet:presets/mainnet.yaml:configs/mainnet.yaml
         """
 
     def finalize_options(self):
@@ -379,28 +361,25 @@ class PySpecCommand(Command):
             data = target.split(':')
             if len(data) != 3:
                 raise Exception('invalid target, expected "name:preset_dir:config_file" format, but got: %s' % target)
-            name, preset_dir_path, config_path = data
+            name, preset_path, config_path = data
             if any((c not in string.digits + string.ascii_letters) for c in name):
                 raise Exception('invalid target name: "%s"' % name)
-            if not os.path.exists(preset_dir_path):
-                raise Exception('Preset dir "%s" does not exist' % preset_dir_path)
-            _, _, preset_file_names = next(os.walk(preset_dir_path))
-            preset_paths = [(Path(preset_dir_path) / name) for name in preset_file_names]
-
+            if not os.path.exists(preset_path):
+                raise Exception('Preset file "%s" does not exist' % preset_path)
             if not os.path.exists(config_path):
                 raise Exception('Config file "%s" does not exist' % config_path)
-            self.parsed_build_targets.append(BuildTarget(name, preset_paths, Path(config_path)))
+            self.parsed_build_targets.append(BuildTarget(name, Path(preset_path), Path(config_path)))
 
     def run(self):
         if not self.dry_run:
             dir_util.mkpath(self.out_dir)
 
-        for (name, preset_paths, config_path) in self.parsed_build_targets:
+        for (name, preset_path, config_path) in self.parsed_build_targets:
             spec_str = build_spec(
                 spec_builders[self.spec_fork].fork,
                 name,
                 self.parsed_md_doc_paths,
-                preset_paths,
+                preset_path,
                 config_path,
             )
             if self.dry_run:

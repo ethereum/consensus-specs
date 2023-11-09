@@ -1,0 +1,271 @@
+# Minimal preset - Phase0
+
+# Misc
+# ---------------------------------------------------------------
+# [customized] Just 4 committees for slot for testing purposes
+MAX_COMMITTEES_PER_SLOT: 4
+# [customized] insecure, but fast
+TARGET_COMMITTEE_SIZE: 4
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
+# [customized] Faster, but insecure.
+SHUFFLE_ROUND_COUNT: 10
+# 4
+HYSTERESIS_QUOTIENT: 4
+# 1 (minus 0.25)
+HYSTERESIS_DOWNWARD_MULTIPLIER: 1
+# 5 (plus 1.25)
+HYSTERESIS_UPWARD_MULTIPLIER: 5
+
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+MIN_DEPOSIT_AMOUNT: 1000000000
+# 2**5 * 10**9 (= 32,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE: 32000000000
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+EFFECTIVE_BALANCE_INCREMENT: 1000000000
+
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**0 (= 1) slots 6 seconds
+MIN_ATTESTATION_INCLUSION_DELAY: 1
+# [customized] fast epochs
+SLOTS_PER_EPOCH: 8
+# 2**0 (= 1) epochs
+MIN_SEED_LOOKAHEAD: 1
+# 2**2 (= 4) epochs
+MAX_SEED_LOOKAHEAD: 4
+# [customized] higher frequency new deposits from eth1 for testing
+EPOCHS_PER_ETH1_VOTING_PERIOD: 4
+# [customized] smaller state
+SLOTS_PER_HISTORICAL_ROOT: 64
+# 2**2 (= 4) epochs
+MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+
+
+# State list lengths
+# ---------------------------------------------------------------
+# [customized] smaller state
+EPOCHS_PER_HISTORICAL_VECTOR: 64
+# [customized] smaller state
+EPOCHS_PER_SLASHINGS_VECTOR: 64
+# 2**24 (= 16,777,216) historical roots
+HISTORICAL_ROOTS_LIMIT: 16777216
+# 2**40 (= 1,099,511,627,776) validator spots
+VALIDATOR_REGISTRY_LIMIT: 1099511627776
+
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+# 2**6 (= 64)
+BASE_REWARD_FACTOR: 64
+# 2**9 (= 512)
+WHISTLEBLOWER_REWARD_QUOTIENT: 512
+# 2**3 (= 8)
+PROPOSER_REWARD_QUOTIENT: 8
+# [customized] 2**25 (= 33,554,432)
+INACTIVITY_PENALTY_QUOTIENT: 33554432
+# [customized] 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT: 64
+# [customized] 2 (lower safety margin than Phase 0 genesis but different than mainnet config for testing)
+PROPORTIONAL_SLASHING_MULTIPLIER: 2
+
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_PROPOSER_SLASHINGS: 16
+# 2**1 (= 2)
+MAX_ATTESTER_SLASHINGS: 2
+# 2**7 (= 128)
+MAX_ATTESTATIONS: 128
+# 2**4 (= 16)
+MAX_DEPOSITS: 16
+# 2**4 (= 16)
+MAX_VOLUNTARY_EXITS: 16
+
+# Minimal preset - Altair
+
+# Updated penalty values
+# ---------------------------------------------------------------
+# 3 * 2**24 (= 50,331,648)
+INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
+# 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
+# 2
+PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
+
+
+# Sync committee
+# ---------------------------------------------------------------
+# [customized]
+SYNC_COMMITTEE_SIZE: 32
+# [customized]
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+
+
+# Sync protocol
+# ---------------------------------------------------------------
+# 1
+MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8)
+UPDATE_TIMEOUT: 64
+
+
+# Minimal preset - Bellatrix
+
+# Updated penalty values
+# ---------------------------------------------------------------
+# 2**24 (= 16,777,216)
+INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 16777216
+# 2**5 (= 32)
+MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX: 32
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX: 3
+
+# Execution
+# ---------------------------------------------------------------
+# 2**30 (= 1,073,741,824)
+MAX_BYTES_PER_TRANSACTION: 1073741824
+# 2**20 (= 1,048,576)
+MAX_TRANSACTIONS_PER_PAYLOAD: 1048576
+# 2**8 (= 256)
+BYTES_PER_LOGS_BLOOM: 256
+# 2**5 (= 32)
+MAX_EXTRA_DATA_BYTES: 32
+
+
+# Minimal preset - Capella
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_BLS_TO_EXECUTION_CHANGES: 16
+
+
+# Execution
+# ---------------------------------------------------------------
+# [customized] 2**2 (= 4)
+MAX_WITHDRAWALS_PER_PAYLOAD: 4
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# [customized] 2**4 (= 16) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16
+
+
+# Minimal preset - Deneb
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(4096)`
+FIELD_ELEMENTS_PER_BLOB: 4096
+# [customized]
+MAX_BLOB_COMMITMENTS_PER_BLOCK: 16
+# `uint64(6)`
+MAX_BLOBS_PER_BLOCK: 6
+# [customized] `floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)` = 4 + 1 + 4 = 9
+KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 9
+
+
+# Minimal preset - Custody Game
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**1 (= 2) epochs, 12.8 minutes
+RANDAO_PENALTY_EPOCHS: 2
+# [customized] quicker for testing
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 64
+# [customized] quicker for testing
+EPOCHS_PER_CUSTODY_PERIOD: 32
+# [customized] quicker for testing
+CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
+# [customize for faster testing]
+MAX_CHUNK_CHALLENGE_DELAY: 64
+
+
+# Max operations
+# ---------------------------------------------------------------
+# 2**8 (= 256)
+MAX_CUSTODY_KEY_REVEALS: 256
+# 2**0 (= 1)
+MAX_EARLY_DERIVED_SECRET_REVEALS: 1
+# [customized]
+MAX_CUSTODY_CHUNK_CHALLENGES: 2
+# [customized]
+MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 8
+# 2**0 (= 1)
+MAX_CUSTODY_SLASHINGS: 1
+
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE: 2
+# 2**8 (= 256)
+MINOR_REWARD_QUOTIENT: 256
+
+
+# Minimal preset - EIP6110
+
+# Execution
+# ---------------------------------------------------------------
+# [customized]
+MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
+
+
+# Minimal preset - Sharding
+
+# Misc
+# ---------------------------------------------------------------
+# Misc
+# [customized] reduced for testing
+MAX_SHARDS: 8
+# [customized] reduced for testing
+INITIAL_ACTIVE_SHARDS: 2
+# 2**3 (= 8)
+SAMPLE_PRICE_ADJUSTMENT_COEFFICIENT: 8
+# [customized] reduced for testing
+MAX_SHARD_PROPOSER_SLASHINGS: 4
+#
+MAX_SHARD_HEADERS_PER_SHARD: 4
+# 2**8 (= 256)
+SHARD_STATE_MEMORY_SLOTS: 256
+# 2**40 (= 1,099,511,627,776)
+BLOB_BUILDER_REGISTRY_LIMIT: 1099511627776
+
+# Shard blob samples
+# ---------------------------------------------------------------
+# 2**11 (= 2,048)
+MAX_SAMPLES_PER_BLOCK: 2048
+# 2**10 (= 1,1024)
+TARGET_SAMPLES_PER_BLOCK: 1024
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**33 (= 8,589,934,592) Gwei
+MAX_SAMPLE_PRICE: 8589934592
+# 2**3 (= 8) Gwei
+MIN_SAMPLE_PRICE: 8
+
+
+# Minimal preset - Whisk
+
+# Misc
+# ---------------------------------------------------------------
+# [customized]
+CURDLEPROOFS_N_BLINDERS: 4
+# [customized]
+WHISK_CANDIDATE_TRACKERS_COUNT: 32
+# [customized]
+WHISK_PROPOSER_TRACKERS_COUNT: 16
+# [customized]
+WHISK_VALIDATORS_PER_SHUFFLE: 4
+# `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
+WHISK_MAX_SHUFFLE_PROOF_SIZE: 32768
+# `uint64(2**10)` TODO: will be replaced by a fix format once there's a serialized format
+WHISK_MAX_OPENING_PROOF_SIZE: 1024
+
+

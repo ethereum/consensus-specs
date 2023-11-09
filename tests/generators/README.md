@@ -128,11 +128,6 @@ def shuffling_test_cases():
 
 def create_provider(config_name: str) -> gen_typing.TestProvider:
 
-    def prepare_fn(configs_path: str) -> str:
-        presets = loader.load_presets(configs_path, config_name)
-        spec.apply_constants_preset(presets)
-        return config_name
-
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for (case_name, case_fn) in shuffling_test_cases():
             yield gen_typing.TestCase(
