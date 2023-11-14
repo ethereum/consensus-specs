@@ -128,8 +128,6 @@ def test_basic_is_parent_root(spec, state):
     slot = state.slot
 
     # Add attestations to the parent block
-    current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
     attestations = get_valid_attestation_at_slot(
         state,
         spec,
