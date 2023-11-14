@@ -1,4 +1,4 @@
-# Deneb -- Polynomial Commitments
+# EIP-7594 -- Polynomial Commitments
 
 ## Table of contents
 
