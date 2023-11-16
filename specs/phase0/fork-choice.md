@@ -623,6 +623,9 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 
 ```python
 def on_tick(store: Store, time: uint64) -> None:
+    # Precondition
+    assert time >= store.time
+
     # If the ``store.time`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
     tick_slot = (time - store.genesis_time) // SECONDS_PER_SLOT

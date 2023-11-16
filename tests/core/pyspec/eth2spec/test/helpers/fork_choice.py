@@ -144,9 +144,10 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
-    spec.on_tick(store, time)
-    test_steps.append({'tick': int(time)})
-    output_store_checks(spec, store, test_steps)
+    if store.time < time:
+        spec.on_tick(store, time)
+        test_steps.append({'tick': int(time)})
+        output_store_checks(spec, store, test_steps)
 
 
 def run_on_block(spec, store, signed_block, valid=True):
