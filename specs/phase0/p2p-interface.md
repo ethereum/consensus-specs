@@ -857,7 +857,7 @@ Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
 
 Clients CAN consider including a block in the response as soon as it it passes the gossip validation rules.
-Clients MUST NOT respond with blocks that failed gossip vaildation rules.
+Clients MUST NOT respond with blocks that failed gossip validation rules.
 Clients MUST NOT respond with blocks that failed `fork_choice.on_block`.
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.

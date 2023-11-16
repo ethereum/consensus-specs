@@ -304,7 +304,7 @@ Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
 Clients SHOULD consider including a sidecar in the response as soon as it passes the gossip validation rules.
-Clients MUST NOT respond with sidecars that failed gossip vaildation.
+Clients MUST NOT respond with sidecars that failed gossip validation.
 Clients MUST NOT respond with sidecars related to blocks that failed `fork_choice.on_block`.
 
 ##### BlobSidecarsByRange v1
