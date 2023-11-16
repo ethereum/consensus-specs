@@ -252,6 +252,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
+*[Modified in Deneb:EIP4844]*
+Clients SHOULD consider including a block in the response as soon as it it passes the gossip validation rules.
+
 ##### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
@@ -299,6 +302,10 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
+
+Clients SHOULD consider including a sidecar in the response as soon as it passes the gossip validation rules.
+Clients MUST NOT respond with sidecars that failed gossip vaildation.
+Clients MUST NOT respond with sidecars related to blocks that failed `fork_choice.on_block`.
 
 ##### BlobSidecarsByRange v1
 
