@@ -253,7 +253,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 *[Modified in Deneb:EIP4844]*
-Clients SHOULD consider including a block in the response as soon as it it passes the gossip validation rules.
+Clients SHOULD consider including a block in the response as soon as it passes the gossip validation rules.
 
 ##### BlobSidecarsByRoot v1
 
