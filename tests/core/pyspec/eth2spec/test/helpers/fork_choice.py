@@ -60,7 +60,8 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     while store.time < block_time:
         time = pre_state.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
-        on_tick_and_append_step(spec, store, time, test_steps)
+        if time > store.time:
+            on_tick_and_append_step(spec, store, time, test_steps)
 
     post_state = yield from add_block(
         spec, store, signed_block, test_steps,
@@ -144,6 +145,7 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
+    assert time >= store.time
     if store.time < time:
         spec.on_tick(store, time)
         test_steps.append({'tick': int(time)})
