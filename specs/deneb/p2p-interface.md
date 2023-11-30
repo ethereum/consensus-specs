@@ -300,6 +300,8 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
+Clients MUST respond with blob sidecars they have in the order they were requested.
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`

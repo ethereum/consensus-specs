@@ -856,6 +856,8 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
 
+Clients MUST respond with blocks they have in the order they were requested.
+
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
 ##### Ping
