@@ -253,7 +253,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 *[Modified in Deneb:EIP4844]*
-Clients SHOULD consider including a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
 
 *[New in Deneb:EIP4844]*
 Clients MAY continue serving blocks after failed `fork_choice.on_block` if and only if the failure reason is due to missing blobs. (i.e. some sidecars are missing but the available ones have been fully verified against the fully validated block).
