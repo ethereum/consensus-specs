@@ -256,7 +256,9 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
 
 *[New in Deneb:EIP4844]*
-Clients MAY continue serving blocks after failed `fork_choice.on_block` if and only if the failure reason is due to missing blobs. (i.e. some sidecars are missing but the available ones have been fully verified against the fully validated block).
+Clients SHOULD NOT include blocks for which one of the following conditions is met:
+- `state_transition(block)` fails.
+- the kzg proof of an available blob is invalid with respect to `blob_kzg_commitments` in the `block` (i.e. `verify_blob_kzg_proof_batch` fails on one or more known blobs).
 
 ##### BlobSidecarsByRoot v1
 
@@ -307,9 +309,9 @@ Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
-Clients MUST NOT respond with sidecars that failed gossip validation.
-Clients MUST NOT respond with sidecars related to blocks that failed `fork_choice.on_block`.
-Clients MAY continue serving sidecars after failed `fork_choice.on_block` if and only if the failure reason is due to missing blobs. (i.e. some sidecars are missing but the available ones have been fully verified against the fully validated block).
+Clients SHOULD NOT include sidecars related to blocks for which one of the following conditions is met:
+- `state_transition(block)` fails.
+- the kzg proof of an available blob is invalid with respect to `blob_kzg_commitments` in the `block` (i.e. `verify_blob_kzg_proof_batch` fails on one or more known blobs).
 
 ##### BlobSidecarsByRange v1
 
