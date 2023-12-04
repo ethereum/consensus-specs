@@ -254,6 +254,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 *[Modified in Deneb:EIP4844]*
 Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
 
 ##### BlobSidecarsByRoot v1
 
@@ -305,7 +306,7 @@ Clients MAY limit the number of blocks and sidecars in the response.
 
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
-Clients SHOULD NOT include sidecars related to blocks that fail `state_transition(block)`.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
 ##### BlobSidecarsByRange v1
 
