@@ -11,6 +11,7 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)
+  - [Crypto](#crypto)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
   - [Bit-reversal permutation](#bit-reversal-permutation)
@@ -78,7 +79,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 | `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | The primitive root of unity from which all roots of unity should be derived |
+
 
 ## Preset
 
@@ -89,6 +91,13 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
+
+### Crypto
+
+| Name | Value | Notes |
+| - | - | - |
+| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
+| `ROOTS_OF_UNITY` | `[pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB)]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 
 ### Trusted setup
 
