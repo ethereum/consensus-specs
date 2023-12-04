@@ -386,6 +386,8 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
     Compute all the sample proofs for one blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
     used instead.
+
+    Public method.
     """
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
@@ -406,6 +408,11 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
 
 ```python
 def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE], SAMPLES_PER_BLOB]:
+    """
+    Compute the sample data for a blob (without computing the proofs).
+
+    Public method.
+    """
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -422,10 +429,12 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
 ```python
 def verify_sample_proof(commitment: KZGCommitment,
                         sample_id: int,
-                        data: Vector[BLSFieldElement],
+                        data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE],
                         proof: KZGProof) -> bool:
     """
     Check a sample proof
+
+    Publiiic method.
     """
     coset = coset_for_sample(sample_id)
 
@@ -444,6 +453,8 @@ def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
     Check multiple sample proofs. This function implements the naive algorithm of checking every sample
     individually; an efficient algorithm can be found here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
+
+    Public method.
     """
 
     # Get commitments via row IDs
@@ -465,6 +476,8 @@ def recover_samples_impl(samples: Sequence[Tuple[int, Sequence[BLSFieldElement]]
     This algorithm uses FFTs to recover samples faster than using Lagrange implementation. However,
     a faster version thanks to Qi Zhou can be found here:
     https://github.com/ethereum/research/blob/51b530a53bd4147d123ab3e390a9d08605c2cdb8/polynomial_reconstruction/polynomial_reconstruction_danksharding.py
+
+    Public method.
     """
     assert len(samples) >= SAMPLES_PER_BLOB // 2
     sample_ids = [sample_id for sample_id, _ in samples]
