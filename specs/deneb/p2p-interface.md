@@ -302,6 +302,8 @@ Clients MAY limit the number of blocks and sidecars in the response.
 
 Clients SHOULD respond with blob sidecars they have in the order they were requested.
 
+Clients MAY reject requests with duplicate roots.
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`

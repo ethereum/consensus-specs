@@ -858,6 +858,8 @@ Clients MAY limit the number of blocks in the response.
 
 Clients SHOULD respond with blocks they have in the order they were requested.
 
+Clients MAY reject requests with duplicate roots.
+
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
 ##### Ping
