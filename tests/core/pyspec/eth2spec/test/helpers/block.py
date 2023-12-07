@@ -126,7 +126,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
 
         # Create valid whisk opening proof
         # TODO: Use k_initial or k_final to handle first and subsequent proposals
-        k_initial = whisk_ks_initial[proposer_index]
+        k_initial = whisk_ks_initial(proposer_index)
 
         # Sanity check proposer is correct
         proposer_k_commitment = state.whisk_k_commitments[proposer_index]
@@ -156,7 +156,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         # Branching logic depending if first proposal or not
         if is_first_proposal(spec, state, proposer_index):
             # Register new tracker
-            k_final = whisk_ks_final[proposer_index]
+            k_final = whisk_ks_final(proposer_index)
             # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
             r = 2
             tracker, k_commitment = compute_whisk_tracker_and_commitment(k_final, r)

@@ -21,7 +21,7 @@ def compute_whisk_initial_tracker_cached(i: int) -> WhiskTracker:
     if i in whisk_initial_tracker_cache_by_index:
         return whisk_initial_tracker_cache_by_index[i]
 
-    tracker = compute_whisk_tracker(whisk_ks_initial[i], INITIAL_R)
+    tracker = compute_whisk_tracker(whisk_ks_initial(i), INITIAL_R)
     whisk_initial_tracker_cache_by_index[i] = tracker
     whisk_initial_tracker_cache_by_k_r_G[tracker.k_r_G] = i
     return tracker
@@ -31,7 +31,7 @@ def compute_whisk_initial_k_commitment_cached(i: int) -> BLSPubkey:
     if i in whisk_initial_k_commitment_cache_by_index:
         return whisk_initial_k_commitment_cache_by_index[i]
 
-    commitment = compute_whisk_k_commitment(whisk_ks_initial[i])
+    commitment = compute_whisk_k_commitment(whisk_ks_initial(i))
     whisk_initial_k_commitment_cache_by_index[i] = commitment
     return commitment
 

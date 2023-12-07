@@ -15,7 +15,7 @@ def assign_proposer_at_slot(state, slot: int):
 def initialize_whisk_full(spec, state):
     # TODO: De-duplicate code from whisk/fork.md
     for index in range(len(state.validators)):
-        whisk_k_commitment, whisk_tracker = spec.get_initial_commitments(whisk_ks_initial[index])
+        whisk_k_commitment, whisk_tracker = spec.get_initial_commitments(whisk_ks_initial(index))
         state.whisk_k_commitments[index] = whisk_k_commitment
         state.whisk_trackers[index] = whisk_tracker
 
@@ -36,7 +36,7 @@ def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
 def test_whisk__process_block_single_initial(spec, state):
     assert state.slot == 0
     proposer_slot_1 = 0
-    tracker_slot_1, k_commitment = compute_whisk_tracker_and_commitment(whisk_ks_initial[proposer_slot_1], 1)
+    tracker_slot_1, k_commitment = compute_whisk_tracker_and_commitment(whisk_ks_initial(proposer_slot_1), 1)
     state.whisk_k_commitments[proposer_slot_1] = k_commitment
     state.whisk_proposer_trackers[1] = tracker_slot_1
     fill_candidate_trackers(spec, state, tracker_slot_1)
