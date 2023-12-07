@@ -333,6 +333,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
+- _[IGNORE]_ The block is not slashable.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
   (via both gossip and non-gossip sources)
