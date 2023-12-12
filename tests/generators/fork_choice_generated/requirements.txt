@@ -1,0 +1,3 @@
+pytest>=4.4
+numpy>=1.26.2
+../../../[generator]
