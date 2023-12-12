@@ -75,16 +75,16 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | - | - | - |
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(64)` | Number of field elements in a sample |
 | `BYTES_PER_SAMPLE` | `FIELD_ELEMENTS_PER_SAMPLE * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a sample |
-| `SAMPLES_PER_BLOB` | `(2 * FIELD_ELEMENTS_PER_BLOB) / FIELD_ELEMENTS_PER_SAMPLE` | The number of samples for a blob |
+| `SAMPLES_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_SAMPLE)` | The number of samples for a blob |
 
 ### Crypto
 
 | Name | Value | Description |
 | - | - | - |
 | `ROOT_OF_UNITY2` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
-| `ROOTS_OF_UNITY2` | `[pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
+| `ROOTS_OF_UNITY2` | `([pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
 | `ROOT_OF_UNITY_S` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(SAMPLES_PER_BLOB), BLS_MODULUS)` | Root of unity of order SAMPLES_PER_BLOB over the BLS12-381 field |
-| `ROOTS_OF_UNITY_S` | `[pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(SAMPLES_PER_BLOB)]` | Roots of unity of order SAMPLES_PER_BLOB over the BLS12-381 field |
+| `ROOTS_OF_UNITY_S` | `([pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(SAMPLES_PER_BLOB)])` | Roots of unity of order SAMPLES_PER_BLOB over the BLS12-381 field |
 
 ## Helper functions
 
@@ -313,8 +313,9 @@ Extended KZG functions for multiproofs
 #### `compute_kzg_proof_multi_impl`
 
 ```python
-def compute_kzg_proof_multi_impl(polynomial_coeff: PolynomialCoeff,
-                                 zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
+def compute_kzg_proof_multi_impl(
+        polynomial_coeff: PolynomialCoeff,
+        zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
     """
     Helper function that computes multi-evaluation KZG proofs.
     """
@@ -343,17 +344,16 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
     """
     Helper function that verifies a KZG multiproof
     """
-    
     zero_poly = g2_lincomb(KZG_SETUP_G2[:len(zs) + 1], zero_polynomialcoeff(zs))
     interpolated_poly = g1_lincomb(KZG_SETUP_G1[:len(zs)], interpolate_polynomialcoeff(zs, ys))
 
-    return (
-        bls.pairing_check(
-            [[bls.bytes48_to_G1(proof), bls.bytes96_to_G2(zero_poly)],
-            [bls.add(bls.bytes48_to_G1(commitment), bls.neg(bls.bytes48_to_G1(interpolated_poly))),
-             bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[0]))]]
-        )
-    )
+    return (bls.pairing_check([
+        [bls.bytes48_to_G1(proof), bls.bytes96_to_G2(zero_poly)],
+        [
+            bls.add(bls.bytes48_to_G1(commitment), bls.neg(bls.bytes48_to_G1(interpolated_poly))),
+            bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[0])),
+        ],
+    ]))
 ```
 
 ### Sample cosets
@@ -394,9 +394,9 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
     proofs = []
 
     for i in range(SAMPLES_PER_BLOB):
-        samples.append(ys)
         coset = coset_for_sample(i)
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+        samples.append(ys)
         proofs.append(proof)
 
     return samples, proofs
@@ -411,7 +411,8 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
 
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, ROOTS_OF_UNITY2)
     extended_data_rbo = bit_reversal_permutation(extended_data)
-    return [extended_data_rbo[i * FIELD_ELEMENTS_PER_SAMPLE:(i + 1) * FIELD_ELEMENTS_PER_SAMPLE] for i in range(SAMPLES_PER_BLOB)]
+    return [extended_data_rbo[i * FIELD_ELEMENTS_PER_SAMPLE:(i + 1) * FIELD_ELEMENTS_PER_SAMPLE]
+            for i in range(SAMPLES_PER_BLOB)]
 ```
 
 ### Sample verification
@@ -420,8 +421,9 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
 
 ```python
 def verify_sample_proof(commitment: KZGCommitment,
-                                    sample_id: int,
-                                    data: Vector[BLSFieldElement]) -> bool:
+                        sample_id: int,
+                        data: Vector[BLSFieldElement],
+                        proof: KZGProof) -> bool:
     """
     Check a sample proof
     """
@@ -498,15 +500,17 @@ def recover_samples_impl(samples: Sequence[Tuple[int, Sequence[BLSFieldElement]]
 
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
     shifted_zero_poly = shift_polynomialcoeff(full_zero_poly, shift_factor)
-    
+
     eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, ROOTS_OF_UNITY2)
     eval_shifted_zero_poly = fft_field(shifted_zero_poly, ROOTS_OF_UNITY2)
     
-    eval_shifted_reconstructed_poly = [div(a, b) for a, b in
-                                    zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)]
-    
+    eval_shifted_reconstructed_poly = [
+        div(a, b)
+        for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
+    ]
+
     shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, ROOTS_OF_UNITY2, inv=True)
-    
+
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY2))
