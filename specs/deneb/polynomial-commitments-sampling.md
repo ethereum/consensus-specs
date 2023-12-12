@@ -75,6 +75,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | - | - | - |
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(64)` | Number of field elements in a sample |
 | `BYTES_PER_SAMPLE` | `FIELD_ELEMENTS_PER_SAMPLE * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a sample |
+| `SAMPLES_PER_BLOB` | `(2 * FIELD_ELEMENTS_PER_BLOB) / FIELD_ELEMENTS_PER_SAMPLE` | The number of samples for a blob |
 
 ### Crypto
 
@@ -132,7 +133,7 @@ def _fft_field(vals, roots_of_unity):
     for i, (x, y) in enumerate(zip(L, R)):
         y_times_root = int(y) * int(roots_of_unity[i]) % BLS_MODULUS
         o[i] = (x + y_times_root) % BLS_MODULUS
-        o[i + len(L)] = (x - y_times_root) % BLS_MODULUS
+        o[i + len(L)] = (x - y_times_root + BLS_MODULUS) % BLS_MODULUS
     return o
 ```
 
@@ -284,7 +285,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
 ```python
 def zero_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
-    Compute a zero polynoimial on ```xs``` (in coefficient form)
+    Compute a zero polynomial on ``xs`` (in coefficient form)
     """
     p = [1]
     for x in xs:
@@ -379,8 +380,8 @@ def coset_for_sample(sample_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_P
 
 ```python
 def compute_samples_and_proofs(blob: Blob) -> Tuple[
-                                                    Vector[KZGProof, SAMPLES_PER_BLOB], 
-                                                    Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE], SAMPLES_PER_BLOB]]:
+        Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE], SAMPLES_PER_BLOB],
+        Vector[KZGProof, SAMPLES_PER_BLOB]]:
     """
     Compute all the sample proofs for one blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
@@ -389,16 +390,16 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    proofs = []
     samples = []
+    proofs = []
 
-    for i in range(10):
+    for i in range(SAMPLES_PER_BLOB):
+        samples.append(ys)
         coset = coset_for_sample(i)
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         proofs.append(proof)
-        samples.append(ys)
 
-    return proofs, samples
+    return samples, proofs
 ```
 
 #### `compute_samples`
@@ -419,20 +420,8 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
 
 ```python
 def verify_sample_proof(commitment: KZGCommitment,
-                        sample_id: int,
-                        data: Vector[BLSFieldElement, def shift_polynomialcoeff(poly, factor):
-    """
-    Shift the evaluation of a polynomial in coefficient form by factor.
-    This results in a new polynomial g(x) = f(factor * x)
-    """
-    factor_power = 1
-    inv_factor = pow(int(factor), BLS_MODULUS - 2, BLS_MODULUS)
-    o = []
-    for p in poly:
-        o.append(int(p) * factor_power % BLS_MODULUS)
-        factor_power = factor_power * inv_factor % BLS_MODULUS
-    return oFIELD_ELEMENTS_PER_SAMPLE],
-                        proof: KZGProof) -> bool:
+                                    sample_id: int,
+                                    data: Vector[BLSFieldElement]) -> bool:
     """
     Check a sample proof
     """
@@ -445,7 +434,7 @@ def verify_sample_proof(commitment: KZGCommitment,
 
 ```python
 def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
-                              row_ids:Sequence[int],
+                              row_ids: Sequence[int],
                               column_ids: Sequence[int],
                               datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE]],
                               proofs: Sequence[KZGProof]) -> bool:
