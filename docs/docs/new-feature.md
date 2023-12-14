@@ -11,13 +11,12 @@
   - [4. Add `fork.md`](#4-add-forkmd)
   - [5. Make it executable](#5-make-it-executable)
 - [B: Make it executable for pytest and test generator](#b-make-it-executable-for-pytest-and-test-generator)
-  - [1. Add `light-client/*` docs if you updated the content of `BeaconBlock`](#1-add-light-client-docs-if-you-updated-the-content-of-beaconblock)
+  - [1. [Optional] Add `light-client/*` docs if you updated the content of `BeaconBlock`](#1-optional-add-light-client-docs-if-you-updated-the-content-of-beaconblock)
   - [2. Add the mainnet and minimal presets and update the configs](#2-add-the-mainnet-and-minimal-presets-and-update-the-configs)
   - [3. Update `context.py`](#3-update-contextpy)
   - [4. Update `constants.py`](#4-update-constantspy)
   - [5. Update `genesis.py`:](#5-update-genesispy)
-  - [6. To add fork transition tests, update fork_transition.py](#6-to-add-fork-transition-tests-update-fork_transitionpy)
-  - [7. Update CI configurations](#7-update-ci-configurations)
+  - [6. Update CI configurations](#6-update-ci-configurations)
 - [Others](#others)
   - [Bonus](#bonus)
   - [Need help?](#need-help)
@@ -92,32 +91,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
 - If the given feature changes `ExecutionPayload` fields, you have to set the initial values by updating `get_sample_genesis_execution_payload_header` helper.
 
-### 6. To add fork transition tests, update [fork_transition.py](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/fork_transition.py)
-
-```python
-def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None):
-    ...
-
-    if post_spec.fork == ALTAIR:
-        state = post_spec.upgrade_to_altair(state)
-    ...
-    elif post_spec.fork == EIP9999:
-        state = post_spec.upgrade_to_eip9999(state)
-
-    ...
-
-    if post_spec.fork == ALTAIR:
-        assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
-    ...
-    elif post_spec.fork == EIP9999:
-        assert state.fork.previous_version == post_spec.config.<PREVIOUS_FORK_VERSION>
-        assert state.fork.current_version == post_spec.config.EIP9999_FORK_VERSION
-
-    ...
-```
-
-### 7. Update CI configurations
+### 6. Update CI configurations
 - Update [GitHub Actions config](https://github.com/ethereum/consensus-specs/blob/dev/.github/workflows/run-tests.yml)
     - Update `pyspec-tests.strategy.matrix.version` list by adding new feature to it
 - Update [CircleCI config](https://github.com/ethereum/consensus-specs/blob/dev/.circleci/config.yml)
