@@ -3,14 +3,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
-from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
-from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
-from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
-from eth2spec.eip6110 import mainnet as spec_eip6110_mainnet, minimal as spec_eip6110_minimal
-from eth2spec.whisk import mainnet as spec_whisk_mainnet, minimal as spec_whisk_minimal
-from eth2spec.eip7002 import mainnet as spec_eip7002_mainnet, minimal as spec_eip7002_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
@@ -18,22 +10,28 @@ from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     EIP6110, EIP7002,
     WHISK,
-    MINIMAL, MAINNET,
+    MINIMAL,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
     ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
-from .helpers.typing import SpecForkName, PresetBaseName
 from .helpers.genesis import create_genesis_state
+from .helpers.typing import (
+    Spec,
+    SpecForks,
+)
+from .helpers.specs import (
+    spec_targets,
+)
 from .utils import (
     vector_test,
     with_meta_tags,
 )
 
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
+from typing import Any, Callable, Sequence, Dict
 
 from lru import LRU
 
@@ -44,70 +42,11 @@ DEFAULT_TEST_PRESET = MINIMAL
 DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
-# TODO: currently phases are defined as python modules.
-# It would be better if they would be more well-defined interfaces for stronger typing.
-
-class Configuration(Protocol):
-    PRESET_BASE: str
-
-
-class Spec(Protocol):
-    fork: str
-    config: Configuration
-
-
-class SpecPhase0(Spec):
-    ...
-
-
-class SpecAltair(Spec):
-    ...
-
-
-class SpecBellatrix(Spec):
-    ...
-
-
-class SpecCapella(Spec):
-    ...
-
-
 @dataclass(frozen=True)
 class ForkMeta:
     pre_fork_name: str
     post_fork_name: str
     fork_epoch: int
-
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        PHASE0: spec_phase0_minimal,
-        ALTAIR: spec_altair_minimal,
-        BELLATRIX: spec_bellatrix_minimal,
-        CAPELLA: spec_capella_minimal,
-        DENEB: spec_deneb_minimal,
-        EIP6110: spec_eip6110_minimal,
-        EIP7002: spec_eip7002_minimal,
-        WHISK: spec_whisk_minimal,
-    },
-    MAINNET: {
-        PHASE0: spec_phase0_mainnet,
-        ALTAIR: spec_altair_mainnet,
-        BELLATRIX: spec_bellatrix_mainnet,
-        CAPELLA: spec_capella_mainnet,
-        DENEB: spec_deneb_mainnet,
-        EIP6110: spec_eip6110_mainnet,
-        EIP7002: spec_eip7002_mainnet,
-        WHISK: spec_whisk_mainnet,
-    },
-}
-
-
-class SpecForks(TypedDict, total=False):
-    PHASE0: SpecPhase0
-    ALTAIR: SpecAltair
-    BELLATRIX: SpecBellatrix
-    CAPELLA: SpecCapella
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
