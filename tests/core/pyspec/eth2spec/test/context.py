@@ -12,7 +12,7 @@ from .helpers.constants import (
     WHISK,
     MINIMAL,
     ALL_PHASES,
-    ALL_FORK_UPGRADES,
+    POST_FORK_OF,
     ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
@@ -469,7 +469,7 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw['phase']
                     _phases = [phase]
-                    _other_phases = [ALL_FORK_UPGRADES[phase]]
+                    _other_phases = [POST_FORK_OF[phase]]
                     ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
                 else:
                     # When running pytest, go through `fork_metas` instead of using `phases`

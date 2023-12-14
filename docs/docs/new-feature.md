@@ -79,20 +79,6 @@ You can refer to the previous fork's `fork.md` file.
 
 We use `create_genesis_state` to create the default `state` in tests.
 
-- Update `create_genesis_state` by adding `fork_version` setting:
-
-```python
-def create_genesis_state(spec, validator_balances, activation_threshold):
-    ...
-    if spec.fork == ALTAIR:
-        current_version = spec.config.ALTAIR_FORK_VERSION
-    ...
-    elif spec.fork == EIP9999:
-        # Add the previous fork version of given fork
-        previous_version = spec.config.<PREVIOUS_FORK_VERSION>
-        current_version = spec.config.EIP9999_FORK_VERSION
-```
-
 - If the given feature changes `BeaconState` fields, you have to set the initial values by adding:
 
 ```python
