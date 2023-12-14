@@ -70,24 +70,7 @@ You can refer to the previous fork's `fork.md` file.
 - Update configs: `configs/mainnet.yaml` and `configs/minimal.yaml`
 
 ### 3. Update [`context.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py)
-- Update `spec_targets` by adding `<NEW_FEATURE>`
-
-```python
-from eth2spec.eip9999 import mainnet as spec_eip9999_mainnet, minimal as spec_eip9999_minimal
-
-...
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        ...
-        EIP9999: spec_eip9999_minimal,
-    },
-    MAINNET: {
-        ...
-        EIP9999: spec_eip9999_mainnet
-    },
-}
-```
+- [Optional] Add `with_<new-feature-name>_and_later` decorator for writing pytest cases. e.g., `with_capella_and_later`.
 
 ### 4. Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py)
 - Add `<NEW_FEATURE>` to `ALL_PHASES` and `TESTGEN_FORKS`
