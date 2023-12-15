@@ -57,6 +57,8 @@ You can refer to the previous fork's `fork.md` file.
     - Update [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) with the new feature name as Pyspec `constants.py` defined.
     - Update [`pysetup/spec_builders/__init__.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/spec_builders/__init__.py). Implement a new `<FEATURE_NAME>SpecBuilder` in `pysetup/spec_builders/<FEATURE_NAME>.py` with the new feature name. e.g., `EIP9999SpecBuilder`. Append it to the `spec_builders` list.
     - Update [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py): add the path of the new markdown files in `get_md_doc_paths` function if needed.
+- Update `PREVIOUS_FORK_OF` setting in both [`test/helpers/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) and [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py).
+    - NOTE: since these two modules (the pyspec itself and the spec builder tool) must be separate, the fork sequence setting has to be defined again.
 
 ## B: Make it executable for pytest and test generator
 
