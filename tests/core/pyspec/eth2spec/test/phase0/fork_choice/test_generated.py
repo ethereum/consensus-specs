@@ -30,6 +30,12 @@ from eth2spec.test.helpers.block import (
     sign_block,
 )
 
+MAX_JUSTIFICATION_RATE = 99
+MIN_JUSTIFICATION_RATE = 91
+
+MAX_UNDERJUSTIFICATION_RATE = 70
+MIN_UNDERJUSTIFICATION_RATE = 55
+
 
 class SmLink(tuple):
     @property
@@ -48,94 +54,186 @@ class BranchTip:
         self.participants = participants
 
 
-def _justifying_participation_rate():
-    # Hight particiaption rate is required to ensure high probability of justifying the target
-    return 95
+def _justifying_participation_rate(rnd: random.Random):
+    """
+    Should be high enough to ensure justification happens
+    """
+    return rnd.randint(MIN_JUSTIFICATION_RATE, MAX_JUSTIFICATION_RATE)
 
 
-def _under_justifying_participation_rate():
-    # Hight particiaption rate is required to ensure high probability of justifying the target
-    return 65
+def _under_justifying_participation_rate(rnd: random.Random):
+    return rnd.randint(MIN_UNDERJUSTIFICATION_RATE, MAX_UNDERJUSTIFICATION_RATE)
 
 
 def _create_new_branch_tip(spec, branch_tips: dict[SmLink:BranchTip], sm_link: SmLink) -> BranchTip:
+    """
+    Initialized a branch tip state for a new branch satisfying the given sm_link.
+    :return: a new branch tip.
+    """
+
+    # Find all forks with justified source
     tips_with_justified_source = [s for s in branch_tips.values()
                                   if s.beacon_state.current_justified_checkpoint.epoch ==
                                   sm_link.source]
     assert len(tips_with_justified_source) > 0
 
+    # Find and return the most adanced one
     most_recent_tip = max(tips_with_justified_source, key=lambda s: s.beacon_state.slot)
     return BranchTip(most_recent_tip.beacon_state.copy(), most_recent_tip.attestations.copy(), [])
 
 
-def _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd: random.Random):
+def _sample_validator_partition(spec, state, epoch, participation_rate, rnd) -> []:
+    active_validator_indices = spec.get_active_validator_indices(state, epoch)
+    participants_count = len(active_validator_indices) * participation_rate // 100
+    return rnd.sample(active_validator_indices, participants_count)
+
+
+def _compute_validator_partitions(spec, branch_tips, current_links, current_epoch, rnd: random.Random) -> dict[
+                                                                                                          SmLink:[int]]:
     """
-    Uniformly distributes active validators between branches to advance
-    O(N) complex -- N is a number of validators, might be inefficient with large validator sets
+    Note: O(N) complex (N is a number of validators) and might be inefficient with large validator sets
 
-    Does not take into account validator's effective balance, based on assumption that EB is nearly the same
+    Uniformly distributes active validators between active forks specified by a given set of sm_links.
+    Handles two cases:
+        1. Single active fork:
+           Randomly sample a single validator partition taking into account
+           whether the fork should have a justified checkpoint in the current epoch.
+        2. Multiple active forks:
+           i. sample the majority partition if one of the forks is about to justify during the current epoch,
+           ii. run through a set of active validators and randomly select a fork for it,
+               do no consider validators that were sampled into the majority partition.
 
-    :param spec: spec
-    :param branch_tips: {(source, target): tip_state} tip_states of all branches to process in an epoch
-    :param branches_to_advance: [(source, target)] a list of sm link branches that validators should be spread accross
-    :return: {(source, target): participants}
+    Does not take into account validator's effective balance, based on assumption that the EB of every validator
+    is nearly the same.
+
+    :return: [SmLink: participants]
     """
 
-    justification_targets = [l for l in current_links if l.target == current_epoch]
+    justifying_links = [l for l in current_links if l.target == current_epoch]
 
-    # Justifying two different checkpoints isn't supported
-    assert len(justification_targets) < 2
+    # Justifying conflicting checkpoints isn't supported
+    assert len(justifying_links) < 2
+    justifying_link = justifying_links[0] if any(justifying_links) else None
 
-    # Case when there is just 1 link and there is no justification target
-    if len(current_links) == 1 and not any(justification_targets):
-        l = current_links[0]
-        state = branch_tips[l].beacon_state
-        active_validator_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
-        participant_count = len(active_validator_indices) * _under_justifying_participation_rate() // 100
-        return {l: rnd.sample(active_validator_indices, participant_count)}
+    # Sanity check
+    for sm_link in current_links:
+        assert spec.get_current_epoch(branch_tips[sm_link].beacon_state) == current_epoch
 
+    # Case when there is just one active fork
+    if len(current_links) == 1:
+        the_sm_link = current_links[0]
+
+        if the_sm_link == justifying_link:
+            participation_rate = _justifying_participation_rate(rnd)
+        else:
+            participation_rate = _under_justifying_participation_rate(rnd)
+
+        state = branch_tips[the_sm_link].beacon_state
+        participants = _sample_validator_partition(spec, state, current_epoch, participation_rate, rnd)
+
+        return {the_sm_link: participants}
+
+    # Cases with more than one active fork
     participants = {l: [] for l in current_links}
 
     # Move the majority to the branch containing justification target
     justifying_participants = []
-    if any(justification_targets):
-        justification_target = justification_targets[0]
-        state = branch_tips[justification_target].beacon_state
-        active_validator_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
-        participant_count = len(active_validator_indices) * _justifying_participation_rate() // 100
-        justifying_participants = rnd.sample(active_validator_indices, participant_count)
-        participants[justification_target] = justifying_participants
+    if justifying_link is not None:
+        state = branch_tips[justifying_link].beacon_state
+        justifying_participants = _sample_validator_partition(spec,
+                                                              branch_tips[justifying_link].beacon_state,
+                                                              current_epoch,
+                                                              _justifying_participation_rate(rnd),
+                                                              rnd)
 
-        # Case when the justification target is the only branch
-        if justification_targets == current_links:
-            return {justification_target: justifying_participants}
+        participants[justifying_link] = justifying_participants
 
-    # Genereral case
-
-    # Collect a set of active validator indexes across all branches
+    # Collect a set of active validator indexes across all forks
     active_validator_per_branch = {}
-    active_validators_total = set()
+    all_active_validators = set()
     for l in current_links:
         state = branch_tips[l].beacon_state
-        active_validator_per_branch[l] = spec.get_active_validator_indices(state,
-                                                                           spec.get_current_epoch(state))
-        active_validators_total.update(active_validator_per_branch[l])
+        active_validator_per_branch[l] = spec.get_active_validator_indices(state, current_epoch)
+        all_active_validators.update(active_validator_per_branch[l])
 
-    # remove selected participants from the active validators set
-    active_validators_total = active_validators_total.difference(justifying_participants)
+    # Remove validators selected for justifying brach from the pool of active participants
+    all_active_validators = all_active_validators.difference(justifying_participants)
 
     # For each index:
     #   1) Collect a set of branches where the validators is in active state (except for justifying branch)
     #   2) Append the index to the list of participants for a randomly selected branch
-    for index in active_validators_total:
+    for index in all_active_validators:
         active_branches = [l for l in current_links if
-                           index in active_validator_per_branch[l] and l not in justification_targets]
+                           index in active_validator_per_branch[l] and l not in justifying_links]
         participants[tuple(rnd.choice(active_branches))].append(index)
 
     return participants
 
 
+def _produce_block(spec, state, attestations):
+    """
+    Produces a block including as many attestations as it is possible.
+    :return: Signed block, the post block state and attestations that were not included into the block.
+    """
+
+    # Filter out too old attestastions (TODO relax condition for Deneb)
+    eligible_attestations = [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+
+    # Prepare attestations
+    attestation_in_block = eligible_attestations[:spec.MAX_ATTESTATIONS]
+
+    # Create a block with attestations
+    block = build_empty_block(spec, state)
+    for a in attestation_in_block:
+        block.body.attestations.append(a)
+
+    # Run state transition and sign off on a block
+    post_state = state.copy()
+    spec.process_block(post_state, block)
+    block.state_root = post_state.hash_tree_root()
+    signed_block = sign_block(spec, post_state, block)
+
+    not_included_attestations = [a for a in attestations if a not in attestation_in_block]
+
+    return signed_block, post_state, not_included_attestations
+
+
+def _attest_to_slot(spec, state, slot_to_attest, participants_filter):
+    """
+    Creates attestation is a slot respecting participating validators.
+    :return: produced attestations
+    """
+
+    assert slot_to_attest <= state.slot
+
+    committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
+    attestations_in_slot = []
+    for index in range(committees_per_slot):
+        beacon_committee = spec.get_beacon_committee(state, slot_to_attest, index)
+        participants = participants_filter(beacon_committee)
+        if any(participants):
+            attestation = get_valid_attestation(
+                spec,
+                state,
+                slot_to_attest,
+                index=index,
+                signed=True,
+                filter_participant_set=participants_filter
+            )
+            attestations_in_slot.append(attestation)
+
+    return attestations_in_slot
+
+
 def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
+    """
+    Advances a state of the block tree branch to the next epoch
+    respecting validators participanting in building and attesting to this branch.
+
+    The returned beacon state is advanced to the first slot of the next epoch while no block for that slot is created,
+    produced attestations that aren't yet included on chain are preserved for the future inclusion.
+    """
+
     def participants_filter(comm):
         return [index for index in comm if index in branch_tip.participants]
 
@@ -145,164 +243,123 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
     target_slot = spec.compute_start_slot_at_epoch(current_epoch + 1)
 
     while state.slot < target_slot:
-        # Produce a block if the proposer is in the network partition building a branch
-        if spec.get_beacon_proposer_index(state) in branch_tip.participants and state.slot > spec.GENESIS_SLOT:
-
-            # Remove too old attestations (TODO change for Deneb and after)
-            attestations = [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
-
-            # Prepare attestations
-            attestation_in_block = attestations[:spec.MAX_ATTESTATIONS]
-            attestations = attestations[spec.MAX_ATTESTATIONS:]
-
-            # Create a block with attestations
-            block = build_empty_block(spec, state)
-            for a in attestation_in_block:
-                block.body.attestations.append(a)
-
-            # Run state transition and sign off on a block
-            spec.process_block(state, block)
-            block.state_root = state.hash_tree_root()
-            signed_block = sign_block(spec, state, block)
+        # Produce block if the proposer is among participanting validators
+        proposer = spec.get_beacon_proposer_index(state)
+        if state.slot > spec.GENESIS_SLOT and proposer in branch_tip.participants:
+            signed_block, state, attestations = _produce_block(spec, state, attestations)
             signed_blocks.append(signed_block)
 
         # Produce attestations
-        slot_to_attest = state.slot
-        committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
-        attestations_in_slot = []
-        for index in range(committees_per_slot):
-            beacon_committee = spec.get_beacon_committee(state, slot_to_attest, index)
-            participants = participants_filter(beacon_committee)
-            if len(participants) > 0:
-                attestation = get_valid_attestation(
-                    spec,
-                    state,
-                    slot_to_attest,
-                    index=index,
-                    signed=True,
-                    filter_participant_set=participants_filter
-                )
-                attestations_in_slot.append(attestation)
-
+        attestations_in_slot = _attest_to_slot(spec, state, state.slot, participants_filter)
         # And prepend them to the list
         attestations = list(attestations_in_slot) + attestations
 
         # Advance a slot
         next_slot(spec, state)
 
-    # Clean up attestations that aren't eligible to be on chain anymore
-    attestations = [a for a in attestations if spec.compute_epoch_at_slot(a.data.slot) in (
-        spec.get_current_epoch(state), spec.get_previous_epoch(state))]
+    # Cleanup attestations by removing outdated ones
+    attestations = [a for a in attestations if
+                    a.data.target in (spec.get_previous_epoch(state), spec.get_current_epoch(state))]
 
     return signed_blocks, BranchTip(state, attestations, branch_tip.participants)
 
 
-def _any_change_to_voting_partitions(spec, sm_links, current_epoch) -> bool:
+def _any_change_to_validator_partitions(spec, sm_links, current_epoch) -> bool:
+    """
+    Returns ``true`` if validator partitions should be re-shuffled to advance branches in the current epoch:
+        1. Genesis epoch always requires a new shuffling.
+        2. Previous epoch has justified checkpoints.
+           Therefore, new supermajority links may need to be processed during the current epoch,
+           thus new block tree branches with new validator partitions may need to be created.
+        3. Current epoch has justified checkpoint.
+           Therefore, the majority of validators must be moved to the justifying branch.
+    """
+
     if current_epoch == spec.GENESIS_EPOCH:
         return True
 
     previous_epoch = current_epoch - 1
+    for l in sm_links:
+        if l.target == current_epoch or l.target == previous_epoch:
+            return True
 
-    # Previous epoch is genesis one -- set up new partitions
-    if previous_epoch == spec.GENESIS_EPOCH:
-        return True
-
-    # Previous or current epoch is justification target
-    #   a) Previous epoch accounts for newly created branches or an even reshuffling between branches in current epoch
-    #   b) Current epoch accounts for moving the majority to a branch with the justifying target
-    if any([l for l in sm_links if l.target == current_epoch or l.target == previous_epoch]):
-        return True
-
-    # No new branch satisfying any SM link can be created without a new justified checkpoint from the previous epoch
-    # So partitions remain the same unless previous epoch has a justification
     return False
 
 
-def _generate_blocks(spec, initial_state, sm_links, rnd: random.Random) -> []:
-    state = initial_state.copy()
+def _generate_blocks(spec, anchor_state, sm_links, rnd: random.Random) -> []:
+    """
+    Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
+    i.e. a sequence of blocks with attestations required to create given supermajority links.
 
+    The block generation strategy is to run through a span of epochs covered by the supermajority links
+    and for each epoch of the span apply the following steps:
+        1. Obtain a list of supermajority links covering the epoch.
+        2. Create a new block tree branch (fork) for every newly observed supermajority link.
+        3. Randomly sample all active validators between a set of forks that are being advanced in the epoch.
+           Validator partitions are disjoint and are changing only at the epoch boundary.
+           If no new branches are created in the current epoch then partitions from the previous epoch will be used
+           to advahce the state of every fork to the next epoch.
+        4. Advance every fork to the next epoch respecting a validator partition assigned to it in the current epoch.
+           Preserve attestations produced but not yet included on chain for potential inclusion in the next epoch.
+        5. Justify required checkpoints by moving the majority of validators to the justifying fork,
+           this is taken into account by step (3).
+
+    :return: Sequence of signed blocks oredered by a slot number.
+    """
+
+    state = anchor_state.copy()
     signed_blocks = []
 
-    # Sort sm_links
-    sm_links = sorted(sm_links)
-
-    # Fill GENESIS_EPOCH with blocks
-    # _, genesis_epoch_blocks, state = next_slots_with_attestations(
-    #     spec,
-    #     state,
-    #     spec.SLOTS_PER_EPOCH - 1,
-    #     True,
-    #     False
-    # )
-    # next_slot(spec, state)
-    # TODO: fill two slots with attestations or start branching from GENESIS?
-    # signed_blocks = signed_blocks + genesis_epoch_blocks
-    # assert spec.get_current_epoch(state) == spec.compute_epoch_at_slot(spec.GENESIS_SLOT) + 1
-
+    # branch_tips hold the most recent state, validator partition and not included attestations for every fork
     # Initialize branch tips with the genesis tip
     genesis_tip = BranchTip(state.copy(), [], [])
     branch_tips = {(spec.GENESIS_EPOCH, spec.GENESIS_EPOCH): genesis_tip}
 
-    # Finish at after the highest justified target
-    highest_target = max(sm_links, key=lambda l: l.target).target
+    highest_target_sm_link = max(sm_links, key=lambda l: l.target)
 
-    # Skip to target
-    # 1. Skip with empty slots?
-    # 2. Skip with empty blocks?
-    # 3. Skip with partially full blocks?
-    # 4. Mix of 1, 2 and 3
-    # 5. Pivot from existing chain or built from the checkpoint block? if many chains which one to use?
-    #    and which epoch to start a skip from?
-    # with sm_links = [(0, 2), (0, 3)], (0, 3) has the following options:
-    #     - (0, 2): 0 blocks, 0 blocks, full blocks | (0, 3): < 1/3 blocks
-    #
-    # Justify target
-    # 1. Checkpoint slot empty?
-    # 2. Missed blocks in the end of the target epoch?
-    for current_epoch in range(spec.GENESIS_EPOCH, highest_target + 1):
-        # Every epoch there are new randomly sampled partitions in the network
-        # If the current epoch is an SM link target then there is one major justifying patition and a number of small ones
-        # Attestations that are not included in the current epoch are left for inclusion in subsequent epochs
-        # We ensure high probability of justifying the target by setting high participation rate
-        # TODO: allow for partitioning in the middle of an epoch/epoch span when applicable
+    # Finish at after the highest justified checkpoint
+    for current_epoch in range(spec.GENESIS_EPOCH, highest_target_sm_link.target + 1):
+        # Obtain sm links including current epoch
+        current_epoch_sm_links = [l for l in sm_links if l.source < current_epoch <= l.target]
 
-        # Advance only those branches that are required to build SM links in the future
-        # Branches that aren't containing a source of a future SM link won't be advanced
-        current_links = [l for l in sm_links if l.source < current_epoch <= l.target]
-
-        # Initialize new branches
-        for l in (l for l in current_links if branch_tips.get(l) is None):
+        # Initialize new forks
+        for l in (l for l in current_epoch_sm_links if branch_tips.get(l) is None):
             branch_tips[l] = _create_new_branch_tip(spec, branch_tips, l)
 
         # Reshuffle partitions if needed
-        if _any_change_to_voting_partitions(spec, sm_links, current_epoch):
-            partitions = _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd)
+        if _any_change_to_validator_partitions(spec, sm_links, current_epoch):
+            partitions = _compute_validator_partitions(spec, branch_tips, current_epoch_sm_links, current_epoch, rnd)
             for l in partitions.keys():
                 old_tip_state = branch_tips[l]
                 new_tip_state = BranchTip(old_tip_state.beacon_state, old_tip_state.attestations, partitions[l])
                 branch_tips[l] = new_tip_state
 
-        # Advance every branch taking into account attestations from the previous epochs and voting partitions
-        for l in current_links:
-            branch_tip = branch_tips[l]
+        # Advance every branch taking into account attestations from past epochs and voting partitions
+        for sm_link in current_epoch_sm_links:
+            branch_tip = branch_tips[sm_link]
             new_signed_blocks, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip, current_epoch)
 
+            # Run sanity checks
             post_state = new_branch_tip.beacon_state
             assert spec.get_current_epoch(post_state) == current_epoch + 1
-            if l.target == current_epoch:
-                assert post_state.previous_justified_checkpoint.epoch == l.source
-                assert post_state.current_justified_checkpoint.epoch == l.target
+            if sm_link.target == current_epoch:
+                assert post_state.previous_justified_checkpoint.epoch == sm_link.source
+                assert post_state.current_justified_checkpoint.epoch == sm_link.target
             else:
-                assert post_state.current_justified_checkpoint.epoch == l.source
+                assert post_state.current_justified_checkpoint.epoch == sm_link.source
 
-            branch_tips[l] = new_branch_tip
+            # Create the first block of the next epoch to realize justification on chain
+            # Required only when the fork won't be advanced in any of the future epochs
+            is_fork_advanced_in_future = any((l for l in sm_links if l.source == sm_link.target))
+            if sm_link.target == current_epoch and not is_fork_advanced_in_future:
+                tip_block, _, _ = _produce_block(spec, new_branch_tip.beacon_state, new_branch_tip.attestations)
+                new_signed_blocks.append(tip_block)
+
+            # Store the result
+            branch_tips[sm_link] = new_branch_tip
             signed_blocks = signed_blocks + new_signed_blocks
 
-    # Add the last block to the top most branch
-    branch_tip = branch_tips[max(sm_links, key=lambda l: l.target)]
-    new_signed_blocks, _ = _advance_branch_to_next_epoch(spec, branch_tip, highest_target + 1)
-    signed_blocks = signed_blocks + new_signed_blocks
-
+    # Sort blocks by a slot
     return sorted(signed_blocks, key=lambda b: b.message.slot)
 
 
