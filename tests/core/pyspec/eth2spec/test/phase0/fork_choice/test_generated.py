@@ -1,4 +1,4 @@
-import numpy as np
+import random
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -9,6 +9,7 @@ from eth2spec.test.helpers.constants import (
 )
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
+    next_slots_with_attestations,
     state_transition_with_full_block,
     get_valid_attestation_at_slot,
     get_valid_attestation,
@@ -25,6 +26,8 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+    build_empty_block,
+    sign_block,
 )
 
 
@@ -65,7 +68,7 @@ def _create_new_branch_tip(spec, branch_tips: dict[SmLink:BranchTip], sm_link: S
     return BranchTip(most_recent_tip.beacon_state.copy(), most_recent_tip.attestations.copy(), [])
 
 
-def _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd: np.random.Generator):
+def _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd: random.Random):
     """
     Uniformly distributes active validators between branches to advance
     O(N) complex -- N is a number of validators, might be inefficient with large validator sets
@@ -89,7 +92,7 @@ def _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd: np
         state = branch_tips[l].beacon_state
         active_validator_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
         participant_count = len(active_validator_indices) * _under_justifying_participation_rate() // 100
-        return {l: rnd.permuted(active_validator_indices)[:participant_count]}
+        return {l: rnd.sample(active_validator_indices, participant_count)}
 
     participants = {l: [] for l in current_links}
 
@@ -100,7 +103,7 @@ def _compute_partitions(spec, branch_tips, current_links, current_epoch, rnd: np
         state = branch_tips[justification_target].beacon_state
         active_validator_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
         participant_count = len(active_validator_indices) * _justifying_participation_rate() // 100
-        justifying_participants = rnd.permuted(active_validator_indices)[:participant_count]
+        justifying_participants = rnd.sample(active_validator_indices, participant_count)
         participants[justification_target] = justifying_participants
 
         # Case when the justification target is the only branch
@@ -142,8 +145,9 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
     target_slot = spec.compute_start_slot_at_epoch(current_epoch + 1)
 
     while state.slot < target_slot:
-        proposer_index = spec.get_beacon_proposer_index(state)
-        if proposer_index in branch_tip.participants:
+        # Produce a block if the proposer is in the network partition building a branch
+        if spec.get_beacon_proposer_index(state) in branch_tip.participants and state.slot > spec.GENESIS_SLOT:
+
             # Remove too old attestations (TODO change for Deneb and after)
             attestations = [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
 
@@ -152,18 +156,18 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
             attestations = attestations[spec.MAX_ATTESTATIONS:]
 
             # Create a block with attestations
-            block = build_empty_block_for_next_slot(spec, state)
+            block = build_empty_block(spec, state)
             for a in attestation_in_block:
                 block.body.attestations.append(a)
 
             # Run state transition and sign off on a block
-            signed_block = state_transition_and_sign_block(spec, state, block)
+            spec.process_block(state, block)
+            block.state_root = state.hash_tree_root()
+            signed_block = sign_block(spec, state, block)
             signed_blocks.append(signed_block)
-        else:
-            next_slot(spec, state)
 
-        # Produce attestations to the previous slot
-        slot_to_attest = state.slot - 1
+        # Produce attestations
+        slot_to_attest = state.slot
         committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
         attestations_in_slot = []
         for index in range(committees_per_slot):
@@ -183,6 +187,9 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
         # And prepend them to the list
         attestations = list(attestations_in_slot) + attestations
 
+        # Advance a slot
+        next_slot(spec, state)
+
     # Clean up attestations that aren't eligible to be on chain anymore
     attestations = [a for a in attestations if spec.compute_epoch_at_slot(a.data.slot) in (
         spec.get_current_epoch(state), spec.get_previous_epoch(state))]
@@ -191,7 +198,9 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
 
 
 def _any_change_to_voting_partitions(spec, sm_links, current_epoch) -> bool:
-    assert current_epoch > spec.GENESIS_EPOCH
+    if current_epoch == spec.GENESIS_EPOCH:
+        return True
+
     previous_epoch = current_epoch - 1
 
     # Previous epoch is genesis one -- set up new partitions
@@ -209,7 +218,7 @@ def _any_change_to_voting_partitions(spec, sm_links, current_epoch) -> bool:
     return False
 
 
-def _generate_blocks(spec, initial_state, sm_links, rnd: np.random.Generator) -> []:
+def _generate_blocks(spec, initial_state, sm_links, rnd: random.Random) -> []:
     state = initial_state.copy()
 
     signed_blocks = []
@@ -218,18 +227,24 @@ def _generate_blocks(spec, initial_state, sm_links, rnd: np.random.Generator) ->
     sm_links = sorted(sm_links)
 
     # Fill GENESIS_EPOCH with blocks
-    _, genesis_epoch_blocks, state = next_epoch_with_attestations(spec, state, True, False)
-    signed_blocks = signed_blocks + genesis_epoch_blocks
-    assert spec.get_current_epoch(state) == spec.compute_epoch_at_slot(spec.GENESIS_SLOT) + 1
+    # _, genesis_epoch_blocks, state = next_slots_with_attestations(
+    #     spec,
+    #     state,
+    #     spec.SLOTS_PER_EPOCH - 1,
+    #     True,
+    #     False
+    # )
+    # next_slot(spec, state)
+    # TODO: fill two slots with attestations or start branching from GENESIS?
+    # signed_blocks = signed_blocks + genesis_epoch_blocks
+    # assert spec.get_current_epoch(state) == spec.compute_epoch_at_slot(spec.GENESIS_SLOT) + 1
 
     # Initialize branch tips with the genesis tip
-    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))])
+    genesis_tip = BranchTip(state.copy(), [], [])
     branch_tips = {(spec.GENESIS_EPOCH, spec.GENESIS_EPOCH): genesis_tip}
 
-    # Start from spec.GENESIS_EPOCH + 1
-    lowest_epoch_boundary = spec.GENESIS_EPOCH + 1
     # Finish at after the highest justified target
-    highest_epoch_boundary = max(sm_links, key=lambda l: l.target).target + 1
+    highest_target = max(sm_links, key=lambda l: l.target).target
 
     # Skip to target
     # 1. Skip with empty slots?
@@ -244,7 +259,7 @@ def _generate_blocks(spec, initial_state, sm_links, rnd: np.random.Generator) ->
     # Justify target
     # 1. Checkpoint slot empty?
     # 2. Missed blocks in the end of the target epoch?
-    for current_epoch in range(lowest_epoch_boundary, highest_epoch_boundary):
+    for current_epoch in range(spec.GENESIS_EPOCH, highest_target + 1):
         # Every epoch there are new randomly sampled partitions in the network
         # If the current epoch is an SM link target then there is one major justifying patition and a number of small ones
         # Attestations that are not included in the current epoch are left for inclusion in subsequent epochs
@@ -283,6 +298,11 @@ def _generate_blocks(spec, initial_state, sm_links, rnd: np.random.Generator) ->
             branch_tips[l] = new_branch_tip
             signed_blocks = signed_blocks + new_signed_blocks
 
+    # Add the last block to the top most branch
+    branch_tip = branch_tips[max(sm_links, key=lambda l: l.target)]
+    new_signed_blocks, _ = _advance_branch_to_next_epoch(spec, branch_tip, highest_target + 1)
+    signed_blocks = signed_blocks + new_signed_blocks
+
     return sorted(signed_blocks, key=lambda b: b.message.slot)
 
 
@@ -293,10 +313,10 @@ def test_generated_sm_links(spec, state):
     """
     Creates a tree of supermajority links
     """
-    input = [(2, 3), (2, 4), (3, 6), (3, 5), (0, 2)]
-    seed = 128
+    input = [(2, 3), (2, 4), (3, 8), (3, 7), (0, 2)]
+    seed = 1
 
-    rnd = np.random.default_rng(seed)
+    rnd = random.Random(seed)
     sm_links = [SmLink(l) for l in input]
     signed_blocks = _generate_blocks(spec, state, sm_links, rnd)
 
