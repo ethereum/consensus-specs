@@ -264,10 +264,10 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
     return signed_blocks, BranchTip(state, attestations, branch_tip.participants)
 
 
-def _any_change_to_validator_partitions(spec, sm_links, current_epoch) -> bool:
+def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch) -> bool:
     """
     Returns ``true`` if validator partitions should be re-shuffled to advance branches in the current epoch:
-        1. Genesis epoch always requires a new shuffling.
+        1. Anchor epoch always requires a new shuffling.
         2. Previous epoch has justified checkpoints.
            Therefore, new supermajority links may need to be processed during the current epoch,
            thus new block tree branches with new validator partitions may need to be created.
@@ -275,7 +275,7 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch) -> bool:
            Therefore, the majority of validators must be moved to the justifying branch.
     """
 
-    if current_epoch == spec.GENESIS_EPOCH:
+    if current_epoch == anchor_epoch:
         return True
 
     previous_epoch = current_epoch - 1
@@ -286,7 +286,34 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch) -> bool:
     return False
 
 
-def _generate_blocks(spec, anchor_state, sm_links, rnd: random.Random) -> []:
+def _print_block(spec, epoch_state, signed_block):
+    block = signed_block.message
+    attesters = set()
+    for a in block.body.attestations:
+        attesters.update(spec.get_attesting_indices(epoch_state, a.data, a.aggregation_bits))
+
+    attester_str = str(attesters) if any(attesters) else "{}"
+
+    return "b(p: " + str(block.proposer_index) + ", a:" + attester_str + ")"
+
+
+def _print_epoch(spec, epoch_state, signed_blocks):
+    epoch = spec.get_current_epoch(epoch_state)
+    start_slot = spec.compute_start_slot_at_epoch(epoch)
+    ret = ""
+    for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH + 1):
+        blocks_in_slot = [b for b in signed_blocks if b.message.slot == slot]
+        if ret != "":
+            ret = ret + " <- "
+        if any(blocks_in_slot):
+            ret = ret + "s(" + str(slot) + ", " + _print_block(spec, epoch_state, blocks_in_slot[0]) + ")"
+        else:
+            ret = ret + "s(" + str(slot) + ", _)"
+
+    return ret
+
+
+def _generate_blocks(spec, anchor_state, sm_links, rnd: random.Random, debug) -> []:
     """
     Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
     i.e. a sequence of blocks with attestations required to create given supermajority links.
@@ -315,25 +342,31 @@ def _generate_blocks(spec, anchor_state, sm_links, rnd: random.Random) -> []:
     genesis_tip = BranchTip(state.copy(), [], [])
     branch_tips = {(spec.GENESIS_EPOCH, spec.GENESIS_EPOCH): genesis_tip}
 
+    anchor_epoch = spec.GENESIS_EPOCH
     highest_target_sm_link = max(sm_links, key=lambda l: l.target)
 
     # Finish at after the highest justified checkpoint
-    for current_epoch in range(spec.GENESIS_EPOCH, highest_target_sm_link.target + 1):
-        # Obtain sm links including current epoch
-        current_epoch_sm_links = [l for l in sm_links if l.source < current_epoch <= l.target]
+    for current_epoch in range(anchor_epoch, highest_target_sm_link.target + 1):
+        # Obtain sm links that span over the current epoch
+        if current_epoch == anchor_epoch:
+            current_epoch_sm_links = [l for l in sm_links if l.source == anchor_epoch]
+        else:
+            current_epoch_sm_links = [l for l in sm_links if l.source < current_epoch <= l.target]
 
         # Initialize new forks
         for l in (l for l in current_epoch_sm_links if branch_tips.get(l) is None):
             branch_tips[l] = _create_new_branch_tip(spec, branch_tips, l)
 
         # Reshuffle partitions if needed
-        if _any_change_to_validator_partitions(spec, sm_links, current_epoch):
+        if _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch):
             partitions = _compute_validator_partitions(spec, branch_tips, current_epoch_sm_links, current_epoch, rnd)
             for l in partitions.keys():
                 old_tip_state = branch_tips[l]
                 new_tip_state = BranchTip(old_tip_state.beacon_state, old_tip_state.attestations, partitions[l])
                 branch_tips[l] = new_tip_state
 
+        if debug:
+            print("\nepoch ", current_epoch, ":")
         # Advance every branch taking into account attestations from past epochs and voting partitions
         for sm_link in current_epoch_sm_links:
             branch_tip = branch_tips[sm_link]
@@ -355,6 +388,12 @@ def _generate_blocks(spec, anchor_state, sm_links, rnd: random.Random) -> []:
                 tip_block, _, _ = _produce_block(spec, new_branch_tip.beacon_state, new_branch_tip.attestations)
                 new_signed_blocks.append(tip_block)
 
+            # Debug output
+            if debug:
+                print(sm_link, ":", _print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks))
+                print("        ", len(branch_tips[sm_link].participants), "participants:",
+                      branch_tips[sm_link].participants)
+
             # Store the result
             branch_tips[sm_link] = new_branch_tip
             signed_blocks = signed_blocks + new_signed_blocks
@@ -372,10 +411,11 @@ def test_generated_sm_links(spec, state):
     """
     input = [(2, 3), (2, 4), (3, 8), (3, 7), (0, 2)]
     seed = 1
+    debug = False
 
     rnd = random.Random(seed)
     sm_links = [SmLink(l) for l in input]
-    signed_blocks = _generate_blocks(spec, state, sm_links, rnd)
+    signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
 
     test_steps = []
     # Store initialization
