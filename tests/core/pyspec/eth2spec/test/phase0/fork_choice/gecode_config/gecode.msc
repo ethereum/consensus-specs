@@ -1,0 +1,16 @@
+{
+ "id": "org.gecode.gecode",
+ "name": "Gecode",
+ "description": "Gecode FlatZinc executable",
+ "version": "6.2.0",
+ "mznlib": "/usr/local/share/gecode",
+ "executable": "/usr/local/bin/fzn-gecode",
+ "tags": ["cp","int", "float", "set", "restart"],
+ "stdFlags": ["-a","-f","-n","-p","-r","-s","-t"],
+ "supportsMzn": false,
+ "supportsFzn": true,
+ "needsSolns2Out": true,
+ "needsMznExecutable": false,
+ "needsStdlibDir": false,
+ "isGUIApplication": false
+}

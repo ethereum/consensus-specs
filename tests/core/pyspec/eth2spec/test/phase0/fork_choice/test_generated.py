@@ -1,4 +1,10 @@
 import random
+from pathlib import Path
+from minizinc import (
+    Instance,
+    Model,
+    Solver,
+)
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -320,7 +326,7 @@ def _print_epoch(spec, epoch_state, signed_blocks):
     return ret
 
 
-def _generate_blocks(spec, genesis_state, sm_links, anchor_epoch, rnd: random.Random, debug) -> []:
+def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -> []:
     """
     Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
     i.e. a sequence of blocks with attestations required to create given supermajority links.
@@ -340,12 +346,17 @@ def _generate_blocks(spec, genesis_state, sm_links, anchor_epoch, rnd: random.Ra
 
     :return: Sequence of signed blocks oredered by a slot number.
     """
+    assert any(sm_links)
+
     state = genesis_state.copy()
     signed_blocks = []
 
+    # Find anchor epoch
+    anchor_epoch = min(sm_links, key=lambda l: l.source).source
+
     genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))])
 
-    # Move the state to the anchor_epoch
+    # Advance the state to the anchor_epoch
     anchor_tip = genesis_tip
     for epoch in (spec.GENESIS_EPOCH, anchor_epoch):
         new_signed_blocks, anchor_tip = _advance_branch_to_next_epoch(spec, anchor_tip, epoch)
@@ -451,14 +462,36 @@ def test_generated_sm_links(spec, state):
     """
     Generates a tree of supermajority links
     """
-    input = [(2, 3), (2, 4), (3, 8), (3, 7)]
+    iminput = [(2, 3), (2, 4), (3, 8), (3, 7)]
     seed = 1
     debug = False
     anchor_epoch = 2
+    number_of_epochs = 5
+    number_of_links = 4
+    sm_links_model_path = '/Users/n0ble/workspace/eth2.0-specs/tests/core/pyspec/eth2spec/test/phase0/fork_choice/minizinc/SM_links.mzn'
+
+    # Dependencies:
+    #   1. Install minizinc binary
+    #      https://www.minizinc.org/doc-2.5.5/en/installation_detailed_linux.html
+    #   2. Install minizinc python lib
+    #      pip install minizinc
+    #   3. Install and confifure gecode solver:
+    #      https://www.minizinc.org/doc-2.5.5/en/installation_detailed_linux.html#gecode
+    sm_links = Model(sm_links_model_path)
+    solver = Solver.lookup("gecode")
+    instance = Instance(solver, sm_links)
+    instance['AE'] = anchor_epoch # anchor epoch
+    instance['NE'] = number_of_epochs # number of epochs, starting from AE
+    instance['NL'] = number_of_links # number of super-majority links
+
+    solutions = instance.solve(all_solutions=True)
+    res = []
+    for i in range(len(solutions)):
+        res.append({'sources':  solutions[i, 'sources'], 'targets': solutions[i, 'targets'] })
 
     rnd = random.Random(seed)
-    sm_links = [SmLink(l) for l in input]
-    signed_blocks = _generate_blocks(spec, state, sm_links, anchor_epoch, rnd, debug)
+    sm_links = [SmLink(l) for l in zip(res[0]['sources'], res[0]['targets'])]
+    signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
 
     test_steps = []
     # Store initialization
