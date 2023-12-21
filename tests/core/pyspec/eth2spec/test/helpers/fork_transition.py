@@ -12,6 +12,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.constants import (
     PHASE0,
+    POST_FORK_OF,
     PREVIOUS_FORK_OF,
 )
 from eth2spec.test.helpers.deposits import (
@@ -143,6 +144,9 @@ def state_transition_across_slots_with_ignoring_proposers(spec,
 
 
 def get_upgrade_fn(spec, fork):
+    # pylint: disable=unused-argument
+    # NOTE: `spec` is used for the `eval` call
+    assert fork in POST_FORK_OF.values()
     try:
         # TODO: make all upgrade_to_* function names consistent?
         fn = eval(f"spec.upgrade_to_{fork}")
