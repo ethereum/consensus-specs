@@ -458,17 +458,17 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
 @with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-def test_generated_sm_links(spec, state):
+def test_sm_links_tree_model(spec, state):
     """
     Generates a tree of supermajority links
     """
-    iminput = [(2, 3), (2, 4), (3, 8), (3, 7)]
     seed = 1
-    debug = False
+    debug = True
     anchor_epoch = 2
     number_of_epochs = 5
     number_of_links = 4
-    sm_links_model_path = '/Users/n0ble/workspace/eth2.0-specs/tests/core/pyspec/eth2spec/test/phase0/fork_choice/minizinc/SM_links.mzn'
+    sm_links_model_path = './model/minizinc/SM_links.mzn'
+    sm_links_solution_index = 0
 
     # Dependencies:
     #   1. Install minizinc binary
@@ -480,17 +480,16 @@ def test_generated_sm_links(spec, state):
     sm_links = Model(sm_links_model_path)
     solver = Solver.lookup("gecode")
     instance = Instance(solver, sm_links)
-    instance['AE'] = anchor_epoch # anchor epoch
-    instance['NE'] = number_of_epochs # number of epochs, starting from AE
-    instance['NL'] = number_of_links # number of super-majority links
+    instance['AE'] = anchor_epoch  # anchor epoch
+    instance['NE'] = number_of_epochs  # number of epochs, starting from AE
+    instance['NL'] = number_of_links  # number of super-majority links
 
     solutions = instance.solve(all_solutions=True)
-    res = []
-    for i in range(len(solutions)):
-        res.append({'sources':  solutions[i, 'sources'], 'targets': solutions[i, 'targets'] })
 
     rnd = random.Random(seed)
-    sm_links = [SmLink(l) for l in zip(res[0]['sources'], res[0]['targets'])]
+    sources = solutions[sm_links_solution_index, 'sources']
+    targets = solutions[sm_links_solution_index, 'targets']
+    sm_links = [SmLink(l) for l in zip(sources, targets)]
     signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
 
     test_steps = []
