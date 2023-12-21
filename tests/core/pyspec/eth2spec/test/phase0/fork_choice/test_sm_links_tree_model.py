@@ -463,7 +463,7 @@ def test_sm_links_tree_model(spec, state):
     Generates a tree of supermajority links
     """
     seed = 1
-    debug = True
+    debug = False
     anchor_epoch = 2
     number_of_epochs = 5
     number_of_links = 4
