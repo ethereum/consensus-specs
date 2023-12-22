@@ -9,6 +9,7 @@ from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spe
 from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
 from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
 from eth2spec.eip6110 import mainnet as spec_eip6110_mainnet, minimal as spec_eip6110_minimal
+from eth2spec.whisk import mainnet as spec_whisk_mainnet, minimal as spec_whisk_minimal
 from eth2spec.eip7002 import mainnet as spec_eip7002_mainnet, minimal as spec_eip7002_minimal
 from eth2spec.utils import bls
 
@@ -16,9 +17,11 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     EIP6110, EIP7002,
+    WHISK,
     MINIMAL, MAINNET,
     ALL_PHASES,
     ALL_FORK_UPGRADES,
+    ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
 from .helpers.forks import is_post_fork
@@ -85,6 +88,7 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         DENEB: spec_deneb_minimal,
         EIP6110: spec_eip6110_minimal,
         EIP7002: spec_eip7002_minimal,
+        WHISK: spec_whisk_minimal,
     },
     MAINNET: {
         PHASE0: spec_phase0_mainnet,
@@ -94,6 +98,7 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
         DENEB: spec_deneb_mainnet,
         EIP6110: spec_eip6110_mainnet,
         EIP7002: spec_eip7002_mainnet,
+        WHISK: spec_whisk_mainnet,
     },
 }
 
@@ -162,14 +167,34 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
-def scaled_churn_balances(spec: Spec):
+def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     See the second argument of ``max`` in ``get_validator_churn_limit``.
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (2 + spec.config.MIN_PER_EPOCH_CHURN_LIMIT)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -414,12 +439,12 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
-def with_all_phases_from(earliest_phase):
+def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
     def decorator(fn):
-        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
+        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
     return decorator
 
 
@@ -545,6 +570,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_eip6110_and_later = with_all_phases_from(EIP6110)
 with_eip7002_and_later = with_all_phases_from(EIP7002)
+with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

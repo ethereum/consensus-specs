@@ -10,7 +10,6 @@ This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Warning](#warning)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -62,10 +61,6 @@ Block proposers incorporate the (aggregated) sync committee signatures into each
 
 All terminology, constants, functions, and protocol mechanics defined in the [Altair -- The Beacon Chain](./beacon-chain.md) doc are requisite for this document and used throughout.
 Please see this document before continuing and use as a reference throughout.
-
-## Warning
-
-This document is currently illustrative for early Altair testnets and some parts are subject to change, especially pending implementation and profiling of Altair testnets.
 
 ## Constants
 

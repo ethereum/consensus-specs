@@ -13,7 +13,6 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Warning](#warning)
 - [Modifications in Altair](#modifications-in-altair)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -37,11 +36,6 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
-## Warning
-
-This document is currently illustrative for early Altair testnets and some parts are subject to change.
-Refer to the note in the [validator guide](./validator.md) for further details.
 
 ## Modifications in Altair
 

@@ -158,11 +158,11 @@ This applies to transports that are natively incapable of multiplexing (e.g. TCP
 and is omitted for capable transports (e.g. QUIC).
 
 Two multiplexers are commonplace in libp2p implementations:
-[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 Their protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
 Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md).
+and MAY support [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md).
 If both are supported by the client, yamux MUST take precedence during negotiation.
 See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
@@ -855,6 +855,9 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
+
+Clients MAY include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
