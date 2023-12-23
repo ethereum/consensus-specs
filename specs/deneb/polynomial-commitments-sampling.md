@@ -152,22 +152,6 @@ def polynomial_eval_to_coeff(polynomial: Polynomial) -> PolynomialCoeff:
     return polynomial_coeff
 ```
 
-#### `polynomial_coeff_to_eval`
-
-```python
-def polynomial_coeff_to_eval(polynomial_coeff: PolynomialCoeff) -> Polynomial:
-    """
-    Evaluates a polynomial (given in coefficient form) to a polynomial in evaluation form.
-    """
-
-    if len(polynomial_coeff) > FIELD_ELEMENTS_PER_BLOB:
-        assert all(c == 0 for c in polynomial_coeff[FIELD_ELEMENTS_PER_BLOB:])
-
-    polynomial = bit_reversal_permutation(fft_field(list(polynomial_coeff), list(ROOTS_OF_UNITY), inv=False))
-
-    return polynomial
-```
-
 #### `add_polynomialcoeff`
 
 ```python
