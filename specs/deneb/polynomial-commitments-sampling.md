@@ -27,7 +27,7 @@
     - [`divide_polynomialcoeff`](#divide_polynomialcoeff)
     - [`shift_polynomialcoeff`](#shift_polynomialcoeff)
     - [`interpolate_polynomialcoeff`](#interpolate_polynomialcoeff)
-    - [`zero_polynomialcoeff`](#zero_polynomialcoeff)
+    - [`vanishing_polynomialcoeff`](#vanishing_polynomialcoeff)
     - [`evaluate_polynomialcoeff`](#evaluate_polynomialcoeff)
   - [KZG multiproofs](#kzg-multiproofs)
     - [`compute_kzg_proof_multi_impl`](#compute_kzg_proof_multi_impl)
@@ -266,12 +266,12 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
     return r
 ```
 
-#### `zero_polynomialcoeff`
+#### `vanishing_polynomialcoeff`
 
 ```python
-def zero_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
+def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
-    Compute a zero polynomial on ``xs`` (in coefficient form)
+    Compute the vanishing polynomial on ``xs`` (in coefficient form)
     """
     p = [1]
     for x in xs:
@@ -312,7 +312,7 @@ def compute_kzg_proof_multi_impl(
     polynomial_shifted = add_polynomialcoeff(polynomial_coeff, neg_polynomialcoeff(interpolation_polynomial))
 
     # For all x_i, compute (x_i - z)
-    denominator_poly = zero_polynomialcoeff(zs)
+    denominator_poly = vanishing_polynomialcoeff(zs)
 
     # Compute the quotient polynomial directly in evaluation form
     quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
@@ -330,7 +330,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
     """
     Helper function that verifies a KZG multiproof
     """
-    zero_poly = g2_lincomb(KZG_SETUP_G2[:len(zs) + 1], zero_polynomialcoeff(zs))
+    zero_poly = g2_lincomb(KZG_SETUP_G2[:len(zs) + 1], vanishing_polynomialcoeff(zs))
     interpolated_poly = g1_lincomb(KZG_SETUP_G1[:len(zs)], interpolate_polynomialcoeff(zs, ys))
 
     return (bls.pairing_check([
@@ -468,7 +468,7 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
     assert len(cells) >= CELLS_PER_BLOB // 2
     cell_ids = [cell_id for cell_id, _ in cells]
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
-    short_zero_poly = zero_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)] for cell_id in missing_cell_ids])
+    short_zero_poly = vanishing_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)] for cell_id in missing_cell_ids])
 
     full_zero_poly = []
     for i in short_zero_poly:
