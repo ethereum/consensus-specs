@@ -10,13 +10,12 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
-  - [Samples](#samples)
+  - [Cells](#cells)
   - [Crypto](#crypto)
 - [Helper functions](#helper-functions)
   - [Linear combinations](#linear-combinations)
     - [`g2_lincomb`](#g2_lincomb)
   - [FFTs](#ffts)
-    - [`_simple_ft_field`](#_simple_ft_field)
     - [`_fft_field`](#_fft_field)
     - [`fft_field`](#fft_field)
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
@@ -33,17 +32,17 @@
   - [KZG multiproofs](#kzg-multiproofs)
     - [`compute_kzg_proof_multi_impl`](#compute_kzg_proof_multi_impl)
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
-  - [Sample cosets](#sample-cosets)
-    - [`coset_for_sample`](#coset_for_sample)
-- [Samples](#samples-1)
-  - [Sample computation](#sample-computation)
-    - [`compute_samples_and_proofs`](#compute_samples_and_proofs)
-    - [`compute_samples`](#compute_samples)
-  - [Sample verification](#sample-verification)
-    - [`verify_sample_proof`](#verify_sample_proof)
-    - [`verify_sample_proof_batch`](#verify_sample_proof_batch)
+  - [Cell cosets](#cell-cosets)
+    - [`coset_for_cell`](#coset_for_cell)
+- [Cells](#cells-1)
+  - [Cell computation](#cell-computation)
+    - [`compute_cells_and_proofs`](#compute_cells_and_proofs)
+    - [`compute_cells`](#compute_cells)
+  - [Cell verification](#cell-verification)
+    - [`verify_cell_proof`](#verify_cell_proof)
+    - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
 - [Reconstruction](#reconstruction)
-  - [`recover_samples`](#recover_samples)
+  - [`recover_cells`](#recover_cells)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -69,7 +68,9 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 ## Preset
 
-### Samples
+### Cells
+
+Cells are the smallest unit of blob data that can come with their own KZG proofs. Samples can be constructed from one or several cells (e.g. an individual cell or line).
 
 | Name | Value | Description |
 | - | - | - |
@@ -341,34 +342,34 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
     ]))
 ```
 
-### Sample cosets
+### Cell cosets
 
-#### `coset_for_sample`
+#### `coset_for_cell`
 
 ```python
-def coset_for_sample(sample_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]:
+def coset_for_cell(cell_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]:
     """
-    Get the coset for a given ``sample_id``
+    Get the coset for a given ``cell_id``
     """
-    assert sample_id < CELLS_PER_BLOB
+    assert cell_id < CELLS_PER_BLOB
     roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY_EXTENDED)
     return Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL](
-        roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * sample_id:FIELD_ELEMENTS_PER_CELL * (sample_id + 1)]
+        roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)]
     )
 ```
 
-## Samples
+## Cells
 
-### Sample computation
+### Cell computation
 
-#### `compute_samples_and_proofs`
+#### `compute_cells_and_proofs`
 
 ```python
-def compute_samples_and_proofs(blob: Blob) -> Tuple[
+def compute_cells_and_proofs(blob: Blob) -> Tuple[
         Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB],
         Vector[KZGProof, CELLS_PER_BLOB]]:
     """
-    Compute all the sample proofs for one blob. This is an inefficient O(n^2) algorithm,
+    Compute all the cell proofs for one blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
     used instead.
 
@@ -377,24 +378,24 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    samples = []
+    cells = []
     proofs = []
 
     for i in range(CELLS_PER_BLOB):
-        coset = coset_for_sample(i)
+        coset = coset_for_cell(i)
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-        samples.append(ys)
+        cells.append(ys)
         proofs.append(proof)
 
-    return samples, proofs
+    return cells, proofs
 ```
 
-#### `compute_samples`
+#### `compute_cells`
 
 ```python
-def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB]:
+def compute_cells(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB]:
     """
-    Compute the sample data for a blob (without computing the proofs).
+    Compute the cell data for a blob (without computing the proofs).
 
     Public method.
     """
@@ -407,35 +408,35 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
             for i in range(CELLS_PER_BLOB)]
 ```
 
-### Sample verification
+### Cell verification
 
-#### `verify_sample_proof`
+#### `verify_cell_proof`
 
 ```python
-def verify_sample_proof(commitment: KZGCommitment,
-                        sample_id: int,
+def verify_cell_proof(commitment: KZGCommitment,
+                        cell_id: int,
                         data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL],
                         proof: KZGProof) -> bool:
     """
-    Check a sample proof
+    Check a cell proof
 
     Public method.
     """
-    coset = coset_for_sample(sample_id)
+    coset = coset_for_cell(cell_id)
 
     return verify_kzg_proof_multi_impl(commitment, coset, data, proof)
 ```
 
-#### `verify_sample_proof_batch`
+#### `verify_cell_proof_batch`
 
 ```python
-def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
+def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
                               row_ids: Sequence[int],
                               column_ids: Sequence[int],
                               datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]],
                               proofs: Sequence[KZGProof]) -> bool:
     """
-    Check multiple sample proofs. This function implements the naive algorithm of checking every sample
+    Check multiple cell proofs. This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
 
@@ -445,29 +446,29 @@ def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
     # Get commitments via row IDs
     commitments = [row_commitments[row_id] for row_id in row_ids]
     
-    return all(verify_kzg_proof_multi_impl(commitment, coset_for_sample(column_id), data, proof) 
+    return all(verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), data, proof) 
                for commitment, column_id, data, proof in zip(commitments, column_ids, datas, proofs))
 ```
 
 ## Reconstruction
 
-### `recover_samples`
+### `recover_cells`
 
 ```python
-def recover_samples(samples: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Polynomial:
+def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Polynomial:
     """
     Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
 
-    This algorithm uses FFTs to recover samples faster than using Lagrange implementation. However,
+    This algorithm uses FFTs to recover cells faster than using Lagrange implementation. However,
     a faster version thanks to Qi Zhou can be found here:
     https://github.com/ethereum/research/blob/51b530a53bd4147d123ab3e390a9d08605c2cdb8/polynomial_reconstruction/polynomial_reconstruction_danksharding.py
 
     Public method.
     """
-    assert len(samples) >= CELLS_PER_BLOB // 2
-    sample_ids = [sample_id for sample_id, _ in samples]
-    missing_sample_ids = [sample_id for sample_id in range(CELLS_PER_BLOB) if sample_id not in sample_ids]
-    short_zero_poly = zero_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(sample_id, CELLS_PER_BLOB)] for sample_id in missing_sample_ids])
+    assert len(cells) >= CELLS_PER_BLOB // 2
+    cell_ids = [cell_id for cell_id, _ in cells]
+    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    short_zero_poly = zero_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)] for cell_id in missing_cell_ids])
 
     full_zero_poly = []
     for i in short_zero_poly:
@@ -477,16 +478,16 @@ def recover_samples(samples: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -
 
     zero_poly_eval = fft_field(full_zero_poly, ROOTS_OF_UNITY_EXTENDED)
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
-    for sample_id in missing_sample_ids:
-        assert zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
+    for cell_id in missing_cell_ids:
+        assert zero_poly_eval_brp[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
             [0] * FIELD_ELEMENTS_PER_CELL
-    for sample_id in sample_ids:
-        assert all(a != 0 for a in zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL])
+    for cell_id in cell_ids:
+        assert all(a != 0 for a in zero_poly_eval_brp[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL])
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_BLOB * 2
-    for sample_id, sample_data in samples:
-        extended_evaluation_rbo[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] = \
-            sample_data
+    for cell_id, cell_data in cells:
+        extended_evaluation_rbo[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] = \
+            cell_data
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
     extended_evaluation_times_zero = [a * b % BLS_MODULUS for a, b in zip(zero_poly_eval, extended_evaluation)]
@@ -513,9 +514,9 @@ def recover_samples(samples: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY_EXTENDED))
 
-    for sample_id, sample_data in samples:
-        assert reconstructed_data[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
-            sample_data
+    for cell_id, cell_data in cells:
+        assert reconstructed_data[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
+            cell_data
     
     return reconstructed_data
 ```
