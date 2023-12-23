@@ -43,7 +43,7 @@
     - [`verify_sample_proof`](#verify_sample_proof)
     - [`verify_sample_proof_batch`](#verify_sample_proof_batch)
 - [Reconstruction](#reconstruction)
-  - [`recover_samples_impl`](#recover_samples_impl)
+  - [`recover_samples`](#recover_samples)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -73,18 +73,18 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 | Name | Value | Description |
 | - | - | - |
-| `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(64)` | Number of field elements in a sample |
-| `BYTES_PER_SAMPLE` | `FIELD_ELEMENTS_PER_SAMPLE * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a sample |
-| `SAMPLES_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_SAMPLE)` | The number of samples for a blob |
+| `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
+| `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
+| `CELLS_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_CELL)` | The number of cells in a blob |
 
 ### Crypto
 
 | Name | Value | Description |
 | - | - | - |
-| `ROOT_OF_UNITY2` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
-| `ROOTS_OF_UNITY2` | `([pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
-| `ROOT_OF_UNITY_S` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(SAMPLES_PER_BLOB), BLS_MODULUS)` | Root of unity of order SAMPLES_PER_BLOB over the BLS12-381 field |
-| `ROOTS_OF_UNITY_S` | `([pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(SAMPLES_PER_BLOB)])` | Roots of unity of order SAMPLES_PER_BLOB over the BLS12-381 field |
+| `ROOT_OF_UNITY_EXTENDED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
+| `ROOTS_OF_UNITY_EXTENDED` | `([pow(ROOT_OF_UNITY_EXTENDED, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
+| `ROOT_OF_UNITY_REDUCED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(CELLS_PER_BLOB), BLS_MODULUS)` | Root of unity of order CELLS_PER_BLOB over the BLS12-381 field |
+| `ROOTS_OF_UNITY_REDUCED` | `([pow(ROOT_OF_UNITY_REDUCED, i, BLS_MODULUS) for i in range(CELLS_PER_BLOB)])` | Roots of unity of order CELLS_PER_BLOB over the BLS12-381 field |
 
 ## Helper functions
 
@@ -106,27 +106,12 @@ def g2_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
 
 ### FFTs
 
-#### `_simple_ft_field`
-
-```python
-def _simple_ft_field(vals, roots_of_unity):
-    assert len(vals) == len(roots_of_unity)
-    L = len(roots_of_unity)
-    o = []
-    for i in range(L):
-        last = 0
-        for j in range(L):
-            last += int(vals[j]) * int(roots_of_unity[(i * j) % L]) % BLS_MODULUS
-        o.append(last % BLS_MODULUS)
-    return o
-```
-
 #### `_fft_field`
 
 ```python
 def _fft_field(vals, roots_of_unity):
-    if len(vals) <= 4:
-        return _simple_ft_field(vals, roots_of_unity)
+    if len(vals) == 0:
+        return vals
     L = _fft_field(vals[::2], roots_of_unity[::2])
     R = _fft_field(vals[1::2], roots_of_unity[::2])
     o = [0 for i in vals]
@@ -361,14 +346,14 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_sample`
 
 ```python
-def coset_for_sample(sample_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE]:
+def coset_for_sample(sample_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]:
     """
-    Get the subgroup for a given ``sample_id``
+    Get the coset for a given ``sample_id``
     """
-    assert sample_id < SAMPLES_PER_BLOB
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY2)
-    return Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE](
-        roots_of_unity_brp[FIELD_ELEMENTS_PER_SAMPLE * sample_id:FIELD_ELEMENTS_PER_SAMPLE * (sample_id + 1)]
+    assert sample_id < CELLS_PER_BLOB
+    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY_EXTENDED)
+    return Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL](
+        roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * sample_id:FIELD_ELEMENTS_PER_CELL * (sample_id + 1)]
     )
 ```
 
@@ -380,8 +365,8 @@ def coset_for_sample(sample_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_P
 
 ```python
 def compute_samples_and_proofs(blob: Blob) -> Tuple[
-        Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE], SAMPLES_PER_BLOB],
-        Vector[KZGProof, SAMPLES_PER_BLOB]]:
+        Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB],
+        Vector[KZGProof, CELLS_PER_BLOB]]:
     """
     Compute all the sample proofs for one blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
@@ -395,7 +380,7 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
     samples = []
     proofs = []
 
-    for i in range(SAMPLES_PER_BLOB):
+    for i in range(CELLS_PER_BLOB):
         coset = coset_for_sample(i)
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         samples.append(ys)
@@ -407,7 +392,7 @@ def compute_samples_and_proofs(blob: Blob) -> Tuple[
 #### `compute_samples`
 
 ```python
-def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE], SAMPLES_PER_BLOB]:
+def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB]:
     """
     Compute the sample data for a blob (without computing the proofs).
 
@@ -416,10 +401,10 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, ROOTS_OF_UNITY2)
+    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, ROOTS_OF_UNITY_EXTENDED)
     extended_data_rbo = bit_reversal_permutation(extended_data)
-    return [extended_data_rbo[i * FIELD_ELEMENTS_PER_SAMPLE:(i + 1) * FIELD_ELEMENTS_PER_SAMPLE]
-            for i in range(SAMPLES_PER_BLOB)]
+    return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
+            for i in range(CELLS_PER_BLOB)]
 ```
 
 ### Sample verification
@@ -429,12 +414,12 @@ def compute_samples(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS
 ```python
 def verify_sample_proof(commitment: KZGCommitment,
                         sample_id: int,
-                        data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE],
+                        data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL],
                         proof: KZGProof) -> bool:
     """
     Check a sample proof
 
-    Publiiic method.
+    Public method.
     """
     coset = coset_for_sample(sample_id)
 
@@ -447,7 +432,7 @@ def verify_sample_proof(commitment: KZGCommitment,
 def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
                               row_ids: Sequence[int],
                               column_ids: Sequence[int],
-                              datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_SAMPLE]],
+                              datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]],
                               proofs: Sequence[KZGProof]) -> bool:
     """
     Check multiple sample proofs. This function implements the naive algorithm of checking every sample
@@ -466,12 +451,12 @@ def verify_sample_proof_batch(row_commitments: Sequence[KZGCommitment],
 
 ## Reconstruction
 
-### `recover_samples_impl`
+### `recover_samples`
 
 ```python
-def recover_samples_impl(samples: Sequence[Tuple[int, Sequence[BLSFieldElement]]]) -> Polynomial:
+def recover_samples(samples: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Polynomial:
     """
-    Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_SAMPLE evaluations, half of which can be missing.
+    Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
 
     This algorithm uses FFTs to recover samples faster than using Lagrange implementation. However,
     a faster version thanks to Qi Zhou can be found here:
@@ -479,34 +464,34 @@ def recover_samples_impl(samples: Sequence[Tuple[int, Sequence[BLSFieldElement]]
 
     Public method.
     """
-    assert len(samples) >= SAMPLES_PER_BLOB // 2
+    assert len(samples) >= CELLS_PER_BLOB // 2
     sample_ids = [sample_id for sample_id, _ in samples]
-    missing_sample_ids = [sample_id for sample_id in range(SAMPLES_PER_BLOB) if sample_id not in sample_ids]
-    short_zero_poly = zero_polynomialcoeff([ROOTS_OF_UNITY_S[reverse_bits(sample_id, SAMPLES_PER_BLOB)] for sample_id in missing_sample_ids])
+    missing_sample_ids = [sample_id for sample_id in range(CELLS_PER_BLOB) if sample_id not in sample_ids]
+    short_zero_poly = zero_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(sample_id, CELLS_PER_BLOB)] for sample_id in missing_sample_ids])
 
     full_zero_poly = []
     for i in short_zero_poly:
         full_zero_poly.append(i)
-        full_zero_poly.extend([0] * (FIELD_ELEMENTS_PER_SAMPLE - 1))
+        full_zero_poly.extend([0] * (FIELD_ELEMENTS_PER_CELL - 1))
     full_zero_poly = full_zero_poly + [0] * (2 * FIELD_ELEMENTS_PER_BLOB - len(full_zero_poly))
 
-    zero_poly_eval = fft_field(full_zero_poly, ROOTS_OF_UNITY2)
+    zero_poly_eval = fft_field(full_zero_poly, ROOTS_OF_UNITY_EXTENDED)
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
     for sample_id in missing_sample_ids:
-        assert zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_SAMPLE:(sample_id + 1) * FIELD_ELEMENTS_PER_SAMPLE] == \
-            [0] * FIELD_ELEMENTS_PER_SAMPLE
+        assert zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
+            [0] * FIELD_ELEMENTS_PER_CELL
     for sample_id in sample_ids:
-        assert all(a != 0 for a in zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_SAMPLE:(sample_id + 1) * FIELD_ELEMENTS_PER_SAMPLE])
+        assert all(a != 0 for a in zero_poly_eval_brp[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL])
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_BLOB * 2
     for sample_id, sample_data in samples:
-        extended_evaluation_rbo[sample_id * FIELD_ELEMENTS_PER_SAMPLE:(sample_id + 1) * FIELD_ELEMENTS_PER_SAMPLE] = \
+        extended_evaluation_rbo[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] = \
             sample_data
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
     extended_evaluation_times_zero = [a * b % BLS_MODULUS for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, ROOTS_OF_UNITY2, inv=True)
+    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, ROOTS_OF_UNITY_EXTENDED, inv=True)
 
     shift_factor = PRIMITIVE_ROOT_OF_UNITY
     shift_inv = div(1, PRIMITIVE_ROOT_OF_UNITY)
@@ -514,22 +499,22 @@ def recover_samples_impl(samples: Sequence[Tuple[int, Sequence[BLSFieldElement]]
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
     shifted_zero_poly = shift_polynomialcoeff(full_zero_poly, shift_factor)
 
-    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, ROOTS_OF_UNITY2)
-    eval_shifted_zero_poly = fft_field(shifted_zero_poly, ROOTS_OF_UNITY2)
+    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, ROOTS_OF_UNITY_EXTENDED)
+    eval_shifted_zero_poly = fft_field(shifted_zero_poly, ROOTS_OF_UNITY_EXTENDED)
     
     eval_shifted_reconstructed_poly = [
         div(a, b)
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
     ]
 
-    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, ROOTS_OF_UNITY2, inv=True)
+    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, ROOTS_OF_UNITY_EXTENDED, inv=True)
 
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
 
-    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY2))
+    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY_EXTENDED))
 
     for sample_id, sample_data in samples:
-        assert reconstructed_data[sample_id * FIELD_ELEMENTS_PER_SAMPLE:(sample_id + 1) * FIELD_ELEMENTS_PER_SAMPLE] == \
+        assert reconstructed_data[sample_id * FIELD_ELEMENTS_PER_CELL:(sample_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
             sample_data
     
     return reconstructed_data
