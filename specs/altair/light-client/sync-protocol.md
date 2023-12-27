@@ -64,6 +64,17 @@ Additional documents describe how the light client sync protocol can be used:
 | `CURRENT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
 | `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
 
+```python
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):
+    pass
+
+class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]):
+    pass
+
+class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]):
+    pass
+```
+
 ## Preset
 
 ### Misc
@@ -93,7 +104,7 @@ class LightClientBootstrap(Container):
     header: LightClientHeader
     # Current sync committee corresponding to `header.beacon.state_root`
     current_sync_committee: SyncCommittee
-    current_sync_committee_branch: Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]
+    current_sync_committee_branch: CurrentSyncCommitteeBranch
 ```
 
 ### `LightClientUpdate`
@@ -104,10 +115,10 @@ class LightClientUpdate(Container):
     attested_header: LightClientHeader
     # Next sync committee corresponding to `attested_header.beacon.state_root`
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
+    next_sync_committee_branch: NextSyncCommitteeBranch
     # Finalized header corresponding to `attested_header.beacon.state_root`
     finalized_header: LightClientHeader
-    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: FinalityBranch
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
     # Slot at which the aggregate signature was created (untrusted)
@@ -122,7 +133,7 @@ class LightClientFinalityUpdate(Container):
     attested_header: LightClientHeader
     # Finalized header corresponding to `attested_header.beacon.state_root`
     finalized_header: LightClientHeader
-    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: FinalityBranch
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
     # Slot at which the aggregate signature was created (untrusted)
