@@ -33,6 +33,11 @@ Additional documents describes the impact of the upgrade on certain roles:
 | - | - |
 | `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
 
+```python
+class ExecutionBranch(Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]):
+    pass
+```
+
 ## Containers
 
 ### Modified `LightClientHeader`
@@ -43,7 +48,7 @@ class LightClientHeader(Container):
     beacon: BeaconBlockHeader
     # Execution payload header corresponding to `beacon.body_root` (from Capella onward)
     execution: ExecutionPayloadHeader
-    execution_branch: Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]
+    execution_branch: ExecutionBranch
 ```
 
 ## Helper functions
