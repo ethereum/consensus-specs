@@ -10,6 +10,8 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+- [Helper types](#helper-types)
+  - [`ExecutionBranch`](#executionbranch)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
 - [Helper functions](#helper-functions)
@@ -32,6 +34,11 @@ Additional documents describes the impact of the upgrade on certain roles:
 | Name | Value |
 | - | - |
 | `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+
+
+## Helper types
+
+### `ExecutionBranch`
 
 ```python
 class ExecutionBranch(Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]):

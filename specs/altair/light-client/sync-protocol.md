@@ -12,6 +12,10 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
+- [Helper types](#helper-types)
+  - [`FinalityBranch`](#finalitybranch)
+  - [`CurrentSyncCommitteeBranch`](#currentsynccommitteebranch)
+  - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Containers](#containers)
   - [`LightClientHeader`](#lightclientheader)
   - [`LightClientBootstrap`](#lightclientbootstrap)
@@ -64,17 +68,6 @@ Additional documents describe how the light client sync protocol can be used:
 | `CURRENT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
 | `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
 
-```python
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):
-    pass
-
-class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]):
-    pass
-
-class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]):
-    pass
-```
-
 ## Preset
 
 ### Misc
@@ -83,6 +76,29 @@ class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDE
 | - | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators | |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
+
+## Helper types
+
+### `FinalityBranch`
+
+```python
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):
+    pass
+```
+
+### `CurrentSyncCommitteeBranch`
+
+```python
+class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]):
+    pass
+```
+
+### `NextSyncCommitteeBranch`
+
+```python
+class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]):
+    pass
+```
 
 ## Containers
 
