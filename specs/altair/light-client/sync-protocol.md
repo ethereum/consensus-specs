@@ -82,7 +82,7 @@ Additional documents describe how the light client sync protocol can be used:
 ### `FinalityBranch`
 
 ```python
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):  
     pass
 ```
 
@@ -201,14 +201,14 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
 ```python
 def is_sync_committee_update(update: LightClientUpdate) -> bool:
-    return update.next_sync_committee_branch != [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
+    return update.next_sync_committee_branch != NextSyncCommitteeBranch()
 ```
 
 ### `is_finality_update`
 
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
-    return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+    return update.finality_branch != FinalityBranch()
 ```
 
 ### `is_better_update`
@@ -520,7 +520,7 @@ def process_light_client_finality_update(store: LightClientStore,
     update = LightClientUpdate(
         attested_header=finality_update.attested_header,
         next_sync_committee=SyncCommittee(),
-        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=finality_update.finalized_header,
         finality_branch=finality_update.finality_branch,
         sync_aggregate=finality_update.sync_aggregate,
@@ -539,9 +539,9 @@ def process_light_client_optimistic_update(store: LightClientStore,
     update = LightClientUpdate(
         attested_header=optimistic_update.attested_header,
         next_sync_committee=SyncCommittee(),
-        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=LightClientHeader(),
-        finality_branch=[Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))],
+        finality_branch=FinalityBranch(),
         sync_aggregate=optimistic_update.sync_aggregate,
         signature_slot=optimistic_update.signature_slot,
     )

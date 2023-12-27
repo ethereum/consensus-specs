@@ -74,7 +74,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     if epoch < CAPELLA_FORK_EPOCH:
         return (
             header.execution == ExecutionPayloadHeader()
-            and header.execution_branch == [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+            and header.execution_branch == ExecutionBranch()
         )
 
     return is_valid_merkle_branch(
