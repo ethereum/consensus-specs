@@ -29,6 +29,7 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
     next_slot,
+    next_epoch,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -54,10 +55,11 @@ class SmLink(tuple):
 
 
 class BranchTip:
-    def __init__(self, beacon_state, attestations, participants):
+    def __init__(self, beacon_state, attestations, participants, eventually_justified_checkpoint):
         self.beacon_state = beacon_state
         self.attestations = attestations
         self.participants = participants
+        self.eventually_justified_checkpoint = eventually_justified_checkpoint
 
 
 def _justifying_participation_rate(rnd: random.Random):
@@ -79,13 +81,13 @@ def _create_new_branch_tip(spec, branch_tips: dict[SmLink:BranchTip], sm_link: S
 
     # Find all forks with justified source
     tips_with_justified_source = [s for s in branch_tips.values()
-                                  if s.beacon_state.current_justified_checkpoint.epoch ==
-                                  sm_link.source]
+                                  if s.eventually_justified_checkpoint.epoch == sm_link.source]
     assert len(tips_with_justified_source) > 0
 
     # Find and return the most adanced one
     most_recent_tip = max(tips_with_justified_source, key=lambda s: s.beacon_state.slot)
-    return BranchTip(most_recent_tip.beacon_state.copy(), most_recent_tip.attestations.copy(), [])
+    return BranchTip(most_recent_tip.beacon_state.copy(), most_recent_tip.attestations.copy(), [],
+                     most_recent_tip.eventually_justified_checkpoint)
 
 
 def _sample_validator_partition(spec, state, epoch, participation_rate, rnd) -> []:
@@ -231,7 +233,7 @@ def _attest_to_slot(spec, state, slot_to_attest, participants_filter):
     return attestations_in_slot
 
 
-def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
+def _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
     """
     Advances a state of the block tree branch to the next epoch
     respecting validators participanting in building and attesting to this branch.
@@ -246,6 +248,7 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
     signed_blocks = []
     attestations = branch_tip.attestations.copy()
     state = branch_tip.beacon_state.copy()
+    current_epoch = spec.get_current_epoch(state)
     target_slot = spec.compute_start_slot_at_epoch(current_epoch + 1)
 
     while state.slot < target_slot:
@@ -255,19 +258,33 @@ def _advance_branch_to_next_epoch(spec, branch_tip, current_epoch):
             signed_block, state, attestations = _produce_block(spec, state, attestations)
             signed_blocks.append(signed_block)
 
-        # Produce attestations
-        attestations_in_slot = _attest_to_slot(spec, state, state.slot, participants_filter)
-        # And prepend them to the list
-        attestations = list(attestations_in_slot) + attestations
+        if enable_attesting:
+            # Produce attestations
+            attestations_in_slot = _attest_to_slot(spec, state, state.slot, participants_filter)
+            # And prepend them to the list
+            attestations = list(attestations_in_slot) + attestations
 
         # Advance a slot
         next_slot(spec, state)
 
     # Cleanup attestations by removing outdated ones
     attestations = [a for a in attestations if
-                    a.data.target in (spec.get_previous_epoch(state), spec.get_current_epoch(state))]
+                    a.data.target.epoch in (spec.get_previous_epoch(state), spec.get_current_epoch(state))]
 
-    return signed_blocks, BranchTip(state, attestations, branch_tip.participants)
+    eventually_justified_checkpoint = state.current_justified_checkpoint
+
+    # If not all attestations are included on chain
+    # and attestation.data.target.epoch > beacon_state.current_justified_checkpoint.epoch
+    # compute eventually_justified_checkpoint, a would be state.current_justified_checkpoint if all attestations
+    # were included; this computation respects the validator partition that was building the branch
+    if len(attestations) > 0 \
+            and attestations[0].data.target.epoch > state.current_justified_checkpoint.epoch \
+            and attestations[0].data.target.epoch > spec.GENESIS_EPOCH:
+        branch_tip = BranchTip(state, attestations, branch_tip.participants, state.current_justified_checkpoint)
+        _, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=False)
+        eventually_justified_checkpoint = new_branch_tip.beacon_state.current_justified_checkpoint
+
+    return signed_blocks, BranchTip(state, attestations, branch_tip.participants, eventually_justified_checkpoint)
 
 
 def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch) -> bool:
@@ -294,21 +311,28 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_ep
     return False
 
 
-def _attesters_in_block(spec, epoch_state, signed_block):
+def _attesters_in_block(spec, epoch_state, signed_block, target_epoch):
     block = signed_block.message
     attesters = set()
     for a in block.body.attestations:
-        attesters.update(spec.get_attesting_indices(epoch_state, a.data, a.aggregation_bits))
+        if a.data.target.epoch == target_epoch:
+            attesters.update(spec.get_attesting_indices(epoch_state, a.data, a.aggregation_bits))
     return attesters
 
 
 def _print_block(spec, epoch_state, signed_block):
     block = signed_block.message
-    attesters = _attesters_in_block(spec, epoch_state, signed_block)
-    attester_str = str(attesters) if any(attesters) else "{}"
+    if spec.get_current_epoch(epoch_state) > spec.GENESIS_EPOCH:
+        prev_attesters = _attesters_in_block(spec, epoch_state, signed_block, spec.get_previous_epoch(epoch_state))
+    else:
+        prev_attesters = set()
+
+    curr_attesters = _attesters_in_block(spec, epoch_state, signed_block, spec.get_current_epoch(epoch_state))
+    prev_attester_str = 'a_prev=' + str(prev_attesters) if any(prev_attesters) else 'a_prev={}'
+    curr_attester_str = 'a_curr=' + str(curr_attesters) if any(curr_attesters) else 'a_curr={}'
 
     return 'b(r=' + str(spec.hash_tree_root(block))[:6] + ', p=' + str(
-        block.proposer_index) + ', a=' + attester_str + ')'
+        block.proposer_index) + ', ' + prev_attester_str + ', ' + curr_attester_str + ')'
 
 
 def _print_epoch(spec, epoch_state, signed_blocks):
@@ -352,22 +376,20 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
     # because the protocol can't justify in epoch GENESIS_EPOCH + 1
     assert len([sm_link for sm_link in sm_links if sm_link.source == spec.GENESIS_EPOCH + 1]) == 0
 
-    if debug:
-        print('\nsm links to satisfy:', sm_links)
-
     state = genesis_state.copy()
     signed_blocks = []
 
     # Find anchor epoch and check it
     anchor_epoch = min(sm_links, key=lambda l: l.source).source
 
-    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))])
+    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))],
+                            state.current_justified_checkpoint)
 
     # Advance the state to the anchor_epoch
     anchor_tip = genesis_tip
     for epoch in range(spec.GENESIS_EPOCH, anchor_epoch + 1):
         pre_state = anchor_tip.beacon_state
-        new_signed_blocks, anchor_tip = _advance_branch_to_next_epoch(spec, anchor_tip, epoch)
+        new_signed_blocks, anchor_tip = _advance_branch_to_next_epoch(spec, anchor_tip)
         signed_blocks = signed_blocks + new_signed_blocks
         if debug:
             post_state = anchor_tip.beacon_state
@@ -377,6 +399,9 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
             print('              ', 'state.current_justified_checkpoint:',
                   '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
                   ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
+            print('              ', 'eventually_justified_checkpoint:',
+                  '(epoch=' + str(anchor_tip.eventually_justified_checkpoint.epoch) +
+                  ', root=' + str(anchor_tip.eventually_justified_checkpoint.root)[:6] + ')')
 
     # branch_tips hold the most recent state, validator partition and not included attestations for every fork
     # Initialize branch tips with the anchor tip
@@ -399,7 +424,8 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
             partitions = _compute_validator_partitions(spec, branch_tips, current_epoch_sm_links, current_epoch, rnd)
             for l in partitions.keys():
                 old_tip_state = branch_tips[l]
-                new_tip_state = BranchTip(old_tip_state.beacon_state, old_tip_state.attestations, partitions[l])
+                new_tip_state = BranchTip(old_tip_state.beacon_state, old_tip_state.attestations, partitions[l],
+                                          old_tip_state.eventually_justified_checkpoint)
                 branch_tips[l] = new_tip_state
 
         # Debug checks
@@ -420,7 +446,7 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
             branch_tip = branch_tips[sm_link]
             assert spec.get_current_epoch(branch_tip.beacon_state) == current_epoch, \
                 'Unexpected current_epoch(branch_tip.beacon_state)'
-            new_signed_blocks, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip, current_epoch)
+            new_signed_blocks, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip)
 
             # Run sanity checks
             post_state = new_branch_tip.beacon_state
@@ -429,47 +455,71 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
             if sm_link.target == current_epoch:
                 assert post_state.previous_justified_checkpoint.epoch == sm_link.source, \
                     'Unexpected previous_justified_checkpoint.epoch'
-                assert post_state.current_justified_checkpoint.epoch == sm_link.target, \
-                    'Unexpected current_justified_checkpoint.epoch'
+                assert new_branch_tip.eventually_justified_checkpoint.epoch == sm_link.target, \
+                    'Unexpected eventually_justified_checkpoint.epoch'
             else:
                 assert post_state.current_justified_checkpoint.epoch == sm_link.source, \
                     'Unexpected current_justified_checkpoint.epoch'
 
-            # Create the first block of the next epoch to realize justification on chain,
-            # neccessary only when the fork won't be advanced in any of the future epochs
+            # If the fork won't be advanced in the future epochs
+            # ensure 1) all yet not included attestations are included on chain by advancing it to epoch N+1
+            #        2) justification is realized by advancing it to epoch N+2
             is_fork_advanced_in_future = any((l for l in sm_links if l.source == sm_link.target))
             if sm_link.target == current_epoch and not is_fork_advanced_in_future:
-                tip_block, _, _ = _produce_block(spec, new_branch_tip.beacon_state, new_branch_tip.attestations)
+                # Advance to epoch N+1
+                advanced_signed_blocks, advanced_branch_tip = _advance_branch_to_next_epoch(spec, new_branch_tip,
+                                                                                            enable_attesting=False)
+                new_signed_blocks = new_signed_blocks + advanced_signed_blocks
+
+                # Find a slot for which a proposer is among participants
+                state = advanced_branch_tip.beacon_state.copy()
+                while (spec.get_beacon_proposer_index(state) not in advanced_branch_tip.participants):
+                    next_slot(spec, state)
+
+                # Build a block in epoch > N+1
+                tip_block, _, _ = _produce_block(spec, state, [])
                 new_signed_blocks.append(tip_block)
 
-            # Debug output
-            if debug:
-                print('branch' + str(sm_link) + ':',
-                      _print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks))
-                print('              ', len(branch_tips[sm_link].participants), 'participants:',
-                      branch_tips[sm_link].participants)
-                print('              ', 'state.current_justified_checkpoint:',
-                      '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
-                      ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
+                assert state.current_justified_checkpoint.epoch == sm_link.target, \
+                    'Unexpected state.current_justified_checkpoint'
 
-            # Debug checks
-            if debug:
-                # Proposers are aligned with the partition
-                unexpected_proposers = [b.message.proposer_index for b in new_signed_blocks if
-                                        b.message.proposer_index not in branch_tip.participants]
-                assert len(unexpected_proposers) == 0, \
-                    'Unexpected proposer: ' + str(unexpected_proposers[0])
+        # Debug output
+        if debug:
+            print('branch' + str(sm_link) + ':',
+                  _print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks))
+            print('              ', len(branch_tips[sm_link].participants), 'participants:',
+                  new_branch_tip.participants)
+            print('              ', 'state.current_justified_checkpoint:',
+                  '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
+                  ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
+            print('              ', 'eventually_justified_checkpoint:',
+                  '(epoch=' + str(new_branch_tip.eventually_justified_checkpoint.epoch) +
+                  ', root=' + str(new_branch_tip.eventually_justified_checkpoint.root)[:6] + ')')
 
-                # Attesters are aligned with the partition
-                for b in new_signed_blocks:
-                    attesters = _attesters_in_block(spec, branch_tips[sm_link].beacon_state, b)
-                    unexpected_attesters = attesters.difference(branch_tip.participants)
-                    assert len(unexpected_attesters) == 0, \
-                        'Unexpected attester: ' + str(unexpected_attesters.pop()) + ', slot ' + str(b.message.slot)
+        # Debug checks
+        if debug:
+            # Proposers are aligned with the partition
+            unexpected_proposers = [b.message.proposer_index for b in new_signed_blocks if
+                                    b.message.proposer_index not in branch_tip.participants]
+            assert len(unexpected_proposers) == 0, \
+                'Unexpected proposer: ' + str(unexpected_proposers[0])
 
-            # Store the result
-            branch_tips[sm_link] = new_branch_tip
-            signed_blocks = signed_blocks + new_signed_blocks
+            # Attesters are aligned with the partition
+            current_epoch_state = branch_tips[sm_link].beacon_state
+            for b in new_signed_blocks:
+                # Attesting indexes from on chain attestations
+                attesters = _attesters_in_block(spec, current_epoch_state, b, current_epoch)
+                # Attesting indexes from not yet included attestations
+                for a in new_branch_tip.attestations:
+                    if a.data.target.epoch == current_epoch:
+                        attesters.update(spec.get_attesting_indices(current_epoch_state, a.data, a.aggregation_bits))
+                unexpected_attesters = attesters.difference(branch_tip.participants)
+                assert len(unexpected_attesters) == 0, \
+                    'Unexpected attester: ' + str(unexpected_attesters.pop()) + ', slot ' + str(b.message.slot)
+
+        # Store the result
+        branch_tips[sm_link] = new_branch_tip
+        signed_blocks = signed_blocks + new_signed_blocks
 
     # Sort blocks by a slot
     return sorted(signed_blocks, key=lambda b: b.message.slot)
@@ -477,41 +527,24 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
 
 @with_altair_and_later
 @spec_state_test
-@with_presets([MINIMAL], reason="too slow")
-def test_sm_links_tree_model(spec, state):
-    """
-    Generates a tree of supermajority links
-    """
-    seed = 1
-    debug = True
-    anchor_epoch = 2
-    number_of_epochs = 5
-    number_of_links = 4
-    sm_links_model_path = '../../core/pyspec/eth2spec/test/phase0/fork_choice/model/minizinc/SM_links.mzn'
-    sm_links_solution_index = 0
+def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
+    # This test is mainly used for the test generation purposes
+    # Thus seed and sm_links are provided by the generator
+    # Define sm_links and seed explicitly to execute a certain run of this test
+    if sm_links is None:
+        return
 
-    # Dependencies:
-    #   1. Install minizinc binary
-    #      https://www.minizinc.org/doc-2.5.5/en/installation_detailed_linux.html
-    #   2. Install minizinc python lib
-    #      pip install minizinc
-    #   3. Install and confifure gecode solver:
-    #      https://www.minizinc.org/doc-2.5.5/en/installation_detailed_linux.html#gecode
-    sm_links = Model(sm_links_model_path)
-    solver = Solver.lookup("gecode")
-    instance = Instance(solver, sm_links)
-    instance['AE'] = anchor_epoch  # anchor epoch
-    instance['NE'] = number_of_epochs  # number of epochs, starting from AE
-    instance['NL'] = number_of_links  # number of super-majority links
+    if debug:
+        print('\nseed:', seed)
+        print('\nsm_links:', sm_links)
 
-    solutions = instance.solve(all_solutions=True)
-
+    sm_links = [SmLink(l) for l in sm_links]
     rnd = random.Random(seed)
-    sources = solutions[sm_links_solution_index, 'sources']
-    targets = solutions[sm_links_solution_index, 'targets']
-    sm_links = [SmLink(l) for l in zip(sources, targets)]
-
     signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
+
+    # Yield run parameters
+    yield 'seed', 'meta', seed
+    yield 'sm_links', 'meta', str(sm_links)
 
     test_steps = []
     # Store initialization
