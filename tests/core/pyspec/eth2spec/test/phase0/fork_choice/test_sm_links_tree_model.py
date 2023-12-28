@@ -417,7 +417,13 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
 
         # Initialize new forks
         for l in (l for l in current_epoch_sm_links if branch_tips.get(l) is None):
-            branch_tips[l] = _create_new_branch_tip(spec, branch_tips, l)
+            new_branch_tip = _create_new_branch_tip(spec, branch_tips, l)
+            # Abort the test if any sm_links constraint appears to be unreachable
+            # because the justification of the source checkpoint hasn't been realized on chain yet
+            if l.target == current_epoch and new_branch_tip.beacon_state.current_justified_checkpoint.epoch < l.source:
+                return []
+
+            branch_tips[l] = new_branch_tip
 
         # Reshuffle partitions if needed
         if _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch):
@@ -534,13 +540,26 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
     if sm_links is None:
         return
 
-    if debug:
-        print('\nseed:', seed)
-        print('\nsm_links:', sm_links)
+    assert (1, 2) not in sm_links, '(1, 2) sm link is not supported due to unreachability'
 
     sm_links = [SmLink(l) for l in sm_links]
-    rnd = random.Random(seed)
-    signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
+
+    # Find a reachable solution trying with different seeds if needed
+    # sm_links constraints may not have a solution beacause of the randomization affecting validator partitions
+    signed_blocks = []
+    while True:
+        if debug:
+            print('\nseed:', seed)
+            print('\nsm_links:', sm_links)
+
+        rnd = random.Random(seed)
+        signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
+        if len(signed_blocks) > 0:
+            break
+
+        print('\nUnreachable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(seed))
+
+        seed = rnd.randint(1, 10000)
 
     # Yield run parameters
     yield 'seed', 'meta', seed
