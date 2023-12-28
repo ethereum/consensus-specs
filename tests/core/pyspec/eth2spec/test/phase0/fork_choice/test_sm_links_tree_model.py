@@ -560,6 +560,7 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
         print('\nUnreachable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(seed))
 
         seed = rnd.randint(1, 10000)
+        print('Trying a different seed: ' + str(seed))
 
     # Yield run parameters
     yield 'seed', 'meta', seed
