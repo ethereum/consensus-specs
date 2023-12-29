@@ -233,6 +233,22 @@ def _attest_to_slot(spec, state, slot_to_attest, participants_filter):
     return attestations_in_slot
 
 
+def _compute_eventually_justified_epoch(spec, state, attestations, participants):
+    # If not all attestations are included on chain
+    # and attestation.data.target.epoch > beacon_state.current_justified_checkpoint.epoch
+    # compute eventually_justified_checkpoint, a would be state.current_justified_checkpoint if all attestations
+    # were included; this computation respects the validator partition that was building the branch
+    if len(attestations) > 0 \
+            and attestations[0].data.target.epoch > state.current_justified_checkpoint.epoch \
+            and attestations[0].data.target.epoch > spec.GENESIS_EPOCH:
+        branch_tip = BranchTip(state, attestations, participants, state.current_justified_checkpoint)
+        _, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=False)
+
+        return new_branch_tip.beacon_state.current_justified_checkpoint
+    else:
+        return state.current_justified_checkpoint
+
+
 def _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
     """
     Advances a state of the block tree branch to the next epoch
@@ -271,18 +287,8 @@ def _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
     attestations = [a for a in attestations if
                     a.data.target.epoch in (spec.get_previous_epoch(state), spec.get_current_epoch(state))]
 
-    eventually_justified_checkpoint = state.current_justified_checkpoint
-
-    # If not all attestations are included on chain
-    # and attestation.data.target.epoch > beacon_state.current_justified_checkpoint.epoch
-    # compute eventually_justified_checkpoint, a would be state.current_justified_checkpoint if all attestations
-    # were included; this computation respects the validator partition that was building the branch
-    if len(attestations) > 0 \
-            and attestations[0].data.target.epoch > state.current_justified_checkpoint.epoch \
-            and attestations[0].data.target.epoch > spec.GENESIS_EPOCH:
-        branch_tip = BranchTip(state, attestations, branch_tip.participants, state.current_justified_checkpoint)
-        _, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=False)
-        eventually_justified_checkpoint = new_branch_tip.beacon_state.current_justified_checkpoint
+    eventually_justified_checkpoint = _compute_eventually_justified_epoch(spec, state, attestations,
+                                                                          branch_tip.participants)
 
     return signed_blocks, BranchTip(state, attestations, branch_tip.participants, eventually_justified_checkpoint)
 
@@ -540,7 +546,7 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
     if sm_links is None:
         return
 
-    assert (1, 2) not in sm_links, '(1, 2) sm link is not supported due to unreachability'
+    assert (1, 2) not in sm_links, '(1, 2) sm link is not supported due to unsatisfiability'
 
     sm_links = [SmLink(l) for l in sm_links]
 
@@ -556,11 +562,11 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
         signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
         if len(signed_blocks) > 0:
             break
-
-        print('\nUnreachable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(seed))
-
-        seed = rnd.randint(1, 10000)
-        print('Trying a different seed: ' + str(seed))
+        else:
+            new_seed = rnd.randint(1, 10000)
+            print('\nUnsatisfiable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(
+                seed) + ', will retry with seed=' + str(new_seed))
+            seed = new_seed
 
     # Yield run parameters
     yield 'seed', 'meta', seed
