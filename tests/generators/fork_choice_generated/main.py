@@ -10,6 +10,7 @@ from minizinc import Instance, Model, Solver
 import random
 
 BLS_ACTIVE = False
+GENERATOR_NAME = 'fork_choice_generated'
 
 
 def _import_test_fn():
@@ -68,7 +69,7 @@ def _create_providers(forks: Iterable[SpecForkName],
                     for preset_name in presets:
                         yield TestCase(fork_name=fork_name,
                                        preset_name=preset_name,
-                                       runner_name='fork_choice_generated',
+                                       runner_name=GENERATOR_NAME,
                                        handler_name='sm_links_tree_model',
                                        suite_name='fork_choice',
                                        case_name='sm_links_tree_model_' + str(i) + '_' + str(seed),
@@ -84,21 +85,69 @@ def _create_providers(forks: Iterable[SpecForkName],
 
 
 if __name__ == "__main__":
-    anchor_epoch = 2
-    number_of_epochs = 2
-    number_of_links = 1
-    debug = True
-    initial_seed = 9326
-    number_of_variations = 1
-
     forks = [ALTAIR]
     presets = [MINIMAL]
 
-    gen_runner.run_generator('fork_choice_generated', _create_providers(forks=forks,
-                                                                        presets=presets,
-                                                                        debug=debug,
-                                                                        initial_seed=initial_seed,
-                                                                        anchor_epoch=anchor_epoch,
-                                                                        number_of_epochs=number_of_epochs,
-                                                                        number_of_links=number_of_links,
-                                                                        number_of_variations=number_of_variations))
+    arg_parser = gen_runner.create_arg_parser(GENERATOR_NAME)
+
+    arg_parser.add_argument(
+        '--fc-gen-debug',
+        dest='fc_gen_debug',
+        action='store_true',
+        default=False,
+        required=False,
+        help='If set provides debug output and enable additional checks for generated chains',
+    )
+    arg_parser.add_argument(
+        '--fc-gen-seed',
+        dest='fc_gen_seed',
+        default=1,
+        type=int,
+        required=False,
+        help='Provides randomizer with initial seed'
+    )
+    arg_parser.add_argument(
+        '--fc-gen-variations',
+        dest='fc_gen_variations',
+        default=1,
+        type=int,
+        required=False,
+        help='Number of random variations per each solution'
+    )
+    arg_parser.add_argument(
+        '--fc-gen-anchor-epoch',
+        dest='fc_gen_anchor_epoch',
+        default=0,
+        type=int,
+        required=False,
+        help='Anchor epoch'
+    )
+    arg_parser.add_argument(
+        '--fc-gen-epochs',
+        dest='fc_gen_epochs',
+        default=2,
+        type=int,
+        required=False,
+        help='Number of epochs beyond the anchor epoch'
+    )
+    arg_parser.add_argument(
+        '--fc-gen-links',
+        dest='fc_gen_links',
+        default=1,
+        type=int,
+        required=False,
+        help='Number of super majority links per solution'
+    )
+
+    args = arg_parser.parse_args()
+
+    gen_runner.run_generator(GENERATOR_NAME,
+                             _create_providers(forks=forks,
+                                               presets=presets,
+                                               debug=args.fc_gen_debug,
+                                               initial_seed=args.fc_gen_seed,
+                                               anchor_epoch=args.fc_gen_anchor_epoch,
+                                               number_of_epochs=args.fc_gen_epochs,
+                                               number_of_links=args.fc_gen_links,
+                                               number_of_variations=args.fc_gen_variations),
+                             arg_parser)
