@@ -17,3 +17,6 @@ constraint forall(i in LINKS)(sources[i] < targets[i]);
 constraint forall(i in LINKS)(sources[i] == AE \/ member(targets, sources[i]));
 constraint strictly_increasing(targets);
 constraint forall(i,j in LINKS where i != j)(not surround_vote(i,j));
+
+% Exclude (1, 2) SM link which is unreachable for the Gasper protocol
+constraint forall(i in LINKS)(not (sources[i] == 1 /\ targets[i] == 2));
