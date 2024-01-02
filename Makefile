@@ -34,11 +34,11 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPECS = phase0 altair bellatrix capella deneb eip6110 whisk
+ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb eip6110 eip7002 whisk
 # The parameters for commands. Use `foreach` to avoid listing specs again.
-COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
-PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), ./eth2spec/$S)
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPECS), -p eth2spec.$S)
+COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
+PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), ./eth2spec/$S)
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
 
 COV_HTML_OUT=.htmlcov
 COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
@@ -74,7 +74,7 @@ partial_clean:
 	rm -rf $(TEST_REPORT_DIR)
 	rm -rf eth2spec.egg-info dist build
 	rm -rf build;
-	@for spec_name in $(ALL_EXECUTABLE_SPECS) ; do \
+	@for spec_name in $(ALL_EXECUTABLE_SPEC_NAMES) ; do \
 		echo $$spec_name; \
 		rm -rf $(ETH2SPEC_MODULE_DIR)/$$spec_name; \
 	done

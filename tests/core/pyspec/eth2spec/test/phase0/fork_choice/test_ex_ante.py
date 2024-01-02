@@ -1,5 +1,4 @@
 from eth2spec.test.context import (
-    MAINNET,
     spec_state_test,
     with_altair_and_later,
     with_presets,
@@ -11,6 +10,7 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.block import (
     build_empty_block,
 )
+from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,

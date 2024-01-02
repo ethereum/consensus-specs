@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110, EIP7002, WHISK,
+    PHASE0,
+    PREVIOUS_FORK_OF,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
@@ -77,26 +78,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
-    if spec.fork == ALTAIR:
-        current_version = spec.config.ALTAIR_FORK_VERSION
-    elif spec.fork == BELLATRIX:
-        previous_version = spec.config.ALTAIR_FORK_VERSION
-        current_version = spec.config.BELLATRIX_FORK_VERSION
-    elif spec.fork == CAPELLA:
-        previous_version = spec.config.BELLATRIX_FORK_VERSION
-        current_version = spec.config.CAPELLA_FORK_VERSION
-    elif spec.fork == DENEB:
-        previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.DENEB_FORK_VERSION
-    elif spec.fork == EIP6110:
-        previous_version = spec.config.DENEB_FORK_VERSION
-        current_version = spec.config.EIP6110_FORK_VERSION
-    elif spec.fork == EIP7002:
-        previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.EIP7002_FORK_VERSION
-    elif spec.fork == WHISK:
-        previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.WHISK_FORK_VERSION
+    if spec.fork != PHASE0:
+        previous_fork = PREVIOUS_FORK_OF[spec.fork]
+        if previous_fork == PHASE0:
+            previous_version = spec.config.GENESIS_FORK_VERSION
+        else:
+            previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+        current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     state = spec.BeaconState(
         genesis_time=0,
