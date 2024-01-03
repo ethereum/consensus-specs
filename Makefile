@@ -14,6 +14,7 @@ SOLIDITY_FILE_NAME = deposit_contract.json
 DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
 TEST_PRESET_TYPE ?= minimal
+NUMBER_OF_CORES=16
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
@@ -128,10 +129,10 @@ citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 16 --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n $(NUMBER_OF_CORES) --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 16 --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n $(NUMBER_OF_CORES) --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
