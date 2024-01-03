@@ -15,7 +15,6 @@ RUN apt update && ${INSTALL_CMD} && ${PIP_UPGRADE_CMD} && rm -rf /var/lib/apt/li
 # Copy the current directory contents into the builder
 COPY . .
 
-RUN cat /consensus-specs/Makefile
 # Inline installation commands
 RUN make install_test && \
     make preinstallation && \

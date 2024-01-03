@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# Run 'consensus-specs' tests from a container instance.
+# Run 'consensus-specs' tests from a docker container instance.
 # *Be sure to launch Docker before running this script.*
 #
 # It does the below:
@@ -22,8 +22,6 @@ DATE=$(date +"%Y%m%d-%H-%M")
 version=$(git log --pretty=format:'%h' -n 1)
 number_of_core=4
 
-# initialize a test result directory
-mkdir -p ./testResults
 
 display_help() {
   echo "Run 'consensus-specs' tests from a container instance."
@@ -35,7 +33,6 @@ display_help() {
     echo "  --n <number> Specify the number of cores"
     echo "  --p <type>   Specify the test preset type"
     echo "  --a          Test all forks"
-    echo "  --cleanup    Stop and remove the 'consensus-specs-tests' container"
     echo "  --h          Display this help and exit"
 }
 
@@ -48,6 +45,18 @@ cleanup() {
 
 }
 
+# Copy the results from the container to local
+copy_test_results() {
+  local fork_name="$1"  # Storing the first argument in a variable
+  echo $fork_name
+
+  docker cp $CONTAINER_NAME:$WORKDIR/test-reports/test_results.xml ./testResults/test-results-$fork_name-$DATE.xml
+}
+
+# Function to check if the Docker image already exists
+image_exists() {
+    docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "$1"
+}
 
 # Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -58,37 +67,38 @@ while [[ "$#" -gt 0 ]]; do
         --p) TEST_PRESET_TYPE="$2"; shift ;;
         --a) FORK_TO_TEST="all" ;;
         --h) display_help; exit 0 ;;
-        --cleanup) cleanup; exit 0 ;;
         *) echo "Unknown parameter: $1"; display_help; exit 1 ;;
     esac
     shift
 done
 
+# initialize a test result directory
+mkdir -p ./testResults
 
 # Only clean container after user exit console
 trap cleanup SIGINT
 
-# Copy the results from the container to local
-copy_test_results() {
-  local fork_name="$1"  # Storing the first argument in a variable
-  echo $fork_name
+# Build Docker container if it doesn't exist
+IMAGE_NAME="consensus-specs:$version"
+if ! image_exists "$IMAGE_NAME"; then
+    echo "Image $IMAGE_NAME does not exist. Building Docker image..."
+    docker build ../ -t $IMAGE_NAME -f ../docker/Dockerfile
+else
+    echo "Image $IMAGE_NAME already exists. Skipping build..."
+fi
 
-  docker cp $CONTAINER_NAME:$WORKDIR/test-reports/test_results.xml ./testResults/test-results-$fork_name-$DATE.xml
-}
-
-# Equivalent to `make test`
-docker build ../ -t consensus-specs:$version -f ../docker/Dockerfile
+# Equivalent to `make citest`
 if [ "$FORK_TO_TEST" == "all" ]; then
   for fork in "${ALL_EXECUTABLE_SPECS[@]}"; do
-    docker run --name $CONTAINER_NAME consensus-specs:$version \
+    docker run --name $CONTAINER_NAME $IMAGE_NAME \
       make citest fork=$fork TEST_PRESET_TYPE=$TEST_PRESET_TYPE NUMBER_OF_CORES=$NUMBER_OF_CORES
       copy_test_results $fork
   done
 else
-  docker run --name $CONTAINER_NAME consensus-specs:$version \
+  docker run --name $CONTAINER_NAME $IMAGE_NAME \
       make citest fork=$FORK_TO_TEST TEST_PRESET_TYPE=$TEST_PRESET_TYPE NUMBER_OF_CORES=$NUMBER_OF_CORES
   copy_test_results $FORK_TO_TEST
 fi
 
-
+# Stop and remove the container
 cleanup
