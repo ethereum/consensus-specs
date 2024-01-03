@@ -20,6 +20,7 @@ CONTAINER_NAME="consensus-specs-tests"
 DATE=$(date +"%Y%m%d-%H-%M")
 # Default flag values
 version=$(git log --pretty=format:'%h' -n 1)
+IMAGE_NAME="consensus-specs:$version"
 number_of_core=4
 
 # displays the available options
@@ -29,7 +30,7 @@ display_help() {
   echo
   echo "Syntax: build_run_test.sh [--v TAG | --n NUMBER_OF_CORE | --f FORK_TO_TEST | --p PRESET_TYPE | --a | --h HELP]"
     echo "  --f <fork>   Specify the fork to test"
-    echo "  --v <version> Specify the version"
+    echo "  --i <image_name> Specify the docker image to use"
     echo "  --n <number> Specify the number of cores"
     echo "  --p <type>   Specify the test preset type"
     echo "  --a          Test all forks"
@@ -61,7 +62,7 @@ image_exists() {
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --f) FORK_TO_TEST="$2"; shift ;;
-        --v) version="$2"; shift ;;
+        --v) IMAGE_NAME="$2"; shift ;;
         --n) NUMBER_OF_CORES="$2"; shift ;;
         --p) TEST_PRESET_TYPE="$2"; shift ;;
         --a) FORK_TO_TEST="all" ;;
@@ -78,7 +79,6 @@ mkdir -p ./testResults
 trap cleanup SIGINT
 
 # Build Docker container if it doesn't exist
-IMAGE_NAME="consensus-specs:$version"
 if ! image_exists "$IMAGE_NAME"; then
     echo "Image $IMAGE_NAME does not exist. Building Docker image..."
     docker build ../ -t $IMAGE_NAME -f ../docker/Dockerfile
