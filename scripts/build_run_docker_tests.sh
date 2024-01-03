@@ -9,7 +9,7 @@
 #   3. Remove all exited containers that use the consensus-specs:<TAG> images.
 
 
-# Constants
+# Set variables
 ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "eip6110" "whisk")
 TEST_PRESET_TYPE=minimal
 FORK_TO_TEST=phase0
@@ -22,7 +22,7 @@ DATE=$(date +"%Y%m%d-%H-%M")
 version=$(git log --pretty=format:'%h' -n 1)
 number_of_core=4
 
-
+# displays the available options
 display_help() {
   echo "Run 'consensus-specs' tests from a container instance."
   echo "Be sure to launch Docker before running this script."
@@ -45,10 +45,9 @@ cleanup() {
 
 }
 
-# Copy the results from the container to local
+# Copy the results from the container to a local folder
 copy_test_results() {
   local fork_name="$1"  # Storing the first argument in a variable
-  echo $fork_name
 
   docker cp $CONTAINER_NAME:$WORKDIR/test-reports/test_results.xml ./testResults/test-results-$fork_name-$DATE.xml
 }
@@ -87,7 +86,7 @@ else
     echo "Image $IMAGE_NAME already exists. Skipping build..."
 fi
 
-# Equivalent to `make citest`
+# Equivalent to `make citest with the subsequent flags`
 if [ "$FORK_TO_TEST" == "all" ]; then
   for fork in "${ALL_EXECUTABLE_SPECS[@]}"; do
     docker run --name $CONTAINER_NAME $IMAGE_NAME \
