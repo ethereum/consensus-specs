@@ -22,6 +22,7 @@ class SpecObject(NamedTuple):
     preset_vars: Dict[str, VariableDefinition]
     config_vars: Dict[str, VariableDefinition]
     ssz_dep_constants: Dict[str, str]  # the constants that depend on ssz_objects
+    func_dep_presets: Dict[str, str]  # the constants that depend on functions
     ssz_objects: Dict[str, str]
     dataclasses: Dict[str, str]
 

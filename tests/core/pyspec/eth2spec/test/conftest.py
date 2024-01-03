@@ -1,6 +1,6 @@
 from eth2spec.test import context
 from eth2spec.test.helpers.constants import (
-    ALL_PHASES,
+    ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
 )
 from eth2spec.utils import bls as bls_utils
 
@@ -54,10 +54,10 @@ def pytest_addoption(parser):
 
 def _validate_fork_name(forks):
     for fork in forks:
-        if fork not in set(ALL_PHASES):
+        if fork not in set(ALLOWED_TEST_RUNNER_FORKS):
             raise ValueError(
                 f'The given --fork argument "{fork}" is not an available fork.'
-                f' The available forks: {ALL_PHASES}'
+                f' The available forks: {ALLOWED_TEST_RUNNER_FORKS}'
             )
 
 

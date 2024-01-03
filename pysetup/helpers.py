@@ -68,8 +68,7 @@ def objects_to_spec(preset_name: str,
         if k in [
             "ceillog2",
             "floorlog2",
-            "compute_merkle_proof_for_block_body",
-            "compute_merkle_proof_for_state",
+            "compute_merkle_proof",
         ]:
             del spec_object.functions[k]
 
@@ -111,8 +110,9 @@ def objects_to_spec(preset_name: str,
         return out
     
     # Merge all constant objects
-    hardcoded_ssz_dep_constants =         reduce(lambda obj, builder: {**obj, **builder.hardcoded_ssz_dep_constants()},                    builders, {})
+    hardcoded_ssz_dep_constants =         reduce(lambda obj, builder: {**obj, **builder.hardcoded_ssz_dep_constants()}, builders, {})
     hardcoded_custom_type_dep_constants = reduce(lambda obj, builder: {**obj, **builder.hardcoded_custom_type_dep_constants(spec_object)}, builders, {})
+    hardcoded_func_dep_presets = reduce(lambda obj, builder: {**obj, **builder.hardcoded_func_dep_presets(spec_object)}, builders, {})
     # Concatenate all strings
     imports =              reduce(lambda txt, builder: (txt + "\n\n" + builder.imports(preset_name)  ).strip("\n"), builders, "")
     preparations =         reduce(lambda txt, builder: (txt + "\n\n" + builder.preparations()        ).strip("\n"), builders, "")
@@ -126,6 +126,7 @@ def objects_to_spec(preset_name: str,
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_custom_type_dep_constants[x]), hardcoded_custom_type_dep_constants))
+    func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), hardcoded_func_dep_presets))
     spec_strs = [
         imports,
         preparations,
@@ -147,6 +148,7 @@ def objects_to_spec(preset_name: str,
         # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
         # as same as the spec definition.
         ssz_dep_constants_verification,
+        func_dep_presets_verification,
     ]
     return "\n\n\n".join([str.strip("\n") for str in spec_strs if str]) +  "\n"
 
@@ -223,6 +225,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     preset_vars = combine_dicts(spec0.preset_vars, spec1.preset_vars)
     config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
     ssz_dep_constants = combine_dicts(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
+    func_dep_presets = combine_dicts(spec0.func_dep_presets, spec1.func_dep_presets)
     ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects, custom_types)
     dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
     return SpecObject(
@@ -233,6 +236,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
         preset_vars=preset_vars,
         config_vars=config_vars,
         ssz_dep_constants=ssz_dep_constants,
+        func_dep_presets=func_dep_presets,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
     )
