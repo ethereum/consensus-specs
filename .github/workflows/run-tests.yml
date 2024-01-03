@@ -93,9 +93,9 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           tags: localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }}
-      - name: Test the image
+      - name: Test the image by running the linter
         run: |
-          docker run localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }} pylint --rcfile ./linter.ini --errors-only pysetup
+          docker run localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }} make lint
 
   pyspec-tests:
     runs-on: self-hosted
