@@ -110,28 +110,31 @@ def g2_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
 #### `_fft_field`
 
 ```python
-def _fft_field(vals, roots_of_unity):
-    if len(vals) == 0:
+def _fft_field(vals: Sequence[BLSFieldElement],
+               roots_of_unity: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    if len(vals) == 1:
         return vals
     L = _fft_field(vals[::2], roots_of_unity[::2])
     R = _fft_field(vals[1::2], roots_of_unity[::2])
-    o = [0 for i in vals]
+    o = [BLSFieldElement(0) for _ in vals]
     for i, (x, y) in enumerate(zip(L, R)):
-        y_times_root = int(y) * int(roots_of_unity[i]) % BLS_MODULUS
-        o[i] = (x + y_times_root) % BLS_MODULUS
-        o[i + len(L)] = (x - y_times_root + BLS_MODULUS) % BLS_MODULUS
+        y_times_root = (int(y) * int(roots_of_unity[i])) % BLS_MODULUS
+        o[i] = BLSFieldElement((int(x) + y_times_root) % BLS_MODULUS)
+        o[i + len(L)] = BLSFieldElement((int(x) - y_times_root + BLS_MODULUS) % BLS_MODULUS)
     return o
 ```
 
 #### `fft_field`
 
 ```python
-def fft_field(vals, roots_of_unity, inv=False):
+def fft_field(vals: Sequence[BLSFieldElement],
+              roots_of_unity: Sequence[BLSFieldElement],
+              inv: bool=False) -> Sequence[BLSFieldElement]:
     if inv:
         # Inverse FFT
         invlen = pow(len(vals), BLS_MODULUS - 2, BLS_MODULUS)
-        return [(x * invlen) % BLS_MODULUS for x in
-                _fft_field(vals, roots_of_unity[0:1] + roots_of_unity[:0:-1])]
+        return [BLSFieldElement((int(x) * invlen) % BLS_MODULUS)
+                for x in _fft_field(vals, roots_of_unity[0:1] + roots_of_unity[:0:-1])]
     else:
         # Regular FFT
         return _fft_field(vals, roots_of_unity)
@@ -272,7 +275,7 @@ def evaluate_polynomialcoeff(polynomial_coeff: PolynomialCoeff, z: BLSFieldEleme
     """
     y = 0
     for coef in polynomial_coeff[::-1]:
-        y = (int(y) * int(z) + coef) % BLS_MODULUS
+        y = (int(y) * int(z) + int(coef)) % BLS_MODULUS
     return BLSFieldElement(y % BLS_MODULUS)
 ```
 
