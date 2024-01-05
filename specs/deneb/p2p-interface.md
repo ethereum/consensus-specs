@@ -23,8 +23,9 @@ The specification of these changes continues in the same format as the network s
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+      - [Blob subnets](#blob-subnets)
+        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
@@ -133,8 +134,6 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 ##### Global topics
 
-Deneb introduces new global topics for blob sidecars.
-
 ###### `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in Deneb.
@@ -145,6 +144,25 @@ New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
   i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+
+###### `beacon_aggregate_and_proof`
+
+*[Modified in Deneb:EIP7045]*
+
+The following validation is removed:
+* _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
+
+The following validations are added in its place:
+* _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot <= current_slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
+* _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
+  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `compute_epoch_at_slot(aggregate.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
+
+##### Blob subnets
 
 ###### `blob_sidecar_{subnet_id}`
 
@@ -168,23 +186,6 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple (block_header.slot, block_header.proposer_index, blob_sidecar.index) with valid header signature, sidecar inclusion proof, and kzg proof.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
-
-###### `beacon_aggregate_and_proof`
-
-*[Modified in Deneb:EIP7045]*
-
-The following validation is removed:
-* _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
-  (a client MAY queue future aggregates for processing at the appropriate slot).
-
-The following validations are added in its place:
-* _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. `aggregate.data.slot <= current_slot`
-  (a client MAY queue future aggregates for processing at the appropriate slot).
-* _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
-  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
-  i.e. `compute_epoch_at_slot(aggregate.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
 
 ##### Attestation subnets
 
@@ -252,6 +253,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
+*[Modified in Deneb:EIP4844]*
+Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
+
 ##### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
@@ -299,6 +304,10 @@ Clients MUST support requesting sidecars since `minimum_request_epoch`, where `m
 
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
+
+Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
 ##### BlobSidecarsByRange v1
 

@@ -46,3 +46,6 @@ docs/ssz
 docs/fork_choice
 docs/README.md
 site
+
+# docker test results
+testResults
