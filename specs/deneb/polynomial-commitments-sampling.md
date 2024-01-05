@@ -301,7 +301,7 @@ def compute_kzg_proof_multi_impl(
     # Compute the quotient polynomial directly in evaluation form
     quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
 
-    return KZGProof(g1_lincomb(KZG_SETUP_G1[:len(quotient_polynomial)], quotient_polynomial)), ys
+    return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
 
 #### `verify_kzg_proof_multi_impl`
@@ -314,14 +314,14 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
     """
     Helper function that verifies a KZG multiproof
     """
-    zero_poly = g2_lincomb(KZG_SETUP_G2[:len(zs) + 1], vanishing_polynomialcoeff(zs))
-    interpolated_poly = g1_lincomb(KZG_SETUP_G1[:len(zs)], interpolate_polynomialcoeff(zs, ys))
+    zero_poly = g2_lincomb(KZG_SETUP_G2_MONOMIAL[:len(zs) + 1], vanishing_polynomialcoeff(zs))
+    interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(zs)], interpolate_polynomialcoeff(zs, ys))
 
     return (bls.pairing_check([
         [bls.bytes48_to_G1(proof), bls.bytes96_to_G2(zero_poly)],
         [
             bls.add(bls.bytes48_to_G1(commitment), bls.neg(bls.bytes48_to_G1(interpolated_poly))),
-            bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[0])),
+            bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])),
         ],
     ]))
 ```
