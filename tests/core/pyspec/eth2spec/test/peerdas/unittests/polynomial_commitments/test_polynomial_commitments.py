@@ -22,9 +22,28 @@ def test_fft(spec):
 @with_peerdas_and_later
 @spec_test
 @single_phase
-def test_compute_and_verify_cells_and_proofs(spec):
+def test_verify_cell_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
     cell_id = 0
     assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    cell_id = 1
+    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+
+
+@with_peerdas_and_later
+@spec_test
+@single_phase
+def test_verify_cell_proof_batch(spec):
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    cells, proofs = spec.compute_cells_and_proofs(blob)
+
+    assert spec.verify_cell_proof_batch(
+        row_commitments = [commitment],
+        row_ids = [0],
+        column_ids = [0, 1],
+        datas = [cells[0], cells[1]],
+        proofs = proofs,
+    )
