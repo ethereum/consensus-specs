@@ -398,9 +398,9 @@ def compute_cells(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_P
 
 ```python
 def verify_cell_proof(commitment: KZGCommitment,
-                        cell_id: int,
-                        data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL],
-                        proof: KZGProof) -> bool:
+                      cell_id: int,
+                      data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL],
+                      proof: KZGProof) -> bool:
     """
     Check a cell proof
 
@@ -415,10 +415,10 @@ def verify_cell_proof(commitment: KZGCommitment,
 
 ```python
 def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
-                              row_ids: Sequence[int],
-                              column_ids: Sequence[int],
-                              datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]],
-                              proofs: Sequence[KZGProof]) -> bool:
+                            row_ids: Sequence[int],
+                            column_ids: Sequence[int],
+                            datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]],
+                            proofs: Sequence[KZGProof]) -> bool:
     """
     Check multiple cell proofs. This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
@@ -452,7 +452,10 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
     assert len(cells) >= CELLS_PER_BLOB // 2
     cell_ids = [cell_id for cell_id, _ in cells]
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
-    short_zero_poly = vanishing_polynomialcoeff([ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)] for cell_id in missing_cell_ids])
+    short_zero_poly = vanishing_polynomialcoeff([
+        ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)]
+        for cell_id in missing_cell_ids
+    ])
 
     full_zero_poly = []
     for i in short_zero_poly:
@@ -463,10 +466,13 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
     zero_poly_eval = fft_field(full_zero_poly, ROOTS_OF_UNITY_EXTENDED)
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
     for cell_id in missing_cell_ids:
-        assert zero_poly_eval_brp[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
-            [0] * FIELD_ELEMENTS_PER_CELL
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        assert zero_poly_eval_brp[start:end] == [0] * FIELD_ELEMENTS_PER_CELL
     for cell_id in cell_ids:
-        assert all(a != 0 for a in zero_poly_eval_brp[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL])
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_BLOB * 2
     for cell_id, cell_data in cells:
