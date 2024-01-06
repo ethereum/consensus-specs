@@ -31,7 +31,7 @@ jobs:
       steps:
         - name: 'Cleanup build folder'
           run: |
-            echo "test"
+            echo "test "
             ls -la ./
             rm -rf ./* || true
             rm -rf ./.??* || true
