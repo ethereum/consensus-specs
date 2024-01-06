@@ -12,7 +12,8 @@ on:
     branches:
       - dev 
       - master
-  pull_request:    
+  pull_request:
+  pull_request_target:
   workflow_dispatch:
     inputs:
       test_preset_type:
@@ -30,6 +31,7 @@ jobs:
       steps:
         - name: 'Cleanup build folder'
           run: |
+            echo "test"
             ls -la ./
             rm -rf ./* || true
             rm -rf ./.??* || true
