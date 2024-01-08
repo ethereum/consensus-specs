@@ -153,7 +153,7 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
 
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
-    if name == "BLS12_381_Q":
+    if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()

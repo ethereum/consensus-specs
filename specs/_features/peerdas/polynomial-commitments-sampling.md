@@ -20,7 +20,6 @@
     - [`fft_field`](#fft_field)
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
     - [`polynomial_eval_to_coeff`](#polynomial_eval_to_coeff)
-    - [`polynomial_coeff_to_eval`](#polynomial_coeff_to_eval)
     - [`add_polynomialcoeff`](#add_polynomialcoeff)
     - [`neg_polynomialcoeff`](#neg_polynomialcoeff)
     - [`multiply_polynomialcoeff`](#multiply_polynomialcoeff)
@@ -84,10 +83,10 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 
 | Name | Value | Description |
 | - | - | - |
-| `ROOT_OF_UNITY_EXTENDED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
-| `ROOTS_OF_UNITY_EXTENDED` | `([pow(ROOT_OF_UNITY_EXTENDED, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB * 2 over the BLS12-381 field |
-| `ROOT_OF_UNITY_REDUCED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(CELLS_PER_BLOB), BLS_MODULUS)` | Root of unity of order CELLS_PER_BLOB over the BLS12-381 field |
-| `ROOTS_OF_UNITY_REDUCED` | `([pow(ROOT_OF_UNITY_REDUCED, i, BLS_MODULUS) for i in range(CELLS_PER_BLOB)])` | Roots of unity of order CELLS_PER_BLOB over the BLS12-381 field |
+| `ROOT_OF_UNITY_EXTENDED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order `FIELD_ELEMENTS_PER_BLOB * 2` over the BLS12-381 field |
+| `ROOTS_OF_UNITY_EXTENDED` | `([BLSFieldElement(pow(ROOT_OF_UNITY_EXTENDED, i, BLS_MODULUS)) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order `FIELD_ELEMENTS_PER_BLOB * 2` over the BLS12-381 field |
+| `ROOT_OF_UNITY_REDUCED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(CELLS_PER_BLOB), BLS_MODULUS)` | Root of unity of order `CELLS_PER_BLOB` over the BLS12-381 field |
+| `ROOTS_OF_UNITY_REDUCED` | `([BLSFieldElement(pow(ROOT_OF_UNITY_REDUCED, i, BLS_MODULUS)) for i in range(CELLS_PER_BLOB)])` | Roots of unity of order `CELLS_PER_BLOB` over the BLS12-381 field |
 
 ## Helper functions
 
@@ -136,7 +135,7 @@ def fft_field(vals: Sequence[BLSFieldElement],
         # Inverse FFT
         invlen = pow(len(vals), BLS_MODULUS - 2, BLS_MODULUS)
         return [BLSFieldElement((int(x) * invlen) % BLS_MODULUS)
-                for x in _fft_field(vals, roots_of_unity[0:1] + roots_of_unity[:0:-1])]
+                for x in _fft_field(vals, list(roots_of_unity[0:1]) + list(roots_of_unity[:0:-1]))]
     else:
         # Regular FFT
         return _fft_field(vals, roots_of_unity)
@@ -152,7 +151,8 @@ def polynomial_eval_to_coeff(polynomial: Polynomial) -> PolynomialCoeff:
     """
     Interpolates a polynomial (given in evaluation form) to a polynomial in coefficient form.
     """
-    polynomial_coeff = fft_field(bit_reversal_permutation(list(polynomial)), list(ROOTS_OF_UNITY), inv=True)
+    roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB)
+    polynomial_coeff = fft_field(bit_reversal_permutation(list(polynomial)), roots_of_unity, inv=True)
 
     return polynomial_coeff
 ```
@@ -216,7 +216,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
 #### `shift_polynomialcoeff`
 
 ```python
-def shift_polynomialcoeff(poly, factor):
+def shift_polynomialcoeff(polynomial_coeff: PolynomialCoeff, factor: BLSFieldElement) -> PolynomialCoeff:
     """
     Shift the evaluation of a polynomial in coefficient form by factor.
     This results in a new polynomial g(x) = f(factor * x)
@@ -224,7 +224,7 @@ def shift_polynomialcoeff(poly, factor):
     factor_power = 1
     inv_factor = pow(int(factor), BLS_MODULUS - 2, BLS_MODULUS)
     o = []
-    for p in poly:
+    for p in polynomial_coeff:
         o.append(int(p) * factor_power % BLS_MODULUS)
         factor_power = factor_power * inv_factor % BLS_MODULUS
     return o
@@ -486,12 +486,13 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    extended_evaluation_times_zero = [a * b % BLS_MODULUS for a, b in zip(zero_poly_eval, extended_evaluation)]
+    extended_evaluation_times_zero = [BLSFieldElement(a * b % BLS_MODULUS)
+                                      for a, b in zip(zero_poly_eval, extended_evaluation)]
 
     extended_evaluations_fft = fft_field(extended_evaluation_times_zero, ROOTS_OF_UNITY_EXTENDED, inv=True)
 
-    shift_factor = PRIMITIVE_ROOT_OF_UNITY
-    shift_inv = div(1, PRIMITIVE_ROOT_OF_UNITY)
+    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
+    shift_inv = div(BLSFieldElement(1), shift_factor)
 
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
     shifted_zero_poly = shift_polynomialcoeff(full_zero_poly, shift_factor)

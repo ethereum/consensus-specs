@@ -11,7 +11,6 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)
-  - [Crypto](#crypto)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
   - [Bit-reversal permutation](#bit-reversal-permutation)
@@ -91,13 +90,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
-
-### Crypto
-
-| Name | Value | Notes |
-| - | - | - |
-| `ROOT_OF_UNITY` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB), BLS_MODULUS)` | Root of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
-| `ROOTS_OF_UNITY` | `([pow(ROOT_OF_UNITY, i, BLS_MODULUS) for i in range(FIELD_ELEMENTS_PER_BLOB)])` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
 
 ### Trusted setup
 

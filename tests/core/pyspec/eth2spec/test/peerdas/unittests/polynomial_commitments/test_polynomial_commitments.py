@@ -13,7 +13,7 @@ from eth2spec.test.helpers.sharding import (
 @single_phase
 def test_fft(spec):
     vals = [int.from_bytes(x, spec.KZG_ENDIANNESS) for x in spec.KZG_SETUP_G1_MONOMIAL]
-    roots_of_unity = spec.ROOTS_OF_UNITY
+    roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
     result = spec.fft_field(vals, roots_of_unity)
     assert len(result) == len(vals)
     # TODO: add more assertions?
