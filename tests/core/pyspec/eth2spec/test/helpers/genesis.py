@@ -1,13 +1,15 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110,
+    PHASE0,
+    PREVIOUS_FORK_OF,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -49,11 +51,14 @@ def get_sample_genesis_execution_payload_header(spec,
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
     deposit_receipts_trie_root = None
+    exits_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_eip6110(spec):
         deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_eip7002(spec):
+        exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
@@ -61,6 +66,7 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_trie_root,
         withdrawals_trie_root,
         deposit_receipts_trie_root,
+        exits_trie_root,
     )
     return payload_header
 
@@ -72,20 +78,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
-    if spec.fork == ALTAIR:
-        current_version = spec.config.ALTAIR_FORK_VERSION
-    elif spec.fork == BELLATRIX:
-        previous_version = spec.config.ALTAIR_FORK_VERSION
-        current_version = spec.config.BELLATRIX_FORK_VERSION
-    elif spec.fork == CAPELLA:
-        previous_version = spec.config.BELLATRIX_FORK_VERSION
-        current_version = spec.config.CAPELLA_FORK_VERSION
-    elif spec.fork == DENEB:
-        previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.DENEB_FORK_VERSION
-    elif spec.fork == EIP6110:
-        previous_version = spec.config.DENEB_FORK_VERSION
-        current_version = spec.config.EIP6110_FORK_VERSION
+    if spec.fork != PHASE0:
+        previous_fork = PREVIOUS_FORK_OF[spec.fork]
+        if previous_fork == PHASE0:
+            previous_version = spec.config.GENESIS_FORK_VERSION
+        else:
+            previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+        current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -137,5 +136,17 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_eip6110(spec):
         state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+
+    if is_post_whisk(spec):
+        vc = len(state.validators)
+        for i in range(vc):
+            state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
+            state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
+
+        for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
+
+        for i in range(spec.WHISK_PROPOSER_TRACKERS_COUNT):
+            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     return state

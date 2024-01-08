@@ -11,13 +11,12 @@
   - [4. Add `fork.md`](#4-add-forkmd)
   - [5. Make it executable](#5-make-it-executable)
 - [B: Make it executable for pytest and test generator](#b-make-it-executable-for-pytest-and-test-generator)
-  - [1. Add `light-client/*` docs if you updated the content of `BeaconBlock`](#1-add-light-client-docs-if-you-updated-the-content-of-beaconblock)
+  - [1. [Optional] Add `light-client/*` docs if you updated the content of `BeaconBlock`](#1-optional-add-light-client-docs-if-you-updated-the-content-of-beaconblock)
   - [2. Add the mainnet and minimal presets and update the configs](#2-add-the-mainnet-and-minimal-presets-and-update-the-configs)
   - [3. Update `context.py`](#3-update-contextpy)
   - [4. Update `constants.py`](#4-update-constantspy)
   - [5. Update `genesis.py`:](#5-update-genesispy)
-  - [6. To add fork transition tests, update fork_transition.py](#6-to-add-fork-transition-tests-update-fork_transitionpy)
-  - [7. Update CI configurations](#7-update-ci-configurations)
+  - [6. Update CI configurations](#6-update-ci-configurations)
 - [Others](#others)
   - [Bonus](#bonus)
   - [Need help?](#need-help)
@@ -53,41 +52,26 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
 ### 4. Add `fork.md`
 You can refer to the previous fork's `fork.md` file.
 ### 5. Make it executable
-- Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
-- Update [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py):
-    - Add a new `SpecBuilder` with the new feature name constant. e.g., `EIP9999SpecBuilder`
-    - Add the new `SpecBuilder` to `spec_builders` list.
-    - Add the path of the new markdown files in `finalize_options` function.
+- Update Pyspec [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
+- Update helpers for [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py) for building the spec:
+    - Update [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) with the new feature name as Pyspec `constants.py` defined.
+    - Update [`pysetup/spec_builders/__init__.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/spec_builders/__init__.py). Implement a new `<FEATURE_NAME>SpecBuilder` in `pysetup/spec_builders/<FEATURE_NAME>.py` with the new feature name. e.g., `EIP9999SpecBuilder`. Append it to the `spec_builders` list.
+    - Update [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py): add the path of the new markdown files in `get_md_doc_paths` function if needed.
+- Update `PREVIOUS_FORK_OF` setting in both [`test/helpers/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/constants.py) and [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py).
+    - NOTE: since these two modules (the pyspec itself and the spec builder tool) must be separate, the fork sequence setting has to be defined again.
 
 ## B: Make it executable for pytest and test generator
 
-### 1. Add `light-client/*` docs if you updated the content of `BeaconBlock`
+### 1. [Optional] Add `light-client/*` docs if you updated the content of `BeaconBlock`
 - You can refer to the previous fork's `light-client/*` file.
-- Add the path of the new markdown files in `setup.py`'s `finalize_options` function.
+- Add the path of the new markdown files in [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py)'s `get_md_doc_paths` function.
 
 ### 2. Add the mainnet and minimal presets and update the configs
 - Add presets: `presets/mainnet/<new-feature-name>.yaml` and `presets/minimal/<new-feature-name>.yaml`
 - Update configs: `configs/mainnet.yaml` and `configs/minimal.yaml`
 
 ### 3. Update [`context.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py)
-- Update `spec_targets` by adding `<NEW_FEATURE>`
-
-```python
-from eth2spec.eip9999 import mainnet as spec_eip9999_mainnet, minimal as spec_eip9999_minimal
-
-...
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        ...
-        EIP9999: spec_eip9999_minimal,
-    },
-    MAINNET: {
-        ...
-        EIP9999: spec_eip9999_mainnet
-    },
-}
-```
+- [Optional] Add `with_<new-feature-name>_and_later` decorator for writing pytest cases. e.g., `with_capella_and_later`.
 
 ### 4. Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py)
 - Add `<NEW_FEATURE>` to `ALL_PHASES` and `TESTGEN_FORKS`
@@ -95,20 +79,6 @@ spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
 ### 5. Update [`genesis.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/genesis.py):
 
 We use `create_genesis_state` to create the default `state` in tests.
-
-- Update `create_genesis_state` by adding `fork_version` setting:
-
-```python
-def create_genesis_state(spec, validator_balances, activation_threshold):
-    ...
-    if spec.fork == ALTAIR:
-        current_version = spec.config.ALTAIR_FORK_VERSION
-    ...
-    elif spec.fork == EIP9999:
-        # Add the previous fork version of given fork
-        previous_version = spec.config.<PREVIOUS_FORK_VERSION>
-        current_version = spec.config.EIP9999_FORK_VERSION
-```
 
 - If the given feature changes `BeaconState` fields, you have to set the initial values by adding:
 
@@ -123,32 +93,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
 - If the given feature changes `ExecutionPayload` fields, you have to set the initial values by updating `get_sample_genesis_execution_payload_header` helper.
 
-### 6. To add fork transition tests, update [fork_transition.py](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/fork_transition.py)
-
-```python
-def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None):
-    ...
-
-    if post_spec.fork == ALTAIR:
-        state = post_spec.upgrade_to_altair(state)
-    ...
-    elif post_spec.fork == EIP9999:
-        state = post_spec.upgrade_to_eip9999(state)
-
-    ...
-
-    if post_spec.fork == ALTAIR:
-        assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
-    ...
-    elif post_spec.fork == EIP9999:
-        assert state.fork.previous_version == post_spec.config.<PREVIOUS_FORK_VERSION>
-        assert state.fork.current_version == post_spec.config.EIP9999_FORK_VERSION
-
-    ...
-```
-
-### 7. Update CI configurations
+### 6. Update CI configurations
 - Update [GitHub Actions config](https://github.com/ethereum/consensus-specs/blob/dev/.github/workflows/run-tests.yml)
     - Update `pyspec-tests.strategy.matrix.version` list by adding new feature to it
 - Update [CircleCI config](https://github.com/ethereum/consensus-specs/blob/dev/.circleci/config.yml)

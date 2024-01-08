@@ -9,6 +9,7 @@ from typing import Callable
 
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
+    build_randomized_execution_payload,
 )
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
@@ -216,14 +217,17 @@ def random_block_altair_with_cycling_sync_committee_participation(spec,
     return block
 
 
-def random_block_bellatrix(spec, state, signed_blocks, scenario_state):
+def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_altair_with_cycling_sync_committee_participation(spec, state, signed_blocks, scenario_state)
-    # TODO: return randomized execution payload
+    # build execution_payload at the next slot
+    state = state.copy()
+    next_slot(spec, state)
+    block.body.execution_payload = build_randomized_execution_payload(spec, state, rng=rng)
     return block
 
 
 def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
-    block = random_block_bellatrix(spec, state, signed_blocks, scenario_state)
+    block = random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
         spec,
         state,
@@ -233,10 +237,11 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
 
 
 def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
-    block = random_block_capella(spec, state, signed_blocks, scenario_state)
+    block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1)
-    block.body.execution_payload.transactions = [opaque_tx]
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(
+        spec, blob_count=rng.randint(0, spec.MAX_BLOBS_PER_BLOCK), rng=rng)
+    block.body.execution_payload.transactions.append(opaque_tx)
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     block.body.blob_kzg_commitments = blob_kzg_commitments
 

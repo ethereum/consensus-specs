@@ -19,8 +19,9 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [ExecutionPayload](#executionpayload)
       - [Blob KZG commitments](#blob-kzg-commitments)
-    - [Constructing the `SignedBlobSidecar`s](#constructing-the-signedblobsidecars)
+    - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
       - [Sidecar](#sidecar)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -88,60 +89,90 @@ All validator responsibilities remain unchanged other than those noted below.
 
 #### Constructing the `BeaconBlockBody`
 
+##### ExecutionPayload
+
+`prepare_execution_payload` is updated from the Capella specs to provide the parent beacon block root.
+
+*Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
+That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
+
+*Note*: The only change made to `prepare_execution_payload` is to add the parent beacon block root as an additional
+parameter to the `PayloadAttributes`.
+
+```python
+def prepare_execution_payload(state: BeaconState,
+                              safe_block_hash: Hash32,
+                              finalized_block_hash: Hash32,
+                              suggested_fee_recipient: ExecutionAddress,
+                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    parent_hash = state.latest_execution_payload_header.block_hash
+
+    # Set the forkchoice head and initiate the payload build process
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_timestamp_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=get_expected_withdrawals(state),
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),  # [New in Deneb:EIP4788]
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
+
 ##### Blob KZG commitments
 
 *[New in Deneb:EIP4844]*
 
-1. After retrieving the execution payload from the execution engine as specified in Capella,
-use the `payload_id` to retrieve `blobs`, `blob_kzg_commitments`, and `blob_kzg_proofs`
-via `get_payload(payload_id).blobs_bundle`.
-2. Set `block.body.blob_kzg_commitments = blob_kzg_commitments`.
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `blobs_bundle` entry containing the corresponding `blobs`, `commitments`, and `proofs`.
+2. Set `block.body.blob_kzg_commitments = commitments`.
 
-#### Constructing the `SignedBlobSidecar`s
+#### Constructing the `BlobSidecar`s
 
 *[New in Deneb:EIP4844]*
 
-To construct a `SignedBlobSidecar`, a `signed_blob_sidecar` is defined with the necessary context for block and sidecar proposal.
+To construct a `BlobSidecar`, a `blob_sidecar` is defined with the necessary context for block and sidecar proposal.
 
 ##### Sidecar
 
-Blobs associated with a block are packaged into sidecar objects for distribution to the network.
+Blobs associated with a block are packaged into sidecar objects for distribution to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 
 Each `sidecar` is obtained from:
 ```python
-def get_blob_sidecars(block: BeaconBlock,
+def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+    block = signed_block.message
+    block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=block.state_root,
+        body_root=hash_tree_root(block.body),
+    )
+    signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
     return [
         BlobSidecar(
-            block_root=hash_tree_root(block),
             index=index,
-            slot=block.slot,
-            block_parent_root=block.parent_root,
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
+            signed_block_header=signed_block_header,
+            kzg_commitment_inclusion_proof=compute_merkle_proof(
+                block.body,
+                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),
+            ),
         )
         for index, blob in enumerate(blobs)
     ]
-
 ```
 
-Then for each sidecar, `signed_sidecar = SignedBlobSidecar(message=sidecar, signature=signature)` is constructed and published to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
-
-`signature` is obtained from:
-
-```python
-def get_blob_sidecar_signature(state: BeaconState,
-                               sidecar: BlobSidecar,
-                               privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BLOB_SIDECAR, compute_epoch_at_slot(sidecar.slot))
-    signing_root = compute_signing_root(sidecar, domain)
-    return bls.Sign(privkey, signing_root)
-```
-
-The `subnet_id` for the `signed_sidecar` is calculated with:
-- Let `blob_index = signed_sidecar.message.index`.
+The `subnet_id` for the `blob_sidecar` is calculated with:
+- Let `blob_index = blob_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
 
 ```python

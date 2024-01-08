@@ -8,7 +8,8 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
 - [Helpers](#helpers)
-    - [`is_data_available`](#is_data_available)
+  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -23,7 +24,21 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-#### `is_data_available`
+### Extended `PayloadAttributes`
+
+`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+```
+
+### `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
@@ -32,6 +47,8 @@ Initially, verification requires every verifying actor to retrieve all matching 
 
 The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
 
+*Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
+
 ```python
 def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
@@ -39,11 +56,6 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
     # Note: the p2p network does not guarantee sidecar retrieval outside of
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
-
-    # For testing, `retrieve_blobs_and_proofs` returns ("TEST", "TEST").
-    # TODO: Remove it once we have a way to inject `BlobSidecar` into tests.
-    if isinstance(blobs, str) or isinstance(proofs, str):
-        return True
 
     return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
@@ -81,6 +93,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this block MAY be queued and subsequently considered when blob data becomes available
+    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
+    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
@@ -93,10 +107,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add proposer score boost if the block is timely
+    # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
-    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely and not conflicting with an existing block
+    is_first_block = store.proposer_boost_root == Root()
+    if is_timely and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

@@ -17,6 +17,8 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
+EIP7002 = SpecForkName('eip7002')
+WHISK = SpecForkName('whisk')
 
 #
 # SpecFork settings
@@ -26,19 +28,39 @@ EIP6110 = SpecForkName('eip6110')
 MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA)
 LATEST_FORK = MAINNET_FORKS[-1]
 # The forks that pytest can run with.
+# Note: when adding a new fork here, all tests from previous forks with decorator `with_X_and_later`
+#       will run on the new fork. To skip this behaviour, add the fork to `ALLOWED_TEST_RUNNER_FORKS`
 ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     DENEB,
-    # Experimental features
+    # Experimental patches
     EIP6110,
+    EIP7002,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110)
+TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110, WHISK)
+# Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
+ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK)
 
-ALL_FORK_UPGRADES = {
+# NOTE: the same definition as in `pysetup/md_doc_paths.py`
+PREVIOUS_FORK_OF = {
+    # post_fork_name: pre_fork_name
+    PHASE0: None,
+    ALTAIR: PHASE0,
+    BELLATRIX: ALTAIR,
+    CAPELLA: BELLATRIX,
+    DENEB: CAPELLA,
+    # Experimental patches
+    EIP6110: DENEB,
+    WHISK: CAPELLA,
+    EIP7002: CAPELLA,
+}
+
+# For fork transition tests
+POST_FORK_OF = {
     # pre_fork_name: post_fork_name
     PHASE0: ALTAIR,
     ALTAIR: BELLATRIX,
@@ -46,15 +68,11 @@ ALL_FORK_UPGRADES = {
     CAPELLA: DENEB,
     DENEB: EIP6110,
 }
-ALL_PRE_POST_FORKS = ALL_FORK_UPGRADES.items()
-AFTER_BELLATRIX_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items() if key != PHASE0}
-AFTER_BELLATRIX_PRE_POST_FORKS = AFTER_BELLATRIX_UPGRADES.items()
-AFTER_CAPELLA_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
-                          if key not in [PHASE0, ALTAIR]}
-AFTER_CAPELLA_PRE_POST_FORKS = AFTER_CAPELLA_UPGRADES.items()
-AFTER_DENEB_UPGRADES = {key: value for key, value in ALL_FORK_UPGRADES.items()
-                        if key not in [PHASE0, ALTAIR, BELLATRIX]}
-AFTER_DENEB_PRE_POST_FORKS = AFTER_DENEB_UPGRADES.items()
+
+ALL_PRE_POST_FORKS = POST_FORK_OF.items()
+DENEB_TRANSITION_UPGRADES_AND_AFTER = {key: value for key, value in POST_FORK_OF.items()
+                                       if key not in [PHASE0, ALTAIR, BELLATRIX]}
+AFTER_DENEB_PRE_POST_FORKS = DENEB_TRANSITION_UPGRADES_AND_AFTER.items()
 
 #
 # Config and Preset
