@@ -42,7 +42,7 @@
     - [`verify_cell_proof`](#verify_cell_proof)
     - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
 - [Reconstruction](#reconstruction)
-  - [`recover_cells`](#recover_cells)
+  - [`recover_polynomial`](#recover_polynomial)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -60,6 +60,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `PolynomialCoeff` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | A polynomial in coefficient form |
+| `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
+| `CellID` | `uint64` | Cell identifier |
 
 ## Constants
 
@@ -334,15 +336,13 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]:
+def coset_for_cell(cell_id: int) -> Cell:
     """
     Get the coset for a given ``cell_id``
     """
     assert cell_id < CELLS_PER_BLOB
     roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY_EXTENDED)
-    return Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL](
-        roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)]
-    )
+    return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
 ## Cells
@@ -353,7 +353,7 @@ def coset_for_cell(cell_id: int) -> Vector[BLSFieldElement, FIELD_ELEMENTS_PER_C
 
 ```python
 def compute_cells_and_proofs(blob: Blob) -> Tuple[
-        Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB],
+        Vector[Cell, CELLS_PER_BLOB],
         Vector[KZGProof, CELLS_PER_BLOB]]:
     """
     Compute all the cell proofs for one blob. This is an inefficient O(n^2) algorithm,
@@ -380,7 +380,7 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
 #### `compute_cells`
 
 ```python
-def compute_cells(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL], CELLS_PER_BLOB]:
+def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     """
     Compute the cell data for a blob (without computing the proofs).
 
@@ -402,7 +402,7 @@ def compute_cells(blob: Blob) -> Vector[Vector[BLSFieldElement, FIELD_ELEMENTS_P
 ```python
 def verify_cell_proof(commitment: KZGCommitment,
                       cell_id: int,
-                      data: Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL],
+                      cell: Cell,
                       proof: KZGProof) -> bool:
     """
     Check a cell proof
@@ -411,7 +411,7 @@ def verify_cell_proof(commitment: KZGCommitment,
     """
     coset = coset_for_cell(cell_id)
 
-    return verify_kzg_proof_multi_impl(commitment, coset, data, proof)
+    return verify_kzg_proof_multi_impl(commitment, coset, cell, proof)
 ```
 
 #### `verify_cell_proof_batch`
@@ -420,7 +420,7 @@ def verify_cell_proof(commitment: KZGCommitment,
 def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
                             row_ids: Sequence[int],
                             column_ids: Sequence[int],
-                            datas: Sequence[Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]],
+                            cells: Sequence[Cell],
                             proofs: Sequence[KZGProof]) -> bool:
     """
     Check multiple cell proofs. This function implements the naive algorithm of checking every cell
@@ -433,16 +433,18 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
     # Get commitments via row IDs
     commitments = [row_commitments[row_id] for row_id in row_ids]
     
-    return all(verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), data, proof) 
-               for commitment, column_id, data, proof in zip(commitments, column_ids, datas, proofs))
+    return all(
+        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), cell, proof)
+        for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
+    )
 ```
 
 ## Reconstruction
 
-### `recover_cells`
+### `recover_polynomial`
 
 ```python
-def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Polynomial:
+def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Polynomial:
     """
     Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
 
@@ -452,8 +454,8 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
 
     Public method.
     """
+    assert len(cell_ids) == len(cells)
     assert len(cells) >= CELLS_PER_BLOB // 2
-    cell_ids = [cell_id for cell_id, _ in cells]
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
     short_zero_poly = vanishing_polynomialcoeff([
         ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)]
@@ -477,10 +479,11 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
-    extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_BLOB * 2
-    for cell_id, cell_data in cells:
-        extended_evaluation_rbo[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] = \
-            cell_data
+    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    for cell_id, cell in zip(cell_ids, cells):
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
     extended_evaluation_times_zero = [a * b % BLS_MODULUS for a, b in zip(zero_poly_eval, extended_evaluation)]
@@ -507,9 +510,10 @@ def recover_cells(cells: Sequence[Tuple[int, ByteVector[BYTES_PER_CELL]]]) -> Po
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY_EXTENDED))
 
-    for cell_id, cell_data in cells:
-        assert reconstructed_data[cell_id * FIELD_ELEMENTS_PER_CELL:(cell_id + 1) * FIELD_ELEMENTS_PER_CELL] == \
-            cell_data
-    
+    for cell_id, cell in zip(cell_ids, cells):
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        assert reconstructed_data[start:end] == cell
+
     return reconstructed_data
 ```

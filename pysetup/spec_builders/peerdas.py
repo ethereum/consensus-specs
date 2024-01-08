@@ -12,3 +12,9 @@ class PeerDASSpecBuilder(BaseSpecBuilder):
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
 '''
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
+        return {
+            'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
+        }

@@ -602,4 +602,3 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
 
     return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
 ```
-

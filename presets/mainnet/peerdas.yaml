@@ -1,0 +1,6 @@
+# Mainnet preset - PeerDAS
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(2**6)` (= 64)
+FIELD_ELEMENTS_PER_CELL: 64

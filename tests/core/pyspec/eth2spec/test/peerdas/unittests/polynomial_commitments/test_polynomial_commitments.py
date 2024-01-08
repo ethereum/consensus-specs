@@ -41,9 +41,23 @@ def test_verify_cell_proof_batch(spec):
     cells, proofs = spec.compute_cells_and_proofs(blob)
 
     assert spec.verify_cell_proof_batch(
-        row_commitments = [commitment],
-        row_ids = [0],
-        column_ids = [0, 1],
-        datas = [cells[0], cells[1]],
-        proofs = proofs,
+        row_commitments=[commitment],
+        row_ids=[0],
+        column_ids=[0, 1],
+        cells=cells[0:1],
+        proofs=proofs,
     )
+
+
+@with_peerdas_and_later
+@spec_test
+@single_phase
+def test_recover_polynomial(spec):
+    blob = get_sample_blob(spec)
+    original_polynomial = spec.blob_to_polynomial(blob)
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_BLOB // 2))
+    known_cells = [cells[cell_id] for cell_id in cell_ids]
+    result = spec.recover_polynomial(cell_ids, known_cells)
+
+    assert original_polynomial == result[0:len(result) // 2]
