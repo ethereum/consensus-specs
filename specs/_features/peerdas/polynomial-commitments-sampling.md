@@ -486,7 +486,7 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    extended_evaluation_times_zero = [BLSFieldElement(a * b % BLS_MODULUS)
+    extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
     extended_evaluations_fft = fft_field(extended_evaluation_times_zero, ROOTS_OF_UNITY_EXTENDED, inv=True)
