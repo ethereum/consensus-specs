@@ -28,6 +28,7 @@ from eth2spec.test.helpers.forks import (
     is_post_fork,
 )
 from eth2spec.test.helpers.light_client import (
+    compute_start_slot_at_next_sync_committee_period,
     get_sync_aggregate,
 )
 from eth2spec.test.helpers.state import (
@@ -279,15 +280,6 @@ def emit_upgrade_store(test, new_s_spec, phases=None):
             "checks": get_checks(test.s_spec, test.store),
         }
     })
-
-
-def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
-    return spec.compute_start_slot_at_epoch(sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-
-
-def compute_start_slot_at_next_sync_committee_period(spec, state):
-    sync_committee_period = spec.compute_sync_committee_period_at_slot(state.slot)
-    return compute_start_slot_at_sync_committee_period(spec, sync_committee_period + 1)
 
 
 @with_light_client
