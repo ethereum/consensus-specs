@@ -9,6 +9,7 @@ from eth2spec.test.helpers.sharding import (
 )
 from eth2spec.utils.bls import BLS_MODULUS
 
+
 @with_peerdas_and_later
 @spec_test
 @single_phase
@@ -24,6 +25,7 @@ def test_fft(spec):
 
     assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
     assert poly_coeff_inversed == poly_coeff
+
 
 @with_peerdas_and_later
 @spec_test
