@@ -218,19 +218,10 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
                 assert class_name == current_name
-                ignore_type = False
                 if parent_class:
-                    if parent_class == "Container":
-                        pass
-                    elif parent_class == "Vector":
-                        ignore_type = True  # Avoid Mypy error: Invalid base class "Vector"
-                    else:
-                        raise Exception("unrecognized parent class: " + source)
+                    assert parent_class == "Container"
                 # NOTE: trim whitespace from spec
-                lines = [line.rstrip() for line in source.splitlines()]
-                if ignore_type:
-                    lines[0] += "  # type: ignore"
-                ssz_objects[current_name] = "\n".join(lines)
+                ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
             else:
                 raise Exception("unrecognized python code element: " + source)
         elif isinstance(child, Table):

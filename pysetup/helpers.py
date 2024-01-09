@@ -22,8 +22,11 @@ def collect_prev_forks(fork: str) -> list[str]:
         forks.append(fork)
 
 
-def is_byte_vector(value: str) -> bool:
-    return value.startswith(('ByteVector'))
+def requires_mypy_type_ignore(value: str) -> bool:
+    return (
+        value.startswith(('ByteVector'))
+        or (value.startswith(('Vector')) and 'floorlog2' in value)
+    )
 
 
 def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
@@ -41,7 +44,8 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
+                f"class {key}({value}):\n    pass\n" if not requires_mypy_type_ignore(value)
+                else f"class {key}({value}):  # type: ignore\n    pass\n"
                 for key, value in spec_object.custom_types.items()
             ]
         )
