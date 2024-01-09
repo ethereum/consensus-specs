@@ -108,7 +108,7 @@ def objects_to_spec(preset_name: str,
         if vardef.comment is not None:
             out += f'  # {vardef.comment}'
         return out
-    
+
     # Merge all constant objects
     hardcoded_ssz_dep_constants =         reduce(lambda obj, builder: {**obj, **builder.hardcoded_ssz_dep_constants()}, builders, {})
     hardcoded_custom_type_dep_constants = reduce(lambda obj, builder: {**obj, **builder.hardcoded_custom_type_dep_constants(spec_object)}, builders, {})
@@ -131,12 +131,13 @@ def objects_to_spec(preset_name: str,
         imports,
         preparations,
         f"fork = \'{fork}\'\n",
+        # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`
+        CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
         custom_type_dep_constants,
-        new_type_definitions,
-        CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `constants_spec`
         ssz_dep_constants,
+        new_type_definitions,
         constant_vars_spec,
         preset_vars_spec,
         config_spec,
