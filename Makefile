@@ -196,7 +196,8 @@ define run_generator
 	cd $(GENERATOR_DIR)/$(1); \
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
-	pip3 install -r requirements.txt; \
+	pip3 install setuptools wheel; \
+	pip3 install --no-use-pep517 -r requirements.txt; \
 	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
 	echo "generator $(1) finished"
 endef
@@ -244,5 +245,5 @@ build_docs: copy_docs
 	mkdocs build
 
 serve_docs:
-	. venv/bin/activate; 
+	. venv/bin/activate;
 	mkdocs serve
