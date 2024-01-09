@@ -9,9 +9,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
-- [Helper types](#helper-types)
-  - [`ExecutionBranch`](#executionbranch)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
 - [Helper functions](#helper-functions)
@@ -29,21 +28,17 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
+
 ## Constants
 
 | Name | Value |
 | - | - |
 | `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
-
-
-## Helper types
-
-### `ExecutionBranch`
-
-```python
-class ExecutionBranch(Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]):  
-    pass
-```
 
 ## Containers
 

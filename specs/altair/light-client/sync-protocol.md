@@ -9,13 +9,10 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
-- [Helper types](#helper-types)
-  - [`FinalityBranch`](#finalitybranch)
-  - [`CurrentSyncCommitteeBranch`](#currentsynccommitteebranch)
-  - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Containers](#containers)
   - [`LightClientHeader`](#lightclientheader)
   - [`LightClientBootstrap`](#lightclientbootstrap)
@@ -60,6 +57,14 @@ Additional documents describe how the light client sync protocol can be used:
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
+| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+
 ## Constants
 
 | Name | Value |
@@ -76,29 +81,6 @@ Additional documents describe how the light client sync protocol can be used:
 | - | - | - | - |
 | `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators | |
 | `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
-
-## Helper types
-
-### `FinalityBranch`
-
-```python
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]):  
-    pass
-```
-
-### `CurrentSyncCommitteeBranch`
-
-```python
-class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]):
-    pass
-```
-
-### `NextSyncCommitteeBranch`
-
-```python
-class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]):
-    pass
-```
 
 ## Containers
 
