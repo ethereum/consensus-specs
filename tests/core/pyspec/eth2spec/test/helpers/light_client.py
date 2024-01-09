@@ -1,5 +1,5 @@
-from eth2spec.test.helpers.state import (
-    transition_to,
+from eth2spec.test.helpers.fork_transition import (
+    transition_across_forks,
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
@@ -8,14 +8,14 @@ from eth2spec.test.helpers.sync_committee import (
 from math import floor
 
 
-def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
+def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None, phases=None):
     # By default, the sync committee signs the previous slot
     if signature_slot is None:
         signature_slot = state.slot + 1
+    assert signature_slot > state.slot
 
     # Ensure correct sync committee and fork version are selected
-    signature_state = state.copy()
-    transition_to(spec, signature_state, signature_slot)
+    signature_spec, signature_state, _ = transition_across_forks(spec, state, signature_slot, phases)
 
     # Fetch sync committee
     committee_indices = compute_committee_indices(signature_state)
@@ -29,12 +29,12 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
     # Compute sync aggregate
     sync_committee_bits = [True] * num_participants + [False] * (committee_size - num_participants)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
-        spec,
+        signature_spec,
         signature_state,
         max(signature_slot, 1) - 1,
         committee_indices[:num_participants],
     )
-    sync_aggregate = spec.SyncAggregate(
+    sync_aggregate = signature_spec.SyncAggregate(
         sync_committee_bits=sync_committee_bits,
         sync_committee_signature=sync_committee_signature,
     )
