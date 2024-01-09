@@ -280,7 +280,7 @@ def state_transition_with_full_block(spec,
             )
             for attestation in attestations:
                 block.body.attestations.append(attestation)
-    if fill_prev_epoch:
+    if fill_prev_epoch and state.slot >= spec.SLOTS_PER_EPOCH:
         slot_to_attest = state.slot - spec.SLOTS_PER_EPOCH + 1
         attestations = get_valid_attestation_at_slot(
             state,
