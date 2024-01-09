@@ -7,19 +7,23 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.sharding import (
     get_sample_blob,
 )
-
+from eth2spec.utils.bls import BLS_MODULUS
 
 @with_peerdas_and_later
 @spec_test
 @single_phase
 def test_fft(spec):
-    vals = [int.from_bytes(x, spec.KZG_ENDIANNESS) for x in spec.KZG_SETUP_G1_MONOMIAL]
-    roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
-    result = spec.fft_field(vals, roots_of_unity)
-    assert len(result) == len(vals)
-    # TODO: add more assertions?
-    # One possible test would be to use polynomial_eval_to_coeff()
+    rng = random.Random(5566)
 
+    roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+
+    poly_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+
+    poly_eval = spec.fft_field(poly_coeff, roots_of_unity)
+    poly_coeff_inversed = spec.fft_field(poly_eval, roots_of_unity, inv=True)
+
+    assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
+    assert poly_coeff_inversed == poly_coeff
 
 @with_peerdas_and_later
 @spec_test
