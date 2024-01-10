@@ -11,6 +11,15 @@ from eth2spec.test.helpers.sync_committee import (
 from math import floor
 
 
+def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
+    return spec.compute_start_slot_at_epoch(sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+
+
+def compute_start_slot_at_next_sync_committee_period(spec, state):
+    sync_committee_period = spec.compute_sync_committee_period_at_slot(state.slot)
+    return compute_start_slot_at_sync_committee_period(spec, sync_committee_period + 1)
+
+
 def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None):
     # By default, the sync committee signs the previous slot
     if signature_slot is None:
