@@ -78,6 +78,7 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 | `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
 | `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
 | `CELLS_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_CELL)` | The number of cells in a blob |
+| `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
 ### Crypto
 
@@ -426,6 +427,10 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
     Check multiple cell proofs. This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
+
+    This implementation does not require randomness, but for the algorithm that
+    requires it, `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` should be used to compute
+    the challenge value.
 
     Public method.
     """
