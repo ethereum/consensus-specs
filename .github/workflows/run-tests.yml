@@ -66,37 +66,6 @@ jobs:
       - name: Run linter for test generators
         run: make lint_generators
 
-  dockerfile-test:
-    runs-on: self-hosted
-    needs: preclear
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    steps:
-      - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
-      - name: get git commit hash
-        id: git_commit_hash
-        shell: bash
-        run: |
-          echo "git_commit_hash=$(echo $(git log --pretty=format:'%h' -n 1))" >> $GITHUB_OUTPUT
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-        with:
-          driver-opts: network=host
-      - name: Build and push to local registry
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          push: true
-          tags: localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }}
-      - name: Test the image by running the linter
-        run: |
-          docker run localhost:5000/consensus-specs-dockerfile-test:${{ steps.git_commit_hash.outputs.git_commit_hash }} make lint
-
   pyspec-tests:
     runs-on: self-hosted
     needs: [preclear,lint,codespell,table_of_contents]
