@@ -58,7 +58,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `PolynomialCoeff` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | A polynomial in coefficient form |
+| `PolynomialCoeff` | `List[BLSFieldElement, 2 * FIELD_ELEMENTS_PER_BLOB]` | A polynomial in coefficient form |
 | `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
 | `CellID` | `uint64` | Cell identifier |
 
