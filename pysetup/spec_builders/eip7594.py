@@ -18,7 +18,6 @@ from eth2spec.deneb import {preset_name} as deneb
         return {
             'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
             'NUMBER_OF_COLUMNS': spec_object.preset_vars['NUMBER_OF_COLUMNS'].value,
-            'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
         }
 
     @classmethod

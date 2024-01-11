@@ -16,7 +16,6 @@
     - [`get_custody_lines`](#get_custody_lines)
     - [`compute_extended_data`](#compute_extended_data)
     - [`compute_extended_matrix`](#compute_extended_matrix)
-    - [`compute_samples_and_proofs`](#compute_samples_and_proofs)
     - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
@@ -43,9 +42,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `DataCell`     | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The data unit of a cell in the extended data matrix |
-| `DataColumn`   | `List[DataCell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP7594 |
-| `ExtendedMatrix` | `List[DataCell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data with blobs and one-dimensional erasure coding extension |
+| `DataColumn`   | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP7594 |
+| `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data with blobs and one-dimensional erasure coding extension |
 | `FlatExtendedMatrix` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK * FIELD_ELEMENTS_PER_BLOB * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
 | `LineIndex`    | `uint64` | The index of the rows or columns in `FlatExtendedMatrix` matrix |
 
@@ -55,7 +53,6 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `FIELD_ELEMENTS_PER_CELL` | `uint64(2**6)` (= 64)  | Elements per `DataCell` |
 | `NUMBER_OF_COLUMNS` | `uint64((FIELD_ELEMENTS_PER_BLOB * 2) // FIELD_ELEMENTS_PER_CELL)` (= 128) | Number of columns in the extended data matrix. |
 
 ### Custody setting
@@ -95,19 +92,6 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> FlatExtendedMatrix:
     return FlatExtendedMatrix(matrix)
 ```
 
-#### `compute_samples_and_proofs`
-
-```python
-def compute_samples_and_proofs(blob: Blob) -> Tuple[
-        Vector[DataCell, NUMBER_OF_COLUMNS],
-        Vector[KZGProof, NUMBER_OF_COLUMNS]]:
-    """
-    Defined in polynomial-commitments-sampling.md
-    """
-    # pylint: disable=unused-argument
-    ...
-```
-
 #### `get_data_column_sidecars`
 
 ```python
@@ -119,7 +103,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
         block.body,
         get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
     )
-    cells_and_proofs = [compute_samples_and_proofs(blob) for blob in blobs]
+    cells_and_proofs = [compute_cells_and_proofs(blob) for blob in blobs]
     blob_count = len(blobs)
     cells = [cells_and_proofs[i][0] for i in range(blob_count)]
     proofs = [cells_and_proofs[i][1] for i in range(blob_count)]
