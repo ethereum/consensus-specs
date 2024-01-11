@@ -305,12 +305,15 @@ def compute_kzg_proof_multi_impl(
 
 ```python
 def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
-                                zs: BLSFieldElement,
-                                ys: BLSFieldElement,
+                                zs: Sequence[BLSFieldElement],
+                                ys: Sequence[BLSFieldElement],
                                 proof: KZGProof) -> bool:
     """
     Helper function that verifies a KZG multiproof
     """
+
+    assert len(zs) == len(ys)
+
     zero_poly = g2_lincomb(KZG_SETUP_G2_MONOMIAL[:len(zs) + 1], vanishing_polynomialcoeff(zs))
     interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(zs)], interpolate_polynomialcoeff(zs, ys))
 
