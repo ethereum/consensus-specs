@@ -11,7 +11,6 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Cells](#cells)
-  - [Crypto](#crypto)
 - [Helper functions](#helper-functions)
   - [Linear combinations](#linear-combinations)
     - [`g2_lincomb`](#g2_lincomb)
