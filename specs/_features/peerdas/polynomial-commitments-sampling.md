@@ -386,7 +386,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, 
-        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+                              compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
             for i in range(CELLS_PER_BLOB)]
@@ -471,7 +471,7 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
     full_zero_poly = full_zero_poly + [0] * (2 * FIELD_ELEMENTS_PER_BLOB - len(full_zero_poly))
 
     zero_poly_eval = fft_field(full_zero_poly,
-        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+                               compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
     for cell_id in missing_cell_ids:
         start = cell_id * FIELD_ELEMENTS_PER_CELL
