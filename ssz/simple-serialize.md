@@ -25,6 +25,7 @@
 - [Merkleization](#merkleization)
 - [Summaries and expansions](#summaries-and-expansions)
 - [Implementations](#implementations)
+- [Canonical JSON mapping](#canonical-json-mapping)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -256,3 +257,34 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 ## Implementations
 
 See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
+
+## JSON mapping
+
+The canonical JSON mapping assigns to each SSZ type a corresponding JSON encoding, enabling an SSZ schema to also define the JSON encoding.
+
+When decoding JSON data, all fields in the SSZ schema must be present with a value. Parsers may ignore additional JSON fields.
+
+| SSZ | JSON | Example |
+| --- | --- | --- |
+| `uintN` | string | `"0"` |
+| `boolean` | bool | `false` |
+| `Container` | object | `{ "field": ... }` |
+| `Vector[type, N]` | array | `[element, ...]` |
+| `Vector[uint8, N]` | hex-byte-string | `"0x1122"` |
+| `Bitvector[N]` | hex-byte-string | `"0x1122"` |
+| `List[type, N]` | array | `[element, ...]` |
+| `List[uint8, N]` | hex-byte-string | `"0x1122"` |
+| `Bitlist[N]` | hex-byte-string | `"0x1122"` |
+| `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }`  |
+
+Integers are encoded as strings to avoid loss of precision in 64-bit values.
+
+Aliases are encoded as their underlying type (`byte` is thus encoded as `uint8`).
+
+`hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would appear in an SSZ stream.
+
+`List` and `Vector` of `uint8` (and aliases thereof) are encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their SSZ-byte encodings to a `hex-byte-string`.
+
+`Union` is encoded as an object with a `selector` and `data` field, where the contents of `data` change according to the selector.
+
+> This encoding is used in [beacon-APIs](https://github.com/ethereum/beacon-APIs) with one exception: the `ParticipationFlags` type for the `getStateV2` response, although it is an alias of `uint8`, is encoded as a list of numbers. Future versions of the beacon API may address this incompatibility.
