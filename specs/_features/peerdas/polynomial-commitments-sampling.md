@@ -80,15 +80,6 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 | `CELLS_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_CELL)` | The number of cells in a blob |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
-### Crypto
-
-| Name | Value | Description |
-| - | - | - |
-| `ROOT_OF_UNITY_EXTENDED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(FIELD_ELEMENTS_PER_BLOB * 2), BLS_MODULUS)` | Root of unity of order `FIELD_ELEMENTS_PER_BLOB * 2` over the BLS12-381 field |
-| `ROOTS_OF_UNITY_EXTENDED` | `([BLSFieldElement(pow(ROOT_OF_UNITY_EXTENDED, i, BLS_MODULUS)) for i in range(FIELD_ELEMENTS_PER_BLOB * 2)])` | Roots of unity of order `FIELD_ELEMENTS_PER_BLOB * 2` over the BLS12-381 field |
-| `ROOT_OF_UNITY_REDUCED` | `pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(CELLS_PER_BLOB), BLS_MODULUS)` | Root of unity of order `CELLS_PER_BLOB` over the BLS12-381 field |
-| `ROOTS_OF_UNITY_REDUCED` | `([BLSFieldElement(pow(ROOT_OF_UNITY_REDUCED, i, BLS_MODULUS)) for i in range(CELLS_PER_BLOB)])` | Roots of unity of order `CELLS_PER_BLOB` over the BLS12-381 field |
-
 ## Helper functions
 
 ### Linear combinations
@@ -342,7 +333,9 @@ def coset_for_cell(cell_id: int) -> Cell:
     Get the coset for a given ``cell_id``
     """
     assert cell_id < CELLS_PER_BLOB
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY_EXTENDED)
+    roots_of_unity_brp = bit_reversal_permutation(
+        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+    )
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
@@ -390,7 +383,8 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, ROOTS_OF_UNITY_EXTENDED)
+    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, 
+        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
             for i in range(CELLS_PER_BLOB)]
@@ -462,8 +456,9 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
     assert len(cell_ids) == len(cells)
     assert len(cells) >= CELLS_PER_BLOB // 2
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
     short_zero_poly = vanishing_polynomialcoeff([
-        ROOTS_OF_UNITY_REDUCED[reverse_bits(cell_id, CELLS_PER_BLOB)]
+        roots_of_unity_reduced[reverse_bits(cell_id, CELLS_PER_BLOB)]
         for cell_id in missing_cell_ids
     ])
 
@@ -473,7 +468,8 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
         full_zero_poly.extend([0] * (FIELD_ELEMENTS_PER_CELL - 1))
     full_zero_poly = full_zero_poly + [0] * (2 * FIELD_ELEMENTS_PER_BLOB - len(full_zero_poly))
 
-    zero_poly_eval = fft_field(full_zero_poly, ROOTS_OF_UNITY_EXTENDED)
+    zero_poly_eval = fft_field(full_zero_poly,
+        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
     for cell_id in missing_cell_ids:
         start = cell_id * FIELD_ELEMENTS_PER_CELL
@@ -494,7 +490,9 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, ROOTS_OF_UNITY_EXTENDED, inv=True)
+    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB)
+
+    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     shift_inv = div(BLSFieldElement(1), shift_factor)
@@ -502,19 +500,19 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
     shifted_zero_poly = shift_polynomialcoeff(full_zero_poly, shift_factor)
 
-    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, ROOTS_OF_UNITY_EXTENDED)
-    eval_shifted_zero_poly = fft_field(shifted_zero_poly, ROOTS_OF_UNITY_EXTENDED)
+    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
+    eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
     
     eval_shifted_reconstructed_poly = [
         div(a, b)
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
     ]
 
-    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, ROOTS_OF_UNITY_EXTENDED, inv=True)
+    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
 
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
 
-    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, ROOTS_OF_UNITY_EXTENDED))
+    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
 
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
