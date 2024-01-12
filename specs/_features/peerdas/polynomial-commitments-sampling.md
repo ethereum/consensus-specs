@@ -492,7 +492,7 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB)
+    roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
 
     extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
