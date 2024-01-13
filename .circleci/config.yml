@@ -194,7 +194,7 @@ jobs:
           command: make citest fork=whisk
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  test-peerdas:
+  test-eip7594:
     docker:
       - image: circleci/python:3.9
     working_directory: ~/specs-repo
@@ -204,7 +204,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=peerdas
+          command: make citest fork=eip7594
       - store_test_results:
           path: tests/core/pyspec/test-reports
   table_of_contents:
@@ -336,7 +336,7 @@ workflows:
       - test-whisk:
           requires:
             - install_pyspec_test
-      - test-peerdas:
+      - test-eip7594:
           requires:
             - install_pyspec_test
       - table_of_contents

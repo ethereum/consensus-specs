@@ -102,7 +102,7 @@ jobs:
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "eip6110", "eip7002", "whisk", "peerdas"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "eip6110", "eip7002", "whisk", "eip7594"]
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0

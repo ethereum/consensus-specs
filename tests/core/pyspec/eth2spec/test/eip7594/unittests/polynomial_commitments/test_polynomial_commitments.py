@@ -2,7 +2,7 @@ import random
 from eth2spec.test.context import (
     spec_test,
     single_phase,
-    with_peerdas_and_later,
+    with_eip7594_and_later,
 )
 from eth2spec.test.helpers.sharding import (
     get_sample_blob,
@@ -10,7 +10,7 @@ from eth2spec.test.helpers.sharding import (
 from eth2spec.utils.bls import BLS_MODULUS
 
 
-@with_peerdas_and_later
+@with_eip7594_and_later
 @spec_test
 @single_phase
 def test_fft(spec):
@@ -27,7 +27,7 @@ def test_fft(spec):
     assert poly_coeff_inversed == poly_coeff
 
 
-@with_peerdas_and_later
+@with_eip7594_and_later
 @spec_test
 @single_phase
 def test_verify_cell_proof(spec):
@@ -40,7 +40,7 @@ def test_verify_cell_proof(spec):
     assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
 
 
-@with_peerdas_and_later
+@with_eip7594_and_later
 @spec_test
 @single_phase
 def test_verify_cell_proof_batch(spec):
@@ -57,7 +57,7 @@ def test_verify_cell_proof_batch(spec):
     )
 
 
-@with_peerdas_and_later
+@with_eip7594_and_later
 @spec_test
 @single_phase
 def test_recover_polynomial(spec):
