@@ -75,7 +75,7 @@ def create_light_client_bootstrap(state: BeaconState,
     return LightClientBootstrap(
         header=block_to_light_client_header(block),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=compute_merkle_proof(state, CURRENT_SYNC_COMMITTEE_INDEX),
+        current_sync_committee_branch=compute_merkle_proof(state, CURRENT_SYNC_COMMITTEE_GINDEX),
     )
 ```
 
@@ -122,7 +122,7 @@ def create_light_client_update(state: BeaconState,
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = compute_merkle_proof(attested_state, NEXT_SYNC_COMMITTEE_INDEX)
+        update.next_sync_committee_branch = compute_merkle_proof(attested_state, NEXT_SYNC_COMMITTEE_GINDEX)
 
     # Indicate finality whenever possible
     if finalized_block is not None:
@@ -131,7 +131,7 @@ def create_light_client_update(state: BeaconState,
             assert hash_tree_root(update.finalized_header.beacon) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
-        update.finality_branch = compute_merkle_proof(attested_state, FINALIZED_ROOT_INDEX)
+        update.finality_branch = compute_merkle_proof(attested_state, FINALIZED_ROOT_GINDEX)
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot
@@ -158,7 +158,7 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
     )
 ```
 
-Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes. If that `LightClientFinalityUpdate` does not have supermajority (> 2/3) sync committee participation, a second `LightClientFinalityUpdate` SHOULD be delivered for the same `finalized_header` once supermajority participation is obtained.
 
 ### `create_light_client_optimistic_update`
 
