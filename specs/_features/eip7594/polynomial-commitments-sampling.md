@@ -12,6 +12,8 @@
 - [Preset](#preset)
   - [Cells](#cells)
 - [Helper functions](#helper-functions)
+  - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`bytes_to_cell`](#bytes_to_cell)
   - [Linear combinations](#linear-combinations)
     - [`g2_lincomb`](#g2_lincomb)
   - [FFTs](#ffts)
@@ -80,6 +82,18 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
 ## Helper functions
+
+### BLS12-381 helpers
+
+#### `bytes_to_cell`
+
+```python
+def bytes_to_cell(cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]) -> Cell:
+    """
+    Convert untrusted bytes into a Cell.
+    """
+    return [bytes_to_bls_field(element) for element in cell_bytes]
+```
 
 ### Linear combinations
 
@@ -397,10 +411,10 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 #### `verify_cell_proof`
 
 ```python
-def verify_cell_proof(commitment: KZGCommitment,
+def verify_cell_proof(commitment_bytes: Bytes48,
                       cell_id: int,
-                      cell: Cell,
-                      proof: KZGProof) -> bool:
+                      cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
+                      proof: Bytes48) -> bool:
     """
     Check a cell proof
 
@@ -408,17 +422,21 @@ def verify_cell_proof(commitment: KZGCommitment,
     """
     coset = coset_for_cell(cell_id)
 
-    return verify_kzg_proof_multi_impl(commitment, coset, cell, proof)
+    return verify_kzg_proof_multi_impl(
+        bytes_to_kzg_commitment(commitment_bytes),
+        coset,
+        bytes_to_cell(cell_bytes),
+        bytes_to_kzg_proof(proof))
 ```
 
 #### `verify_cell_proof_batch`
 
 ```python
-def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
+def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                             row_ids: Sequence[int],
                             column_ids: Sequence[int],
-                            cells: Sequence[Cell],
-                            proofs: Sequence[KZGProof]) -> bool:
+                            cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
+                            proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Check multiple cell proofs. This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
@@ -430,10 +448,14 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
 
     Public method.
     """
-
     # Get commitments via row IDs
-    commitments = [row_commitments[row_id] for row_id in row_ids]
-    
+    commitments_bytes = [row_commitments_bytes[row_id] for row_id in row_ids]
+
+    # Get objects from bytes
+    commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in commitments_bytes]
+    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+    proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
+
     return all(
         verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), cell, proof)
         for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
@@ -445,7 +467,8 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
 ### `recover_polynomial`
 
 ```python
-def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Polynomial:
+def recover_polynomial(cell_ids: Sequence[CellID],
+                       cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Polynomial:
     """
     Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
 
@@ -455,7 +478,10 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
 
     Public method.
     """
-    assert len(cell_ids) == len(cells)
+    assert len(cell_ids) == len(cells_bytes)
+
+    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+
     assert len(cells) >= CELLS_PER_BLOB // 2
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
