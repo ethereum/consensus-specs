@@ -61,17 +61,17 @@ Additional documents describe how the light client sync protocol can be used:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
-| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
+| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
 
 ## Constants
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
+| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
+| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
 
 ## Preset
 
@@ -295,8 +295,8 @@ def initialize_light_client_store(trusted_block_root: Root,
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(bootstrap.current_sync_committee),
         branch=bootstrap.current_sync_committee_branch,
-        depth=floorlog2(CURRENT_SYNC_COMMITTEE_INDEX),
-        index=get_subtree_index(CURRENT_SYNC_COMMITTEE_INDEX),
+        depth=floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX),
+        index=get_subtree_index(CURRENT_SYNC_COMMITTEE_GINDEX),
         root=bootstrap.header.beacon.state_root,
     )
 
@@ -367,8 +367,8 @@ def validate_light_client_update(store: LightClientStore,
         assert is_valid_merkle_branch(
             leaf=finalized_root,
             branch=update.finality_branch,
-            depth=floorlog2(FINALIZED_ROOT_INDEX),
-            index=get_subtree_index(FINALIZED_ROOT_INDEX),
+            depth=floorlog2(FINALIZED_ROOT_GINDEX),
+            index=get_subtree_index(FINALIZED_ROOT_GINDEX),
             root=update.attested_header.beacon.state_root,
         )
 
@@ -382,8 +382,8 @@ def validate_light_client_update(store: LightClientStore,
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
-            index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
+            depth=floorlog2(NEXT_SYNC_COMMITTEE_GINDEX),
+            index=get_subtree_index(NEXT_SYNC_COMMITTEE_GINDEX),
             root=update.attested_header.beacon.state_root,
         )
 

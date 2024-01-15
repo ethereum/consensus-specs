@@ -19,6 +19,7 @@ DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
 EIP7002 = SpecForkName('eip7002')
 WHISK = SpecForkName('whisk')
+EIP7594 = SpecForkName('eip7594')
 
 #
 # SpecFork settings
@@ -37,6 +38,7 @@ ALL_PHASES = (
     # Experimental patches
     EIP6110,
     EIP7002,
+    EIP7594,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
@@ -57,6 +59,7 @@ PREVIOUS_FORK_OF = {
     EIP6110: DENEB,
     WHISK: CAPELLA,
     EIP7002: CAPELLA,
+    EIP7594: DENEB,
 }
 
 # For fork transition tests

@@ -114,10 +114,11 @@ def _load_kzg_trusted_setups(preset_name):
 
     with open(trusted_setups_file_path, 'r') as f:
         json_data = json.load(f)
+        trusted_setup_G1_monomial = json_data['g1_monomial']
         trusted_setup_G1_lagrange = json_data['g1_lagrange']
         trusted_setup_G2_monomial = json_data['g2_monomial']
 
-    return trusted_setup_G2_monomial, trusted_setup_G1_lagrange
+    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
 def _load_curdleproofs_crs(preset_name):
     """
@@ -154,7 +155,7 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
 
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
-    if name == "BLS12_381_Q":
+    if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
@@ -169,9 +170,10 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G1_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
-
+    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
+    
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
