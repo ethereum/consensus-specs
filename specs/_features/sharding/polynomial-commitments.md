@@ -58,6 +58,7 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | `BLS_MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
 
+
 ### KZG Trusted setup
 
 | Name | Value |
@@ -103,7 +104,7 @@ def reverse_bit_order(n: int, order: int) -> int:
 ```python
 def list_to_reverse_bit_order(l: List[int]) -> List[int]:
     """
-    Convert a list between normal and reverse bit order. This operation is idempotent.
+    Convert a list between normal and reverse bit order. The permutation is an involution (inverts itself)..
     """
     return [l[reverse_bit_order(i, len(l))] for i in range(len(l))]
 ```
