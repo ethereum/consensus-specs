@@ -32,13 +32,13 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
+| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
 
 ## Constants
 
 | Name | Value |
 | - | - |
-| `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
 
 ## Containers
 
@@ -82,8 +82,8 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     return is_valid_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
         root=header.beacon.body_root,
     )
 ```

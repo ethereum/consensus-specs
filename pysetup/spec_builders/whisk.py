@@ -27,6 +27,6 @@ import json
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         constants = {
-            'EXECUTION_PAYLOAD_INDEX': 'GeneralizedIndex(41)',
+            'EXECUTION_PAYLOAD_GINDEX': 'GeneralizedIndex(41)',
         }
         return {**super().hardcoded_ssz_dep_constants(), **constants}

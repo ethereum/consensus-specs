@@ -80,8 +80,8 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     return is_valid_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
         root=header.beacon.body_root,
     )
 ```

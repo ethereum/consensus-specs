@@ -16,5 +16,5 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {
-            'EXECUTION_PAYLOAD_INDEX': 'GeneralizedIndex(25)',
+            'EXECUTION_PAYLOAD_GINDEX': 'GeneralizedIndex(25)',
         }
