@@ -242,7 +242,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
                     summand, [(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment]
                 )
         r = add_polynomialcoeff(r, summand)
-    
+
     return r
 ```
 
@@ -385,7 +385,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, 
+    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
                               compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
@@ -504,7 +504,7 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
 
     eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
     eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
-    
+
     eval_shifted_reconstructed_poly = [
         div(a, b)
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
