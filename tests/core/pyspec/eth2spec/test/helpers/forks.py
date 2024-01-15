@@ -1,5 +1,5 @@
 from .constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
     EIP6110, EIP7002, WHISK,
     PREVIOUS_FORK_OF,
 )
@@ -47,3 +47,27 @@ def is_post_eip7002(spec):
 
 def is_post_whisk(spec):
     return is_post_fork(spec.fork, WHISK)
+
+
+def get_spec_for_fork_version(spec, fork_version, phases):
+    if phases is None:
+        return spec
+    for fork in [fork for fork in phases if is_post_fork(spec.fork, fork)]:
+        if fork == PHASE0:
+            fork_version_field = 'GENESIS_FORK_VERSION'
+        else:
+            fork_version_field = fork.upper() + '_FORK_VERSION'
+        if fork_version == getattr(spec.config, fork_version_field):
+            return phases[fork]
+    raise ValueError("Unknown fork version %s" % fork_version)
+
+
+def get_next_fork_transition(spec, epoch, phases):
+    if phases is None:
+        return None, None
+    for fork in [fork for fork in phases if PREVIOUS_FORK_OF[fork] == spec.fork]:
+        assert fork != PHASE0  # PHASE0 does not have previous fork
+        fork_epoch = getattr(phases[fork].config, fork.upper() + '_FORK_EPOCH')
+        assert fork_epoch > epoch  # Forks through given epoch already applied
+        return phases[fork], fork_epoch
+    return None, None  # Already at latest fork

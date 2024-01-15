@@ -16,16 +16,15 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB,
     MINIMAL,
-    ALL_PHASES,
 )
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
 )
 from eth2spec.test.helpers.forks import (
+    get_spec_for_fork_version,
     is_post_capella, is_post_deneb,
-    is_post_fork,
 )
 from eth2spec.test.helpers.light_client import (
     compute_start_slot_at_next_sync_committee_period,
@@ -38,19 +37,6 @@ from eth2spec.test.helpers.state import (
     next_slots,
     transition_to,
 )
-
-
-def get_spec_for_fork_version(spec, fork_version, phases):
-    if phases is None:
-        return spec
-    for fork in [fork for fork in ALL_PHASES if is_post_fork(spec.fork, fork)]:
-        if fork == PHASE0:
-            fork_version_field = 'GENESIS_FORK_VERSION'
-        else:
-            fork_version_field = fork.upper() + '_FORK_VERSION'
-        if fork_version == getattr(spec.config, fork_version_field):
-            return phases[fork]
-    raise ValueError("Unknown fork version %s" % fork_version)
 
 
 class LightClientSyncTest(object):
@@ -535,7 +521,7 @@ def run_test_single_fork(spec, phases, state, fork):
     finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -548,7 +534,7 @@ def run_test_single_fork(spec, phases, state, fork):
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch) - 4)
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -564,7 +550,7 @@ def run_test_single_fork(spec, phases, state, fork):
     # Final slot before fork, check that importing the pre-fork format still works
     attested_block = block.copy()
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -575,7 +561,7 @@ def run_test_single_fork(spec, phases, state, fork):
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(phases[fork], state)
+    sync_aggregate, _ = get_sync_aggregate(phases[fork], state, phases=phases)
     state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -587,7 +573,7 @@ def run_test_single_fork(spec, phases, state, fork):
     # Another block after the fork, this time attested block is after the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -599,7 +585,7 @@ def run_test_single_fork(spec, phases, state, fork):
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch + 1) - 2)
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -613,7 +599,7 @@ def run_test_single_fork(spec, phases, state, fork):
     _, _, state = next_slots_with_attestations(spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True)
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
