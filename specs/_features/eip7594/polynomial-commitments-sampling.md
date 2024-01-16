@@ -344,7 +344,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: int) -> Cell:
+def coset_for_cell(cell_id: CellID) -> Cell:
     """
     Get the coset for a given ``cell_id``
     """
@@ -412,7 +412,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 
 ```python
 def verify_cell_proof(commitment_bytes: Bytes48,
-                      cell_id: int,
+                      cell_id: uint64,
                       cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
                       proof: Bytes48) -> bool:
     """
@@ -433,8 +433,8 @@ def verify_cell_proof(commitment_bytes: Bytes48,
 
 ```python
 def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
-                            row_ids: Sequence[int],
-                            column_ids: Sequence[int],
+                            row_ids: Sequence[uint64],
+                            column_ids: Sequence[uint64],
                             cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
                             proofs_bytes: Sequence[Bytes48]) -> bool:
     """
