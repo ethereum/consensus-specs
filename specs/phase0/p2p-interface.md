@@ -330,7 +330,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   i.e. validate that `signed_beacon_block.message.slot <= current_slot`
   (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
-  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
@@ -696,9 +696,9 @@ The fields are, as seen by the client at the time of sending the message:
     - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time
       (not necessarily the epoch to which the node is sync)
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block
+- `finalized_root`: `store.finalized_checkpoint.root` according to [fork choice](./fork-choice.md).
   (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
-- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
+- `finalized_epoch`: `store.finalized_checkpoint.epoch` according to [fork choice](./fork-choice.md).
 - `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
