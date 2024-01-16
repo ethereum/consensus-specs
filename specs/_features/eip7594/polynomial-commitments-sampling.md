@@ -156,7 +156,9 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     Sum the coefficient form polynomials ``a`` and ``b``.
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
-    return [(a[i] + (b[i] if i < len(b) else 0)) % BLS_MODULUS for i in range(len(a))]
+    length_a = len(a)
+    length_b = len(b)
+    return [(a[i] + (b[i] if i < length_b else 0)) % BLS_MODULUS for i in range(length_a)]
 ```
 
 #### `neg_polynomialcoeff`
