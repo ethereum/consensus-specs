@@ -294,7 +294,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Epoch processing
 
-*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Bellatrix.
+*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Capella.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
