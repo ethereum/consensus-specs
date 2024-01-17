@@ -54,15 +54,16 @@ def test_verify_cell_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
-
     cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+
+    assert len(cells) == len(proofs)
 
     assert spec.verify_cell_proof_batch(
         row_commitments_bytes=[commitment],
-        row_ids=[0],
-        column_ids=[0, 1],
-        cells_bytes=cells_bytes[0:1],
-        proofs_bytes=proofs,
+        row_ids=[0, 0],
+        column_ids=[0, 4],
+        cells_bytes=[cells_bytes[0], cells_bytes[4]],
+        proofs_bytes=[proofs[0], proofs[4]],
     )
 
 

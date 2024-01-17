@@ -438,7 +438,10 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                             cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
                             proofs_bytes: Sequence[Bytes48]) -> bool:
     """
-    Check multiple cell proofs. This function implements the naive algorithm of checking every cell
+    Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
+    matrix. The list of all commitments is also provided in row_commitments_bytes.
+
+    This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
 
@@ -448,6 +451,8 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 
     Public method.
     """
+    assert len(cells_bytes) == len(proofs_bytes) == len(row_ids) == len(column_ids)
+
     # Get commitments via row IDs
     commitments_bytes = [row_commitments_bytes[row_id] for row_id in row_ids]
 
