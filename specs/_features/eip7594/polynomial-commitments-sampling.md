@@ -431,7 +431,7 @@ def verify_cell_proof(commitment: KZGCommitment,
     Public method.
     """
     roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
-    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB-1, column_id)]
+    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB - 1, column_id)]
     ys = bit_reversal_permutation(cell)
     return verify_kzg_proof_multi_impl(commitment, x, ys, proof)
 ```
@@ -463,7 +463,7 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
     return all(
         verify_kzg_proof_multi_impl(
             commitment,
-            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB-1, column_id)],
+            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB - 1, column_id)],
             bit_reversal_permutation(cell),
             proof)
         for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
