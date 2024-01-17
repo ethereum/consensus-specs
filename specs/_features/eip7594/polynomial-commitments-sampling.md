@@ -412,9 +412,9 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 
 ```python
 def verify_cell_proof(commitment_bytes: Bytes48,
-                      cell_id: uint64,
+                      cell_id: CellID,
                       cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
-                      proof: Bytes48) -> bool:
+                      proof_bytes: Bytes48) -> bool:
     """
     Check a cell proof
 
@@ -426,7 +426,7 @@ def verify_cell_proof(commitment_bytes: Bytes48,
         bytes_to_kzg_commitment(commitment_bytes),
         coset,
         bytes_to_cell(cell_bytes),
-        bytes_to_kzg_proof(proof))
+        bytes_to_kzg_proof(proof_bytes))
 ```
 
 #### `verify_cell_proof_batch`
