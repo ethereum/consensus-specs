@@ -304,20 +304,30 @@ def compute_kzg_proof_multi_impl(
 
 ```python
 def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
-                                zs: Sequence[BLSFieldElement],
+                                x: BLSFieldElement,
                                 ys: Sequence[BLSFieldElement],
                                 proof: KZGProof) -> bool:
     """
     Helper function that verifies a KZG multiproof
     """
+    assert len(ys) == FIELD_ELEMENTS_PER_CELL
+    roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_CELL)
+    interp = fft_field(ys, roots_of_unity, inv=True)
 
-    assert len(zs) == len(ys)
+    inv_x = bls_modular_inverse(x)
+    inv_x_pow = inv_x
+    for i in range(1, FIELD_ELEMENTS_PER_CELL):
+        interp[i] = BLSFieldElement(int(interp[i]) * int(inv_x_pow) % BLS_MODULUS)
+        inv_x_pow = BLSFieldElement(int(inv_x_pow) * int(inv_x) % BLS_MODULUS)
 
-    zero_poly = g2_lincomb(KZG_SETUP_G2_MONOMIAL[:len(zs) + 1], vanishing_polynomialcoeff(zs))
-    interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(zs)], interpolate_polynomialcoeff(zs, ys))
+    x_pow = bls_modular_inverse(inv_x_pow)
+    xn2 = bls.multiply(bls.G2(), x_pow)
+    xn_minus_yn = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[FIELD_ELEMENTS_PER_CELL]), bls.neg(xn2))
+    
+    interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:FIELD_ELEMENTS_PER_CELL], interp)
 
     return (bls.pairing_check([
-        [bls.bytes48_to_G1(proof), bls.bytes96_to_G2(zero_poly)],
+        [bls.bytes48_to_G1(proof), xn_minus_yn],
         [
             bls.add(bls.bytes48_to_G1(commitment), bls.neg(bls.bytes48_to_G1(interpolated_poly))),
             bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])),
@@ -397,8 +407,22 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 #### `verify_cell_proof`
 
 ```python
+def reverse_bits_limited(max_value: uint64, value: uint64) -> uint64:
+    """
+    Reverse the low-order bits in an integer.
+    """
+    assert 0 <= value <= max_value
+    num_bits = max_value.bit_length()
+    reversed_bits = uint64(0)
+    for _ in range(num_bits):
+        reversed_bits = (reversed_bits << 1) | (value & 1)
+        value = value >> 1
+    return reversed_bits
+```
+
+```python
 def verify_cell_proof(commitment: KZGCommitment,
-                      cell_id: int,
+                      column_id: int,
                       cell: Cell,
                       proof: KZGProof) -> bool:
     """
@@ -406,9 +430,10 @@ def verify_cell_proof(commitment: KZGCommitment,
 
     Public method.
     """
-    coset = coset_for_cell(cell_id)
-
-    return verify_kzg_proof_multi_impl(commitment, coset, cell, proof)
+    roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB-1, column_id)]
+    ys = bit_reversal_permutation(cell)
+    return verify_kzg_proof_multi_impl(commitment, x, ys, proof)
 ```
 
 #### `verify_cell_proof_batch`
@@ -430,12 +455,17 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
 
     Public method.
     """
+    roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
 
     # Get commitments via row IDs
     commitments = [row_commitments[row_id] for row_id in row_ids]
     
     return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), cell, proof)
+        verify_kzg_proof_multi_impl(
+            commitment,
+            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB-1, column_id)],
+            bit_reversal_permutation(cell),
+            proof)
         for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
     )
 ```
