@@ -32,6 +32,7 @@
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
   - [Cell cosets](#cell-cosets)
     - [`coset_for_cell`](#coset_for_cell)
+    - [`reverse_bits_limited`](#reverse_bits_limited)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
     - [`compute_cells_and_proofs`](#compute_cells_and_proofs)
