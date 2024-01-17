@@ -351,6 +351,22 @@ def coset_for_cell(cell_id: int) -> Cell:
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
+#### `reverse_bits_limited`
+
+```python
+def reverse_bits_limited(max_value: uint64, value: uint64) -> uint64:
+    """
+    Reverse the low-order bits in an integer.
+    """
+    assert 0 <= value <= max_value
+    num_bits = max_value.bit_length()
+    reversed_bits = uint64(0)
+    for _ in range(num_bits):
+        reversed_bits = (reversed_bits << 1) | (value & 1)
+        value = value >> 1
+    return reversed_bits
+```
+
 ## Cells
 
 ### Cell computation
@@ -405,20 +421,6 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 ### Cell verification
 
 #### `verify_cell_proof`
-
-```python
-def reverse_bits_limited(max_value: uint64, value: uint64) -> uint64:
-    """
-    Reverse the low-order bits in an integer.
-    """
-    assert 0 <= value <= max_value
-    num_bits = max_value.bit_length()
-    reversed_bits = uint64(0)
-    for _ in range(num_bits):
-        reversed_bits = (reversed_bits << 1) | (value & 1)
-        value = value >> 1
-    return reversed_bits
-```
 
 ```python
 def verify_cell_proof(commitment: KZGCommitment,
