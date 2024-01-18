@@ -16,10 +16,12 @@
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
+    - [`get_current_store_epoch`](#get_current_store_epoch)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
@@ -140,8 +142,7 @@ class Store(object):
 
 ```python
 def is_previous_epoch_justified(store: Store) -> bool:
-    current_slot = get_current_slot(store)
-    current_epoch = compute_epoch_at_slot(current_slot)
+    current_epoch = get_current_store_epoch(store)
     return store.justified_checkpoint.epoch + 1 == current_epoch
 ```
 
@@ -190,6 +191,13 @@ def get_current_slot(store: Store) -> Slot:
     return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
 ```
 
+#### `get_current_store_epoch`
+
+```python
+def get_current_store_epoch(store: Store) -> Epoch:
+    return compute_epoch_at_slot(get_current_slot(store))
+```
+
 #### `compute_slots_since_epoch_start`
 
 ```python
@@ -226,6 +234,15 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
 #### `get_weight`
 
 ```python
@@ -249,7 +266,7 @@ def get_weight(store: Store, root: Root) -> Gwei:
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
     if get_ancestor(store, store.proposer_boost_root, store.blocks[root].slot) == root:
-        proposer_score = calculate_committee_fraction(state, PROPOSER_SCORE_BOOST)
+        proposer_score = get_proposer_score(store)
     return attestation_score + proposer_score
 ```
 
@@ -261,7 +278,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
     Compute the voting source checkpoint in event that block with root ``block_root`` is the head block
     """
     block = store.blocks[block_root]
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     block_epoch = compute_epoch_at_slot(block.slot)
     if current_epoch > block_epoch:
         # The block is from a prior epoch, the voting source will be pulled-up
@@ -293,22 +310,16 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
             return True
         return False
 
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     voting_source = get_voting_source(store, block_root)
 
-    # The voting source should be at the same height as the store's justified checkpoint
+    # The voting source should be either at the same height as the store's justified checkpoint or
+    # not more than two epochs ago
     correct_justified = (
         store.justified_checkpoint.epoch == GENESIS_EPOCH
         or voting_source.epoch == store.justified_checkpoint.epoch
+        or voting_source.epoch + 2 >= current_epoch
     )
-
-    # If the previous epoch is justified, the block should be pulled-up. In this case, check that unrealized
-    # justification is higher than the store and that the voting source is not more than two epochs ago
-    if not correct_justified and is_previous_epoch_justified(store):
-        correct_justified = (
-            store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch and
-            voting_source.epoch + 2 >= current_epoch
-        )
 
     finalized_checkpoint_block = get_checkpoint_block(
         store,
@@ -519,7 +530,7 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 
     # If the block is from a prior epoch, apply the realized values
     block_epoch = compute_epoch_at_slot(store.blocks[block_root].slot)
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     if block_epoch < current_epoch:
         update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 ```
@@ -556,7 +567,7 @@ def validate_target_epoch_against_current_time(store: Store, attestation: Attest
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     # If attestation target is from a future epoch, delay consideration until the epoch arrives
@@ -653,7 +664,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         block.parent_root,
         store.finalized_checkpoint.epoch,
     )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()

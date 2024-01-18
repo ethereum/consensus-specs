@@ -78,7 +78,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 | `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | The primitive root of unity from which all roots of unity should be derived |
+
 
 ## Preset
 
@@ -95,8 +96,9 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2_LENGTH` | `65` |
-| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]` |
+| `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
+| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]` |
 
 ## Helper functions
 
@@ -592,4 +594,3 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
 
     return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
 ```
-
