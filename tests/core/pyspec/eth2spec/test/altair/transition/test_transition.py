@@ -425,11 +425,11 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     """
     Test with non-empty pre-state `state.historical_roots`.
 
-    Since Capella froze `historical_roots`, Capealla spec doesn't invoke `process_historical_roots_update` anymore.
+    Since Capella froze `historical_roots`, Capella spec doesn't invoke `process_historical_roots_update` anymore.
     Therefore, we need to fill in `historical_roots` with non-empty value.
     """
     # fill in historical_roots with non-empty values
-    pre_historical_roots = [b'\x56' * 32 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
+    pre_historical_roots = [b'\x56' * 32]
     state.historical_roots = pre_historical_roots
 
     transition_until_fork(spec, state, fork_epoch)
