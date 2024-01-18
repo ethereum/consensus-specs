@@ -9,6 +9,8 @@ Clients should assume forks happen sequentially in the following manner:
 0. `phase0`
 1. `altair`
 2. `bellatrix`
+3. `capella`
+4. `deneb`
 
 For example, if a test case has `post_fork` of `altair`, the test consumer should assume the test begins in `phase0` and use that specification to process the initial state and any blocks up until the fork epoch. After the fork happens, the test consumer should use the specification according to the `altair` fork to process the remaining data.
 
