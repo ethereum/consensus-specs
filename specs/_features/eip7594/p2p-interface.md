@@ -13,7 +13,7 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
-    - [`DataColumnIndexentifier`](#dataColumnIndexentifier)
+    - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
       - [`verify_data_column_sidecar_kzg_proof`](#verify_data_column_sidecar_kzg_proof)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -57,10 +57,10 @@ class DataColumnSidecar(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-#### `DataColumnIndexentifier`
+#### `DataColumnIdentifier`
 
 ```python
-class DataColumnIndexentifier(Container):
+class DataColumnIdentifier(Container):
     block_root: Root
     index: ColumnIndex
 ```
@@ -82,7 +82,7 @@ def verify_data_column_sidecar_kzg_proof(sidecar: DataColumnSidecar) -> bool:
         row_commitments=sidecar.kzg_commitments,
         row_indices=row_ids,  # all rows
         column_indices=[sidecar.index],
-        datas=sidecar.column,
+        cells=sidecar.column,
         proofs=sidecar.kzg_proofs,
     )
 ```
@@ -167,7 +167,7 @@ Request Content:
 
 ```
 (
-  DataColumnIndexentifier
+  DataColumnIdentifier
 )
 ```
 
