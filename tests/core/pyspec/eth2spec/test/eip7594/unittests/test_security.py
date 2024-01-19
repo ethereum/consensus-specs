@@ -1,9 +1,11 @@
 from eth2spec.test.context import (
-    MAINNET,
     spec_test,
     single_phase,
     with_eip7594_and_later,
     with_phases,
+)
+from eth2spec.test.helpers.constants import (
+    MAINNET,
 )
 
 
