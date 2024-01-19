@@ -3,7 +3,10 @@ from enum import Enum, auto
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
-from eth2spec.test.helpers.attestations import next_slots_with_attestations
+from eth2spec.test.helpers.attestations import (
+    next_slots_with_attestations,
+    state_transition_with_full_block,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     build_empty_block,
@@ -20,6 +23,9 @@ from eth2spec.test.helpers.deposits import (
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
+)
+from eth2spec.test.helpers.forks import (
+    get_next_fork_transition,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -194,6 +200,34 @@ def transition_until_fork(spec, state, fork_epoch):
 def _transition_until_fork_minus_one(spec, state, fork_epoch):
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 2
     transition_to(spec, state, to_slot)
+
+
+def transition_across_forks(spec, state, to_slot, phases=None, with_block=False, sync_aggregate=None):
+    assert to_slot > state.slot
+    state = state.copy()
+    block = None
+    to_epoch = spec.compute_epoch_at_slot(to_slot)
+    while state.slot < to_slot:
+        assert block is None
+        epoch = spec.compute_epoch_at_slot(state.slot)
+        post_spec, fork_epoch = get_next_fork_transition(spec, epoch, phases)
+        if fork_epoch is None or to_epoch < fork_epoch:
+            if with_block and (to_slot == state.slot + 1):
+                transition_to(spec, state, to_slot - 1)
+                block = state_transition_with_full_block(
+                    spec, state, True, True,
+                    sync_aggregate=sync_aggregate)
+            else:
+                transition_to(spec, state, to_slot)
+        else:
+            transition_until_fork(spec, state, fork_epoch)
+            state, block = do_fork(
+                state, spec, post_spec, fork_epoch,
+                with_block=with_block and (to_slot == state.slot + 1),
+                sync_aggregate=sync_aggregate,
+            )
+            spec = post_spec
+    return spec, state, block
 
 
 def transition_to_next_epoch_and_append_blocks(spec,

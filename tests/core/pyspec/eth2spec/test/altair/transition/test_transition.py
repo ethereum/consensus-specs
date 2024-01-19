@@ -418,3 +418,37 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
 
     yield "blocks", blocks
     yield "post", state
+
+
+@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    """
+    Test with non-empty pre-state `state.historical_roots`.
+
+    Since Capella froze `historical_roots`, Capella spec doesn't invoke `process_historical_roots_update` anymore.
+    Therefore, we need to fill in `historical_roots` with non-empty value.
+    """
+    # fill in historical_roots with non-empty values
+    pre_historical_roots = [b'\x56' * 32]
+    state.historical_roots = pre_historical_roots
+
+    transition_until_fork(spec, state, fork_epoch)
+    # check pre state
+    assert spec.get_current_epoch(state) < fork_epoch
+    assert len(state.historical_roots) > 0
+
+    yield "pre", state
+
+    # irregular state transition to handle fork:
+    blocks = []
+    state, block = do_fork(state, spec, post_spec, fork_epoch)
+    blocks.append(post_tag(block))
+
+    # continue regular state transition with new spec into next epoch
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+
+    yield "blocks", blocks
+    yield "post", state
+
+    assert len(state.historical_roots) > 0
+    assert state.historical_roots == pre_historical_roots

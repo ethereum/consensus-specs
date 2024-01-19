@@ -93,6 +93,8 @@ def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     base = class_def.bases[0]
     if isinstance(base, ast.Name):
         parent_class = base.id
+    elif isinstance(base, ast.Subscript):
+        parent_class = base.value.id
     else:
         # NOTE: SSZ definition derives from earlier phase...
         # e.g. `phase0.SignedBeaconBlock`
