@@ -45,7 +45,6 @@ We define the following Python custom types for type hinting and readability:
 | `DataColumn`   | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP7594 |
 | `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data with blobs and one-dimensional erasure coding extension |
 | `FlatExtendedMatrix` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK * FIELD_ELEMENTS_PER_BLOB * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
-| `LineIndex`    | `uint64` | The index of the rows or columns in `FlatExtendedMatrix` matrix |
 
 ## Configuration
 
@@ -68,11 +67,10 @@ We define the following Python custom types for type hinting and readability:
 #### `get_custody_lines`
 
 ```python
-def get_custody_lines(node_id: NodeID, custody_size: uint64) -> Sequence[LineIndex]:
+def get_custody_lines(node_id: NodeID, custody_size: uint64) -> Sequence[ColumnIndex]:
     assert custody_size <= NUMBER_OF_COLUMNS
-    all_items = list(range(NUMBER_OF_COLUMNS))
-    line_index = node_id % NUMBER_OF_COLUMNS
-    return [LineIndex(all_items[(line_index + i) % len(all_items)]) for i in range(custody_size)]
+    column_index = node_id % NUMBER_OF_COLUMNS
+    return [ColumnIndex((column_index + i) % NUMBER_OF_COLUMNS) for i in range(custody_size)]
 ```
 
 #### `compute_extended_data`

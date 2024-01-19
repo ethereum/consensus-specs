@@ -60,6 +60,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `PolynomialCoeff` | `List[BLSFieldElement, 2 * FIELD_ELEMENTS_PER_BLOB]` | A polynomial in coefficient form |
 | `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
 | `CellID` | `uint64` | Cell identifier |
+| `RowIndex` | `uint64` | Row identifier |
+| `ColumnIndex` | `uint64` | Column identifier |
 
 ## Constants
 
@@ -415,8 +417,8 @@ def verify_cell_proof(commitment: KZGCommitment,
 
 ```python
 def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
-                            row_ids: Sequence[int],
-                            column_ids: Sequence[int],
+                            row_indices: Sequence[RowIndex],
+                            column_indices: Sequence[ColumnIndex],
                             cells: Sequence[Cell],
                             proofs: Sequence[KZGProof]) -> bool:
     """
@@ -432,11 +434,11 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
     """
 
     # Get commitments via row IDs
-    commitments = [row_commitments[row_id] for row_id in row_ids]
+    commitments = [row_commitments[row_index] for row_index in row_indices]
     
     return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), cell, proof)
-        for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
+        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), cell, proof)
+        for commitment, column_index, cell, proof in zip(commitments, column_indices, cells, proofs)
     )
 ```
 

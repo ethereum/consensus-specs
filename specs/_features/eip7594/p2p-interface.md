@@ -13,7 +13,7 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
-    - [`DataColumnIdentifier`](#datacolumnidentifier)
+    - [`DataColumnIndexentifier`](#dataColumnIndexentifier)
   - [Helpers](#helpers)
       - [`verify_data_column_sidecar_kzg_proof`](#verify_data_column_sidecar_kzg_proof)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -49,7 +49,7 @@
 
 ```python
 class DataColumnSidecar(Container):
-    index: LineIndex  # Index of column in extended matrix
+    index: ColumnIndex  # Index of column in extended matrix
     column: DataColumn
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -57,12 +57,12 @@ class DataColumnSidecar(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-#### `DataColumnIdentifier`
+#### `DataColumnIndexentifier`
 
 ```python
-class DataColumnIdentifier(Container):
+class DataColumnIndexentifier(Container):
     block_root: Root
-    index: LineIndex
+    index: ColumnIndex
 ```
 
 ### Helpers
@@ -74,14 +74,14 @@ def verify_data_column_sidecar_kzg_proof(sidecar: DataColumnSidecar) -> bool:
     """
     Verify if the proofs are correct
     """
-    row_ids = [LineIndex(i) for i in range(len(sidecar.column))]
+    row_ids = [RowIndex(i) for i in range(len(sidecar.column))]
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_proof_batch(
         row_commitments=sidecar.kzg_commitments,
-        row_ids=row_ids,  # all rows
-        column_ids=[sidecar.index],
+        row_indices=row_ids,  # all rows
+        column_indices=[sidecar.index],
         datas=sidecar.column,
         proofs=sidecar.kzg_proofs,
     )
@@ -107,7 +107,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 ##### `compute_subnet_for_data_column_sidecar`
 
 ```python
-def compute_subnet_for_data_column_sidecar(column_index: LineIndex) -> SubnetID:
+def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
 
@@ -167,7 +167,7 @@ Request Content:
 
 ```
 (
-  DataColumnIdentifier
+  DataColumnIndexentifier
 )
 ```
 

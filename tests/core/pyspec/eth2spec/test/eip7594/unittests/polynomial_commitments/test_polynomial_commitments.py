@@ -50,8 +50,8 @@ def test_verify_cell_proof_batch(spec):
 
     assert spec.verify_cell_proof_batch(
         row_commitments=[commitment],
-        row_ids=[0],
-        column_ids=[0, 1],
+        row_indices=[0],
+        column_indices=[0, 1],
         cells=cells[0:1],
         proofs=proofs,
     )
