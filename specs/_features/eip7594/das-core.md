@@ -43,7 +43,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `DataColumn`   | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP7594 |
-| `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data with blobs and one-dimensional erasure coding extension |
+| `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
 | `FlatExtendedMatrix` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK * FIELD_ELEMENTS_PER_BLOB * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
 
 ## Configuration
@@ -58,7 +58,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of random samples a node queries per slot |
+| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumn` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `2` | Minimum number of columns an honest node custodies and serves samples from |
 | `TARGET_NUMBER_OF_PEERS` | `70` | Suggested minimum peer count |
 
