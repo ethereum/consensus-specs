@@ -37,25 +37,7 @@
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
-### Configuration
-
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`              | `32`                               | The number of data column sidecar subnets used in the gossipsub protocol.  |
-
 ### Containers
-
-#### `DataColumnSidecar`
-
-```python
-class DataColumnSidecar(Container):
-    index: ColumnIndex  # Index of column in extended matrix
-    column: DataColumn
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
-```
 
 #### `DataColumnIdentifier`
 
@@ -110,7 +92,6 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
-
 
 ### The gossip domain: gossipsub
 

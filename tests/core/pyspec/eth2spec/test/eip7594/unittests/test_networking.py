@@ -10,10 +10,10 @@ from eth2spec.test.context import (
 @single_phase
 def test_compute_subnet_for_data_column_sidecar(spec):
     subnet_results = []
-    for column_index in range(spec.DATA_COLUMN_SIDECAR_SUBNET_COUNT):
+    for column_index in range(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT):
         subnet_results.append(spec.compute_subnet_for_data_column_sidecar(column_index))
     # no duplicates
     assert len(subnet_results) == len(set(subnet_results))
     # next one should be duplicate
-    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
     assert next_subnet == subnet_results[0]
