@@ -33,15 +33,15 @@
 
 ### Preset
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+| Name | Value | Description |
+| - | - | - |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
 ### Configuration
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`              | `32`                               | The number of data column sidecar subnets used in the gossipsub protocol.  |
+| Name | Value | Description |
+| - | - | - |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `32` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Containers
 
@@ -74,8 +74,9 @@ def verify_data_column_sidecar_kzg_proof(sidecar: DataColumnSidecar) -> bool:
     """
     Verify if the proofs are correct
     """
-    row_ids = [RowIndex(i) for i in range(len(sidecar.column))]
+    assert sidecar.index < NUMBER_OF_COLUMNS
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
+    row_ids = [RowIndex(i) for i in range(len(sidecar.column))]
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_proof_batch(
@@ -110,7 +111,6 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
-
 
 ### The gossip domain: gossipsub
 
@@ -159,9 +159,9 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `EIP7594_FORK_VERSION`     | `eip7594.DataColumnSidecar`           |
+| `fork_version` | Chunk SSZ type |
+| - | - |
+| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
 
