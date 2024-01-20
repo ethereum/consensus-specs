@@ -15,7 +15,7 @@
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
-      - [`verify_data_column_sidecar_kzg_proof`](#verify_data_column_sidecar_kzg_proof)
+      - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -67,10 +67,10 @@ class DataColumnIdentifier(Container):
 
 ### Helpers
 
-##### `verify_data_column_sidecar_kzg_proof`
+##### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
-def verify_data_column_sidecar_kzg_proof(sidecar: DataColumnSidecar) -> bool:
+def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
     Verify if the proofs are correct
     """
@@ -138,7 +138,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
 - _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
-- _[REJECT]_ The sidecar's column data is valid as verified by `verify_data_column_sidecar_kzg_proof(sidecar)`.
+- _[REJECT]_ The sidecar's column data is valid as verified by `verify_data_column_sidecar_kzg_proofs(sidecar)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, sidecar.index)` with valid header signature, sidecar inclusion proof, and kzg proof.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
