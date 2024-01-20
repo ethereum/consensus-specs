@@ -89,13 +89,22 @@ class DataColumnSidecar(Container):
 ```python
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    subnet_ids = [
-        bytes_to_uint64(hash(uint_to_bytes(uint64(node_id + i)))[0:8]) % DATA_COLUMN_SIDECAR_SUBNET_COUNT
-        for i in range(custody_subnet_count)
-    ]
+
+    subnet_ids = []
+    i = 0
+    while len(subnet_ids) < custody_subnet_count:
+        subnet_id = (
+            bytes_to_uint64(hash(uint_to_bytes(uint64(node_id + i)))[0:8])
+            % DATA_COLUMN_SIDECAR_SUBNET_COUNT
+        )
+        if subnet_id not in subnet_ids:
+            subnet_ids.append(subnet_id)
+        i += 1
+    assert len(subnet_ids) == len(set(subnet_ids))
+
     columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
     return [
-        ColumnIndex(subnet_id + (i * columns_per_subnet))
+        ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
         for i in range(columns_per_subnet)
         for subnet_id in subnet_ids
     ]

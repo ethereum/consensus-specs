@@ -9,9 +9,12 @@ from eth2spec.test.context import (
 def run_get_custody_columns(spec, peer_count, custody_subnet_count):
     assignments = [spec.get_custody_columns(node_id, custody_subnet_count) for node_id in range(peer_count)]
 
-    subnet_per_column = spec.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    columns_per_subnet = spec.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     for assignment in assignments:
-        assert len(assignment) == custody_subnet_count * subnet_per_column
+        assert len(assignment) == custody_subnet_count * columns_per_subnet
+        print('assignment', assignment)
+        print('set(assignment)', set(assignment))
+        assert len(assignment) == len(set(assignment))
 
 
 @with_eip7594_and_later
