@@ -166,6 +166,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_blob_gas: uint64  # [New in Deneb:EIP4844]
+    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
 ```
 
 ## Helper functions
