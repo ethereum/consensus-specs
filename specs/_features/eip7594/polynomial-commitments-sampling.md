@@ -42,6 +42,9 @@
     - [`verify_cell_proof`](#verify_cell_proof)
     - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
 - [Reconstruction](#reconstruction)
+  - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
+  - [`recover_shifted_data`](#recover_shifted_data)
+  - [`recover_original_data`](#recover_original_data)
   - [`recover_polynomial`](#recover_polynomial)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -508,7 +511,59 @@ def construct_vanishing_polynomial(cell_ids: Sequence[CellID],
 
 ### `recover_shifted_data`
 
+```python
+def recover_shifted_data(cell_ids: Sequence[CellID],
+                         cells: Sequence[Cell],
+                         zero_poly_eval: Sequence[BLSFieldElement],
+                         zero_poly_coeff: Sequence[BLSFieldElement],
+                         roots_of_unity_extended: Sequence[BLSFieldElement]) -> Tuple[
+                             Sequence[BLSFieldElement],
+                             Sequence[BLSFieldElement],
+                             BLSFieldElement]:
+    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    for cell_id, cell in zip(cell_ids, cells):
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        extended_evaluation_rbo[start:end] = cell
+    extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
+
+    extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
+                                      for a, b in zip(zero_poly_eval, extended_evaluation)]
+
+    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
+
+    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
+    shift_inv = div(BLSFieldElement(1), shift_factor)
+
+    shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
+    shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
+
+    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
+    eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
+
+    return eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv
+```
+
 ### `recover_original_data`
+
+```python
+def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldElement],
+                          eval_shifted_zero_poly: Sequence[BLSFieldElement],
+                          shift_inv: BLSFieldElement,
+                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    eval_shifted_reconstructed_poly = [
+        div(a, b)
+        for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
+    ]
+
+    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
+
+    reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
+
+    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
+
+    return reconstructed_data
+```
 
 ### `recover_polynomial`
 
@@ -529,41 +584,16 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
     assert len(cells) >= CELLS_PER_BLOB // 2
 
-    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(cell_ids, cells)
-
-    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
-    for cell_id, cell in zip(cell_ids, cells):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        extended_evaluation_rbo[start:end] = cell
-    extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
-
-    extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
-                                      for a, b in zip(zero_poly_eval, extended_evaluation)]
-
     roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
 
-    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
+    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(cell_ids, cells)
 
-    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
-    shift_inv = div(BLSFieldElement(1), shift_factor)
+    eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = \
+        recover_shifted_data(cell_ids, cells, zero_poly_eval, zero_poly_coeff, roots_of_unity_extended)
 
-    shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
-    shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
-
-    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
-    eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
-
-    eval_shifted_reconstructed_poly = [
-        div(a, b)
-        for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
-    ]
-
-    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
-
-    reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
-
-    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
+    reconstructed_data = \
+        recover_original_data(eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv,
+                              roots_of_unity_extended)
 
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
