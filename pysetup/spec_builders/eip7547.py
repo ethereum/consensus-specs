@@ -51,7 +51,7 @@ class NoopExecutionEngine(ExecutionEngine):
         return True
 
     def get_execution_inclusion_list(self: ExecutionEngine, parent_block_hash: Root) -> GetInclusionListResponse:
-        return True
+        return GetInclusionListResponse()
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""

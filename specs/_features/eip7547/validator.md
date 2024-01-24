@@ -125,19 +125,21 @@ Finally, the proposer broadcasts `inclusion_list` to the inclusion list subnet, 
 
 ##### `inclusion_list_summary`
 
-`prepare_execution_payload` is updated from the Deneb specs to provide the `inclusion_list_summary` and `inclusion_list_exclusions`.
+`prepare_execution_payload` is updated from the Deneb specs to provide the `inclusion_list_summary`.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal _without_ the block yet applied.
 That is, `state` is the `previous_state` processed through any empty slots up to the assigned slot using `process_slots(previous_state, slot)`.
 
-*Note*: The only change made to `prepare_execution_payload` is to add `inclusion_list_summary` and `inclusion_list_exclusions`.
+*Note*: The only change made to `prepare_execution_payload` is to add `inclusion_list_summary`.
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+def prepare_execution_payload(
+        state: BeaconState,
+        safe_block_hash: Hash32,
+        finalized_block_hash: Hash32,
+        suggested_fee_recipient: ExecutionAddress,
+        inclusion_list_summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
+        execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
@@ -148,6 +150,7 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        inclusion_list_summary=inclusion_list_summary,  # [New in EIP7547]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
