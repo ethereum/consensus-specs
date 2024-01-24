@@ -6,6 +6,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Presets](#presets)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
 - [Helpers](#helpers)
   - [Extended `PayloadAttributes`](#extended-payloadattributes)
@@ -21,6 +23,14 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the EIP7547 upgrade.
+
+## Presets
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `uint64(2)` | slots | 32 seconds |
 
 ## Containers
 
@@ -150,6 +160,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
+
+    # [New in EIP7547]
+    # Check if there is a valid inclusion list. 
+    # This check is performed only if the block's slot is within the visibility window
+    # If not, this block MAY be queued and subsequently considered when a valid inclusion list becomes available
+    if block.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= get_current_slot(store):
+        assert is_inclusion_list_available(state, block)
+
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
