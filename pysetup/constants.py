@@ -7,8 +7,8 @@ DENEB = 'deneb'
 EIP6110 = 'eip6110'
 EIP7002 = 'eip7002'
 WHISK = 'whisk'
+EIP7547 = 'eip7547'
 EIP7594 = 'eip7594'
-
 
 
 # The helper functions that are used when defining constants
