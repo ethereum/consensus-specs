@@ -202,8 +202,8 @@ class NewInclusionListRequest(object):
 def notify_new_inclusion_list(self: ExecutionEngine,
                               inclusion_list_request: NewInclusionListRequest) -> bool:
     """
-    Return ``True`` if and only if the transactions in the inclusion list can be succesfully executed
-    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list 
+    Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
+    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list
     summary. The execution engine also checks that the total gas limit is less or equal that
     ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond
     to the signed summary

@@ -96,7 +96,7 @@ def is_parent_block_full(state: BeaconState) -> bool:
 def is_inclusion_list_available(state: BeaconState, block: BeaconBlock) -> bool:
     """
     Returns whether one inclusion list for the corresponding block was seen in full and has been validated. 
-    There is one exception if the parent consensus block did not contain an exceution payload, in which case
+    There is one exception if the parent consensus block did not contain an execution payload, in which case
     We return true early
     `retrieve_inclusion_list` is implementation and context dependent
     It returns one inclusion list that was broadcasted during the given slot by the given proposer. 
