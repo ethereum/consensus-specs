@@ -18,13 +18,6 @@
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconBlockBody`](#beaconblockbody)
-- [Helper functions](#helper-functions)
-    - [New `verify_inclusion_list_summary_signature`](#new-verify_inclusion_list_summary_signature)
-  - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-      - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
-    - [Engine APIs](#engine-apis)
-    - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -154,52 +147,6 @@ class BeaconBlockBody(Container):
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     inclusion_list_summary: SignedInclusionListSummary  # [New in EIP4547]
-```
-
-## Helper functions
-
-#### New `verify_inclusion_list_summary_signature`
-
-```python
-def verify_inclusion_list_summary_signature(state: BeaconState, signed_summary: SignedInclusionListSummary) -> bool:
-    # TODO: do we need a new domain?
-    summary = signed_summary.message
-    signing_root = compute_signing_root(summary, get_domain(state, DOMAIN_BEACON_PROPOSER))
-    proposer = state.validators[summary.proposer_index]
-    return bls.Verify(proposer.pubkey, signing_root, signed_summary.signature)
-```
-
-
-### Execution engine
-
-#### Request data
-
-##### New `NewInclusionListRequest`
-
-```python
-@dataclass
-class NewInclusionListRequest(object):
-    inclusion_list: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    parent_block_hash: Hash32
-```
-
-
-#### Engine APIs
-
-#### New `notify_new_inclusion_list`
-
-```python
-def notify_new_inclusion_list(self: ExecutionEngine,
-                              inclusion_list_request: NewInclusionListRequest) -> bool:
-    """
-    Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
-    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list
-    summary. The execution engine also checks that the total gas limit is less or equal that
-    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond
-    to the signed summary
-    """
-    ...
 ```
 
 ## Beacon chain state transition function

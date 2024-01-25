@@ -10,8 +10,16 @@
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
     - [`InclusionList`](#inclusionlist)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [Request data](#request-data)
+      - [Extended `PayloadAttributes`](#extended-payloadattributes)
+      - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
+    - [Engine APIs](#engine-apis)
+      - [Extended `notify_forkchoice_updated`](#extended-notify_forkchoice_updated)
+      - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [`verify_inclusion_list_summary_signature`](#verify_inclusion_list_summary_signature)
   - [`verify_inclusion_list`](#verify_inclusion_list)
   - [`is_inclusion_list_available`](#is_inclusion_list_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
@@ -42,11 +50,15 @@ class InclusionList(Container):
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-## Helpers
+## Protocols
 
-### Extended `PayloadAttributes`
+### `ExecutionEngine`
 
-`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
+#### Request data
+
+##### Extended `PayloadAttributes`
+
+`PayloadAttributes` is extended with the parent beacon block root for EIP7547. It changes the content of `notify_forkchoice_updated` accordingly.
 
 ```python
 @dataclass
@@ -59,10 +71,52 @@ class PayloadAttributes(object):
     inclusion_list_summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP7547]
 ```
 
+##### New `NewInclusionListRequest`
+
+```python
+@dataclass
+class NewInclusionListRequest(object):
+    inclusion_list: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    parent_block_hash: Hash32
+```
+
+#### Engine APIs
+
+##### Extended `notify_forkchoice_updated`
+
+The only change made is to the `PayloadAttributes` container with the extended `PayloadAttributes`.
+Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
+
+##### New `notify_new_inclusion_list`
+
+```python
+def notify_new_inclusion_list(self: ExecutionEngine,
+                              inclusion_list_request: NewInclusionListRequest) -> bool:
+    """
+    Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
+    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list
+    summary. The execution engine also checks that the total gas limit is less or equal that
+    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond
+    to the signed summary
+    """
+    ...
+```
+
+## Helpers
+
+### `verify_inclusion_list_summary_signature`
+
+```python
+def verify_inclusion_list_summary_signature(state: BeaconState, signed_summary: SignedInclusionListSummary) -> bool:
+    # TODO: do we need a new domain?
+    summary = signed_summary.message
+    signing_root = compute_signing_root(summary, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    proposer = state.validators[summary.proposer_index]
+    return bls.Verify(proposer.pubkey, signing_root, signed_summary.signature)
+```
 
 ### `verify_inclusion_list`
-
-*[New in EIP7547]*
 
 ```python
 def verify_inclusion_list(state: BeaconState, block: BeaconBlock,
@@ -98,8 +152,6 @@ def verify_inclusion_list(state: BeaconState, block: BeaconBlock,
 ```
 
 ### `is_inclusion_list_available`
-
-*[New in EIP7547]*
 
 ```python
 def is_inclusion_list_available(state: BeaconState, block: BeaconBlock) -> bool:
