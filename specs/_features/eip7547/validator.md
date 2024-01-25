@@ -74,10 +74,11 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ### Inclusion list proposal
 
-EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389)
+EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389).
+
 Proposer must construct and broadcast `InclusionList` alongside `SignedBeaconBlock`.
-- Proposer for slot `N` submits `SignedBeaconBlock` and in parallel submits `InclusionList` to be included at the beginning of slot `N+1` builder.
-- Within `InclusionList`, `Transactions` are list of transactions that the proposer wants to include at the beginning of slot `N+1` builder.
+- Proposer for slot `N` submits `SignedBeaconBlock` and in parallel broadcast `InclusionList` to be included at the beginning of slot `N+1`.
+- Within `InclusionList`, `Transactions` are list of transactions that the proposer wants to include at the beginning of slot `N+1`.
 - Within `inclusionList`, `Summaries` are lists consisting on addresses sending those transactions and their gas limits. The summaries are signed by the proposer `N`.
 - Proposer may  send many of these pairs that aren't committed to its beacon block so no double proposing slashing is involved.
 
@@ -85,10 +86,10 @@ Proposer must construct and broadcast `InclusionList` alongside `SignedBeaconBlo
 
 To obtain an inclusion list, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Check if the previous slot is skipped. If `state.latest_execution_payload_header.time_stamp` is from previous slot.
+1. Check if the previous slot is skipped. If `state.latest_execution_payload_header.timestamp` is from previous slot.
     * If it's skipped, the proposer should not propose an inclusion list. It can ignore rest of the steps.
 
-2. Retrieve inclusion list from execution layer by calling `get_execution_inclusion_list`.
+2. Retrieve `inclusion_list_response: GetInclusionListResponse` from execution layer by calling `ExecutionEngine.get_execution_inclusion_list(parent_block_hash)`.
 
 3. Call `build_inclusion_list` to build `InclusionList`.
 
