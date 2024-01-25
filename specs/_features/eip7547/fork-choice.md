@@ -9,11 +9,11 @@
 - [Presets](#presets)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
+    - [`InclusionList`](#inclusionlist)
 - [Helpers](#helpers)
   - [Extended `PayloadAttributes`](#extended-payloadattributes)
   - [`verify_inclusion_list`](#verify_inclusion_list)
-    - [`is_parent_block_full`](#is_parent_block_full)
-    - [`is_inclusion_list_available`](#is_inclusion_list_available)
+  - [`is_inclusion_list_available`](#is_inclusion_list_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -33,6 +33,14 @@ This is the modification of the fork choice accompanying the EIP7547 upgrade.
 | `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `uint64(2)` | slots | 32 seconds |
 
 ## Containers
+
+#### `InclusionList`
+
+```python
+class InclusionList(Container):
+    summary: SignedInclusionListSummary
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+```
 
 ## Helpers
 
@@ -89,16 +97,7 @@ def verify_inclusion_list(state: BeaconState, block: BeaconBlock,
     ))
 ```
 
-#### `is_parent_block_full`
-
-*[New in EIP7547]*
-
-```python
-def is_parent_block_full(state: BeaconState) -> bool:
-    return state.signed_execution_payload_header_envelope.message.header == state.latest_execution_payload_header
-```
-
-#### `is_inclusion_list_available`
+### `is_inclusion_list_available`
 
 *[New in EIP7547]*
 
@@ -106,18 +105,13 @@ def is_parent_block_full(state: BeaconState) -> bool:
 def is_inclusion_list_available(state: BeaconState, block: BeaconBlock) -> bool:
     """
     Returns whether one inclusion list for the corresponding block was seen in full and has been validated. 
-    There is one exception if the parent consensus block did not contain an execution payload, in which case
-    We return true early
     `retrieve_inclusion_list` is implementation and context dependent
     It returns one inclusion list that was broadcasted during the given slot by the given proposer. 
+
     Note: the p2p network does not guarantee sidecar retrieval outside of
     `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`
     """
-    # Ignore the list if the parent consensus block did not contain a payload
-    if not is_parent_block_full(state):
-        return True
-
-    # verify the inclusion list
+    # Verify the inclusion list
     inclusion_list = retrieve_inclusion_list(block.slot, block.proposer_index)
     return verify_inclusion_list(state, block, inclusion_list, EXECUTION_ENGINE)
 ```

@@ -14,7 +14,6 @@
     - [`InclusionListSummaryEntry`](#inclusionlistsummaryentry)
     - [`InclusionListSummary`](#inclusionlistsummary)
     - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
-    - [`InclusionList`](#inclusionlist)
   - [Extended containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -76,14 +75,6 @@ class InclusionListSummary(Container):
 class SignedInclusionListSummary(Container):
     message: InclusionListSummary
     signature: BLSSignature
-```
-
-#### `InclusionList`
-
-```python
-class InclusionList(Container):
-    summary: SignedInclusionListSummary
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
 ### Extended containers
@@ -219,7 +210,7 @@ def notify_new_inclusion_list(self: ExecutionEngine,
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to pass `versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to assign the new fields in `ExecutionPayloadHeader` for EIP-4844. It is also modified to pass in the parent beacon block root to support EIP-4788.
+*Note*: The function `process_execution_payload` is modified to set `inclusion_list_summary_root` and `inclusion_list_exclusions_root`.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -239,12 +230,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Pass `versioned_hashes` to Execution Engine
     # Pass `parent_beacon_block_root` to Execution Engine
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-
-    # [Modified in EIP7547]
-    # [TODO] WIP
-    signed_summary = body.inclusion_list_summary
-    assert signed_summary.message.proposer_index == get_beacon_proposer_index(state)
-    assert verify_inclusion_list_summary_signature(state, signed_summary)
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -272,7 +257,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),
-        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),
+        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),  # [New in EIP4547]
+        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),  # [New in EIP4547]
     )
 ```
