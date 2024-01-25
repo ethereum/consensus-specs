@@ -272,6 +272,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        inclusion_list_summary=payload.inclusion_list_summary,
+        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),
+        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),
     )
 ```
