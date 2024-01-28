@@ -10,9 +10,7 @@
 
 - [Modifications in EIP-7594](#modifications-in-eip-7594)
   - [Preset](#preset)
-  - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
       - [`verify_data_column_sidecar_kzg_proof`](#verify_data_column_sidecar_kzg_proof)
