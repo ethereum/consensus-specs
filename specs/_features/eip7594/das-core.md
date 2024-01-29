@@ -11,9 +11,12 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Data size](#data-size)
+  - [Networking](#networking)
   - [Custody setting](#custody-setting)
+  - [Containers](#containers)
+    - [`DataColumnSidecar`](#datacolumnsidecar)
   - [Helper functions](#helper-functions)
-    - [`get_custody_lines`](#get_custody_lines)
+    - [`get_custody_columns`](#get_custody_columns)
     - [`compute_extended_data`](#compute_extended_data)
     - [`compute_extended_matrix`](#compute_extended_matrix)
     - [`get_data_column_sidecars`](#get_data_column_sidecars)
@@ -54,23 +57,60 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `NUMBER_OF_COLUMNS` | `uint64((FIELD_ELEMENTS_PER_BLOB * 2) // FIELD_ELEMENTS_PER_CELL)` (= 128) | Number of columns in the extended data matrix. |
 
+### Networking
+
+| Name | Value | Description |
+| - | - | - |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `32` | The number of data column sidecar subnets used in the gossipsub protocol |
+
 ### Custody setting
 
 | Name | Value | Description |
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `8` | Number of `DataColumn` random samples a node queries per slot |
-| `CUSTODY_REQUIREMENT` | `2` | Minimum number of columns an honest node custodies and serves samples from |
+| `CUSTODY_REQUIREMENT` | `1` | Minimum number of subnets an honest node custodies and serves samples from |
 | `TARGET_NUMBER_OF_PEERS` | `70` | Suggested minimum peer count |
+
+### Containers
+
+#### `DataColumnSidecar`
+
+```python
+class DataColumnSidecar(Container):
+    index: ColumnIndex  # Index of column in extended matrix
+    column: DataColumn
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    signed_block_header: SignedBeaconBlockHeader
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+```
 
 ### Helper functions
 
-#### `get_custody_lines`
+#### `get_custody_columns`
 
 ```python
-def get_custody_lines(node_id: NodeID, custody_size: uint64) -> Sequence[ColumnIndex]:
-    assert custody_size <= NUMBER_OF_COLUMNS
-    column_index = node_id % NUMBER_OF_COLUMNS
-    return [ColumnIndex((column_index + i) % NUMBER_OF_COLUMNS) for i in range(custody_size)]
+def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
+    assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
+
+    subnet_ids = []
+    i = 0
+    while len(subnet_ids) < custody_subnet_count:
+        subnet_id = (
+            bytes_to_uint64(hash(uint_to_bytes(uint64(node_id + i)))[0:8])
+            % DATA_COLUMN_SIDECAR_SUBNET_COUNT
+        )
+        if subnet_id not in subnet_ids:
+            subnet_ids.append(subnet_id)
+        i += 1
+    assert len(subnet_ids) == len(set(subnet_ids))
+
+    columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    return [
+        ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
+        for i in range(columns_per_subnet)
+        for subnet_id in subnet_ids
+    ]
 ```
 
 #### `compute_extended_data`
@@ -126,15 +166,15 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 ### Custody requirement
 
-Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` columns per slot. The particular columns that the node is required to custody are selected pseudo-randomly (more on this below).
+Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular columns that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT`  via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_lines: 8` if the node custodies `8` columns each slot) -- up to a `NUMBER_OF_COLUMNS` (i.e. a super-full node).
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_lines: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
 ### Public, deterministic selection
 
-The particular columns that a node custodies are selected pseudo-randomly as a function (`get_custody_lines`) of the node-id and custody size -- importantly this function can be run by any party as the inputs are all public.
+The particular columns that a node custodies are selected pseudo-randomly as a function (`get_custody_columns`) of the node-id and custody size -- importantly this function can be run by any party as the inputs are all public.
 
 *Note*: increasing the `custody_size` parameter for a given `node_id` extends the returned list (rather than being an entirely new shuffle) such that if `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for a subset of the node's custody.
 
@@ -178,7 +218,7 @@ Once the node obtain the column, the node should send the missing columns to the
 
 ## Peer sampling
 
-At each slot, a node makes (locally randomly determined) `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarByRoot` request. A node utilizes `get_custody_lines` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+At each slot, a node makes (locally randomly determined) `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
 
 ## Peer scoring
 
@@ -219,4 +259,4 @@ However, for simplicity, we don't assign row custody assignments to nodes in the
 
 ### Subnet stability
 
-To start with a simple, stable backbone, for now, we don't shuffle the subnet assignments via the deterministic custody selection helper `get_custody_lines`. However, staggered rotation likely needs to happen on the order of the pruning period to ensure subnets can be utilized for recovery. For example, introducing an `epoch` argument allows the function to maintain stability over many epochs.
+To start with a simple, stable backbone, for now, we don't shuffle the subnet assignments via the deterministic custody selection helper `get_custody_columns`. However, staggered rotation likely needs to happen on the order of the pruning period to ensure subnets can be utilized for recovery. For example, introducing an `epoch` argument allows the function to maintain stability over many epochs.
