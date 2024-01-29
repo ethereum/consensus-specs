@@ -182,7 +182,7 @@ The particular columns that a node custodies are selected pseudo-randomly as a f
 
 At each slot, a node needs to be able to readily sample from *any* set of columns. To this end, a node should find and maintain a set of diverse and reliable peers that can regularly satisfy their sampling demands.
 
-A node runs a background peer discovery process, maintaining at least `TARGET_NUMBER_OF_PEERS` of various custody distributions (both custody_size and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible.
+A node runs a background peer discovery process, maintaining at least `TARGET_NUMBER_OF_PEERS` of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible.
 
 `TARGET_NUMBER_OF_PEERS` should be tuned upward in the event of failed sampling.
 
