@@ -578,7 +578,7 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
     """
 
     assert len(blobs) == len(commitments_bytes) == len(proofs_bytes)
-    
+
     commitments, evaluation_challenges, ys, proofs = [], [], [], []
     for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
         assert len(blob) == BYTES_PER_BLOB
