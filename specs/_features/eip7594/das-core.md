@@ -47,7 +47,7 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `DataColumn` | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP-7594 |
 | `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
-| `FlatExtendedMatrix` | `List[BLSFieldElement, MAX_BLOBS_PER_BLOCK * FIELD_ELEMENTS_PER_BLOB * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
+| `FlatExtendedMatrix` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_CELL * MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
 
 ## Configuration
 
