@@ -17,7 +17,7 @@ import itertools
 from eth2spec.test.utils.randomized_block_tests import (
     no_block,
     no_op_validation,
-    randomize_state,
+    randomize_state_phase0,
     randomize_state_altair,
     randomize_state_bellatrix,
     randomize_state_capella,
@@ -218,7 +218,7 @@ def _to_comment(name, indent_level):
     return "\n".join(parts)
 
 
-def run_generate_tests_to_std_out(phase, state_randomizer, block_randomizer):
+def run_generate_tests_to_std_out(phase, state_randomizer, block_randomizer, seed=1234):
     scenarios = _generate_randomized_scenarios(block_randomizer)
     test_content = {"phase": phase.upper()}
     test_imports = test_imports_template.format(**test_content)
@@ -226,6 +226,8 @@ def run_generate_tests_to_std_out(phase, state_randomizer, block_randomizer):
     for index, scenario in enumerate(scenarios):
         # required for setup phase
         scenario["state_randomizer"] = state_randomizer.__name__
+        seed += 1
+        scenario["seed"] = seed
 
         # need to pass name, rather than function reference...
         transitions = scenario["transitions"]
@@ -250,7 +252,7 @@ if __name__ == "__main__":
         did_generate = True
         run_generate_tests_to_std_out(
             PHASE0,
-            state_randomizer=randomize_state,
+            state_randomizer=randomize_state_phase0,
             block_randomizer=random_block,
         )
     if ALTAIR in sys.argv:

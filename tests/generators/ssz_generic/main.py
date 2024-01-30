@@ -1,5 +1,6 @@
 from typing import Iterable
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+from eth2spec.gen_helpers.gen_base.settings import MODE_SINGLE_PROCESS
 import ssz_basic_vector
 import ssz_bitlist
 import ssz_bitvector
@@ -30,17 +31,21 @@ def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typin
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("ssz_generic", [
-        create_provider("basic_vector", "valid", ssz_basic_vector.valid_cases),
-        create_provider("basic_vector", "invalid", ssz_basic_vector.invalid_cases),
-        create_provider("bitlist", "valid", ssz_bitlist.valid_cases),
-        create_provider("bitlist", "invalid", ssz_bitlist.invalid_cases),
-        create_provider("bitvector", "valid", ssz_bitvector.valid_cases),
-        create_provider("bitvector", "invalid", ssz_bitvector.invalid_cases),
-        create_provider("boolean", "valid", ssz_boolean.valid_cases),
-        create_provider("boolean", "invalid", ssz_boolean.invalid_cases),
-        create_provider("uints", "valid", ssz_uints.valid_cases),
-        create_provider("uints", "invalid", ssz_uints.invalid_cases),
-        create_provider("containers", "valid", ssz_container.valid_cases),
-        create_provider("containers", "invalid", ssz_container.invalid_cases),
-    ])
+    gen_runner.run_generator(
+        "ssz_generic",
+        [
+            create_provider("basic_vector", "valid", ssz_basic_vector.valid_cases),
+            create_provider("basic_vector", "invalid", ssz_basic_vector.invalid_cases),
+            create_provider("bitlist", "valid", ssz_bitlist.valid_cases),
+            create_provider("bitlist", "invalid", ssz_bitlist.invalid_cases),
+            create_provider("bitvector", "valid", ssz_bitvector.valid_cases),
+            create_provider("bitvector", "invalid", ssz_bitvector.invalid_cases),
+            create_provider("boolean", "valid", ssz_boolean.valid_cases),
+            create_provider("boolean", "invalid", ssz_boolean.invalid_cases),
+            create_provider("uints", "valid", ssz_uints.valid_cases),
+            create_provider("uints", "invalid", ssz_uints.invalid_cases),
+            create_provider("containers", "valid", ssz_container.valid_cases),
+            create_provider("containers", "invalid", ssz_container.invalid_cases),
+        ],
+        generator_mode=MODE_SINGLE_PROCESS,
+    )

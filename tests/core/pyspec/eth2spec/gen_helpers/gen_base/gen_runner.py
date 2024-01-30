@@ -140,7 +140,7 @@ def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
     return is_skip, diagnostics_obj
 
 
-def run_generator(generator_name, test_providers: Iterable[TestProvider]):
+def run_generator(generator_name, test_providers: Iterable[TestProvider], generator_mode: str=None):
     """
     Implementation for a general test generator.
     :param generator_name: The name of the generator. (lowercase snake_case)
@@ -227,7 +227,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
+    if generator_mode is None:
+        generator_mode = GENERATOR_MODE
+
+    if generator_mode == MODE_MULTIPROCESSING:
         all_test_case_params = []
 
     for tprov in test_providers:
@@ -252,14 +255,14 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             if is_skip:
                 continue
 
-            if GENERATOR_MODE == MODE_SINGLE_PROCESS:
+            if generator_mode == MODE_SINGLE_PROCESS:
                 result = generate_test_vector(test_case, case_dir, log_file, file_mode)
                 write_result_into_diagnostics_obj(result, diagnostics_obj)
-            elif GENERATOR_MODE == MODE_MULTIPROCESSING:
+            elif generator_mode == MODE_MULTIPROCESSING:
                 item = TestCaseParams(test_case, case_dir, log_file, file_mode)
                 all_test_case_params.append(item)
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
+    if generator_mode == MODE_MULTIPROCESSING:
         with Pool(processes=NUM_PROCESS) as pool:
             results = pool.map(worker_function, iter(all_test_case_params))
 

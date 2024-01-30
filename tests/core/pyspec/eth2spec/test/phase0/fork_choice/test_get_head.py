@@ -246,6 +246,9 @@ def test_filtered_block_tree(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
+    # Reproducible RNG
+    rng = random.Random(1001)
+
     test_steps = []
     genesis_state = state.copy()
 
@@ -302,6 +305,9 @@ def test_proposer_boost_correct_head(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_discard_equivocations_on_attester_slashing(spec, state):
+    # Reproducible RNG
+    rng = random.Random(1001)
+
     test_steps = []
     genesis_state = state.copy()
 

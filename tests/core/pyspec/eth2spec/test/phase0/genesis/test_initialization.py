@@ -1,3 +1,5 @@
+from random import Random
+
 from eth2spec.test.context import (
     single_phase,
     spec_test,
@@ -195,6 +197,7 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
         deposit_count=20,
         min_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 5,
         max_pubkey_index=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 5,
+        rng=Random(1234),
     )
 
     # Then make spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits

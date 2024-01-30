@@ -22,7 +22,10 @@ class PowChain:
         }
 
 
-def prepare_random_pow_block(spec, rng=Random(3131)):
+def prepare_random_pow_block(spec, rng=None):
+    if rng is None:
+        rng = Random(3131)
+
     return spec.PowBlock(
         block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
@@ -30,10 +33,13 @@ def prepare_random_pow_block(spec, rng=Random(3131)):
     )
 
 
-def prepare_random_pow_chain(spec, length, rng=Random(3131)) -> PowChain:
+def prepare_random_pow_chain(spec, length, rng=None) -> PowChain:
+    if rng is None:
+        rng = Random(3131)
+
     assert length > 0
     chain = [prepare_random_pow_block(spec, rng)]
     for i in range(1, length):
-        chain.append(prepare_random_pow_block(spec, rng))
+        chain.append(prepare_random_pow_block(spec, rng=Random(1111 + i)))
         chain[i].parent_hash = chain[i - 1].block_hash
     return PowChain(chain)
