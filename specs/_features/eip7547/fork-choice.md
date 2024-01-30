@@ -38,7 +38,7 @@ This is the modification of the fork choice accompanying the EIP7547 upgrade.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `uint64(2)` | slots | 32 seconds |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `uint64(2)` | slots | 24 seconds |
 
 ## Containers
 
