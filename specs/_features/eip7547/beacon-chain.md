@@ -122,31 +122,8 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    inclusion_list_summary_root: Root  # [New in EIP4547]
-    inclusion_list_exclusions_root: Root  # [New in EIP4547]
-```
-
-#### `BeaconBlockBody`
-
-Note: `BeaconBlock` and `SignedBeaconBlock` types are updated indirectly.
-
-```python
-class BeaconBlockBody(Container):
-    randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    sync_aggregate: SyncAggregate
-    # Execution
-    execution_payload: ExecutionPayload
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    inclusion_list_summary: SignedInclusionListSummary  # [New in EIP4547]
+    inclusion_list_summary_root: Root  # [New in EIP7547]
+    inclusion_list_exclusions_root: Root  # [New in EIP7547]
 ```
 
 ## Beacon chain state transition function
@@ -204,7 +181,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),  # [New in EIP4547]
-        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),  # [New in EIP4547]
+        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),  # [New in EIP7547]
+        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),  # [New in EIP7547]
     )
 ```
