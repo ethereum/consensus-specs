@@ -37,7 +37,7 @@ The specification of these changes continues in the same format as the network s
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of ePBS to support upgraded types.
+Some gossip meshes are upgraded in the fork for EIP7547 to support upgraded types.
 
 #### Topics and messages
 
@@ -45,7 +45,7 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is modified to also support block with signed execution header and new topics are added per table below.
 
-The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
+The specification around the creation, validation, and dissemination of messages has not changed from the Deneb document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
@@ -57,7 +57,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 ##### Global topics
 
-ePBS introduces new global topics for execution header, execution payload, payload attestation and inclusion list.
+EIP7547 introduces new global topics for the inclusion list.
 
 ###### `inclusion_list`
 
@@ -87,6 +87,4 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 ## Why is it proposer may send multiple inclusion lists? Why not just one per slot?
 
-Proposers may submit multiple inclusion lists, providing validators with plausible deniability and eliminating a data availability attack route. 
-This concept stems from the "no free lunch IL design" which lets proposers send multiple ILs. The idea is that since only one IL is eventually chosen from many, 
-its content can't be relied upon for data availability due to the presence of multiple options.
+Proposers may submit multiple inclusion lists, providing validators with plausible deniability and eliminating a data availability attack route. This concept stems from the "no free lunch IL design" which lets proposers send multiple ILs. The idea is that since only one IL is eventually chosen from many, thus its contents can't be relied upon for data availability.

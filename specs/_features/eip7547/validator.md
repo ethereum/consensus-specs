@@ -86,12 +86,9 @@ Proposer must construct and broadcast `InclusionList` alongside `SignedBeaconBlo
 
 To obtain an inclusion list, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Check if the previous slot is skipped. If `state.latest_execution_payload_header.timestamp` is from previous slot.
-    * If it's skipped, the proposer should not propose an inclusion list. It can ignore rest of the steps.
+1. Retrieve `inclusion_list_response: GetInclusionListResponse` from execution layer by calling `ExecutionEngine.get_execution_inclusion_list(parent_block_hash)`.
 
-2. Retrieve `inclusion_list_response: GetInclusionListResponse` from execution layer by calling `ExecutionEngine.get_execution_inclusion_list(parent_block_hash)`.
-
-3. Call `build_inclusion_list` to build `InclusionList`.
+2. Call `build_inclusion_list` to build `InclusionList`.
 
 ```python
 def build_inclusion_list(state: BeaconState, inclusion_list_response: GetInclusionListResponse,

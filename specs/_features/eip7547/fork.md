@@ -59,8 +59,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-EIP7547 does not need a hard fork. We only add this fork doc for compiling this new feature in pyspec.
-
 For now, we assume the condition will be triggered at epoch `EIP7547_FORK_EPOCH`.
 
 Note that for the pure EIP7547 networks, we don't apply `upgrade_to_EIP7547` since it starts with EIP7547 version logic.
