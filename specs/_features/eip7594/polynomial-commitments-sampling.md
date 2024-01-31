@@ -520,6 +520,12 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
                              Sequence[BLSFieldElement],
                              Sequence[BLSFieldElement],
                              BLSFieldElement]:
+    """
+    Given Z(x), return polynomial Q_1(x)=(E*Z)(k*x) and Q_2(x)=Z(k*x) and k^{-1}
+    """
+    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
+    shift_inv = div(BLSFieldElement(1), shift_factor)
+
     extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
@@ -527,15 +533,15 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
+    # Compute (E*Z)(x)
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
     extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
-    shift_inv = div(BLSFieldElement(1), shift_factor)
-
+    # Compute (E*Z)(k*x)
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
+    # Compute Z(k*x)
     shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
 
     eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
@@ -551,6 +557,10 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
                           eval_shifted_zero_poly: Sequence[BLSFieldElement],
                           shift_inv: BLSFieldElement,
                           roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    """
+    Given Q_1, Q_2 and k^{-1}, compute P(x)
+    """
+    # Compute Q_3 = Q_1(x)/Q_2(x) = P(k*x)
     eval_shifted_reconstructed_poly = [
         div(a, b)
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
@@ -558,6 +568,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 
     shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
 
+    # Unshift P(k*x) by k^{-1} to get P(x)
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
@@ -571,10 +582,11 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 def recover_polynomial(cell_ids: Sequence[CellID],
                        cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Polynomial:
     """
-    Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
+    Recover original polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing. This
+    algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
+    https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
 
-    This algorithm uses FFTs to recover cells faster than using Lagrange implementation. However,
-    a faster version thanks to Qi Zhou can be found here:
+    A faster version thanks to Qi Zhou can be found here:
     https://github.com/ethereum/research/blob/51b530a53bd4147d123ab3e390a9d08605c2cdb8/polynomial_reconstruction/polynomial_reconstruction_danksharding.py
 
     Public method.
