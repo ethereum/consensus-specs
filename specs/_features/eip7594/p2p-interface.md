@@ -18,7 +18,8 @@
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
-      - [Samples subnets](#samples-subnets)
+      - [Blob subnets](#blob-subnets)
+        - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -98,7 +99,11 @@ Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
 
 #### Topics and messages
 
-##### Samples subnets
+##### Blob subnets
+
+###### Deprecated `blob_sidecar_{subnet_id}`
+
+`blob_sidecar_{subnet_id}` is deprecated.
 
 ###### `data_column_sidecar_{subnet_id}`
 
