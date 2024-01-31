@@ -477,34 +477,40 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ### `construct_vanishing_polynomial`
 
 ```python
-def construct_vanishing_polynomial(cell_ids: Sequence[CellID],
-                                   cells: Sequence[Cell]) -> Tuple[
-                                       Sequence[BLSFieldElement],
-                                       Sequence[BLSFieldElement]]:
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
+        Sequence[BLSFieldElement],
+        Sequence[BLSFieldElement]]:
+    """
+    Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
+    corresponds to a missing field element
+    """
+    # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
+
+    # Compute polynomial that vanishes at all the missing cells (over the small domain)
     short_zero_poly = vanishing_polynomialcoeff([
-        roots_of_unity_reduced[reverse_bits(cell_id, CELLS_PER_BLOB)]
-        for cell_id in missing_cell_ids
+        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_BLOB)]
+        for missing_cell_id in missing_cell_ids
     ])
 
-    zero_poly_coeff = []
-    for i in short_zero_poly:
-        zero_poly_coeff.append(i)
-        zero_poly_coeff.extend([0] * (FIELD_ELEMENTS_PER_CELL - 1))
-    zero_poly_coeff = zero_poly_coeff + [0] * (2 * FIELD_ELEMENTS_PER_BLOB - len(zero_poly_coeff))
+    # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
+    zero_poly_coeff = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    for (i, coeff) in enumerate(short_zero_poly):
+        zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
+    # Compute evaluations of the extended vanishing polynomial
     zero_poly_eval = fft_field(zero_poly_coeff,
                                compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
-    for cell_id in missing_cell_ids:
+
+    # Sanity check
+    for cell_id in range(CELLS_PER_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        assert zero_poly_eval_brp[start:end] == [0] * FIELD_ELEMENTS_PER_CELL
-    for cell_id in cell_ids:
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        assert all(a != 0 for a in zero_poly_eval_brp[start:end])
+        if cell_id in missing_cell_ids:
+            assert zero_poly_eval_brp[start:end] == [0] * FIELD_ELEMENTS_PER_CELL
+        else:  # cell_id in cell_ids
+            assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
     return zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp
 ```
@@ -593,12 +599,15 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     """
     assert len(cell_ids) == len(cells_bytes)
 
+    # Get the extended domain
+    roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+
+    # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
     assert len(cells) >= CELLS_PER_BLOB // 2
 
-    roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
-
-    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(cell_ids, cells)
+    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = \
         recover_shifted_data(cell_ids, cells, zero_poly_eval, zero_poly_coeff, roots_of_unity_extended)
