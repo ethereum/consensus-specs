@@ -10,6 +10,7 @@
 
 - [Modifications in EIP-7594](#modifications-in-eip-7594)
   - [Preset](#preset)
+  - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
@@ -23,7 +24,7 @@
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [DataColumnSidecarByRoot v1](#datacolumnsidecarbyroot-v1)
+      - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -35,6 +36,16 @@
 | Name | Value | Description |
 | - | - | - |
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+
+
+### Configuration
+
+*[New in Deneb:EIP4844]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars  |
 
 ### Containers
 
@@ -134,11 +145,11 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 #### Messages
 
-##### DataColumnSidecarByRoot v1
+##### DataColumnSidecarsByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecar_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
 
-*[New in Deneb:EIP4844]*
+*[New in EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -153,6 +164,7 @@ Request Content:
 ```
 (
   DataColumnIdentifier
+  List[DataColumnIdentifier, MAX_REQUEST_DATA_COLUMN_SIDECARS]
 )
 ```
 
@@ -160,6 +172,26 @@ Response Content:
 
 ```
 (
-  DataColumnSidecar
+    List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
 )
 ```
+
+Requests sidecars by block root and index.
+The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing blocks or sidecars.
+
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+
+No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
+
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, EIP7594_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the data column sidecar in the response.
+
+Clients MUST respond with at least one sidecar, if they have it.
+Clients MAY limit the number of blocks and sidecars in the response.
+
+Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
