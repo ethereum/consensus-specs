@@ -17,7 +17,7 @@
     - [`DataColumnSidecar`](#datacolumnsidecar)
   - [Helper functions](#helper-functions)
     - [`get_custody_columns`](#get_custody_columns)
-    - [`compute_extended_data`](#compute_extended_data)
+    - [`compute_extended_matrix`](#compute_extended_matrix)
     - [`recover_matrix`](#recover_matrix)
     - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
@@ -112,13 +112,20 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     ]
 ```
 
-#### `compute_extended_data`
+#### `compute_extended_matrix`
 
 ```python
-def compute_extended_data(data: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
-    # TODO
-    # pylint: disable=unused-argument
-    ...
+def compute_extended_matrix(blobs: Sequence[Blob]) -> ExtendedMatrix:
+    """
+    Return the full ``ExtendedMatrix``.
+
+    This helper demonstrates the relationship between blobs and ``ExtendedMatrix``.
+    The data structure for storing cells is implementation-dependent.
+    """
+    extended_matrix = []
+    for blob in blobs:
+        extended_matrix.extend(compute_cells(blob))
+    return ExtendedMatrix(extended_matrix)
 ```
 
 #### `recover_matrix`
@@ -128,7 +135,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     """
     Return the recovered ``ExtendedMatrix``.
 
-    This helper demonstrate how to apply ``recover_polynomial``.
+    This helper demonstrates how to apply ``recover_polynomial``.
     The data structure for storing cells is implementation-dependent.
     """
     extended_matrix = []
@@ -208,7 +215,7 @@ A node runs a background peer discovery process, maintaining at least `TARGET_NU
 
 ## Extended data
 
-In this construction, we extend the blobs using a one-dimensional erasure coding extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed `NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its corresponding extension.
+In this construction, we extend the blobs using a one-dimensional erasure coding extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed `NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its corresponding extension. `compute_extended_matrix` demonstrates the relationship between blobs and custom type `ExtendedMatrix`.
 
 ## Column gossip
 

@@ -12,6 +12,30 @@ from eth2spec.test.helpers.sharding import (
 @with_eip7594_and_later
 @spec_test
 @single_phase
+def test_compute_extended_matrix(spec):
+    rng = random.Random(5566)
+
+    blob_count = 2
+    input_blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
+    extended_matrix = spec.compute_extended_matrix(input_blobs)
+    assert len(extended_matrix) == spec.CELLS_PER_BLOB * blob_count
+
+    rows = [extended_matrix[i:(i + spec.CELLS_PER_BLOB)] for i in range(0, len(extended_matrix), spec.CELLS_PER_BLOB)]
+    assert len(rows) == blob_count
+    assert len(rows[0]) == spec.CELLS_PER_BLOB
+
+    for blob_index, row in enumerate(rows):
+        extended_blob = []
+        for cell in row:
+            extended_blob.extend(cell)
+        blob_part = extended_blob[0:len(extended_blob) // 2]
+        blob = b''.join([spec.bls_field_to_bytes(x) for x in blob_part])
+        assert blob == input_blobs[blob_index]
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
 def test_recover_matrix(spec):
     rng = random.Random(5566)
 
