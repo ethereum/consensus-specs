@@ -12,8 +12,6 @@ def run_get_custody_columns(spec, peer_count, custody_subnet_count):
     columns_per_subnet = spec.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     for assignment in assignments:
         assert len(assignment) == custody_subnet_count * columns_per_subnet
-        print('assignment', assignment)
-        print('set(assignment)', set(assignment))
         assert len(assignment) == len(set(assignment))
 
 

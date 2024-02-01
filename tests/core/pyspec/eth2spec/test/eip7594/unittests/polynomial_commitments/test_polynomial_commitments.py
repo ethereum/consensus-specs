@@ -10,10 +10,6 @@ from eth2spec.test.helpers.sharding import (
 from eth2spec.utils.bls import BLS_MODULUS
 
 
-def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "big")
-
-
 @with_eip7594_and_later
 @spec_test
 @single_phase
@@ -39,7 +35,7 @@ def test_verify_cell_proof(spec):
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
 
-    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
 
     cell_id = 0
     assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
@@ -54,7 +50,7 @@ def test_verify_cell_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
-    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
 
     assert len(cells) == len(proofs)
 
@@ -83,15 +79,15 @@ def test_recover_polynomial(spec):
 
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
-    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
 
     # Compute the cells we will be recovering from
     cell_ids = []
     # First figure out just the indices of the cells
     for i in range(N_SAMPLES):
-        j = rng.randint(0, spec.CELLS_PER_BLOB)
+        j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
         while j in cell_ids:
-            j = rng.randint(0, spec.CELLS_PER_BLOB)
+            j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
         cell_ids.append(j)
     # Now the cells themselves
     known_cells_bytes = [cells_bytes[cell_id] for cell_id in cell_ids]

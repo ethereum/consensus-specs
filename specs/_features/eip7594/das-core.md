@@ -18,7 +18,7 @@
   - [Helper functions](#helper-functions)
     - [`get_custody_columns`](#get_custody_columns)
     - [`compute_extended_data`](#compute_extended_data)
-    - [`compute_extended_matrix`](#compute_extended_matrix)
+    - [`recover_matrix`](#recover_matrix)
     - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
@@ -47,7 +47,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `DataColumn` | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP-7594 |
 | `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
-| `FlatExtendedMatrix` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_CELL * MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The flattened format of `ExtendedMatrix` |
 
 ## Configuration
 
@@ -122,12 +121,29 @@ def compute_extended_data(data: Sequence[BLSFieldElement]) -> Sequence[BLSFieldE
     ...
 ```
 
-#### `compute_extended_matrix`
+#### `recover_matrix`
 
 ```python
-def compute_extended_matrix(blobs: Sequence[Blob]) -> FlatExtendedMatrix:
-    matrix = [compute_extended_data(blob) for blob in blobs]
-    return FlatExtendedMatrix(matrix)
+def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count: uint64) -> ExtendedMatrix:
+    """
+    Return the recovered ``ExtendedMatrix``.
+
+    This helper demonstrate how to apply ``recover_polynomial``.
+    The data structure for storing cells is implementation-dependent.
+    """
+    extended_matrix = []
+    for blob_index in range(blob_count):
+        cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
+        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
+        cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
+
+        full_polynomial = recover_polynomial(cell_ids, cells_bytes)
+        cells_from_full_polynomial = [
+            full_polynomial[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
+            for i in range(CELLS_PER_BLOB)
+        ]
+        extended_matrix.extend(cells_from_full_polynomial)
+    return ExtendedMatrix(extended_matrix)
 ```
 
 #### `get_data_column_sidecars`
@@ -204,7 +220,7 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 ### Reconstruction and cross-seeding
 
-If the node obtains 50%+ of all the columns, they can reconstruct the full data matrix via `recover_samples_impl` helper.
+If the node obtains 50%+ of all the columns, they can reconstruct the full data matrix via `recover_matrix` helper.
 
 If a node fails to sample a peer or fails to get a column on the column subnet, a node can utilize the Req/Resp message to query the missing column from other peers.
 
@@ -218,7 +234,7 @@ Once the node obtain the column, the node should send the missing columns to the
 
 ## Peer sampling
 
-At each slot, a node makes (locally randomly determined) `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+At each slot, a node makes (locally randomly determined) `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
 
 ## Peer scoring
 
@@ -240,7 +256,7 @@ The fork choice rule (essentially a DA filter) is *orthogonal to a given DAS des
 
 In any DAS design, there are probably a few degrees of freedom around timing, acceptability of short-term re-orgs, etc. 
 
-For example, the fork choice rule might require validators to do successful DAS on slot N to be able to include block of slot `N` in its fork choice. That's the tightest DA filter. But trailing filters are also probably acceptable, knowing that there might be some failures/short re-orgs but that they don't hurt the aggregate security. For example, the rule could be — DAS must be completed for slot N-1 for a child block in N to be included in the fork choice.
+For example, the fork choice rule might require validators to do successful DAS on slot `N` to be able to include block of slot `N` in its fork choice. That's the tightest DA filter. But trailing filters are also probably acceptable, knowing that there might be some failures/short re-orgs but that they don't hurt the aggregate security. For example, the rule could be — DAS must be completed for slot N-1 for a child block in N to be included in the fork choice.
 
 Such trailing techniques and their analysis will be valuable for any DAS construction. The question is — can you relax how quickly you need to do DA and in the worst case not confirm unavailable data via attestations/finality, and what impact does it have on short-term re-orgs and fast confirmation rules.
 
