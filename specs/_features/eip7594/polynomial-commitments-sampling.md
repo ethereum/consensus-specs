@@ -482,7 +482,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
         Sequence[BLSFieldElement]]:
     """
     Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
-    corresponds to a missing field element
+    corresponds to a missing field element.
     """
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
@@ -495,7 +495,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
     zero_poly_coeff = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
-    for (i, coeff) in enumerate(short_zero_poly):
+    for i, coeff in enumerate(short_zero_poly):
         zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
     # Compute evaluations of the extended vanishing polynomial
@@ -508,7 +508,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         if cell_id in missing_cell_ids:
-            assert zero_poly_eval_brp[start:end] == [0] * FIELD_ELEMENTS_PER_CELL
+            assert all(a == 0 for a in zero_poly_eval_brp[start:end])
         else:  # cell_id in cell_ids
             assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
@@ -527,7 +527,7 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
                              Sequence[BLSFieldElement],
                              BLSFieldElement]:
     """
-    Given Z(x), return polynomial Q_1(x)=(E*Z)(k*x) and Q_2(x)=Z(k*x) and k^{-1}
+    Given Z(x), return polynomial Q_1(x)=(E*Z)(k*x) and Q_2(x)=Z(k*x) and k^{-1}.
     """
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     shift_inv = div(BLSFieldElement(1), shift_factor)
@@ -564,7 +564,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
                           shift_inv: BLSFieldElement,
                           roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
-    Given Q_1, Q_2 and k^{-1}, compute P(x)
+    Given Q_1, Q_2 and k^{-1}, compute P(x).
     """
     # Compute Q_3 = Q_1(x)/Q_2(x) = P(k*x)
     eval_shifted_reconstructed_poly = [
