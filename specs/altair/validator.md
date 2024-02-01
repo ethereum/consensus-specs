@@ -295,7 +295,7 @@ The `subnet_id` is derived from the position in the sync committee such that the
 *Note*: This function returns multiple deduplicated subnets if a given validator index is included multiple times in a given sync committee across multiple subcommittees.
 
 ```python
-def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Set[uint64]:
+def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Set[SubnetID]:
     next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
         sync_committee = state.current_sync_committee
