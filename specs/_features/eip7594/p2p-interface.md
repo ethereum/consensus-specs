@@ -163,7 +163,6 @@ Request Content:
 
 ```
 (
-  DataColumnIdentifier
   List[DataColumnIdentifier, MAX_REQUEST_DATA_COLUMN_SIDECARS]
 )
 ```
