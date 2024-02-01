@@ -77,10 +77,10 @@ All validator responsibilities remain unchanged other than those noted below.
 EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389).
 
 Proposer must construct and broadcast `InclusionList` alongside `SignedBeaconBlock`.
-- Proposer for slot `N` submits `SignedBeaconBlock` and in parallel broadcast `InclusionList` to be included at the beginning of slot `N+1`.
-- Within `InclusionList`, `Transactions` are list of transactions that the proposer wants to include at the beginning of slot `N+1`.
+- Proposer for slot `N` submits `SignedBeaconBlock` and in parallel broadcast `InclusionList` to be included at slot `N+1`.
+- Within `InclusionList`, `Transactions` are list of transactions that the proposer wants to include in slot `N+1`.
 - Within `inclusionList`, `Summaries` are lists consisting on addresses sending those transactions and their gas limits. The summaries are signed by the proposer `N`.
-- Proposer may  send many of these pairs that aren't committed to its beacon block so no double proposing slashing is involved.
+- Proposer may send many of these pairs that aren't committed to its beacon block so no double proposing slashing is involved.
 
 #### Constructing the inclusion list
 
@@ -113,7 +113,7 @@ def get_inclusion_list_summary_signature(state: BeaconState,
 
 #### Broadcast inclusion list
 
-Finally, the proposer broadcasts `inclusion_list` to the inclusion list subnet, the `inclusion_list` pubsub topic.
+Finally, the proposer broadcasts `inclusion_list` along with the `SignedBeaconBlock` on the `beacon_block` pubsub topic.
 
 ### Block and sidecar proposal
 
