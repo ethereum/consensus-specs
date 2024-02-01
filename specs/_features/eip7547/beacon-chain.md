@@ -95,8 +95,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    inclusion_list_summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP7547]
-    inclusion_list_exclusions: List[uint64, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP7547]
+    signed_inclusion_list_summary: SignedInclusionListSummary  # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -122,8 +121,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    inclusion_list_summary_root: Root  # [New in EIP7547]
-    inclusion_list_exclusions_root: Root  # [New in EIP7547]
+    signed_inclusion_list_summary_root: Root  # [New in EIP7547]
 ```
 
 ## Beacon chain state transition function
@@ -134,7 +132,7 @@ class ExecutionPayloadHeader(Container):
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to set `inclusion_list_summary_root` and `inclusion_list_exclusions_root`.
+*Note*: The function `process_execution_payload` is modified to verify the inclusion list signature and set the `inclusion_list_summary_root`.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -149,6 +147,13 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+
+    # Verify the inclusion list signature
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
+    signed_summary = payload.signed_inclusion_list_summary
+    signing_root = compute_signing_root(signed_summary.message, domain)
+    pubkey = state.validators[signed_summary.message.proposer_index]
+    assert(bls.Verify(pubkey, signing_root, signed_summary.signature))
 
     # Verify the execution payload is valid
     # Pass `versioned_hashes` to Execution Engine
@@ -181,7 +186,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        inclusion_list_summary_root=hash_tree_root(payload.inclusion_list_summary),  # [New in EIP7547]
-        inclusion_list_exclusions_root=hash_tree_root(payload.inclusion_list_exclusions),  # [New in EIP7547]
+        inclusion_list_summary_root=hash_tree_root(payload.signed_inclusion_list_summary),  # [New in EIP7547]
     )
 ```
