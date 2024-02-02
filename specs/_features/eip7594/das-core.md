@@ -221,7 +221,7 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 
 ### Parameters
 
-For each column -- use `data_column_sidecar_{subnet_id}` subnets, where each column index maps to the `subnet_id`. The sidecars can be computed with `get_data_column_sidecars(signed_block: SignedBeaconBlock, blobs: Sequence[Blob])` helper.
+For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with the `get_data_column_sidecars(signed_block: SignedBeaconBlock, blobs: Sequence[Blob])` helper.
 
 To custody a particular column, a node joins the respective gossip subnet. Verifiable samples from their respective column are gossiped on the assigned subnet.
 
