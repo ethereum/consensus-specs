@@ -79,9 +79,10 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 
 | Name | Value | Description |
 | - | - | - |
+| `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB` | Number of field elements in a Reed-Solomon extended blob |
 | `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
 | `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
-| `CELLS_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_CELL)` | The number of cells in a blob |
+| `CELLS_PER_BLOB` | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in a blob |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
 ## Helper functions
@@ -355,7 +356,7 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     """
     assert cell_id < CELLS_PER_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
-        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+        compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
@@ -405,7 +406,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
-                              compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+                              compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
             for i in range(CELLS_PER_BLOB)]
@@ -494,13 +495,13 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
-    zero_poly_coeff = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    zero_poly_coeff = [0] * (FIELD_ELEMENTS_PER_EXT_BLOB)
     for i, coeff in enumerate(short_zero_poly):
         zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
     # Compute evaluations of the extended vanishing polynomial
     zero_poly_eval = fft_field(zero_poly_coeff,
-                               compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
 
     # Sanity check
@@ -532,7 +533,7 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     shift_inv = div(BLSFieldElement(1), shift_factor)
 
-    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_EXT_BLOB)
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
@@ -588,7 +589,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 def recover_polynomial(cell_ids: Sequence[CellID],
                        cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Polynomial:
     """
-    Recover original polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing. This
+    Recover original polynomial from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, half of which can be missing. This
     algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
     https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
 
@@ -604,7 +605,7 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     assert len(cell_ids) == len(set(cell_ids))
 
     # Get the extended domain
-    roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
