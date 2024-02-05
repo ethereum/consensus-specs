@@ -598,13 +598,16 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     Public method.
     """
     assert len(cell_ids) == len(cells_bytes)
+    # Check we have enough cells to be able to perform the reconstruction
+    assert CELLS_PER_BLOB / 2 <= len(cell_ids) <= CELLS_PER_BLOB
+    # Check for duplicates
+    assert len(cell_ids) == len(set(cell_ids))
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
 
     # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
-    assert len(cells) >= CELLS_PER_BLOB // 2
 
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
