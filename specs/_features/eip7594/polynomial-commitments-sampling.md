@@ -616,9 +616,12 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = \
         recover_shifted_data(cell_ids, cells, zero_poly_eval, zero_poly_coeff, roots_of_unity_extended)
 
-    reconstructed_data = \
-        recover_original_data(eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv,
-                              roots_of_unity_extended)
+    reconstructed_data = recover_original_data(
+        eval_shifted_extended_evaluation,
+        eval_shifted_zero_poly,
+        shift_inv,
+        roots_of_unity_extended,
+    )
 
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
