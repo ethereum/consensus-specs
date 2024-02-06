@@ -13,14 +13,8 @@
   - [New Containers](#new-containers)
     - [`InclusionListSummaryEntry`](#inclusionlistsummaryentry)
     - [`InclusionListSummary`](#inclusionlistsummary)
-    - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
   - [Extended containers](#extended-containers)
-    - [`ExecutionPayload`](#executionpayload)
-    - [`ExecutionPayloadHeader`](#executionpayloadheader)
-- [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Block processing](#block-processing)
-    - [Execution payload](#execution-payload)
-      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [`BeaconBlockBody`](#beaconblockbody)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -61,130 +55,25 @@ class InclusionListSummary(Container):
     summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-#### `SignedInclusionListSummary`
-
-```python
-class SignedInclusionListSummary(Container):
-    message: InclusionListSummary
-    signature: BLSSignature
-```
-
 ### Extended containers
 
-#### `ExecutionPayload`
+#### `BeaconBlockBody`
 
 ```python
-class ExecutionPayload(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32  # 'difficulty' in the yellow paper
-    block_number: uint64  # 'number' in the yellow paper
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
-    signed_inclusion_list_summary: SignedInclusionListSummary  # [New in EIP7547]
-```
-
-#### `ExecutionPayloadHeader`
-
-```python
-class ExecutionPayloadHeader(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions_root: Root
-    withdrawals_root: Root
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
-    signed_inclusion_list_summary_root: Root  # [New in EIP7547]
-```
-
-## Beacon chain state transition function
-
-### Block processing
-
-#### Execution payload
-
-##### Modified `process_execution_payload`
-
-*Note*: The function `process_execution_payload` is modified to verify the inclusion list signature and set the `inclusion_list_summary_root`.
-
-```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
-    payload = body.execution_payload
-
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
-    # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
-
-    # Verify the inclusion list signature
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
-    signed_summary = payload.signed_inclusion_list_summary
-    signing_root = compute_signing_root(signed_summary.message, domain)
-    pubkey = state.validators[signed_summary.message.proposer_index]
-    assert(bls.Verify(pubkey, signing_root, signed_summary.signature))
-
-    # Verify the execution payload is valid
-    # Pass `versioned_hashes` to Execution Engine
-    # Pass `parent_beacon_block_root` to Execution Engine
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-        )
-    )
-
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipts_root=payload.receipts_root,
-        logs_bloom=payload.logs_bloom,
-        prev_randao=payload.prev_randao,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
-        blob_gas_used=payload.blob_gas_used,
-        excess_blob_gas=payload.excess_blob_gas,
-        inclusion_list_summary_root=hash_tree_root(payload.signed_inclusion_list_summary),  # [New in EIP7547]
-    )
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
+    # Execution
+    execution_payload: ExecutionPayload  # [Modified in Deneb:EIP4844]
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]  # [New in Deneb:EIP4844]
+    inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
 ```

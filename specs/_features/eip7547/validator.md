@@ -76,11 +76,11 @@ All validator responsibilities remain unchanged other than those noted below.
 
 EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389).
 
-Proposer must construct and broadcast `InclusionList` alongside `SignedBeaconBlock`.
-- Proposer for slot `N` submits `SignedBeaconBlock` and in parallel broadcast `InclusionList` to be included at slot `N+1`.
-- Within `InclusionList`, `Transactions` are list of transactions that the proposer wants to include in slot `N+1`.
-- Within `inclusionList`, `Summaries` are lists consisting on addresses sending those transactions and their gas limits. The summaries are signed by the proposer `N`.
-- Proposer may send many of these pairs that aren't committed to its beacon block so no double proposing slashing is involved.
+Proposer must construct and broadcast `SignedInclusionListTransactions` alongside the `SignedBeaconBlock`.
+- Proposer for slot `N` submits `SignedBeaconBlock` which now contains their `InclusionListSummary` and broacast it alongside the `SignedInclusionListTransactions`. The slot `N+1` execution payload is checked against the summary.
+- `Transactions` is list of transactions that the proposer wants to include in slot `N+1`.
+- `Summary` is a list of the addresses sending those transactions and their gas limits.
+- Proposer may send many `SignedInclusionListTransactions` each with valid transactions. 
 
 #### Constructing the inclusion list
 
@@ -93,16 +93,16 @@ To obtain an inclusion list, a block proposer building a block on top of a `stat
 ```python
 def build_inclusion_list(state: BeaconState, inclusion_list_response: GetInclusionListResponse,
                          block_slot: Slot, privkey: int) -> InclusionList:
-    inclusion_list_summary = inclusion_list_response.inclusion_list_summary
-    signature = get_inclusion_list_summary_signature(state, inclusion_list_summary, block_slot, privkey)
-    signed_inclusion_list_summary = SignedInclusionListSummary(summary=inclusion_list_summary, signature=signature)
-    return InclusionList(summaries=signed_inclusion_list_summary, transactions=inclusion_list_response.transactions)
+    inclusion_list_transactions = inclusion_list_response.inclusion_list_transactions
+    signature = get_inclusion_list_transactions_signature(state, inclusion_list_transactions, block_slot, privkey)
+    signed_inclusion_list_transactions = SignedInclusionListTransactions(transactions=inclusion_list_transactions, signature=signature)
+    return InclusionList(summary=inclusion_list_reponse.summary, transactions=signed_inclusion_list_transactions)
 ```
 
-In order to get inclusion list summary signature, the proposer will call `get_inclusion_list_summary_signature`.
+In order to get inclusion list transactions signature, the proposer will call `get_inclusion_list_transactions_signature`.
 
 ```python
-def get_inclusion_list_summary_signature(state: BeaconState,
+def get_inclusion_list_transactions_signature(state: BeaconState,
                                          inclusion_list_summary: InclusionListSummary,
                                          block_slot: Slot,
                                          privkey: int) -> BLSSignature:
@@ -136,7 +136,7 @@ def prepare_execution_payload(
         safe_block_hash: Hash32,
         finalized_block_hash: Hash32,
         suggested_fee_recipient: ExecutionAddress,
-        inclusion_list_summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
+        inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
         execution_engine: ExecutionEngine) -> Optional[PayloadId]:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
@@ -148,7 +148,7 @@ def prepare_execution_payload(
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-        inclusion_list_summary=inclusion_list_summary,  # [New in EIP7547]
+        inclusion_list_transactions=inclusion_list_transactions,  # [New in EIP7547]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
