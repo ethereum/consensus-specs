@@ -1,6 +1,6 @@
 # Light client data collection tests
 
-This series of tests provies reference test vectors for validating that a full node collects canonical data for serving to light clients implementing the light client sync protocol to sync to the latest block header.
+This series of tests provides reference test vectors for validating that a full node collects canonical data for serving to light clients implementing the light client sync protocol to sync to the latest block header.
 
 ## Test case format
 
