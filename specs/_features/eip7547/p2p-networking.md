@@ -7,7 +7,8 @@
     - [Execution](#execution)
   - [Containers](#containers)
     - [New Containers](#new-containers)
-      - [`BeaconBlockAndInclusionList`](#beaconblockandinclusionlist)
+      - [`SignedInclusionListTransactions`](#signedinclusionlisttransactions)
+      - [`SignedBeaconBlockAndInclusionList`](#signedbeaconblockandinclusionlist)
   - [Modifications in EIP7547](#modifications-in-eip7547)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
@@ -37,13 +38,20 @@ The specification of these changes continues in the same format as the network s
 
 ### New Containers
 
-#### `BeaconBlockAndInclusionList`
+#### `SignedInclusionListTransactions`
+
+```python
+class SignedInclusionListTransactions(Container):
+    transactions: transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlockAndInclusionList`
 
 ```python
 class SignedBeaconBlockAndInclusionList(Container):
     signed_block: SignedBeaconBlock
-    signed_summary: SignedInclusionListSummary
-    transactions: transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    signed_transactions: SignedInclusionListTransactions
 ```
 
 ## Modifications in EIP7547
@@ -69,8 +77,8 @@ New validation:
 The following validations MUST pass before forwarding the `beacon_block` on the network.
 
 - _[REJECT]_ The inclusion list transactions `beacon_block.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[REJECT]_ The inclusion list summary has the same length of transactions `len(beacon_block.signed_summary) == len(beacon_block.transactions)`.
-- _[REJECT]_ The summary signature, `beacon_block.signed_summary.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The inclusion list summary has the same length of transactions `len(beacon_block.signed_block.inclusion_list_summary) == len(beacon_block.transactions)`.
+- _[REJECT]_ The inclusion list transactions signature, `beacon_block.signed_transactions.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The summary is proposed by the expected proposer_index for the summary's slot in the context of the current shuffling (defined by parent_root/slot). If the proposer_index cannot immediately be verified against the expected shuffling, the inclusion list MAY be queued for later processing while proposers for the summary's branch are calculated -- in such a case do not REJECT, instead IGNORE this message.
 
 #### Transitioning the gossip
