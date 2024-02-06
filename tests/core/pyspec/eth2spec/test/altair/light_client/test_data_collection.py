@@ -26,8 +26,8 @@ from eth2spec.test.helpers.light_client import (
 
 
 def next_epoch_boundary_slot(spec, slot):
-    ## Compute the first possible epoch boundary state slot of a `Checkpoint`
-    ## referring to a block at given slot.
+    # Compute the first possible epoch boundary state slot of a `Checkpoint`
+    # referring to a block at given slot.
     epoch = spec.compute_epoch_at_slot(slot + spec.SLOTS_PER_EPOCH - 1)
     return spec.compute_start_slot_at_epoch(epoch)
 
@@ -212,7 +212,8 @@ def get_current_sync_committee_for_finalized_period(test, period):  # -> Optiona
     block = test.blocks[bid.root]
     state = test.finalized_checkpoint_states[block.data.message.state_root]
     if sync_committee_slot > state.data.slot:
-        state.spec, state.data, _ = transition_across_forks(state.spec, state.data, sync_committee_slot, phases=test.phases)
+        state.spec, state.data, _ = transition_across_forks(
+            state.spec, state.data, sync_committee_slot, phases=test.phases)
     assert is_post_altair(state.spec)
     return state.data.current_sync_committee
 
@@ -242,8 +243,8 @@ def sync_aggregate_for_block_id(test, bid):   # -> Optional[SyncAggregate]
 
 
 def get_light_client_data(lc_data_store, bid):  # -> CachedLightClientData
-    ## Fetch cached light client data about a given block.
-    ## Data must be cached (`cache_light_client_data`) before calling this function.
+    # Fetch cached light client data about a given block.
+    # Data must be cached (`cache_light_client_data`) before calling this function.
     try:
         return lc_data_store.cache.data[bid]
     except KeyError:
@@ -251,9 +252,9 @@ def get_light_client_data(lc_data_store, bid):  # -> CachedLightClientData
 
 
 def cache_light_client_data(lc_data_store, spec, state, bid, current_period_best_update, latest_signature_slot):
-    ## Cache data for a given block and its post-state to speed up creating future
-    ## `LightClientUpdate` and `LightClientBootstrap` instances that refer to this
-    ## block and state.
+    # Cache data for a given block and its post-state to speed up creating future
+    # `LightClientUpdate` and `LightClientBootstrap` instances that refer to this
+    # block and state.
     cached_data = CachedLightClientData(
         current_sync_committee_branch=spec.compute_merkle_proof(state, spec.CURRENT_SYNC_COMMITTEE_GINDEX),
         next_sync_committee_branch=spec.compute_merkle_proof(state, spec.NEXT_SYNC_COMMITTEE_GINDEX),
@@ -268,8 +269,8 @@ def cache_light_client_data(lc_data_store, spec, state, bid, current_period_best
 
 
 def delete_light_client_data(lc_data_store, bid):
-    ## Delete cached light client data for a given block. This needs to be called
-    ## when a block becomes unreachable due to finalization of a different fork.
+    # Delete cached light client data for a given block. This needs to be called
+    # when a block becomes unreachable due to finalization of a different fork.
     del lc_data_store.cache.data[bid]
 
 
@@ -335,9 +336,9 @@ def create_light_client_update_from_light_client_data(test,
 
 
 def create_light_client_update(test, spec, state, block, parent_bid):
-    ## Create `LightClientUpdate` instances for a given block and its post-state,
-    ## and keep track of best / latest ones. Data about the parent block's
-    ## post-state must be cached (`cache_light_client_data`) before calling this.
+    # Create `LightClientUpdate` instances for a given block and its post-state,
+    # and keep track of best / latest ones. Data about the parent block's
+    # post-state must be cached (`cache_light_client_data`) before calling this.
 
     # Verify attested block (parent) is recent enough and that state is available
     attested_bid = parent_bid
@@ -421,7 +422,7 @@ def create_light_client_bootstrap(test, spec, bid):
 
 
 def process_new_block_for_light_client(test, spec, state, block, parent_bid):
-    ## Update light client data with information from a new block.
+    # Update light client data with information from a new block.
     if block.message.slot < test.lc_data_store.cache.tail_slot:
         return
 
@@ -432,8 +433,8 @@ def process_new_block_for_light_client(test, spec, state, block, parent_bid):
 
 
 def process_head_change_for_light_client(test, spec, head_bid, old_finalized_bid):
-    ## Update light client data to account for a new head block.
-    ## Note that `old_finalized_bid` is not yet updated when this is called.
+    # Update light client data to account for a new head block.
+    # Note that `old_finalized_bid` is not yet updated when this is called.
     if head_bid.slot < test.lc_data_store.cache.tail_slot:
         return
 
@@ -477,9 +478,9 @@ def process_head_change_for_light_client(test, spec, head_bid, old_finalized_bid
 
 
 def process_finalization_for_light_client(test, spec, finalized_bid, old_finalized_bid):
-    ## Prune cached data that is no longer useful for creating future
-    ## `LightClientUpdate` and `LightClientBootstrap` instances.
-    ## This needs to be called whenever `finalized_checkpoint` changes.
+    # Prune cached data that is no longer useful for creating future
+    # `LightClientUpdate` and `LightClientBootstrap` instances.
+    # This needs to be called whenever `finalized_checkpoint` changes.
     finalized_slot = finalized_bid.slot
     if finalized_slot < test.lc_data_store.cache.tail_slot:
         return
