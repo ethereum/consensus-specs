@@ -4,6 +4,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,
     Z1 as py_ecc_Z1,
+    Z2 as py_ecc_Z2,
     add as py_ecc_add,
     multiply as py_ecc_mul,
     neg as py_ecc_neg,
@@ -241,6 +242,15 @@ def Z1():
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.identity()
     return py_ecc_Z1
+
+
+def Z2():
+    """
+    Returns the identity point in G2
+    """
+    if bls == arkworks_bls or bls == fastest_bls:
+        return arkworks_G2.identity()
+    return py_ecc_Z2
 
 
 def G1():
