@@ -533,7 +533,7 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     shift_inv = div(BLSFieldElement(1), shift_factor)
 
-    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_EXT_BLOB)
+    extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
