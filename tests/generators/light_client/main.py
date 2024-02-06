@@ -4,6 +4,7 @@ from eth2spec.gen_helpers.gen_from_tests.gen import combine_mods, run_state_test
 
 if __name__ == "__main__":
     altair_mods = {key: 'eth2spec.test.altair.light_client.test_' + key for key in [
+        'data_collection',
         'single_merkle_proof',
         'sync',
         'update_ranking',
