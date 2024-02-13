@@ -40,7 +40,7 @@ from eth2spec.test.helpers.block import (
 MAX_JUSTIFICATION_RATE = 99
 MIN_JUSTIFICATION_RATE = 91
 
-MAX_UNDERJUSTIFICATION_RATE = 70
+MAX_UNDERJUSTIFICATION_RATE = 66
 MIN_UNDERJUSTIFICATION_RATE = 55
 
 
@@ -457,21 +457,26 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
         for sm_link in current_epoch_sm_links:
             branch_tip = branch_tips[sm_link]
             assert spec.get_current_epoch(branch_tip.beacon_state) == current_epoch, \
-                'Unexpected current_epoch(branch_tip.beacon_state)'
+                'Unexpected current_epoch(branch_tip.beacon_state): ' + str(
+                    spec.get_current_epoch(branch_tip.beacon_state)) + ' != ' + str(current_epoch)
             new_signed_blocks, new_branch_tip = _advance_branch_to_next_epoch(spec, branch_tip)
 
             # Run sanity checks
             post_state = new_branch_tip.beacon_state
             assert spec.get_current_epoch(post_state) == current_epoch + 1, \
-                'Unexpected post_state epoch'
+                'Unexpected post_state epoch: ' + str(spec.get_current_epoch(post_state)) + ' != ' + str(
+                    current_epoch + 1)
             if sm_link.target == current_epoch:
                 assert post_state.previous_justified_checkpoint.epoch == sm_link.source, \
-                    'Unexpected previous_justified_checkpoint.epoch'
+                    'Unexpected previous_justified_checkpoint.epoch: ' + str(
+                        post_state.previous_justified_checkpoint.epoch) + ' != ' + str(sm_link.source)
                 assert new_branch_tip.eventually_justified_checkpoint.epoch == sm_link.target, \
-                    'Unexpected eventually_justified_checkpoint.epoch'
-            else:
-                assert post_state.current_justified_checkpoint.epoch == sm_link.source, \
-                    'Unexpected current_justified_checkpoint.epoch'
+                    'Unexpected eventually_justified_checkpoint.epoch: ' + str(
+                        new_branch_tip.eventually_justified_checkpoint.epoch) + ' != ' + str(sm_link.target)
+            elif (sm_link.source != new_branch_tip.eventually_justified_checkpoint.epoch):
+                # Abort the test as the justification of the source checkpoint can't be realized on chain
+                # because of the lack of the block space
+                return []
 
             # If the fork won't be advanced in the future epochs
             # ensure 1) all yet not included attestations are included on chain by advancing it to epoch N+1
@@ -493,45 +498,46 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
                 new_signed_blocks.append(tip_block)
 
                 assert state.current_justified_checkpoint.epoch == sm_link.target, \
-                    'Unexpected state.current_justified_checkpoint'
+                    'Unexpected state.current_justified_checkpoint: ' + str(
+                        state.current_justified_checkpoint.epoch) + ' != ' + str(sm_link.target)
 
-        # Debug output
-        if debug:
-            print('branch' + str(sm_link) + ':',
-                  _print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks))
-            print('              ', len(branch_tips[sm_link].participants), 'participants:',
-                  new_branch_tip.participants)
-            print('              ', 'state.current_justified_checkpoint:',
-                  '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
-                  ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
-            print('              ', 'eventually_justified_checkpoint:',
-                  '(epoch=' + str(new_branch_tip.eventually_justified_checkpoint.epoch) +
-                  ', root=' + str(new_branch_tip.eventually_justified_checkpoint.root)[:6] + ')')
+            # Debug output
+            if debug:
+                print('branch' + str(sm_link) + ':',
+                      _print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks))
+                print('              ', len(branch_tips[sm_link].participants), 'participants:',
+                      new_branch_tip.participants)
+                print('              ', 'state.current_justified_checkpoint:',
+                      '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
+                      ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
+                print('              ', 'eventually_justified_checkpoint:',
+                      '(epoch=' + str(new_branch_tip.eventually_justified_checkpoint.epoch) +
+                      ', root=' + str(new_branch_tip.eventually_justified_checkpoint.root)[:6] + ')')
 
-        # Debug checks
-        if debug:
-            # Proposers are aligned with the partition
-            unexpected_proposers = [b.message.proposer_index for b in new_signed_blocks if
-                                    b.message.proposer_index not in branch_tip.participants]
-            assert len(unexpected_proposers) == 0, \
-                'Unexpected proposer: ' + str(unexpected_proposers[0])
+            # Debug checks
+            if debug:
+                # Proposers are aligned with the partition
+                unexpected_proposers = [b.message.proposer_index for b in new_signed_blocks if
+                                        b.message.proposer_index not in branch_tip.participants]
+                assert len(unexpected_proposers) == 0, \
+                    'Unexpected proposer: ' + str(unexpected_proposers[0])
 
-            # Attesters are aligned with the partition
-            current_epoch_state = branch_tips[sm_link].beacon_state
-            for b in new_signed_blocks:
-                # Attesting indexes from on chain attestations
-                attesters = _attesters_in_block(spec, current_epoch_state, b, current_epoch)
-                # Attesting indexes from not yet included attestations
-                for a in new_branch_tip.attestations:
-                    if a.data.target.epoch == current_epoch:
-                        attesters.update(spec.get_attesting_indices(current_epoch_state, a.data, a.aggregation_bits))
-                unexpected_attesters = attesters.difference(branch_tip.participants)
-                assert len(unexpected_attesters) == 0, \
-                    'Unexpected attester: ' + str(unexpected_attesters.pop()) + ', slot ' + str(b.message.slot)
+                # Attesters are aligned with the partition
+                current_epoch_state = branch_tips[sm_link].beacon_state
+                for b in new_signed_blocks:
+                    # Attesting indexes from on chain attestations
+                    attesters = _attesters_in_block(spec, current_epoch_state, b, current_epoch)
+                    # Attesting indexes from not yet included attestations
+                    for a in new_branch_tip.attestations:
+                        if a.data.target.epoch == current_epoch:
+                            attesters.update(spec.get_attesting_indices(current_epoch_state, a.data, a.aggregation_bits))
+                    unexpected_attesters = attesters.difference(branch_tip.participants)
+                    assert len(unexpected_attesters) == 0, \
+                        'Unexpected attester: ' + str(unexpected_attesters.pop()) + ', slot ' + str(b.message.slot)
 
-        # Store the result
-        branch_tips[sm_link] = new_branch_tip
-        signed_blocks = signed_blocks + new_signed_blocks
+            # Store the result
+            branch_tips[sm_link] = new_branch_tip
+            signed_blocks = signed_blocks + new_signed_blocks
 
     # Sort blocks by a slot
     return sorted(signed_blocks, key=lambda b: b.message.slot)
