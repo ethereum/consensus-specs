@@ -613,8 +613,13 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
 
-    eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = \
-        recover_shifted_data(cell_ids, cells, zero_poly_eval, zero_poly_coeff, roots_of_unity_extended)
+    eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
+        cell_ids,
+        cells,
+        zero_poly_eval,
+        zero_poly_coeff,
+        roots_of_unity_extended,
+    )
 
     reconstructed_data = recover_original_data(
         eval_shifted_extended_evaluation,
