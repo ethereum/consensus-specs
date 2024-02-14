@@ -21,3 +21,9 @@ def test_integer_squareroot(spec):
         n = rng.randint(0, 2**64 - 1)
         uint64_n = spec.uint64(n)
         assert spec.integer_squareroot(uint64_n) == isqrt(n)
+
+    try:
+        spec.integer_squareroot(spec.uint64(2**64))
+        assert False
+    except ValueError:
+        pass
