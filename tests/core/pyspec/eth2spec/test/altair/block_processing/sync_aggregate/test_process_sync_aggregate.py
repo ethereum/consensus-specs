@@ -484,6 +484,55 @@ def test_proposer_in_committee_without_participation(spec, state):
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
+def test_proposer_in_committee_without_participation__zero_pre_balance(spec, state):
+    committee_indices = compute_committee_indices(state, state.current_sync_committee)
+
+    # NOTE: seem to reliably be getting a matching proposer in the first epoch w/ ``MINIMAL`` preset.
+    for _ in range(spec.SLOTS_PER_EPOCH):
+        block = build_empty_block_for_next_slot(spec, state)
+        proposer_index = block.proposer_index
+        proposer_pubkey = state.validators[proposer_index].pubkey
+        proposer_is_in_sync_committee = proposer_pubkey in state.current_sync_committee.pubkeys
+
+        # Need at least one participant to have a valid sync committee signature
+        if proposer_is_in_sync_committee:
+            participant_index = (committee_indices.index(proposer_index) + 1) % len(committee_indices)
+        else:
+            participant_index = 0
+
+        validator_index = committee_indices[participant_index]
+        participation = [False for _ in committee_indices]
+        participation[participant_index] = True
+        participants = [validator_index]
+
+        # Valid sync committee signature here...
+        block.body.sync_aggregate = spec.SyncAggregate(
+            sync_committee_bits=participation,
+            sync_committee_signature=compute_aggregate_sync_committee_signature(
+                spec,
+                state,
+                block.slot - 1,
+                participants,
+                block_root=block.parent_root,
+            )
+        )
+
+        if proposer_is_in_sync_committee:
+            assert state.validators[block.proposer_index].pubkey in state.current_sync_committee.pubkeys
+            yield from run_sync_committee_processing(spec, state, block,
+                                                     skip_reward_validation=True,
+                                                     zero_balance_proposer_index=proposer_index)
+            break
+        else:
+            state_transition_and_sign_block(spec, state, block)
+    else:
+        raise AssertionError("failed to find a proposer in the sync committee set; check test setup")
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL], reason="prefer short search to find matching proposer")
 def test_proposer_in_committee_with_participation(spec, state):
     committee_indices = compute_committee_indices(state, state.current_sync_committee)
     participation = [True for _ in committee_indices]
