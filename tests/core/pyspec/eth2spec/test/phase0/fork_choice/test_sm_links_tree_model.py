@@ -43,6 +43,8 @@ MIN_JUSTIFICATION_RATE = 91
 MAX_UNDERJUSTIFICATION_RATE = 66
 MIN_UNDERJUSTIFICATION_RATE = 55
 
+EMPTY_SLOTS_RATE = 3
+MAX_TIPS_TO_ATTEST = 2
 
 class SmLink(tuple):
     @property
@@ -206,7 +208,7 @@ def _produce_block(spec, state, attestations):
     return signed_block, post_state, not_included_attestations
 
 
-def _attest_to_slot(spec, state, slot_to_attest, participants_filter):
+def _attest_to_slot(spec, state, slot_to_attest, participants_filter=None):
     """
     Creates attestation is a slot respecting participating validators.
     :return: produced attestations
@@ -218,7 +220,7 @@ def _attest_to_slot(spec, state, slot_to_attest, participants_filter):
     attestations_in_slot = []
     for index in range(committees_per_slot):
         beacon_committee = spec.get_beacon_committee(state, slot_to_attest, index)
-        participants = participants_filter(beacon_committee)
+        participants = beacon_committee if participants_filter is None else participants_filter(beacon_committee)
         if any(participants):
             attestation = get_valid_attestation(
                 spec,
@@ -357,7 +359,19 @@ def _print_epoch(spec, epoch_state, signed_blocks):
     return ret
 
 
-def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -> []:
+def _print_block_tree(spec, root_state, signed_blocks):
+    ret = ""
+    epoch_state = root_state.copy()
+    for block in signed_blocks:
+        transition_to(spec, epoch_state, block.message.slot)
+        if ret != "":
+            ret = ret + " <- "
+        ret = ret + "s(" + str(block.message.slot) + ", " + _print_block(spec, epoch_state, block) + ")"
+
+    return ret
+
+
+def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug, block_parents) -> []:
     """
     Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
     i.e. a sequence of blocks with attestations required to create given supermajority links.
@@ -530,7 +544,8 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
                     # Attesting indexes from not yet included attestations
                     for a in new_branch_tip.attestations:
                         if a.data.target.epoch == current_epoch:
-                            attesters.update(spec.get_attesting_indices(current_epoch_state, a.data, a.aggregation_bits))
+                            attesters.update(
+                                spec.get_attesting_indices(current_epoch_state, a.data, a.aggregation_bits))
                     unexpected_attesters = attesters.difference(branch_tip.participants)
                     assert len(unexpected_attesters) == 0, \
                         'Unexpected attester: ' + str(unexpected_attesters.pop()) + ', slot ' + str(b.message.slot)
@@ -539,13 +554,91 @@ def _generate_blocks(spec, genesis_state, sm_links, rnd: random.Random, debug) -
             branch_tips[sm_link] = new_branch_tip
             signed_blocks = signed_blocks + new_signed_blocks
 
+    # Process block tree model
+    block_tree = []
+    highest_target_tip = branch_tips[highest_target_sm_link]
+
+    attestations = highest_target_tip.attestations.copy()
+    post_states = [highest_target_tip.beacon_state.copy()]
+    current_slot = highest_target_tip.beacon_state.slot
+    block_index = 1
+    block_tree_tips = set([0])
+
+    while block_index < len(block_parents):
+        # Next slot
+        current_slot += 1
+
+        # Propose a block if slot shouldn't be empty
+        if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
+            # Advance parent state to the current slot
+            parent_index = block_parents[block_index]
+            parent_state = post_states[parent_index].copy()
+            transition_to(spec, parent_state, current_slot)
+
+            # Filter out non-viable attestations
+            attestations = [a for a in attestations if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+
+            # Produce block
+            proposer = spec.get_beacon_proposer_index(parent_state)
+            signed_block, post_state, attestations = _produce_block(spec, parent_state, attestations)
+            block_tree.append(signed_block)
+            post_states.append(post_state)
+
+            # Update tips
+            block_tree_tips.discard(parent_index)
+            block_tree_tips.add(block_index)
+
+            # Next block
+            block_index += 1
+
+        # Attest to randomly selected tips
+        def split_list(lst, n):
+            k, m = divmod(len(lst), n)
+            return [lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
+
+        attesting_tips = rnd.sample(block_tree_tips, min(len(block_tree_tips), MAX_TIPS_TO_ATTEST))
+        attesters = split_list([i for i in range(len(post_state.validators))], len(attesting_tips))
+        for index, attesting_block_index in enumerate(attesting_tips):
+            # Advance the state to the current slot
+            attesting_state = post_states[attesting_block_index]
+            transition_to(spec, attesting_state, current_slot)
+
+            # Attest to the block
+            attestations_in_slot = _attest_to_slot(spec, attesting_state, attesting_state.slot,
+                                                   lambda comm: [i for i in comm if i in attesters[index]])
+            # Prepend attestations to the list
+            attestations = list(attestations_in_slot) + attestations
+
+    signed_blocks = signed_blocks + block_tree
+
+    if debug:
+        print('\nblock_tree:')
+        print('blocks:       ', _print_block_tree(spec, post_states[0], block_tree))
+        print('              ', 'state.current_justified_checkpoint:',
+              '(epoch=' + str(post_states[len(post_states) - 1].current_justified_checkpoint.epoch) +
+              ', root=' + str(post_states[len(post_states) - 1].current_justified_checkpoint.root)[:6] + ')')
+
     # Sort blocks by a slot
     return sorted(signed_blocks, key=lambda b: b.message.slot)
 
 
+def _print_head(spec, store):
+    head = spec.get_head(store)
+    weight = spec.get_weight(store, head)
+    state = store.checkpoint_states[store.justified_checkpoint]
+    total_active_balance = spec.get_total_active_balance(state)
+
+    return '(slot=' + str(store.blocks[head].slot) + ', root=' + str(head)[:6] + ', weight=' + str(
+        weight * 100 // total_active_balance) + '%)'
+
+
 @with_altair_and_later
 @spec_state_test
-def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
+def test_sm_links_tree_model(spec, state, debug=False, seed=4, sm_links=None):
+    block_parents = [0, 0, 0, 2, 2, 1, 1, 6, 6, 5, 5, 4, 7, 4, 3, 3]
+    sm_links = [(2, 3), (3, 4), (3, 6), (4, 7)]
+    debug = True
+
     # This test is mainly used for the test generation purposes
     # Thus seed and sm_links are provided by the generator
     # Define sm_links and seed explicitly to execute a certain run of this test
@@ -565,7 +658,7 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
             print('\nsm_links:', sm_links)
 
         rnd = random.Random(seed)
-        signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug)
+        signed_blocks = _generate_blocks(spec, state, sm_links, rnd, debug, block_parents)
         if len(signed_blocks) > 0:
             break
         else:
@@ -593,5 +686,8 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
+
+    if debug:
+        print('head:         ' + _print_head(spec, store))
 
     yield 'steps', test_steps
