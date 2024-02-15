@@ -89,4 +89,4 @@ ALL_PRESETS = (MINIMAL, MAINNET)
 #
 # Number
 #
-MAX_UINT_64 = 2**64 - 1
+UINT64_MAX = 2**64 - 1
