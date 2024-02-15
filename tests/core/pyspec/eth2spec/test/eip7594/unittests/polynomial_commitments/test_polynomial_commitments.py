@@ -10,6 +10,10 @@ from eth2spec.test.helpers.sharding import (
 from eth2spec.utils.bls import BLS_MODULUS
 
 
+def field_element_bytes(x):
+    return int.to_bytes(x % BLS_MODULUS, 32, "big")
+
+
 @with_eip7594_and_later
 @spec_test
 @single_phase
@@ -34,10 +38,13 @@ def test_verify_cell_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
+
+    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+
     cell_id = 0
-    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
     cell_id = 1
-    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
 
 
 @with_eip7594_and_later
@@ -47,13 +54,16 @@ def test_verify_cell_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
+    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+
+    assert len(cells) == len(proofs)
 
     assert spec.verify_cell_proof_batch(
-        row_commitments=[commitment],
-        row_ids=[0],
-        column_ids=[0, 1],
-        cells=cells[0:1],
-        proofs=proofs,
+        row_commitments_bytes=[commitment],
+        row_ids=[0, 0],
+        column_ids=[0, 4],
+        cells_bytes=[cells_bytes[0], cells_bytes[4]],
+        proofs_bytes=[proofs[0], proofs[4]],
     )
 
 
@@ -73,10 +83,10 @@ def test_recover_polynomial(spec):
 
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
+    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
 
     # Compute the cells we will be recovering from
     cell_ids = []
-    known_cells = []
     # First figure out just the indices of the cells
     for i in range(N_SAMPLES):
         j = rng.randint(0, spec.CELLS_PER_BLOB)
@@ -84,10 +94,10 @@ def test_recover_polynomial(spec):
             j = rng.randint(0, spec.CELLS_PER_BLOB)
         cell_ids.append(j)
     # Now the cells themselves
-    known_cells = [cells[cell_id] for cell_id in cell_ids]
+    known_cells_bytes = [cells_bytes[cell_id] for cell_id in cell_ids]
 
     # Recover the data
-    recovered_data = spec.recover_polynomial(cell_ids, known_cells)
+    recovered_data = spec.recover_polynomial(cell_ids, known_cells_bytes)
 
     # Check that the original data match the non-extended portion of the recovered data
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
