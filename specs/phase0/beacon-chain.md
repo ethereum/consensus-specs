@@ -178,7 +178,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_UINT_64` | `uint64(2**64 - 1)` |
+| `UINT64_MAX` | `uint64(2**64 - 1)` |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
@@ -600,7 +600,7 @@ def integer_squareroot(n: uint64) -> uint64:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
-    if n == MAX_UINT_64:
+    if n == UINT64_MAX:
         return uint64(4294967295)
     x = n
     y = (x + 1) // 2
