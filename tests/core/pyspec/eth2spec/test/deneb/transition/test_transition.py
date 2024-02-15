@@ -104,8 +104,15 @@ def test_higher_churn_limit_to_lower__without_block(state, fork_epoch, spec, pos
     # check post state
     assert spec.get_current_epoch(state) == fork_epoch
 
-    yield "blocks", []
-    yield "post", state
+    # apply some empty slots
+    post_spec.process_slots(state, state.slot + 5)
+
+    # continue regular state transition with new spec into next epoch
+    blocks = []
+    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+
+    yield "blocks", blocks
+    yield "post", state  # the last block's immediate post-state
 
     churn_limit_1 = post_spec.get_validator_activation_churn_limit(state)
     assert churn_limit_1 == post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
