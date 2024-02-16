@@ -74,6 +74,6 @@ class BeaconBlockBody(Container):
     # Execution
     execution_payload: ExecutionPayload  # [Modified in Deneb:EIP4844]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]  # [New in Deneb:EIP4844]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
 ```
