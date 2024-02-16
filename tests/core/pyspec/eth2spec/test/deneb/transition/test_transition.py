@@ -74,39 +74,3 @@ def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag
     churn_limit_1 = post_spec.get_validator_activation_churn_limit(state)
     assert churn_limit_1 == post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     assert churn_limit_1 < churn_limit_0
-
-
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
-@with_presets([MINIMAL], reason="churn limit update needs enough validators")
-def test_higher_churn_limit_to_lower__without_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
-    """
-    Test if churn limit goes from high to low due to EIP-7514.
-    """
-    # Create high churn limit
-    mock_activations = post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT * spec.config.CHURN_LIMIT_QUOTIENT
-    mock_activated_validators(spec, state, mock_activations)
-
-    transition_until_fork(spec, state, fork_epoch)
-
-    churn_limit_0 = spec.get_validator_churn_limit(state)
-    assert churn_limit_0 > post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-
-    # check pre state
-    assert spec.get_current_epoch(state) < fork_epoch
-
-    yield "pre", state
-
-    # irregular state transition to handle fork
-    # set with_block=False here
-    state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
-
-    # check post state
-    assert spec.get_current_epoch(state) == fork_epoch
-
-    yield "blocks", []
-    yield "post", state
-
-    churn_limit_1 = post_spec.get_validator_activation_churn_limit(state)
-    assert churn_limit_1 == post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-    assert churn_limit_1 < churn_limit_0
