@@ -7,8 +7,8 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    EIP6110, EIP7002, EIP7594,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
+    EIP7002, EIP7594,
     WHISK,
     MINIMAL,
     ALL_PHASES,
@@ -507,7 +507,7 @@ with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
+with_electra_and_later = with_all_phases_from(ELECTRA)
 with_eip7002_and_later = with_all_phases_from(EIP7002)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)

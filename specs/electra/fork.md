@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIP6110_FORK_VERSION` | `Version('0x05000000')` |
-| `EIP6110_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `ELECTRA_FORK_VERSION` | `Version('0x05000000')` |
+| `ELECTRA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP6110_FORK_EPOCH:
-        return EIP6110_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
         return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
@@ -60,17 +60,17 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ### Fork trigger
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `EIP6110_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `ELECTRA_FORK_EPOCH`.
 
-Note that for the pure EIP-6110 networks, we don't apply `upgrade_to_eip6110` since it starts with EIP-6110 version logic.
+Note that for the pure EIP-6110 networks, we don't apply `upgrade_to_electra` since it starts with EIP-6110 version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP6110_FORK_EPOCH`,
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ELECTRA_FORK_EPOCH`,
 an irregular state change is made to upgrade to EIP-6110.
 
 ```python
-def upgrade_to_eip6110(pre: deneb.BeaconState) -> BeaconState:
+def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     epoch = deneb.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
@@ -99,7 +99,7 @@ def upgrade_to_eip6110(pre: deneb.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIP6110_FORK_VERSION,  # [Modified in EIP-6110]
+            current_version=ELECTRA_FORK_VERSION,  # [Modified in EIP-6110]
             epoch=epoch,
         ),
         # History

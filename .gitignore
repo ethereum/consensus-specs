@@ -21,7 +21,7 @@ tests/core/pyspec/eth2spec/altair/
 tests/core/pyspec/eth2spec/bellatrix/
 tests/core/pyspec/eth2spec/capella/
 tests/core/pyspec/eth2spec/deneb/
-tests/core/pyspec/eth2spec/eip6110/
+tests/core/pyspec/eth2spec/electra/
 tests/core/pyspec/eth2spec/eip7002/
 tests/core/pyspec/eth2spec/whisk/
 tests/core/pyspec/eth2spec/eip7594/
