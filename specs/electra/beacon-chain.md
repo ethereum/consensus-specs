@@ -284,7 +284,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-6110 testing only.
 Modifications include:
-1. Use `EIP6110_FORK_VERSION` as the previous and current fork version.
+1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
 2. Utilize the EIP-6110 `BeaconBlockBody` when constructing the initial `latest_block_header`.
 3. Add `deposit_receipts_start_index` variable to the genesis state initialization.
 
@@ -295,8 +295,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110] for testing only
-        current_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110]
+        previous_version=ELECTRA_FORK_VERSION,  # [Modified in EIP6110] for testing only
+        current_version=ELECTRA_FORK_VERSION,  # [Modified in EIP6110]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(

@@ -155,7 +155,7 @@ jobs:
           command: make citest fork=deneb
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  test-eip6110:
+  test-electra:
     docker:
       - image: circleci/python:3.9
     working_directory: ~/specs-repo
@@ -165,7 +165,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=eip6110
+          command: make citest fork=electra
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-eip7002:
@@ -340,7 +340,7 @@ workflows:
       - test-deneb:
           requires:
             - install_pyspec_test
-      - test-eip6110:
+      - test-electra:
           requires:
             - install_pyspec_test
       - test-eip7002:
