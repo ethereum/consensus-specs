@@ -168,7 +168,7 @@ Similar to the discussion about the maximum gossip size increase, the
 `ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put
 in place during Phase 0.
 
-As with the gossip limit, 10 MiB is selected because this is firmly below any
+As with the gossip limit, 10 MiB is selected because this is firmly above any
 valid block sizes in the range of gas limits expected in the medium term.
 
 As with both gossip and req/rsp maximum values, type-specific limits should
