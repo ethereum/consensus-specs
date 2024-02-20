@@ -45,7 +45,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `DataColumn` | `List[Cell, MAX_BLOBS_PER_BLOCK]` | The data of each column in EIP-7594 |
+| `DataColumn` | `List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]` | The data of each column in EIP-7594 |
 | `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
 
 ## Configuration
