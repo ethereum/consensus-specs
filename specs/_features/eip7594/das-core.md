@@ -27,9 +27,9 @@
 - [Extended data](#extended-data)
 - [Column gossip](#column-gossip)
   - [Parameters](#parameters)
-  - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
 - [Peer sampling](#peer-sampling)
 - [Peer scoring](#peer-scoring)
+- [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
 - [DAS providers](#das-providers)
 - [A note on fork choice](#a-note-on-fork-choice)
 - [FAQs](#faqs)
@@ -203,13 +203,13 @@ The particular columns that a node custodies are selected pseudo-randomly as a f
 
 ## Peer discovery
 
-At each slot, a node needs to be able to readily sample from *any* set of columns. To this end, a node should find and maintain a set of diverse and reliable peers that can regularly satisfy their sampling demands.
+At each slot, a node needs to be able to readily sample from *any* set of columns. To this end, a node SHOULD find and maintain a set of diverse and reliable peers that can regularly satisfy their sampling demands.
 
 A node runs a background peer discovery process, maintaining at least `TARGET_NUMBER_OF_PEERS` of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible.
 
 `TARGET_NUMBER_OF_PEERS` should be tuned upward in the event of failed sampling.
 
-*Note*: while high-capacity and super-full nodes are high value with respect to satisfying sampling requirements, a node should maintain a distribution across node capacities as to not centralize the p2p graph too much (in the extreme becomes hub/spoke) and to distribute sampling load better across all nodes.
+*Note*: while high-capacity and super-full nodes are high value with respect to satisfying sampling requirements, a node SHOULD maintain a distribution across node capacities as to not centralize the p2p graph too much (in the extreme becomes hub/spoke) and to distribute sampling load better across all nodes.
 
 *Note*: A DHT-based peer discovery mechanism is expected to be utilized in the above. The beacon-chain network currently utilizes discv5 in a similar method as described for finding peers of particular distributions of attestation subnets. Additional peer discovery methods are valuable to integrate (e.g., latent peer discovery via libp2p gossipsub) to add a defense in breadth against one of the discovery methods being attacked.
 
@@ -225,20 +225,6 @@ For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_
 
 To custody a particular column, a node joins the respective gossip subnet. Verifiable samples from their respective column are gossiped on the assigned subnet.
 
-### Reconstruction and cross-seeding
-
-If the node obtains 50%+ of all the columns, they can reconstruct the full data matrix via `recover_matrix` helper.
-
-If a node fails to sample a peer or fails to get a column on the column subnet, a node can utilize the Req/Resp message to query the missing column from other peers.
-
-Once the node obtain the column, the node should send the missing columns to the column subnets.
-
-*Note*: A node always maintains a matrix view of the rows and columns they are following, able to cross-reference and cross-seed in either direction.
-
-*Note*: There are timing considerations to analyze -- at what point does a node consider samples missing and choose to reconstruct and cross-seed.
-
-*Note*: There may be anti-DoS and quality-of-service considerations around how to send samples and consider samples -- is each individual sample a message or are they sent in aggregate forms.
-
 ## Peer sampling
 
 A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. At each slot, a node makes `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
@@ -246,6 +232,20 @@ A node SHOULD maintain a diverse set of peers for each column and each slot by v
 ## Peer scoring
 
 Due to the deterministic custody functions, a node knows exactly what a peer should be able to respond to. In the event that a peer does not respond to samples of their custodied rows/columns, a node may downscore or disconnect from a peer.
+
+## Reconstruction and cross-seeding
+
+If the node obtains 50%+ of all the columns, they can reconstruct the full data matrix via `recover_matrix` helper.
+
+If a node fails to sample a peer or fails to get a column on the column subnet, a node can utilize the Req/Resp message to query the missing column from other peers.
+
+Once the node obtain the column, the node SHOULD send the missing columns to the column subnets.
+
+*Note*: A node always maintains a matrix view of the rows and columns they are following, able to cross-reference and cross-seed in either direction.
+
+*Note*: There are timing considerations to analyze -- at what point does a node consider samples missing and choose to reconstruct and cross-seed.
+
+*Note*: There may be anti-DoS and quality-of-service considerations around how to send samples and consider samples -- is each individual sample a message or are they sent in aggregate forms.
 
 ## DAS providers
 
