@@ -1,63 +1,35 @@
-from setuptools import setup, find_packages, Command
-from setuptools.command.build_py import build_py
+import ast
+import copy
+import json
+import os.path
+import string
+import sys
+from collections import OrderedDict
 from distutils import dir_util
 from distutils.util import convert_path
 from pathlib import Path
-import os
-import string
-from typing import Dict, List, Sequence, Optional, Tuple
-import ast
-import subprocess
-import sys
-import copy
-from collections import OrderedDict
-import json
-from functools import reduce
-
-from pysetup.constants import (
-    # code names
-    PHASE0,
-    # misc
-    ETH2_SPEC_COMMENT_PREFIX,
-)
-from pysetup.spec_builders import spec_builders
-from pysetup.typing import (
-    BuildTarget,
-    ProtocolDefinition,
-    SpecObject,
-    VariableDefinition,
-)
-from pysetup.helpers import (
-    combine_spec_objects,
-    dependency_order_class_objects,
-    objects_to_spec,
-    parse_config_vars,
-)
-from pysetup.md_doc_paths import get_md_doc_paths
-
-
-# NOTE: have to programmatically include third-party dependencies in `setup.py`.
-def installPackage(package: str):
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
-try:
-    import ruamel.yaml
-except ImportError:
-    installPackage(RUAMEL_YAML_VERSION)
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from ruamel.yaml import YAML
+from setuptools import Command, find_packages, setup
+from setuptools.command.build_py import build_py
 
-MARKO_VERSION = "marko==1.0.2"
-try:
-    import marko
-except ImportError:
-    installPackage(MARKO_VERSION)
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
-from marko.inline import CodeSpan
+from marko.block import BlankLine, FencedCode, Heading, LinkRefDef
 from marko.ext.gfm import gfm
 from marko.ext.gfm.elements import Table
+from marko.inline import CodeSpan
+
+from pysetup.constants import ETH2_SPEC_COMMENT_PREFIX  # code names; misc
+from pysetup.constants import PHASE0
+from pysetup.helpers import (combine_spec_objects,
+                             dependency_order_class_objects, objects_to_spec,
+                             parse_config_vars)
+from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.spec_builders import spec_builders
+from pysetup.typing import (BuildTarget, ProtocolDefinition, SpecObject,
+                            VariableDefinition)
 
 
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
@@ -554,9 +526,9 @@ setup(
         "milagro_bls_binding==1.9.0",
         "remerkleable==0.1.28",
         "trie==2.0.2",
-        RUAMEL_YAML_VERSION,
+        "ruamel.yaml==0.17.21",
         "lru-dict==1.2.0",
-        MARKO_VERSION,
+        "marko==1.0.2",
         "py_arkworks_bls12381==0.3.4",
         "curdleproofs==0.1.1",
     ]
