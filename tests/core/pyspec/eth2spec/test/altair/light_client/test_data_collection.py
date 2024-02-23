@@ -747,13 +747,13 @@ def select_new_head(test, spec, head_bid):
             state.data.genesis_validators_root,
         )
         checks["latest_finality_update"] = finality_update_obj
-    optimistic_update = get_light_client_finality_update(test)
+    optimistic_update = get_light_client_optimistic_update(test)
     if optimistic_update.spec is not None:
         optimistic_update_obj = yield from encode_object(
             test, "optimistic_update", optimistic_update, optimistic_update.data.attested_header.beacon.slot,
             state.data.genesis_validators_root,
         )
-        checks["latest_finality_update"] = optimistic_update_obj
+        checks["latest_optimistic_update"] = optimistic_update_obj
 
     test.steps.append({
         "new_head": {
