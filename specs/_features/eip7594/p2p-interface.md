@@ -25,6 +25,9 @@
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
+  - [The discovery domain: discv5](#the-discovery-domain-discv5)
+    - [ENR structure](#enr-structure)
+      - [`custody_subnet_count`](#custody_subnet_count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -44,7 +47,7 @@
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars  |
 
 ### Containers
@@ -194,3 +197,15 @@ Clients MAY limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
+
+### The discovery domain: discv5
+
+#### ENR structure
+
+##### `custody_subnet_count`
+
+A new field is added to the ENR under the key `custody_subnet_count` to facilitate custody data column discovery.
+
+| Key                    | Value        |
+|:-----------------------|:-------------|
+| `custody_subnet_count` | SSZ `uint64` |

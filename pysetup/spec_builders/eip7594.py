@@ -17,7 +17,7 @@ from eth2spec.deneb import {preset_name} as deneb
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         return {
             'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
-            'NUMBER_OF_COLUMNS': spec_object.preset_vars['NUMBER_OF_COLUMNS'].value,
+            'NUMBER_OF_COLUMNS': spec_object.config_vars['NUMBER_OF_COLUMNS'].value,
         }
 
     @classmethod
