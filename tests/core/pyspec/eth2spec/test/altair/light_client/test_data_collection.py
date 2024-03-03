@@ -4,11 +4,16 @@ from dataclasses import dataclass
 from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
+    spec_test,
+    with_config_overrides,
+    with_matching_spec_config,
+    with_phases,
     with_presets,
+    with_state,
     with_light_client,
 )
 from eth2spec.test.helpers.constants import (
-    ALTAIR,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB,
     MINIMAL,
 )
 from eth2spec.test.helpers.fork_transition import (
@@ -933,3 +938,153 @@ def test_light_client_data_collection(spec, state):
 
     # Finish test
     yield from finish_test(test)
+
+
+def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
+    # Start test
+    test = yield from setup_test(spec, state, phases=phases)
+
+    # Genesis block is post Altair and is finalized, so can be used as bootstrap
+    genesis_bid = BlockId(slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root())
+    assert bootstrap_bid(get_light_client_bootstrap(test, genesis_bid.root).data) == genesis_bid
+
+    # Shared history up to final epoch of period before `fork_1`
+    fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
+    fork_1_period = spec.compute_sync_committee_period(fork_1_epoch)
+    slot = compute_start_slot_at_sync_committee_period(spec, fork_1_period) - spec.SLOTS_PER_EPOCH
+    spec, state, bid = yield from add_new_block(test, spec, state, slot=slot, num_sync_participants=1)
+    yield from select_new_head(test, spec, bid)
+    assert get_light_client_bootstrap(test, bid.root).spec is None
+    slot_period = spec.compute_sync_committee_period_at_slot(slot)
+    if slot_period == 0:
+        assert update_attested_bid(get_light_client_update_for_period(test, 0).data) == genesis_bid
+    else:
+        for period in range(0, slot_period):
+            assert get_light_client_update_for_period(test, period).spec is None  # attested period != signature period
+    state_period = spec.compute_sync_committee_period_at_slot(state.slot)
+
+    # Branch A: Advance past `fork_2`, having blocks at slots 0 and 4 of each epoch
+    spec_a = spec
+    state_a = state
+    slot_a = state_a.slot
+    bids_a = [bid]
+    num_sync_participants_a = 1
+    fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
+    while spec_a.get_current_epoch(state_a) <= fork_2_epoch:
+        attested_period = spec_a.compute_sync_committee_period_at_slot(slot_a)
+        slot_a += 4
+        signature_period = spec_a.compute_sync_committee_period_at_slot(slot_a)
+        if signature_period != attested_period:
+            num_sync_participants_a = 0
+        num_sync_participants_a += 1
+        spec_a, state_a, bid_a = yield from add_new_block(
+            test, spec_a, state_a, slot=slot_a, num_sync_participants=num_sync_participants_a)
+        yield from select_new_head(test, spec_a, bid_a)
+        for bid in bids_a:
+            assert get_light_client_bootstrap(test, bid.root).spec is None
+        if attested_period == signature_period:
+            assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_a[-1]
+        else:
+            assert signature_period == attested_period + 1
+            assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_a[-2]
+            assert get_light_client_update_for_period(test, signature_period).spec is None
+        assert update_attested_bid(get_light_client_finality_update(test).data) == bids_a[-1]
+        assert update_attested_bid(get_light_client_optimistic_update(test).data) == bids_a[-1]
+        bids_a.append(bid_a)
+
+    # Branch B: Advance past `fork_2`, having blocks at slots 1 and 5 of each epoch but no sync participation
+    spec_b = spec
+    state_b = state
+    slot_b = state_b.slot
+    bids_b = [bid]
+    while spec_b.get_current_epoch(state_b) <= fork_2_epoch:
+        slot_b += 4
+        signature_period = spec_b.compute_sync_committee_period_at_slot(slot_b)
+        spec_b, state_b, bid_b = yield from add_new_block(
+            test, spec_b, state_b, slot=slot_b)
+        # Simulate that this does not become head yet, e.g., this branch was withheld
+        for bid in bids_b:
+            assert get_light_client_bootstrap(test, bid.root).spec is None
+        bids_b.append(bid_b)
+
+    # Branch B: Another block that becomes head
+    attested_period = spec_b.compute_sync_committee_period_at_slot(slot_b)
+    slot_b += 1
+    signature_period = spec_b.compute_sync_committee_period_at_slot(slot_b)
+    num_sync_participants_b = 1
+    spec_b, state_b, bid_b = yield from add_new_block(
+        test, spec_b, state_b, slot=slot_b, num_sync_participants=num_sync_participants_b)
+    yield from select_new_head(test, spec_b, bid_b)
+    for bid in bids_b:
+        assert get_light_client_bootstrap(test, bid.root).spec is None
+    if attested_period == signature_period:
+        assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_b[-1]
+    else:
+        assert signature_period == attested_period + 1
+        assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_b[-2]
+        assert get_light_client_update_for_period(test, signature_period).spec is None
+    assert update_attested_bid(get_light_client_finality_update(test).data) == bids_b[-1]
+    assert update_attested_bid(get_light_client_optimistic_update(test).data) == bids_b[-1]
+    bids_b.append(bid_b)
+
+    # All data for periods between the common ancestor of the two branches should have reorged.
+    # As there was no sync participation on branch B, that means it is deleted.
+    state_b_period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
+    for period in range(state_period + 1, state_b_period):
+        assert get_light_client_update_for_period(test, period).spec is None
+
+    # Branch A: Another block, reorging branch B once more
+    attested_period = spec_a.compute_sync_committee_period_at_slot(slot_a)
+    slot_a = slot_b + 1
+    signature_period = spec_a.compute_sync_committee_period_at_slot(slot_a)
+    if signature_period != attested_period:
+        num_sync_participants_a = 0
+    num_sync_participants_a += 1
+    spec_a, state_a, bid_a = yield from add_new_block(
+        test, spec_a, state_a, slot=slot_a, num_sync_participants=num_sync_participants_a)
+    yield from select_new_head(test, spec_a, bid_a)
+    for bid in bids_a:
+        assert get_light_client_bootstrap(test, bid.root).spec is None
+    if attested_period == signature_period:
+        assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_a[-1]
+    else:
+        assert signature_period == attested_period + 1
+        assert update_attested_bid(get_light_client_update_for_period(test, attested_period).data) == bids_a[-2]
+        assert get_light_client_update_for_period(test, signature_period).spec is None
+    assert update_attested_bid(get_light_client_finality_update(test).data) == bids_a[-1]
+    assert update_attested_bid(get_light_client_optimistic_update(test).data) == bids_a[-1]
+    bids_a.append(bid_a)
+
+    # Data has been restored
+    state_a_period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
+    for period in range(state_period + 1, state_a_period):
+        assert get_light_client_update_for_period(test, period).spec is not None
+
+    # Finish test
+    yield from finish_test(test)
+
+
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB])
+@spec_test
+@with_config_overrides({
+    'CAPELLA_FORK_EPOCH': 1 * 8,  # SyncCommitteePeriod 1
+    'DENEB_FORK_EPOCH': 2 * 8,  # SyncCommitteePeriod 2
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=DENEB)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_deneb_reorg_aligned(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
+
+
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB])
+@spec_test
+@with_config_overrides({
+    'CAPELLA_FORK_EPOCH': 1 * 8 + 4,  # SyncCommitteePeriod 1 (+ 4 epochs)
+    'DENEB_FORK_EPOCH': 3 * 8 + 4,  # SyncCommitteePeriod 3 (+ 4 epochs)
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=DENEB)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_deneb_reorg_unaligned(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
