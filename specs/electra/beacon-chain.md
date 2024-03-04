@@ -13,6 +13,8 @@
     - [`SyncData`](#syncdata)
   - [Extended containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
+- [Helper functions](#helper-functions)
+  - [`default_sync_data`](#default_sync_data)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_sync_committee_updates`](#modified-process_sync_committee_updates)
