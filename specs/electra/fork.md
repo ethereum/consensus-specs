@@ -137,7 +137,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         # Sync history
         previous_best_sync_data=default_sync_data(),  # [New in Electra]
         current_best_sync_data=default_sync_data(),  # [New in Electra]
-        parent_block_has_sync_committee_finality=(pre.slot == deneb.GENESIS_SLOT),  # [New in Electra]
+        parent_block_has_sync_committee_finality=(pre.slot == GENESIS_SLOT),  # [New in Electra]
     )
 
     return post
