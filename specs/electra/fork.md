@@ -68,7 +68,7 @@ Note that for the pure Electra networks, we don't apply `upgrade_to_electra` sin
 
 ```python
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
-    epoch = capella.get_current_epoch(pre)
+    epoch = deneb.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
