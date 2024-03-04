@@ -89,6 +89,21 @@ class BeaconState(Container):
     parent_block_has_sync_committee_finality: bool  # [New in Electra]
 ```
 
+## Helper functions
+
+### `default_sync_data`
+
+```python
+def default_sync_data() -> SyncData:
+    return SyncData(
+        sync_aggregate=SyncAggregate(
+            sync_committee_bits=Bitvector[SYNC_COMMITTEE_SIZE]()
+            sync_committee_signature=G2_POINT_AT_INFINITY,
+        ),
+        signature_slot=GENESIS_SLOT,
+    )
+```
+
 ## Beacon chain state transition function
 
 ### Epoch processing
@@ -104,7 +119,7 @@ def process_sync_committee_updates(state: BeaconState) -> None:
 
         # [New in Electra]
         state.previous_best_sync_data = state.current_best_sync_data
-        state.current_best_sync_data = SyncData()
+        state.current_best_sync_data = default_sync_data()
         state.parent_block_has_sync_committee_finality = False
 ```
 
