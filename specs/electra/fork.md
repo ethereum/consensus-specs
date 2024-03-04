@@ -88,14 +88,6 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,  # [Modified in Electra]
         excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,  # [Modified in Electra]
     )
-    # [New in Electra]
-    if pre.slot == deneb.GENESIS_SLOT:
-        has_sync_committee_finality = True
-    else:
-        # Finality may have advanced since the latest block, as slots and epochs were applied.
-        # As the finality at the latest block's post state is unknown, default to `False`.
-        # Only relevant if the fork is activated on a non-`SyncCommitteePeriod` boundary.
-        has_sync_committee_finality = False
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -145,7 +137,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         # Sync history
         previous_best_sync_data=default_sync_data(),  # [New in Electra]
         current_best_sync_data=default_sync_data(),  # [New in Electra]
-        parent_block_has_sync_committee_finality=has_sync_committee_finality,  # [New in Electra]
+        parent_block_has_sync_committee_finality=(pre.slot == deneb.GENESIS_SLOT),  # [New in Electra]
     )
 
     return post
