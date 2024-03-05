@@ -100,7 +100,6 @@
     - [`get_domain`](#get_domain)
     - [`get_indexed_attestation`](#get_indexed_attestation)
     - [`get_attesting_indices`](#get_attesting_indices)
-    - [`get_attestation_index`](#get_attestation_index)
   - [Beacon state mutators](#beacon-state-mutators)
     - [`increase_balance`](#increase_balance)
     - [`decrease_balance`](#decrease_balance)
@@ -1103,15 +1102,8 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_beacon_committee(state, attestation.data.slot, get_attestation_index(attestation))
+    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
-```
-
-#### `get_attestation_index`
-
-```python
-def get_attestation_index(attestation: Attestation) -> CommitteeIndex:
-    return attestation.data.index
 ```
 
 ### Beacon state mutators

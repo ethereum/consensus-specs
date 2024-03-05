@@ -1,0 +1,49 @@
+# Deneb -- Honest Validator
+
+## Table of contents
+
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Modifications in EIP-7549](#modifications-in-eip-7549)
+  - [Block proposal](#block-proposal)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Attestations](#attestations)
+  - [Attesting](#attesting)
+    - [Construct attestation](#construct-attestation)
+  - [Attestation aggregation](#attestation-aggregation)
+    - [Construct aggregate](#construct-aggregate)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Modifications in EIP-7549
+
+### Block proposal
+
+#### Constructing the `BeaconBlockBody`
+
+##### Attestations
+
+Attestations received from aggregators with disjoint `committee_bits` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
+
+### Attesting
+
+#### Construct attestation
+
+- Set `attestation_data.index = 0`.
+- Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
+- Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
+
+*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
+
+### Attestation aggregation
+
+#### Construct aggregate
+
+- Set `attestation_data.index = 0`.
+- Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
+- Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
+
+
