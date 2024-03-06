@@ -41,21 +41,22 @@ This is the beacon chain specification to move the attestation committee index o
 
 ### Modified containers
 
-#### Attestation
+#### `Attestation`
 
 ```python
 class Attestation(Container):
-     aggregation_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
-     data: AttestationData
-     committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in EIP7549]
-     signature: BLSSignature
+    aggregation_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
+    data: AttestationData
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in EIP7549]
+    signature: BLSSignature
 ```
 
-#### IndexedAttestation
+#### `IndexedAttestation`
 
 ```python
 class IndexedAttestation(Container):
-    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
+    # [Modified in EIP7549]
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
     data: AttestationData
     signature: BLSSignature
 ```
@@ -68,7 +69,7 @@ class IndexedAttestation(Container):
 
 ```python
 def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
-     return [CommitteeIndex(index) for bit, index in enumerate(commitee_bits) if bit]
+    return [CommitteeIndex(index) for bit, index in enumerate(commitee_bits) if bit]
 ```
 
 ### Beacon state accessors
@@ -76,7 +77,8 @@ def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
 #### New `get_committee_attesters`
 
 ```python
-def get_committee_attesters(state: BeaconState, attesting_bits: Bitlist, index: CommitteeIndex) -> Set[ValidatorIndex]:
+def get_committee_attesters(state: BeaconState, data: AttestationData,
+                            attesting_bits: Bitlist, index: CommitteeIndex) -> Set[ValidatorIndex]:
     committee = get_beacon_committee(state, data.slot, index)
     return set(index for i, index in enumerate(committee) if attesting_bits[i])
 ```
@@ -93,7 +95,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     committee_indices = get_committee_indices(attestation.committee_bits)
     for index in committee_indices:
         attesting_bits = attestation.attesting_bits[index]
-        committee_attesters = get_committee_attesters(state, attesting_bits, index)
+        committee_attesters = get_committee_attesters(state, attestation.data, attesting_bits, index)
         output = output.union(committee_attesters)
 
     return output
