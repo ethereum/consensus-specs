@@ -10,8 +10,8 @@
 - [Preset](#preset)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
-    - [Attestation](#attestation)
-    - [IndexedAttestation](#indexedattestation)
+    - [`Attestation`](#attestation)
+    - [`IndexedAttestation`](#indexedattestation)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`get_committee_indices`](#get_committee_indices)
@@ -77,9 +77,9 @@ def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
 #### New `get_committee_attesters`
 
 ```python
-def get_committee_attesters(state: BeaconState, data: AttestationData,
+def get_committee_attesters(state: BeaconState, slot: Slot,
                             attesting_bits: Bitlist, index: CommitteeIndex) -> Set[ValidatorIndex]:
-    committee = get_beacon_committee(state, data.slot, index)
+    committee = get_beacon_committee(state, slot, index)
     return set(index for i, index in enumerate(committee) if attesting_bits[i])
 ```
 
@@ -95,7 +95,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     committee_indices = get_committee_indices(attestation.committee_bits)
     for index in committee_indices:
         attesting_bits = attestation.attesting_bits[index]
-        committee_attesters = get_committee_attesters(state, attestation.data, attesting_bits, index)
+        committee_attesters = get_committee_attesters(state, attestation.data.slot, attesting_bits, index)
         output = output.union(committee_attesters)
 
     return output
