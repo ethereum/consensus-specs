@@ -1,4 +1,6 @@
-# EIP-6110 -- The Beacon Chain
+# Electra -- The Beacon Chain
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -30,10 +32,8 @@
 
 ## Introduction
 
-This is the beacon chain specification of in-protocol deposits processing mechanism.
-This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
-
-*Note:* This specification is built upon [Deneb](../../deneb/beacon-chain.md) and is under active development.
+Electra is a consensus-layer upgrade containing a number of features. Including:
+* [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
 
 ## Constants
 
@@ -41,9 +41,9 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` |
+| Name | Value | Description |
+| - | - | - |
+| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
 
 ## Preset
 
@@ -51,13 +51,15 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
 
 ## Containers
 
 ### New containers
 
 #### `DepositReceipt`
+
+*Note*: The container is new in EIP6110.
 
 ```python
 class DepositReceipt(Container):
@@ -93,7 +95,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
+    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -119,7 +121,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts_root: Root  # [New in EIP6110]
+    deposit_receipts_root: Root  # [New in Electra:EIP6110]
 ```
 
 #### `BeaconState`
@@ -161,13 +163,13 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in EIP6110]
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    # [New in EIP6110]
+    # [New in Electra:EIP6110]
     deposit_receipts_start_index: uint64
 ```
 
@@ -179,10 +181,10 @@ class BeaconState(Container):
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state, block.body.execution_payload)
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in EIP6110]
+    process_operations(state, block.body)  # [Modified in Electra:EIP6110]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -192,7 +194,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # [Modified in EIP6110]
+    # [Modified in Electra:EIP6110]
     # Disable former deposit mechanism once all prior deposits are processed
     eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
@@ -216,6 +218,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```
 
 #### New `process_deposit_receipt`
+
+*Note*: This function is new in Electra:EIP6110.
 
 ```python
 def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
@@ -276,17 +280,17 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
     )
 ```
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-6110 testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Electra testing only.
 Modifications include:
 1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
-2. Utilize the EIP-6110 `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. Add `deposit_receipts_start_index` variable to the genesis state initialization.
+2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
+3. *[New in Electra:EIP6110]* Add `deposit_receipts_start_index` variable to the genesis state initialization.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -295,8 +299,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=ELECTRA_FORK_VERSION,  # [Modified in EIP6110] for testing only
-        current_version=ELECTRA_FORK_VERSION,  # [Modified in EIP6110]
+        previous_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110] for testing only
+        current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
@@ -305,7 +309,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP6110]
+        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in Electra:EIP6110]
     )
 
     # Process deposits
