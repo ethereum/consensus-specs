@@ -16,6 +16,7 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`DepositReceipt`](#depositreceipt)
+    - [`ExecutionLayerExit`](#executionlayerexit)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -24,6 +25,7 @@
   - [Block processing](#block-processing)
     - [Modified `process_operations`](#modified-process_operations)
     - [New `process_deposit_receipt`](#new-process_deposit_receipt)
+    - [New `process_execution_layer_exit`](#new-process_execution_layer_exit)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Testing](#testing)
 
@@ -34,6 +36,7 @@
 
 Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
+* [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
 
 ## Constants
 
@@ -52,6 +55,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |  *[New in Electra:EIP7002]* |
 
 ## Containers
 
@@ -68,6 +72,16 @@ class DepositReceipt(Container):
     amount: Gwei
     signature: BLSSignature
     index: uint64
+```
+
+#### `ExecutionLayerExit`
+
+*Note*: The container is new in EIP7002.
+
+```python
+class ExecutionLayerExit(Container):
+    source_address: ExecutionAddress
+    validator_pubkey: BLSPubkey
 ```
 
 ### Extended Containers
@@ -96,6 +110,7 @@ class ExecutionPayload(Container):
     blob_gas_used: uint64
     excess_blob_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in Electra:EIP7002]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -122,6 +137,7 @@ class ExecutionPayloadHeader(Container):
     blob_gas_used: uint64
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
+    exits_root: Root  # [New in Electra:EIP7002]
 ```
 
 #### `BeaconState`
@@ -163,7 +179,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110]
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110:EIP7002]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
@@ -190,7 +206,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Modified `process_operations`
 
-*Note*: The function `process_operations` is modified to process `DepositReceipt` operations included in the payload.
+*Note*: The function `process_operations` is modified to process `DepositReceipt` and `ExecutionLayerExit` operations included in the payload.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
@@ -211,6 +227,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.execution_payload.exits, process_execution_layer_exit)  # [New in Electra:EIP7002]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
     # [New in EIP6110]
@@ -234,6 +251,35 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         amount=deposit_receipt.amount,
         signature=deposit_receipt.signature,
     )
+```
+
+#### New `process_execution_layer_exit`
+
+*Note*: This function is new in Electra:EIP7002.
+
+```python
+def process_execution_layer_exit(state: BeaconState, execution_layer_exit: ExecutionLayerExit) -> None:
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_index = ValidatorIndex(validator_pubkeys.index(execution_layer_exit.validator_pubkey))
+    validator = state.validators[validator_index]
+
+    # Verify withdrawal credentials
+    is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
+    if not (is_execution_address and is_correct_source_address):
+        return
+    # Verify the validator is active
+    if not is_active_validator(validator, get_current_epoch(state)):
+        return
+    # Verify exit has not been initiated
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    # Verify the validator has been active long enough
+    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+
+    # Initiate exit
+    initiate_validator_exit(state, validator_index)
 ```
 
 #### Modified `process_execution_payload`
@@ -281,6 +327,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
+        exits_root=hash_tree_root(payload.exits),  # [New in Electra:EIP7002]
     )
 ```
 

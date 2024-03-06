@@ -17,10 +17,9 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 ELECTRA = SpecForkName('electra')
-EIP7002 = SpecForkName('eip7002')
-EIP7549 = SpecForkName('eip7549')
 WHISK = SpecForkName('whisk')
 EIP7251 = SpecForkName('eip7251')
+EIP7549 = SpecForkName('eip7549')
 EIP7594 = SpecForkName('eip7594')
 
 #
@@ -39,7 +38,6 @@ ALL_PHASES = (
     DENEB,
     ELECTRA,
     # Experimental patches
-    EIP7002,
     EIP7251,
     EIP7549,
     EIP7594,
@@ -62,7 +60,6 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7002: CAPELLA,
     EIP7549: DENEB,
     EIP7251: DENEB,
     EIP7594: DENEB,

@@ -8,7 +8,6 @@ from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_electra,
-    is_post_eip7002,
 )
 
 
@@ -36,7 +35,6 @@ def get_execution_payload_header(spec, execution_payload):
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
     if is_post_electra(spec):
         payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
-    if is_post_eip7002(spec):
         payload_header.exits_root = spec.hash_tree_root(execution_payload.exits)
     return payload_header
 
@@ -109,7 +107,6 @@ def compute_el_header_block_hash(spec,
         # deposit_receipts_root
         assert deposit_receipts_trie_root is not None
         execution_payload_header_rlp.append((Binary(32, 32), deposit_receipts_trie_root))
-    if is_post_eip7002(spec):
         # exits_trie_root
         execution_payload_header_rlp.append((Binary(32, 32), exits_trie_root))
 
@@ -184,7 +181,6 @@ def compute_el_block_hash(spec, payload):
     if is_post_electra(spec):
         deposit_receipts_encoded = [get_deposit_receipt_rlp(spec, receipt) for receipt in payload.deposit_receipts]
         deposit_receipts_trie_root = compute_trie_root_from_indexed_data(deposit_receipts_encoded)
-    if is_post_eip7002(spec):
         exits_encoded = [get_exit_rlp(exit) for exit in payload.exits]
         exits_trie_root = compute_trie_root_from_indexed_data(exits_encoded)
 

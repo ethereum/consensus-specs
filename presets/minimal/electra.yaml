@@ -4,3 +4,5 @@
 # ---------------------------------------------------------------
 # [customized]
 MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
+# 2**4 (= 16) exits
+MAX_EXECUTION_LAYER_EXITS: 16

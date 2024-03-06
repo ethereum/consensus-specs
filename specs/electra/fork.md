@@ -91,6 +91,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         blob_gas_used=uint64(0),
         excess_blob_gas=uint64(0),
         deposit_receipts_root=Root(),  # [New in Electra:EIP6110]
+        exits_root=Root(),  # [New in Electra:EIP-7002],
     )
     post = BeaconState(
         # Versioning
@@ -132,7 +133,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110]
+        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110:EIP7002]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,

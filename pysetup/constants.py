@@ -5,11 +5,10 @@ BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
 ELECTRA = 'electra'
-EIP7002 = 'eip7002'
+EIP7594 = 'eip7594'
 EIP7251 = 'eip7251'
 EIP7549 = 'eip7549'
 WHISK = 'whisk'
-EIP7594 = 'eip7594'
 
 
 
