@@ -167,7 +167,7 @@ def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_pa
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
-        spec.get_attestation_index(attestation),
+        attestation.data.index,
     )
     # By default, have everyone participate
     participants = set(beacon_committee)
