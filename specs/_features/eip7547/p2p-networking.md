@@ -26,32 +26,29 @@ This document contains the consensus-layer networking specification for EIP-7547
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
-
 ### Execution
-
-| Name | Value |
-| - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(2**4)` (= 16) |
 
 ## Containers
 
 ### New Containers
 
-#### `SignedInclusionListTransactions`
+#### `InclusionListSidecar`
 
 ```python
-class SignedInclusionListTransactions(Container):
-    transactions: transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    signature: BLSSignature
+class InclusionListSidecar(Container):
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    proposer_index: ValidatorIndex
+    parent_root: Root
+    slot: Slot
+    signed_inclusion_list_summary: SignedInclusionListSummary
 ```
 
-#### `SignedBeaconBlockAndInclusionList`
+#### `SignedInclusionListSidecar`
 
 ```python
-class SignedBeaconBlockAndInclusionList(Container):
-    signed_block: SignedBeaconBlock
-    signed_transactions: SignedInclusionListTransactions
+class SignedInclusionListSidecar(Container):
+    message: InclusionListSidecar
+    signature: BLSSignature
 ```
 
 ## Modifications in EIP7547
@@ -68,18 +65,24 @@ The derivation of the `message-id` remains stable.
 
 ##### Global topics
 
-###### `beacon_block`
+###### `inclusion_list_sidecar`
 
-The *type* of the payload of this topic changes to the (modified) `BeaconBlockAndInclusionList`.
+The *type* of the payload of is `SignedInclusionListSidecar`, assuming the aliases `inclusion_list_sidecar = signed_inclusion_list_sidecar.message` and `signed_inclusion_list_summary = inclusion_list_sidecar.signed_inclusion_list_summary`.
 
-New validation:
+The following validations MUST pass before forwarding the `signed_inclusion_list_sidecar` on the network.
 
-The following validations MUST pass before forwarding the `beacon_block` on the network.
+- _[REJECT]_ The inclusion list transactions `inclusion_list_sidecar.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `inclusion_list_sidecar.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `inclusion_list_sidecar.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
+- _[REJECT]_ The inclusion list sidecar signature, `signed_inclusion_list_sidecar.signature`, is valid with respect to the `inclusion_list_sidecar.proposer_index` pubkey.
+- _[REJECT]_ The inclusion list summary signature, `signed_inclusion_list_summary.signature`, is a valid signature of `signed_inclusion_list_summary.summary` with respect to the `inclusion_list_sidecar.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar's block's parent (defined by `inclusion_list_sidecar.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by `inclusion_list_sidecar.parent_root`) passes validation.
+- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `inclusion_list_sidecar.parent_root`).
+- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, inclusion_list_sidecar.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple (inclusion_list_sidecar.slot, inclusion_list_sidecar.proposer_index) with valid signature.
+- _[REJECT]_ The sidecar is proposed by the expected proposer_index for the `inclusion_list_sidecar.slot` in the context of the current shuffling (defined by parent_root/slot). If the proposer_index cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the summary's branch are calculated -- in such a case do not REJECT, instead IGNORE this message.
 
-- _[REJECT]_ The inclusion list transactions `beacon_block.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[REJECT]_ The inclusion list summary has the same length of transactions `len(beacon_block.signed_block.inclusion_list_summary) == len(beacon_block.transactions)`.
-- _[REJECT]_ The inclusion list transactions signature, `beacon_block.signed_transactions.signature`, is valid with respect to the `proposer_index` pubkey.
-- _[REJECT]_ The summary is proposed by the expected proposer_index for the summary's slot in the context of the current shuffling (defined by parent_root/slot). If the proposer_index cannot immediately be verified against the expected shuffling, the inclusion list MAY be queued for later processing while proposers for the summary's branch are calculated -- in such a case do not REJECT, instead IGNORE this message.
 
 #### Transitioning the gossip
 

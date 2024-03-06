@@ -25,6 +25,14 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 *Note:* This specification is built upon [Deneb](../../deneb/beacon_chain.md) and is under active development.
 
+## Constants
+
+### Domain types
+
+| Name | Value |
+| - | - |
+| `DOMAIN_INCLUSION_LIST_SUMMARY`     | `DomainType('0x0B000000')` |
+
 ## Preset
 
 ### Execution
@@ -35,30 +43,15 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 ## Containers
 
-### Extended containers
-
-#### `BeaconBlockBody`
-
-Note: `BeaconBlock` and `SignedBeaconBlock` types are updated indirectly.
+### New Containers
 
 ```python
-class BeaconBlockBody(Container):
-    randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    sync_aggregate: SyncAggregate
-    # Execution
-    execution_payload: ExecutionPayload
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    inclusion_list_summary_root: Root # [New in EIP7547]
+class SignedInclusionListSummary(Container):
+    summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    signature: BLSSignature 
 ```
+
+### Extended containers
 
 #### `ExecutionPayload`
 
@@ -82,8 +75,8 @@ class ExecutionPayload(Container):
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
-    excess_blob_gas: uint64 
-    previous_inclusion_list_summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST] # [New in EIP7547]
+    excess_blob_gas: uint64
+    previous_inclusion_list_summary: SignedInclusionListSummary # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -158,11 +151,38 @@ class BeaconState(Container):
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT] 
     # Inclusion List
-    previous_inclusion_list_summary_root: Root # [New in EIP7547]
+    previous_proposer_index: ValidatorIndex # [New in EIP7547]
 ```
 
-
 ### Block processing
+
+#### Block header
+
+```python
+def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # Verify that the slots match
+    assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
+    # Verify that proposer index is the correct index
+    assert block.proposer_index == get_beacon_proposer_index(state)
+    # Verify that the parent matches
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
+    # Set previous proposer index before overwriting latest block header
+    state.previous_proposer_index = state.latest_block_header.proposer_index # [New in EIP7547]
+    # Cache current block as the new latest block
+    state.latest_block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=Bytes32(),  # Overwritten in the next process_slot call
+        body_root=hash_tree_root(block.body),
+    )
+
+    # Verify proposer is not slashed
+    proposer = state.validators[block.proposer_index]
+    assert not proposer.slashed
+```
 
 #### Execution payload
 
@@ -178,9 +198,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # [New in EIP7547] Verify inclusion list summary
-    previous_inclusion_list_summary_root = hash_tree_root(payload.previous_inclusion_list_summary)
-    assert previous_inclusion_list_summary_root == state.previous_inclusion_list_summary_root
+    # [New in EIP7547] Verify previous proposer signature on inclusion list summary
+    assert verify_inclusion_list_summary_signature(state, payload.previous_inclusion_list_summary)
 
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
@@ -216,6 +235,13 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        previous_inclusion_list_summary_root=previous_inclusion_list_summary_root # [New in EIP7547]
+        previous_inclusion_list_summary_root=hash_tree_root(payload.previous_inclusion_list_summary) # [New in EIP7547]
     )
+```
+
+```python
+def verify_inclusion_list_summary_signature(state: BeaconState, inclusion_list_summary: SignedInclusionListSummary) -> bool:
+    signing_root = compute_signing_root(inclusion_list_summary.message, get_domain(state, DOMAIN_INCLUSION_LIST_SUMMARY))
+    previous_proposer = state.validators[state.previous_proposer_index]
+    return bls.Verify(previous_proposer.pubkey, signing_root, inclusion_list_summary.signature)
 ```
