@@ -156,7 +156,7 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex 
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT] 
-    # Inclusion List
+    # Needed for inclusion list validation
     previous_proposer_index: ValidatorIndex # [New in EIP7547]
 ```
 
@@ -220,7 +220,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         )
     )
 
-    # Cache inclusion summary root
+    # [New in EIP7547] Cache inclusion summary root
     state.previous_inclusion_list_summary_root = body.inclusion_list_summary_root
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
