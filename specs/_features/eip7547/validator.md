@@ -111,10 +111,6 @@ def get_inclusion_list_transactions_signature(state: BeaconState,
     return bls.Sign(privkey, signing_root)
 ```
 
-#### Broadcast inclusion list
-
-Finally, the proposer broadcasts `inclusion_list` along with the `SignedBeaconBlock` on the `beacon_block` pubsub topic.
-
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`

@@ -38,7 +38,7 @@ This is the modification of the fork choice accompanying the EIP7547 upgrade.
 
 ##### Extended `PayloadAttributes`
 
-`PayloadAttributes` is extended with the inclusion list transactions that are passed from the CL to the EL when requesting block constructions. We change the content of `notify_forkchoice_updated` accordingly.
+`PayloadAttributes` is extended with the inclusion list transactions that are passed from the CL to the EL when requesting block construction. We change the content of `notify_forkchoice_updated` accordingly.
 
 ```python
 @dataclass

@@ -220,8 +220,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         )
     )
 
-    # [New in EIP7547] Cache inclusion summary root
-    state.previous_inclusion_list_summary_root = body.inclusion_list_summary_root
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
