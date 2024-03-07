@@ -66,22 +66,22 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in Deneb]
+    # [New in Deneb:EIP4844]
     if epoch < DENEB_FORK_EPOCH:
-        if header.execution.excess_data_gas != uint256(0):
+        if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
             return False
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
             header.execution == ExecutionPayloadHeader()
-            and header.execution_branch == [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+            and header.execution_branch == ExecutionBranch()
         )
 
     return is_valid_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
         root=header.beacon.body_root,
     )
 ```

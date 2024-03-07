@@ -2,6 +2,30 @@
 
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
+## Table of contents
+<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Test case format](#test-case-format)
+  - [`meta.yaml`](#metayaml)
+  - [`anchor_state.ssz_snappy`](#anchor_statessz_snappy)
+  - [`anchor_block.ssz_snappy`](#anchor_blockssz_snappy)
+  - [`steps.yaml`](#stepsyaml)
+    - [`on_tick` execution step](#on_tick-execution-step)
+    - [`on_attestation` execution step](#on_attestation-execution-step)
+    - [`on_block` execution step](#on_block-execution-step)
+    - [`on_merge_block` execution step](#on_merge_block-execution-step)
+    - [`on_attester_slashing` execution step](#on_attester_slashing-execution-step)
+    - [`on_payload_info` execution step](#on_payload_info-execution-step)
+    - [Checks step](#checks-step)
+  - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
+  - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
+- [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
 ## Test case format
 
 ### `meta.yaml`
@@ -59,13 +83,19 @@ The parameter that is required for executing `on_block(store, block)`.
 
 ```yaml
 {
-    block: string  -- the name of the `block_<32-byte-root>.ssz_snappy` file.
-                      To execute `on_block(store, block)` with the given attestation.
-    valid: bool    -- optional, default to `true`.
-                      If it's `false`, this execution step is expected to be invalid.
+    block: string           -- the name of the `block_<32-byte-root>.ssz_snappy` file.
+                              To execute `on_block(store, block)` with the given attestation.
+    blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
+                               The blobs file content is a `List[Blob, MAX_BLOBS_PER_BLOCK]` SSZ object.
+    proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
+    valid: bool             -- optional, default to `true`.
+                               If it's `false`, this execution step is expected to be invalid.
 }  
 ```
+
 The file is located in the same folder (see below).
+
+`blobs` and `proofs` are new fields from Deneb EIP-4844. These fields indicate the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper. If these two fields are not provided, `retrieve_blobs_and_proofs()` returns empty lists.
 
 After this step, the `store` object may have been updated.
 
@@ -112,7 +142,7 @@ Optional step for optimistic sync tests.
 }
 ```
 
-This step sets the [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/specification.md#PayloadStatusV1)
+This step sets the [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#payloadstatusv1)
 value that Execution Layer client mock returns in responses to the following Engine API calls:
 * [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1) if `payload.blockHash == payload_info.block_hash`
 * [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_forkchoiceupdatedv1) if `forkchoiceState.headBlockHash == payload_info.block_hash`
@@ -129,7 +159,7 @@ The checks to verify the current status of `store`.
 checks: {<store_attibute>: value}  -- the assertions.
 ```
 
-`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. Currently, the possible fields included:
+`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
 
 ```yaml
 head: {
@@ -149,6 +179,16 @@ finalized_checkpoint: {
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
 ```
 
+Additionally, these fields if `get_proposer_head` and `should_override_forkchoice_update` features are implemented:
+
+```yaml
+get_proposer_head: string             -- Encoded 32-byte value from get_proposer_head(store)
+should_override_forkchoice_update: {  -- [New in Bellatrix]
+    validator_is_connected: bool,     -- The mocking result of `validator_is_connected(proposer_index)` in this call
+    result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
+}
+```
+
 For example:
 ```yaml
 - checks:
@@ -157,6 +197,8 @@ For example:
     justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
     finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
+    get_proposer_head: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
+    should_override_forkchoice_update: {validator_is_connected: false, result: false}
 ```
 
 *Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.

@@ -166,3 +166,8 @@ def has_active_balance_differential(spec, state):
     active_balance = spec.get_total_active_balance(state)
     total_balance = spec.get_total_balance(state, set(range(len(state.validators))))
     return active_balance // spec.EFFECTIVE_BALANCE_INCREMENT != total_balance // spec.EFFECTIVE_BALANCE_INCREMENT
+
+
+def get_validator_index_by_pubkey(state, pubkey):
+    index = next((i for i, validator in enumerate(state.validators) if validator.pubkey == pubkey), None)
+    return index

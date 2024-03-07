@@ -4,6 +4,7 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,
     Z1 as py_ecc_Z1,
+    Z2 as py_ecc_Z2,
     add as py_ecc_add,
     multiply as py_ecc_mul,
     neg as py_ecc_neg,
@@ -48,8 +49,8 @@ class fastest_bls:
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
-# To change bls implementation, default to PyECC for correctness. Milagro is a good faster alternative.
-bls = py_ecc_bls
+# Default to fastest_bls
+bls = fastest_bls
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
@@ -241,6 +242,15 @@ def Z1():
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.identity()
     return py_ecc_Z1
+
+
+def Z2():
+    """
+    Returns the identity point in G2
+    """
+    if bls == arkworks_bls or bls == fastest_bls:
+        return arkworks_G2.identity()
+    return py_ecc_Z2
 
 
 def G1():

@@ -519,7 +519,7 @@ def create_provider(fork_name: SpecForkName,
                 preset_name='general',
                 runner_name='bls',
                 handler_name=handler_name,
-                suite_name='small',
+                suite_name='bls',
                 case_name=case_name,
                 case_fn=lambda: [('data', 'data', case_content)]
             )

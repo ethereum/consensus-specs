@@ -7,6 +7,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Union,
     boolean,
     uint256, uint64,
+    uint8,
 )
 from eth2spec.utils.ssz.ssz_impl import serialize
 
@@ -18,6 +19,9 @@ MAX_CALLDATA_SIZE = 2**24
 MAX_VERSIONED_HASHES_LIST_SIZE = 2**24
 MAX_ACCESS_LIST_STORAGE_KEYS = 2**24
 MAX_ACCESS_LIST_SIZE = 2**24
+
+
+BLOB_TX_TYPE = uint8(0x03)
 
 
 class AccessTuple(Container):
@@ -41,7 +45,7 @@ class BlobTransaction(Container):
     value: uint256
     data: ByteList[MAX_CALLDATA_SIZE]
     access_list: List[AccessTuple, MAX_ACCESS_LIST_SIZE]
-    max_fee_per_data_gas: uint256
+    max_fee_per_blob_gas: uint256
     blob_versioned_hashes: List[Bytes32, MAX_VERSIONED_HASHES_LIST_SIZE]
 
 
@@ -58,7 +62,7 @@ def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
 
     b = bytes()
     for v in values:
-        b += v.to_bytes(32, spec.ENDIANNESS)
+        b += v.to_bytes(32, spec.KZG_ENDIANNESS)
 
     return spec.Blob(b)
 
@@ -80,7 +84,7 @@ def get_poly_in_both_forms(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     coeffs = [
         rng.randint(0, spec.BLS_MODULUS - 1)
@@ -120,5 +124,5 @@ def get_sample_opaque_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_b
         )
     )
     serialized_tx = serialize(signed_blob_tx)
-    opaque_tx = spec.uint_to_bytes(spec.BLOB_TX_TYPE) + serialized_tx
+    opaque_tx = spec.uint_to_bytes(BLOB_TX_TYPE) + serialized_tx
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs

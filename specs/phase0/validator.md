@@ -10,7 +10,6 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -64,7 +63,6 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
       - [Aggregation bits](#aggregation-bits-1)
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
-- [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
 - [How to avoid slashing](#how-to-avoid-slashing)
   - [Proposer slashing](#proposer-slashing)
   - [Attester slashing](#attester-slashing)
@@ -83,15 +81,6 @@ A validator is an entity that participates in the consensus of the Ethereum proo
 
 All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `NodeID`   | `uint256` | node identifier   |
-| `SubnetID` | `uint64`  | subnet identifier |
-
 ## Constants
 
 ### Misc
@@ -99,12 +88,6 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
-| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
-| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
-| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
-| `ATTESTATION_SUBNET_PREFIX_BITS` | `(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
-| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
 ## Containers
 
@@ -291,15 +274,22 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 A validator is expected to propose a [`SignedBeaconBlock`](./beacon-chain.md#signedbeaconblock) at
 the beginning of any `slot` during which `is_proposer(state, validator_index)` returns `True`.
 
-To propose, the validator selects the `BeaconBlock`, `parent` which:
+To propose, the validator selects a `BeaconBlock`, `parent` using this process:
 
-1. In their view of fork choice is the head of the chain at the start of
-   `slot`, after running `on_tick` and applying any queued attestations from `slot - 1`.
-2. Is from a slot strictly less than the slot of the block about to be proposed,
-   i.e. `parent.slot < slot`.
+1. Compute fork choice's view of the head at the start of `slot`, after running
+   `on_tick` and applying any queued attestations from `slot - 1`.
+   Set `head_root = get_head(store)`.
+2. Compute the _proposer head_, which is the head upon which the proposer SHOULD build in order to
+   incentivise timely block propagation by other validators.
+   Set `parent_root = get_proposer_head(store, head_root, slot)`.
+   A proposer may set `parent_root == head_root` if proposer re-orgs are not implemented or have
+   been disabled.
+3. Let `parent` be the block with `parent_root`.
 
 The validator creates, signs, and broadcasts a `block` that is a child of `parent`
-that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+and satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+Note that the parent's slot must be strictly less than the slot of the block about to be proposed,
+i.e. `parent.slot < slot`.
 
 There is one proposer per slot, so if there are N active validators any individual validator
 will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
@@ -619,39 +609,11 @@ def get_aggregate_and_proof_signature(state: BeaconState,
     return bls.Sign(privkey, signing_root)
 ```
 
-## Phase 0 attestation subnet stability
-
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
-
-* Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
-* Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
-
-```python
-def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - int(ATTESTATION_SUBNET_PREFIX_BITS))
-    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
-    permutated_prefix = compute_shuffled_index(
-        node_id_prefix,
-        1 << int(ATTESTATION_SUBNET_PREFIX_BITS),
-        permutation_seed,
-    )
-    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
-```
-
-```python
-def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
-    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
-```
-
-*Note*: When preparing for a hard fork, a validator must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
-
 ## How to avoid slashing
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed: [proposer slashing](#proposer-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
 
-*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
+*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can be slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
 
 ### Proposer slashing
 
