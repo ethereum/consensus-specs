@@ -7,7 +7,7 @@
     - [Execution](#execution)
   - [Containers](#containers)
     - [New Containers](#new-containers)
-      - [`SignedInclusionListTransactions`](#signedinclusionlisttransactions)
+      - [`SignedInclusionList`](#signedinclusionlist)
       - [`SignedBeaconBlockAndInclusionList`](#signedbeaconblockandinclusionlist)
   - [Modifications in EIP7547](#modifications-in-eip7547)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)

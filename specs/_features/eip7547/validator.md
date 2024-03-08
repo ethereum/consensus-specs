@@ -16,7 +16,6 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the inclusion list](#constructing-the-inclusion-list)
-    - [Broadcast inclusion list](#broadcast-inclusion-list)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [ExecutionPayload](#executionpayload)
