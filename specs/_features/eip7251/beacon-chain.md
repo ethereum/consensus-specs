@@ -477,7 +477,6 @@ def slash_validator(state: BeaconState,
     decrease_balance(state, slashed_index, slashing_penalty)
 ```
 
-
 ## Beacon chain state transition function
 
 ### Epoch processing
@@ -615,7 +614,7 @@ def apply_deposit(state: BeaconState,
                   withdrawal_credentials: Bytes32,
                   amount: uint64,
                   signature: BLSSignature) -> None:
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(
@@ -625,18 +624,29 @@ def apply_deposit(state: BeaconState,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        # Initialize validator if the deposit signature is valid
         if bls.Verify(pubkey, signing_root, signature):
-            state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials))
-            state.balances.append(0)  # [Modified in EIP-7251]
-            state.previous_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.current_epoch_participation.append(ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(uint64(0))
-            index = len(state.validators) - 1
-            state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))  # [Modified in EIP-7251]
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
     else:
+        # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))
+        state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))  # [Modified in EIP-7251]
+```
+
+#### Modified `add_validator_to_registry`
+
+```python
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, 0)  # [Modified in EIP7251]
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, uint64(0))
+    state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))  # [New in EIP7251]
 ```
 
 ###### Updated `get_validator_from_deposit`
@@ -670,31 +680,28 @@ def process_execution_layer_withdraw_request(
         return
 
     validator_pubkeys = [v.pubkey for v in state.validators]
-    validator_index = ValidatorIndex(validator_pubkeys.index(execution_layer_withdraw_request.validator_pubkey))
-    validator = state.validators[validator_index]
+    index = ValidatorIndex(validator_pubkeys.index(execution_layer_withdraw_request.validator_pubkey))
+    validator = state.validators[index]
 
     # Same conditions as in EIP-7002
-    # Verify withdrawal credentials
-    is_execution_address = has_eth1_withdrawal_credential(validator) or has_compounding_withdrawal_credential(validator)
-    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_withdraw_request.source_address
-    if not (is_execution_address and is_correct_source_address):
+    if not (
+        has_execution_withdrawal_credential(validator)
+        # Verify withdrawal credentials
+        and validator.withdrawal_credentials[12:] == execution_layer_withdraw_request.source_address
+        # Verify the validator is active
+        and is_active_validator(validator, get_current_epoch(state))
+        # Verify exit has not been initiated, and slashed
+        validator.exit_epoch == FAR_FUTURE_EPOCH
+        # Verify the validator has been active long enough
+        get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    ):
         return
-    # Verify the validator is active
-    if not is_active_validator(validator, get_current_epoch(state)):
-        return
-    # Verify exit has not been initiated, and slashed
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        return
-    # Verify the validator has been active long enough
-    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
-        return
-
     # New condition: only allow partial withdrawals with compounding withdrawal credentials
     if not (is_full_exit_request or has_compounding_withdrawal_credential(validator)):
         return
 
     pending_balance_to_withdraw = sum(
-        item.amount for item in state.pending_partial_withdrawals if item.index == validator_index
+        item.amount for item in state.pending_partial_withdrawals if item.index == index
     )
     # only exit validator if it has no pending withdrawals in the queue
     if is_full_exit_request and pending_balance_to_withdraw == 0:
@@ -707,13 +714,13 @@ def process_execution_layer_withdraw_request(
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
         withdrawable_epoch = Epoch(exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
         state.pending_partial_withdrawals.append(PartialWithdrawal(
-            index=validator_index,
+            index=index,
             amount=to_withdraw,
             withdrawable_epoch=withdrawable_epoch,
         ))
 ```
 
-######  Updated  `get_expected_withdrawals`
+###### Updated `get_expected_withdrawals`
 
 ```python
 def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
