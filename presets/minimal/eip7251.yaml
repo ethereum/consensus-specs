@@ -1,0 +1,25 @@
+# Minimal preset - EIP7251
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**5 * 10**9 (= 32,000,000,000) Gwei
+MIN_ACTIVATION_BALANCE: 32000000000
+# 2**11 * 10**9 (= 2,048,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE_EIP7251: 2048000000000
+
+# State list lengths
+# ---------------------------------------------------------------
+PENDING_BALANCE_DEPOSITS_LIMIT: 134217728
+# [customized] smaller queue
+PENDING_PARTIAL_WITHDRAWALS_LIMIT: 64
+# [customized] smaller queue
+PENDING_CONSOLIDATIONS_LIMIT: 64
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+MIN_SLASHING_PENALTY_QUOTIENT_EIP7251: 65536 
+
+# Max operations per block
+# ---------------------------------------------------------------
+MAX_CONSOLIDATIONS: 1
+
