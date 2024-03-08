@@ -52,7 +52,7 @@ class SignedInclusionList(Container):
 ```python
 class SignedBeaconBlockAndInclusionList(Container):
     signed_block: SignedBeaconBlock
-    signed_transactions: SignedInclusionList
+    signed_inclusion_list: SignedInclusionList
 ```
 
 ## Modifications in EIP7547
