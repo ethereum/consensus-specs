@@ -16,7 +16,6 @@
   - [Misc](#misc)
     - [`get_committee_indices`](#get_committee_indices)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_committee_attesters`](#new-get_committee_attesters)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
   - [Block processing](#block-processing)
     - [Modified `process_attestation`](#modified-process_attestation)
@@ -74,15 +73,6 @@ def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
 
 ### Beacon state accessors
 
-#### New `get_committee_attesters`
-
-```python
-def get_committee_attesters(state: BeaconState, slot: Slot,
-                            attesting_bits: Bitlist, index: CommitteeIndex) -> Set[ValidatorIndex]:
-    committee = get_beacon_committee(state, slot, index)
-    return set(index for i, index in enumerate(committee) if attesting_bits[i])
-```
-
 #### Modified `get_attesting_indices`
 
 ```python
@@ -94,8 +84,9 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     output = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     for index in committee_indices:
-        attesting_bits = attestation.attesting_bits[index]
-        committee_attesters = get_committee_attesters(state, attestation.data.slot, attesting_bits, index)
+        attesting_bits = attestation.aggregation_bits[index]
+        committee = get_beacon_committee(state, attestation.data.slot, index)
+        committee_attesters = set(index for i, index in enumerate(committee) if attesting_bits[i])
         output = output.union(committee_attesters)
 
     return output
@@ -115,7 +106,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # [Modified in EIP7549]
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
-    assert len(committee_indices) > 0
     assert len(committee_indices) == len(attestation.aggregation_bits)
     for index in committee_indices:
         assert index < get_committee_count_per_slot(state, data.target.epoch)

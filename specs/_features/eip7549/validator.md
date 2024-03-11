@@ -35,6 +35,8 @@ Attestations received from aggregators with disjoint `committee_bits` sets and e
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
 - Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
+- Let `committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`
+- Set `attestation.committee_bits = committee_bits`
 
 *Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
 
@@ -45,5 +47,5 @@ Attestations received from aggregators with disjoint `committee_bits` sets and e
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
 - Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
-
+- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation
 
