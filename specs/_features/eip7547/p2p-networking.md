@@ -77,7 +77,7 @@ New validation:
 
 The following validations MUST pass before forwarding the signed_beacon_block_and_inclusion_list on the network. (We define the following for convenience -- signed_block = signed_beacon_block_and_inclusion_list.signed_block and signed_inclusion_list = signed_beacon_block_and_inclusion_list.signed_inclusion_list)
 
-- _[REJECT]_ The inclusion list transactions `beacon_block.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
+- _[REJECT]_ The inclusion list transactions `signed_inclusion_list.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[REJECT]_ The inclusion list summary has the same length of transactions `len(beacon_block.signed_block.inclusion_list_summary) == len(beacon_block.transactions)`.
 - _[REJECT]_ The inclusion list transactions signature, `beacon_block.signed_transactions.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[REJECT]_ The summary is proposed by the expected proposer_index for the summary's slot in the context of the current shuffling (defined by parent_root/slot). If the proposer_index cannot immediately be verified against the expected shuffling, the inclusion list MAY be queued for later processing while proposers for the summary's branch are calculated -- in such a case do not REJECT, instead IGNORE this message.
