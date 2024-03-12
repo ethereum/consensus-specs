@@ -12,6 +12,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Inclusion list validation](#inclusion-list-validation)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the inclusion list](#constructing-the-inclusion-list)
 
@@ -36,14 +37,17 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-*Note*: `engine_getInclusionListV1` function is added to the `ExecutionEngine` protocol for use as a validator.
+*Note*: `engine_getInclusionListV1` and `engine_newInclusionListV1` functions are added to the `ExecutionEngine` protocol for use as a validator.
 
-The body of this function is implementation dependent. The Engine API may be used to implement it with an external execution engine. It returns a `SignedInclusionList` object.
-
+The body of these function is implementation dependent. The Engine API may be used to implement it with an external execution engine. 
 
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
+
+### Inclusion list validation
+
+When receiving a new block, the validator must verify the inclusion list by calling `engine_newInclusionListV1` after verifying the signature. The execution layer will process inclusion list transactions to ensure they are valid. Once the inclusion list validity is asserted, the validator must check the block by calling `engine_newPayloadV3`.
 
 ### Inclusion list proposal
 
