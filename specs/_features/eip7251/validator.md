@@ -29,7 +29,8 @@ This document represents the changes to be made in the code of an "honest valida
 Aggregator selection is now balance based. `state` is the `BeaconState` at the previous epoch of `slot` to allow lookahead.
 
 ```python
-def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex,
+                  slot_signature: BLSSignature, validator: ValidatorIndex) -> bool:
     committee = get_beacon_committee(state, slot, index)
     committee_balance = get_total_balance(state, set(committee))
     balance = state.balances[validator]

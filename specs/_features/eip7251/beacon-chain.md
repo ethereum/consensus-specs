@@ -58,10 +58,11 @@
       - [Updated `process_operations`](#updated-process_operations)
       - [Deposits](#deposits)
         - [Updated  `apply_deposit`](#updated--apply_deposit)
+    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
         - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
       - [Withdrawals](#withdrawals)
         - [New `process_execution_layer_withdraw_request`](#new-process_execution_layer_withdraw_request)
-        - [Updated  `get_expected_withdrawals`](#updated--get_expected_withdrawals)
+        - [Updated `get_expected_withdrawals`](#updated-get_expected_withdrawals)
       - [Consolidations](#consolidations)
         - [New `process_consolidation`](#new-process_consolidation)
 
@@ -691,9 +692,9 @@ def process_execution_layer_withdraw_request(
         # Verify the validator is active
         and is_active_validator(validator, get_current_epoch(state))
         # Verify exit has not been initiated, and slashed
-        validator.exit_epoch == FAR_FUTURE_EPOCH
+        and validator.exit_epoch == FAR_FUTURE_EPOCH
         # Verify the validator has been active long enough
-        get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+        and get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     ):
         return
     # New condition: only allow partial withdrawals with compounding withdrawal credentials
@@ -705,10 +706,10 @@ def process_execution_layer_withdraw_request(
     )
     # only exit validator if it has no pending withdrawals in the queue
     if is_full_exit_request and pending_balance_to_withdraw == 0:
-        initiate_validator_exit(state, validator_index)
-    elif state.balances[validator_index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw:
+        initiate_validator_exit(state, index)
+    elif state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw:
         to_withdraw = min(
-            state.balances[validator_index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
+            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
             amount
         )
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
