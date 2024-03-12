@@ -13,6 +13,11 @@
   - [Execution](#execution)
 - [Containers](#containers)
   - [New Containers](#new-containers)
+  - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+      - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
+    - [Engine APIs](#engine-apis)
+    - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
   - [Extended containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -55,6 +60,36 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 class SignedInclusionListSummary(Container):
     summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
     signature: BLSSignature 
+```
+
+### Execution engine
+
+#### Request data
+
+##### New `NewInclusionListRequest`
+
+```python
+@dataclass
+class NewInclusionListRequest(object):
+    inclusion_list: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    parent_block_hash: Hash32
+```
+
+#### Engine APIs
+
+#### New `notify_new_inclusion_list`
+
+```python
+def notify_new_inclusion_list(self: ExecutionEngine,
+                              inclusion_list_request: NewInclusionListRequest) -> bool:
+    """
+    Return ``True`` if and only if the transactions in the inclusion list can be succesfully executed
+    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list 
+    summary. The execution engine also checks that the total gas limit is less or equal that
+    ```MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to the signed summary
+    """
+    ...
 ```
 
 ### Extended containers
