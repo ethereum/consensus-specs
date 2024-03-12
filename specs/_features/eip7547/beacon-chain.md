@@ -50,7 +50,7 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(143)` |
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(256)` |
 
 ## Containers
 
