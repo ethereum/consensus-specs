@@ -75,7 +75,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 
 New validation:
 
-The following validations MUST pass before forwarding the `beacon_block` on the network.
+The following validations MUST pass before forwarding the signed_beacon_block_and_inclusion_list on the network. (We define the following for convenience -- signed_block = signed_beacon_block_and_inclusion_list.signed_block and signed_inclusion_list = signed_beacon_block_and_inclusion_list.signed_inclusion_list)
 
 - _[REJECT]_ The inclusion list transactions `beacon_block.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[REJECT]_ The inclusion list summary has the same length of transactions `len(beacon_block.signed_block.inclusion_list_summary) == len(beacon_block.transactions)`.
