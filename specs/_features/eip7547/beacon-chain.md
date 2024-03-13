@@ -13,6 +13,7 @@
   - [Execution](#execution)
 - [Containers](#containers)
   - [New Containers](#new-containers)
+    - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
@@ -56,6 +57,8 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 ### New Containers
 
+#### `SignedInclusionListSummary`
+
 ```python
 class SignedInclusionListSummary(Container):
     summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
@@ -87,7 +90,8 @@ def notify_new_inclusion_list(self: ExecutionEngine,
     Return ``True`` if and only if the transactions in the inclusion list can be succesfully executed
     starting from the execution state corresponding to the `parent_block_hash` in the inclusion list 
     summary. The execution engine also checks that the total gas limit is less or equal that
-    ```MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to the signed summary
+    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to
+    the signed summary.
     """
     ...
 ```
@@ -117,7 +121,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    previous_inclusion_list_summary: SignedInclusionListSummary # [New in EIP7547]
+    previous_inclusion_list_summary: SignedInclusionListSummary  # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -143,7 +147,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64 
-    previous_inclusion_list_summary_root: Root # [New in EIP7547]
+    previous_inclusion_list_summary_root: Root  # [New in EIP7547]
 ```
 
 #### `BeaconState`
@@ -192,7 +196,7 @@ class BeaconState(Container):
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT] 
     # Needed for inclusion list validation
-    previous_proposer_index: ValidatorIndex # [New in EIP7547]
+    previous_proposer_index: ValidatorIndex  # [New in EIP7547]
 ```
 
 ### Block processing
@@ -210,7 +214,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the parent matches
     assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Set previous proposer index before overwriting latest block header
-    state.previous_proposer_index = state.latest_block_header.proposer_index # [New in EIP7547]
+    state.previous_proposer_index = state.latest_block_header.proposer_index  # [New in EIP7547]
     # Cache current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
@@ -274,13 +278,17 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        previous_inclusion_list_summary_root=hash_tree_root(payload.previous_inclusion_list_summary) # [New in EIP7547]
+        previous_inclusion_list_summary_root=hash_tree_root(payload.previous_inclusion_list_summary)  # [New in EIP7547]
     )
 ```
 
 ```python
-def verify_inclusion_list_summary_signature(state: BeaconState, inclusion_list_summary: SignedInclusionListSummary) -> bool:
-    signing_root = compute_signing_root(inclusion_list_summary.message, get_domain(state, DOMAIN_INCLUSION_LIST_SUMMARY))
+def verify_inclusion_list_summary_signature(state: BeaconState,
+                                            inclusion_list_summary: SignedInclusionListSummary) -> bool:
+    signing_root = compute_signing_root(
+        inclusion_list_summary.message,
+        get_domain(state, DOMAIN_INCLUSION_LIST_SUMMARY),
+    )
     previous_proposer = state.validators[state.previous_proposer_index]
     return bls.Verify(previous_proposer.pubkey, signing_root, inclusion_list_summary.signature)
 ```

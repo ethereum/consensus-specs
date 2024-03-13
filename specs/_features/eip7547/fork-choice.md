@@ -24,7 +24,8 @@ This is the modification of the fork choice accompanying EIP-7547.
 *[New in EIP-7547]*
 
 ```python
-def verify_inclusion_list(state: BeaconState, block: BeaconBlock, inclusion_list: SignedInclusionList, execution_engine: ExecutionEngine) -> bool:
+def verify_inclusion_list(state: BeaconState, block: BeaconBlock, inclusion_list: SignedInclusionList,
+                          execution_engine: ExecutionEngine) -> bool:
     """
     returns true if the inclusion list is valid. 
     """
@@ -38,9 +39,10 @@ def verify_inclusion_list(state: BeaconState, block: BeaconBlock, inclusion_list
 
     # Check that the inclusion list is valid
     return execution_engine.notify_new_inclusion_list(NewInclusionListRequest(
-            inclusion_list=inclusion_list.transactions, 
-            summary=inclusion_list.signed_summary.message.summary,
-            parent_block_hash = state.latest_execution_payload_header.block_hash))
+        inclusion_list=inclusion_list.transactions, 
+        summary=inclusion_list.signed_summary.message.summary,
+        parent_block_hash=state.latest_execution_payload_header.block_hash,
+    ))
 ```
 
 ## Updated fork-choice handlers
@@ -77,6 +79,7 @@ def on_block(store: Store, signed_block_and_inclusion_list: SignedBeaconBlockAnd
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # [New in EIP-7547] Check if the inclusion list is valid.
+    state = pre_state.copy()
     assert verify_inclusion_list(state, block, signed_inclusion_list.signed_summary, block.parent_root)
 
     # Check the block is valid and compute the post-state
