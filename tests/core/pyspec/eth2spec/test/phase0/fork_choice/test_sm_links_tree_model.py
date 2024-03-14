@@ -63,6 +63,12 @@ class BranchTip:
         self.participants = participants
         self.eventually_justified_checkpoint = eventually_justified_checkpoint
 
+    def copy(self):
+        return BranchTip(self.beacon_state.copy(),
+                         self.attestations.copy(),
+                         self.participants.copy(),
+                         self.eventually_justified_checkpoint)
+
 
 def _justifying_participation_rate(rnd: random.Random):
     """
@@ -180,6 +186,10 @@ def _compute_validator_partitions(spec, branch_tips, current_links, current_epoc
     return participants
 
 
+def _get_eligible_attestations(spec, state, attestations) -> []:
+    return [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+
+
 def _produce_block(spec, state, attestations):
     """
     Produces a block including as many attestations as it is possible.
@@ -187,7 +197,7 @@ def _produce_block(spec, state, attestations):
     """
 
     # Filter out too old attestastions (TODO relax condition for Deneb)
-    eligible_attestations = [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+    eligible_attestations = _get_eligible_attestations(spec, state, attestations)
 
     # Prepare attestations
     attestation_in_block = eligible_attestations[:spec.MAX_ATTESTATIONS]
@@ -208,7 +218,7 @@ def _produce_block(spec, state, attestations):
     return signed_block, post_state, not_included_attestations
 
 
-def _attest_to_slot(spec, state, slot_to_attest, participants_filter=None):
+def _attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
     """
     Creates attestation is a slot respecting participating validators.
     :return: produced attestations
@@ -371,6 +381,33 @@ def _print_block_tree(spec, root_state, signed_blocks):
     return _print_slot_range(spec, root_state, signed_blocks, start_slot, end_slot)
 
 
+def _advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], BranchTip):
+    signed_blocks = []
+
+    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))],
+                            state.current_justified_checkpoint)
+
+    # Advance the state to the anchor_epoch
+    anchor_tip = genesis_tip
+    for epoch in range(spec.GENESIS_EPOCH, anchor_epoch + 1):
+        pre_state = anchor_tip.beacon_state
+        new_signed_blocks, anchor_tip = _advance_branch_to_next_epoch(spec, anchor_tip)
+        signed_blocks = signed_blocks + new_signed_blocks
+        if debug:
+            post_state = anchor_tip.beacon_state
+            print('\nepoch', str(epoch) + ':')
+            print('branch(*, *):', _print_epoch(spec, pre_state, new_signed_blocks))
+            print('              ', len(anchor_tip.participants), 'participants:', anchor_tip.participants)
+            print('              ', 'state.current_justified_checkpoint:',
+                  '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
+                  ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
+            print('              ', 'eventually_justified_checkpoint:',
+                  '(epoch=' + str(anchor_tip.eventually_justified_checkpoint.epoch) +
+                  ', root=' + str(anchor_tip.eventually_justified_checkpoint.root)[:6] + ')')
+
+    return signed_blocks, anchor_tip
+
+
 def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, debug) -> ([], BranchTip):
     """
     Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
@@ -396,32 +433,10 @@ def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, de
     # because the protocol can't justify in epoch GENESIS_EPOCH + 1
     assert len([sm_link for sm_link in sm_links if sm_link.source == spec.GENESIS_EPOCH + 1]) == 0
 
-    state = genesis_state.copy()
-    signed_blocks = []
-
-    # Find anchor epoch and check it
+    # Find anchor epoch
     anchor_epoch = min(sm_links, key=lambda l: l.source).source
 
-    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))],
-                            state.current_justified_checkpoint)
-
-    # Advance the state to the anchor_epoch
-    anchor_tip = genesis_tip
-    for epoch in range(spec.GENESIS_EPOCH, anchor_epoch + 1):
-        pre_state = anchor_tip.beacon_state
-        new_signed_blocks, anchor_tip = _advance_branch_to_next_epoch(spec, anchor_tip)
-        signed_blocks = signed_blocks + new_signed_blocks
-        if debug:
-            post_state = anchor_tip.beacon_state
-            print('\nepoch', str(epoch) + ':')
-            print('branch(*, *):', _print_epoch(spec, pre_state, new_signed_blocks))
-            print('              ', len(anchor_tip.participants), 'participants:', anchor_tip.participants)
-            print('              ', 'state.current_justified_checkpoint:',
-                  '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
-                  ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
-            print('              ', 'eventually_justified_checkpoint:',
-                  '(epoch=' + str(anchor_tip.eventually_justified_checkpoint.epoch) +
-                  ', root=' + str(anchor_tip.eventually_justified_checkpoint.root)[:6] + ')')
+    signed_blocks, anchor_tip = _advance_state_to_anchor_epoch(spec, genesis_state, anchor_epoch, debug)
 
     # branch_tips hold the most recent state, validator partition and not included attestations for every fork
     # Initialize branch tips with the anchor tip
@@ -700,5 +715,200 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
 
     if debug:
         print('               head: ' + _print_head(spec, store))
+
+    yield 'steps', test_steps
+
+
+def _generate_filter_block_tree(spec, genesis_state, block_epochs, ancestors, previous_justifications,
+        current_justifications, rnd: random.Random, debug) -> ([], []):
+    anchor_epoch = block_epochs[0]
+
+    signed_blocks, anchor_tip = _advance_state_to_anchor_epoch(spec, genesis_state, anchor_epoch, debug)
+
+    block_tips = [None for _ in range(0, len(block_epochs))]
+    # Initialize with the anchor block
+    block_tips[0] = anchor_tip
+
+    JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
+
+    for epoch in range(anchor_epoch + 1, max(block_epochs) + 1):
+        current_blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
+        if len(current_blocks) == 0:
+            continue
+
+        # There should be enough slots to propose all blocks
+        assert (spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT) >= len(
+            current_blocks), "Unsatisfiable constraints: not enough slots to propose all block: " + str(current_blocks)
+
+        # Case 2. Blocks are from disjoint subtrees -- not supported yet
+        assert len(
+            set([a for i, a in enumerate(ancestors) if i in current_blocks])) == 1, 'Disjoint trees are not supported'
+
+        # Case 1. Blocks have common ancestor
+        a = ancestors[current_blocks[0]]
+        ancestor_tip = block_tips[a].copy()
+
+        state = ancestor_tip.beacon_state
+        attestations = ancestor_tip.attestations
+        threshold_slot = spec.compute_start_slot_at_epoch(epoch) + JUSTIFYING_SLOT
+
+        # Build the chain up to but excluding a block that will justify current checkpoint
+        while (state.slot < threshold_slot):
+            # Do not include attestations into blocks
+            if (state.slot < spec.compute_start_slot_at_epoch(epoch)):
+                new_block, state, _ = _produce_block(spec, state, [])
+                signed_blocks.append(new_block)
+            else:
+                new_block, state, attestations = _produce_block(spec, state, attestations)
+                signed_blocks.append(new_block)
+
+            # Attest
+            curr_slot_attestations = _attest_to_slot(spec, state, state.slot)
+            attestations = curr_slot_attestations + attestations
+
+            # Next slot
+            next_slot(spec, state)
+
+        common_state = state
+
+        # Assumption: one block is enough to satisfy previous_justifications[b] and current_justifications[b],
+        # i.e. block capacity is enough to accommodate attestations to justify previus and current epoch checkpoints
+        # if that needed. Considering that most of attestations were already included into the common chain prefix,
+        # we assume it is possible
+        empty_slot_count = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT - len(current_blocks)
+        block_distribution = current_blocks.copy() + [-1 for _ in range(0, empty_slot_count)]
+
+        # Randomly distribute blocks across slots
+        rnd.shuffle(block_distribution)
+
+        for index, block in enumerate(block_distribution):
+            slot = threshold_slot + index
+            state = common_state.copy()
+
+            # Advance state to the slot
+            if state.slot < slot:
+                transition_to(spec, state, slot)
+
+            # Propose a block if slot isn't empty
+            block_attestations = []
+            if block > -1:
+                previous_epoch_attestations = [a for a in attestations if
+                                               epoch == spec.compute_epoch_at_slot(a.data.slot) + 1]
+                current_epoch_attestations = [a for a in attestations if epoch == spec.compute_epoch_at_slot(a.data.slot)]
+                if (previous_justifications[block]):
+                    block_attestations = block_attestations + previous_epoch_attestations
+                if (current_justifications[block]):
+                    block_attestations = block_attestations + current_epoch_attestations
+
+                # Propose block
+                new_block, state, _ = _produce_block(spec, state, block_attestations)
+                signed_blocks.append(new_block)
+
+            # Attest
+            # TODO pick a random tip to make attestation with if the slot is empty
+            curr_slot_attestations = _attest_to_slot(spec, state, state.slot)
+            attestations = curr_slot_attestations + attestations
+
+            # Next slot
+            next_slot(spec, state)
+
+            if block > -1:
+                not_included_attestations = [a for a in attestations if a not in block_attestations]
+
+                check_up_state = state.copy()
+                spec.process_justification_and_finalization(check_up_state)
+
+                if current_justifications[block]:
+                    assert check_up_state.current_justified_checkpoint.epoch == epoch, 'Unexpected current_jusitified_checkpoint.epoch: ' + str(
+                        check_up_state.current_justified_checkpoint.epoch) + ' != ' + str(epoch)
+                elif previous_justifications[block]:
+                    assert check_up_state.current_justified_checkpoint.epoch + 1 == epoch, 'Unexpected current_jusitified_checkpoint.epoch: ' + str(
+                        check_up_state.current_justified_checkpoint.epoch) + ' != ' + str(epoch - 1)
+
+                block_tips[block] = BranchTip(state, not_included_attestations, [*range(0, len(state.validators))],
+                                              check_up_state.current_justified_checkpoint)
+
+    return signed_blocks, block_tips
+
+
+@with_altair_and_later
+@spec_state_test
+def test_filter_block_tree_model(spec, state, model_params=None, debug=False, seed=1):
+    if model_params is None:
+        return
+
+    if debug:
+        print('\nseed:', seed)
+        print('\nmodel_params:', str(model_params))
+
+    block_epochs = model_params['block_epochs']
+    ancestors = model_params['ancestors']
+    previous_justifications = model_params['previous_justifications']
+    current_justifications = model_params['current_justifications']
+    current_epoch = model_params['current_epoch']
+
+    store_justified_epoch = model_params['store_justified_epoch']
+    target_block = model_params['target_block']
+
+    anchor_epoch = block_epochs[0]
+
+    # Ensure that epoch(block) = epoch(ancenstor) + 1
+    for b in range(1, len(block_epochs)):
+        assert block_epochs[b] == block_epochs[ancestors[b]] + 1, 'epoch(' + str(b) + ') != epoch(' + str(
+            ancestors[b]) + ')'
+
+    # Ensure that a descendant doesn't attempt to justify the previous epoch checkpoint
+    # if it has already been justified by its ancestor
+    for b in range(1, len(block_epochs)):
+        if previous_justifications[b]:
+            a = ancestors[b]
+            assert not current_justifications[a], str(b) + ' attempts to justify already justified epoch'
+
+    rnd = random.Random(seed)
+    signed_blocks, post_block_tips = _generate_filter_block_tree(spec,
+                                                                   state,
+                                                                   block_epochs,
+                                                                   ancestors,
+                                                                   previous_justifications,
+                                                                   current_justifications,
+                                                                   rnd,
+                                                                   debug)
+
+    # Yield run parameters
+    yield 'seed', 'meta', seed
+    yield 'model_params', 'meta', model_params
+
+    test_steps = []
+    # Store initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield 'anchor_state', state
+    yield 'anchor_block', anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    # Apply generated blocks
+    for signed_block in signed_blocks:
+        block = signed_block.message
+        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        block_root = block.hash_tree_root()
+        assert store.blocks[block_root] == block
+
+    # Advance the store to the current epoch
+    current_epoch_time = state.genesis_time + spec.compute_start_slot_at_epoch(
+        current_epoch) * spec.config.SECONDS_PER_SLOT
+    if store.time < current_epoch_time:
+        on_tick_and_append_step(spec, store, current_epoch_time, test_steps)
+
+    # Ensure the time is set correct
+    assert store.time == current_epoch_time
+    # Ensure the store.justified_checkpoint.epoch is as expected
+    assert store.justified_checkpoint.epoch == store_justified_epoch
+    # Ensure the target block is in filtered_blocks
+    filtered_block_roots = list(spec.get_filtered_block_tree(store).keys())
+    target_block_root = spec.hash_tree_root(post_block_tips[target_block].beacon_state.latest_block_header)
+    assert target_block_root in filtered_block_roots
+
+    test_steps.append({'property_checks': {'filtered_block_roots': [str(r) for r in filtered_block_roots]}})
 
     yield 'steps', test_steps
