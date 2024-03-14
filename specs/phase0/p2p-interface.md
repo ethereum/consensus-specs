@@ -191,7 +191,7 @@ This section outlines configurations that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
+| `EPOCHS_PER_SHARD_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
@@ -202,9 +202,10 @@ This section outlines configurations that are used in this spec.
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
 | `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
-| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet | |
-| `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | 
-| `ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS` | `3` | The number of bits used to shuffle nodes to a new subnet within `EPOCHS_PER_SUBNET_SUBSCRIPTION` | |
+| `NETWORK_SHARD_COUNT` | `2**6` (= 64) | The number of network shards. |
+| `NETWORK_SHARD_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a network shard |
+| `NETWORK_SHARD_PREFIX_BITS` | `int(ceillog2(NETWORK_SHARD_COUNT) + NETWORK_SHARD_EXTRA_BITS)` |
+| `NETWORK_SHARD_SHUFFLING_PREFIX_BITS` | `3` | The number of bits used to shuffle nodes to a new shard within `EPOCHS_PER_SHARD_SUBSCRIPTION` |
 
 ### MetaData
 
@@ -1011,39 +1012,90 @@ Clients MAY connect to peers with the same `fork_digest` but a different `next_f
 Unless `ENRForkID` is manually updated to matching prior to the earlier `next_fork_epoch` of the two clients,
 these connecting clients will be unable to successfully interact starting at the earlier `next_fork_epoch`.
 
-### Attestation subnet subscription
+### Network Shards
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
+In order for gossipsub to function, there must be a stable set of peers for
+each topic that remain subscribed for a long period of time (order 1
+day). This allows nodes to search for and maintain a selection of these
+long-lived peers in order to publish/receive messages on the topic. As some
+topics are transient for most nodes (i.e attestation subnets, DAS-related
+columns) it is necessary that we enforce each node on the network to facilitate the
+support of these topics by long-lived subscribing to them (and thereby validating and forwarding messages).
 
-* Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
-* Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
+To this end we define the abstract concept of a "network shard". Each network
+shard is mapped to one or many transient gossipsub topics that require a stable
+set of subscribed peers. The primary advantage of this concept is that a node
+need only to optimise their peer set to obtain a uniform set of peers on all
+network shards, which will then guarantee a uniform set of peers on all transient
+gossipsub topics (rather than trying to optimise for each individual set of
+topics (i.e attestation_subnets, DAS-related columns).
+
+The mapping that links a node-id to a network shard is:
 
 ```python
-def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    subnet_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
-    shuffling_bit_size = (
+def compute_network_shard(node_id: NodeID, epoch: Epoch) -> SubnetID:
+    # The main prefix bits to determine a network shard
+    shard_prefix = node_id >> (NODE_ID_BITS - NETWORK_SHARD_PREFIX_BITS)
+    # Used to extract the total prefix bytes (prefix + shuffling_bits)
+    shuffling_bits = (
         NODE_ID_BITS
-        - ATTESTATION_SUBNET_PREFIX_BITS
-        - ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS
+        - NETWORK_SHARD_PREFIX_BITS
+        - NETWORK_SHARD_SHUFFLING_PREFIX_BITS
     )
-    shuffling_bits = (node_id >> shuffling_bit_size) % (1 << ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS)
-    shuffling_multiplier = EPOCHS_PER_SUBNET_SUBSCRIPTION >> ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS
+    # The NETWORK_SHARD_SHUFFLING_PREFIX_BITS that trail shard_prefix.
+    # These are used to stagger the rotation of network shards so that all
+    # nodes do not rotate from shards all at once.
+    # The larger the NETWORK_SHARD_SHUFFLING_PREFIX_BITS the more granular the
+    # nodes will transition from one shard to another throughout a period.
+    shuffling_bits = (node_id >> shuffling_bit_size) % (1 << NETWORK_SHARD_SHUFFLING_PREFIX_BITS)
+    # Calculates a multiplier that scales the shuffling prefix (assumed smaller
+    # than the rotation period) to be uniform throughout the entire rotation
+    # period. Can also be calculated as:
+    # EPOCHS_PER_SHARD_SUBSCRIPTION // 1 >> NETWORK_SHARD_SHUFFLING_PREFIX_BITS
+    shuffling_multiplier = EPOCHS_PER_SHARD_SUBSCRIPTION >> NETWORK_SHARD_SHUFFLING_PREFIX_BITS
+    # The epoch at which this node will rotate to a new shard
+    # This is distributed uniformly throughout the rotation period with a
+    # granularity based on the size of NETWORK_SHARD_SHUFFLING_PREFIX_BITS
     epoch_transition = (
-        (subnet_prefix + (shuffling_bits * shuffling_multiplier)) % EPOCHS_PER_SUBNET_SUBSCRIPTION
+        (shard_prefix + (shuffling_bits * shuffling_multiplier)) % EPOCHS_PER_SHARD_SUBSCRIPTION
     )
+    # A seed which changes every rotation period (EPOCHS_PER_SHARD_SUBSCRIPTION)
+    # This enforces the rotation period and is staggered for each prefix so
+    # that nodes do not rotate from shards all at once
     permutation_seed = hash(uint_to_bytes(uint64((epoch + epoch_transition) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    # The resulting value that ultimately defines the network shard.
     permutated_prefix = compute_shuffled_index(
-        subnet_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        shard_prefix,
+        1 << NETWORK_SHARD_PREFIX_BITS,
         permutation_seed,
     )
-    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
+    return ShardID(permutated_prefix % NETWORK_SHARD_COUNT)
 ```
+
+The `compute_network_shard` function is designed with the following
+desirable properties:
+* It uses only the first set of bytes (defined by prefix_bytes_size) of the
+  node-id. This allows for efficient discovery searches, by allowing nodes to
+  search for specific nodes of network shards based on the kademilia XOR
+  metric.
+* Nodes will maintain a shard for EPOCHS_PER_SHARD_SUBSCRIPTION before
+  rotating to a new shard.
+* The rotation is staggered uniformly throughout the rotation period per shard.
+* No individual shard will suddenly rotate to another, rather a subset of nodes
+  per shard transition gradually throughout the rotation period.
+* The function is feasibly reversible. Prefixes can be calculated for desired
+  network shards for any given epoch, allowing nodes to search for these
+  prefixes.
+
+### Attestation Subnets
+
+The backbone structure for attestation subnets can be calculated from their
+network shard via the following:
 
 ```python
 def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
-    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
+    network_shard = compute_network_shard(node_id, epoch)
+    return [ShardId(network_shard + index) % ATTESTATION_SUBNET_COUNT for index in range(SUBNETS_PER_NODE)]
 ```
 
 *Note*: When preparing for a hard fork, a node must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
