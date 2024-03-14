@@ -5,7 +5,7 @@ from typing import List
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb
+from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_eip7549
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -78,7 +78,7 @@ def build_attestation_data(spec, state, slot, index, beacon_block_root=None, sha
 
     data = spec.AttestationData(
         slot=slot,
-        index=index,
+        index=0 if is_post_eip7549(spec) else index,
         beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
@@ -108,12 +108,19 @@ def get_valid_attestation(spec,
 
     committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
-    attestation = spec.Attestation(
-        aggregation_bits=aggregation_bits,
-        data=attestation_data,
-    )
+    if is_post_eip7549(spec):
+        attestation = spec.Attestation(
+            aggregation_bits_list=[aggregation_bits],
+            data=attestation_data,
+        )
+    else:
+        attestation = spec.Attestation(
+            aggregation_bits=aggregation_bits,
+            data=attestation_data,
+        )
     # fill the attestation with (optionally filtered) participants, and optionally sign it
-    fill_aggregate_attestation(spec, state, attestation, signed=signed, filter_participant_set=filter_participant_set)
+    fill_aggregate_attestation(spec, state, attestation, signed=signed,
+                               filter_participant_set=filter_participant_set, committee_index=index)
 
     return attestation
 
@@ -159,7 +166,7 @@ def compute_max_inclusion_slot(spec, attestation):
     return attestation.data.slot + spec.SLOTS_PER_EPOCH
 
 
-def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_participant_set=None):
+def fill_aggregate_attestation(spec, state, attestation, committee_index, signed=False, filter_participant_set=None):
     """
      `signed`: Signing is optional.
      `filter_participant_set`: Optional, filters the full committee indices set (default) to a subset that participates
@@ -167,15 +174,24 @@ def fill_aggregate_attestation(spec, state, attestation, signed=False, filter_pa
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
-        attestation.data.index,
+        committee_index,
     )
     # By default, have everyone participate
     participants = set(beacon_committee)
     # But optionally filter the participants to a smaller amount
     if filter_participant_set is not None:
         participants = filter_participant_set(participants)
+
+    committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
     for i in range(len(beacon_committee)):
-        attestation.aggregation_bits[i] = beacon_committee[i] in participants
+        if is_post_eip7549(spec):
+            committee_bits[committee_index] = True
+            attestation.aggregation_bits_list[0][i] = beacon_committee[i] in participants
+        else:
+            attestation.aggregation_bits[i] = beacon_committee[i] in participants
+
+    if is_post_eip7549(spec):
+        attestation.committee_bits = committee_bits
 
     if signed and len(participants) > 0:
         sign_attestation(spec, state, attestation)
@@ -349,8 +365,12 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
                         return participation_fn(state.slot, committee_index, comm)
                 attestation = get_valid_attestation(spec, state, index=committee_index,
                                                     filter_participant_set=temp_participants_filter, signed=True)
-                if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
-                    attestations.append(attestation)
+                if is_post_eip7549(spec):
+                    if any(attestation.aggregation_bits_list):
+                        attestations.append(attestation)
+                else:
+                    if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
+                        attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
             inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
@@ -384,3 +404,10 @@ def cached_prepare_state_with_attestations(spec, state):
 
     # Put the LRU cache result into the state view, as if we transitioned the original view
     state.set_backing(_prep_state_cache_dict[key])
+
+
+def get_max_attestations(spec):
+    if is_post_eip7549(spec):
+        return spec.MAX_ATTESTATIONS_EIP7549
+    else:
+        return spec.MAX_ATTESTATIONS

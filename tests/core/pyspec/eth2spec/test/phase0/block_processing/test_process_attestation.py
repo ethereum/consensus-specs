@@ -14,6 +14,7 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
     compute_max_inclusion_slot,
 )
+from eth2spec.test.helpers.forks import is_post_eip7549
 from eth2spec.test.helpers.state import (
     next_slots,
     next_epoch_via_block,
@@ -346,7 +347,10 @@ def test_invalid_too_many_aggregation_bits(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # one too many bits
-    attestation.aggregation_bits.append(0b0)
+    if is_post_eip7549(spec):
+        attestation.aggregation_bits_list[0].append(0b0)
+    else:
+        attestation.aggregation_bits.append(0b0)
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -357,13 +361,21 @@ def test_invalid_too_few_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
-        *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1)))
+    if is_post_eip7549(spec):
+        attestation.aggregation_bits_list[0] = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+            *([0b1] + [0b0] * (len(attestation.aggregation_bits_list[0]) - 1)))
+    else:
+        attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+            *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1))
+        )
 
     sign_attestation(spec, state, attestation)
 
     # one too few bits
-    attestation.aggregation_bits = attestation.aggregation_bits[:-1]
+    if is_post_eip7549(spec):
+        attestation.aggregation_bits_list = attestation.aggregation_bits_list[0][:-1]
+    else:
+        attestation.aggregation_bits = attestation.aggregation_bits[:-1]
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 

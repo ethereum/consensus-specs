@@ -11,6 +11,7 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
 )
 from eth2spec.test.helpers.constants import MAINNET
+from eth2spec.test.helpers.forks import is_post_eip7549
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -29,6 +30,14 @@ def _apply_base_block_a(spec, state, store, test_steps):
     signed_block_a = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
     assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
+
+
+def _get_aggregation_bits(spec, attestation):
+    if is_post_eip7549(spec):
+        aggregation_bits = attestation.aggregation_bits_list[0]
+    else:
+        aggregation_bits = attestation.aggregation_bits
+    return aggregation_bits
 
 
 @with_altair_and_later
@@ -78,7 +87,8 @@ def test_ex_ante_vanilla(spec, state):
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
+    aggregation_bits = _get_aggregation_bits(spec, attestation)
+    assert len([i for i in aggregation_bits if i == 1]) == 1
     sign_attestation(spec, state_b, attestation)
 
     # Block C received at N+2 — C is head
@@ -180,7 +190,8 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
+    aggregation_bits = _get_aggregation_bits(spec, attestation)
+    assert len([i for i in aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
     # Attestation_set_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
@@ -304,7 +315,8 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
         spec, state_c, slot=state_c.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
+    aggregation_bits = _get_aggregation_bits(spec, attestation)
+    assert len([i for i in aggregation_bits if i == 1]) == 1
     sign_attestation(spec, state_c, attestation)
 
     # Block D at slot `N + 3`, parent is B

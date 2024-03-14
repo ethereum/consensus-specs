@@ -2,6 +2,7 @@ from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.constants import ALL_PHASES
+from eth2spec.test.helpers.forks import is_post_eip7549
 from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 
@@ -325,6 +326,9 @@ def test_on_attestation_invalid_attestation(spec, state):
 
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
     # make invalid by using an invalid committee index
-    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT * spec.SLOTS_PER_EPOCH
+    if is_post_eip7549(spec):
+        attestation.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
+    else:
+        attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT * spec.SLOTS_PER_EPOCH
 
     run_on_attestation(spec, state, store, attestation, False)

@@ -9,6 +9,7 @@
 - [Modifications in EIP-7549](#modifications-in-eip-7549)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Attester slashings](#attester-slashings)
       - [Attestations](#attestations)
   - [Attesting](#attesting)
     - [Construct attestation](#construct-attestation)
@@ -24,7 +25,13 @@
 
 #### Constructing the `BeaconBlockBody`
 
+##### Attester slashings
+
+Changed the max attestations size to `MAX_ATTESTER_SLASHINGS_EIP7549`.
+
 ##### Attestations
+
+Changed the max attestations size to `MAX_ATTESTATIONS_EIP7549`.
 
 Attestations received from aggregators with disjoint `committee_bits` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
 
@@ -33,8 +40,8 @@ Attestations received from aggregators with disjoint `committee_bits` sets and e
 #### Construct attestation
 
 - Set `attestation_data.index = 0`.
-- Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
-- Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
+- Let `aggregation_bits_list` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
+- Set `attestation.aggregation_bits_list = [aggregation_bits_list]`, a list of length 1
 - Let `committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`
 - Set `attestation.committee_bits = committee_bits`
 
@@ -46,6 +53,5 @@ Attestations received from aggregators with disjoint `committee_bits` sets and e
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.aggregation_bits = [aggregation_bits]`, a list of length 1
+- Set `attestation.aggregation_bits_list = [aggregation_bits]`, a list of length 1
 - Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation
-
