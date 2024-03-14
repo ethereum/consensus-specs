@@ -34,7 +34,7 @@
 
 This document details the beacon chain additions and changes of to support the Whisk SSLE.
 
-*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
+*Note:* This specification is built upon [capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -89,14 +89,14 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     TODO: Deneb will introduces this helper too. Should delete it once it's rebased to post-Deneb.
     """
     field_element = int.from_bytes(b, ENDIANNESS)
-    assert field_element < BLS_MODULUS
-    return BLSFieldElement(field_element)
+    return BLSFieldElement(field_element % BLS_MODULUS)
 ```
 
-| Name               | Value                                                                           |
-| ------------------ | ------------------------------------------------------------------------------- |
-| `BLS_G1_GENERATOR` | `bls.G1_to_bytes48(bls.G1)`                                                     |
-| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
+| Name                  | Value                                                                           |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `BLS_G1_GENERATOR`    | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
+| `BLS_MODULUS`         | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
+| `CURDLEPROOFS_CRS`    | TBD | 
 
 ### Curdleproofs and opening proofs
 
@@ -105,14 +105,17 @@ Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and al
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
                              post_shuffle_trackers: Sequence[WhiskTracker],
-                             M: BLSG1Point,
                              shuffle_proof: WhiskShuffleProof) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
-    # pylint: disable=unused-argument
-    return True
+    return curdleproofs.IsValidWhiskShuffleProof(
+        CURDLEPROOFS_CRS,
+        pre_shuffle_trackers,
+        post_shuffle_trackers,
+        shuffle_proof,
+    )
 ```
 
 ```python
@@ -123,8 +126,7 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
     """
-    # pylint: disable=unused-argument
-    return True
+    return curdleproofs.IsValidWhiskOpeningProof(tracker, k_commitment, tracker_proof)
 ```
 
 ## Epoch processing
@@ -282,7 +284,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(capella.BeaconBlockBody):
+class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
@@ -295,13 +297,11 @@ class BeaconBlockBody(capella.BeaconBlockBody):
     sync_aggregate: SyncAggregate
     # Execution
     execution_payload: ExecutionPayload
-    # Capella operations
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     # Whisk
     whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
-    whisk_shuffle_proof_M_commitment: BLSG1Point  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
     whisk_tracker: WhiskTracker  # [New in Whisk]
     whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in Whisk]
@@ -328,7 +328,6 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
     if shuffle_epoch + WHISK_PROPOSER_SELECTION_GAP + 1 >= WHISK_EPOCHS_PER_SHUFFLING_PHASE:
         # Require trackers set to zero during cooldown
         assert body.whisk_post_shuffle_trackers == Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]()
-        assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
         assert body.whisk_shuffle_proof == WhiskShuffleProof()
     else:
         # Require shuffled trackers during shuffle
@@ -337,7 +336,6 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
         assert IsValidWhiskShuffleProof(
             pre_shuffle_trackers,
             body.whisk_post_shuffle_trackers,
-            body.whisk_shuffle_proof_M_commitment,
             body.whisk_shuffle_proof,
         )
         # Shuffle candidate trackers
@@ -351,12 +349,9 @@ def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool
 ```
 
 ```python
-def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
-    process_shuffled_trackers(state, body)
-
-    # Overwrite all validator Whisk fields (first Whisk proposal) or just the permutation commitment (next proposals)
-    proposer = state.validators[get_beacon_proposer_index(state)]
-    if proposer.whisk_tracker.r_G == BLS_G1_GENERATOR:  # first Whisk proposal
+def process_whisk_registration(state: BeaconState, body: BeaconBlockBody) -> None:
+    proposer_index = get_beacon_proposer_index(state)
+    if state.whisk_trackers[proposer_index].r_G == BLS_G1_GENERATOR:  # first Whisk proposal
         assert body.whisk_tracker.r_G != BLS_G1_GENERATOR
         assert is_k_commitment_unique(state, body.whisk_k_commitment)
         assert IsValidWhiskOpeningProof(
@@ -364,26 +359,25 @@ def process_whisk(state: BeaconState, body: BeaconBlockBody) -> None:
             body.whisk_k_commitment,
             body.whisk_registration_proof,
         )
-        proposer.whisk_tracker = body.whisk_tracker
-        proposer.whisk_k_commitment = body.whisk_k_commitment
+        state.whisk_trackers[proposer_index] = body.whisk_tracker
+        state.whisk_k_commitments[proposer_index] = body.whisk_k_commitment
     else:  # next Whisk proposals
         assert body.whisk_registration_proof == WhiskTrackerProof()
         assert body.whisk_tracker == WhiskTracker()
         assert body.whisk_k_commitment == BLSG1Point()
-    assert body.whisk_shuffle_proof_M_commitment == BLSG1Point()
 ```
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_whisk(state, block.body)  # [New in Whisk]
+    process_shuffled_trackers(state, block.body)  # [New in Whisk]
+    process_whisk_registration(state, block.body)  # [New in Whisk]
 ```
 
 ### Deposits

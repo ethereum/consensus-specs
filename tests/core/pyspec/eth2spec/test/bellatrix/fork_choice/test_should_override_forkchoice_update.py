@@ -135,8 +135,6 @@ def test_should_override_forkchoice_update__true(spec, state):
     # Add attestations to the parent block
     temp_state = state.copy()
     next_slot(spec, temp_state)
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + 1
-    on_tick_and_append_step(spec, store, current_time, test_steps)
     attestations = get_valid_attestation_at_slot(
         temp_state,
         spec,

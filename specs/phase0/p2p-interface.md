@@ -331,7 +331,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   i.e. validate that `signed_beacon_block.message.slot <= current_slot`
   (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
-  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
@@ -356,17 +356,20 @@ to subscribing nodes (typically validators) to be included in future blocks.
 
 The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network.
 (We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
+- _[REJECT]_ The committee index is within the expected range -- i.e. `aggregate.data.index < get_committee_count_per_slot(state, aggregate.data.target.epoch)`.
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(aggregate.aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, aggregate.data.index))`.
+- _[REJECT]_ The aggregate attestation has participants --
+  that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
 - _[IGNORE]_ A valid aggregate attestation defined by `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict superset has _not_ already been seen.
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-- _[REJECT]_ The attestation has participants --
-  that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot --
   i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is within the committee --
@@ -379,6 +382,8 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   (via both gossip and non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The aggregate attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
+  `get_checkpoint_block(store, aggregate.data.beacon_block_root, aggregate.data.target.epoch) == aggregate.data.target.root`
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
@@ -426,7 +431,7 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.
-- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`.
+- _[REJECT]_ The committee index is within the expected range -- i.e. `attestation.data.index < get_committee_count_per_slot(state, attestation.data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
   i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
@@ -440,7 +445,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The attestation is unaggregated --
   that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
+  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, attestation.data.index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
@@ -692,9 +697,9 @@ The fields are, as seen by the client at the time of sending the message:
     - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time
       (not necessarily the epoch to which the node is sync)
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block
+- `finalized_root`: `store.finalized_checkpoint.root` according to [fork choice](./fork-choice.md).
   (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
-- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
+- `finalized_epoch`: `store.finalized_checkpoint.epoch` according to [fork choice](./fork-choice.md).
 - `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
@@ -856,6 +861,9 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 
 Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
+
+Clients MAY include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 

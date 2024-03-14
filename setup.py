@@ -93,6 +93,8 @@ def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     base = class_def.bases[0]
     if isinstance(base, ast.Name):
         parent_class = base.id
+    elif isinstance(base, ast.Subscript):
+        parent_class = base.value.id
     else:
         # NOTE: SSZ definition derives from earlier phase...
         # e.g. `phase0.SignedBeaconBlock`
@@ -112,15 +114,32 @@ def _load_kzg_trusted_setups(preset_name):
 
     with open(trusted_setups_file_path, 'r') as f:
         json_data = json.load(f)
+        trusted_setup_G1_monomial = json_data['g1_monomial']
         trusted_setup_G1_lagrange = json_data['g1_lagrange']
         trusted_setup_G2_monomial = json_data['g2_monomial']
 
-    return trusted_setup_G2_monomial, trusted_setup_G1_lagrange
+    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
+
+def _load_curdleproofs_crs(preset_name):
+    """
+    NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
+    """
+    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/curdleproofs_crs.json'
+
+    with open(file_path, 'r') as f:
+        json_data = json.load(f)
+
+    return json_data
 
 
 ALL_KZG_SETUPS = {
     'minimal': _load_kzg_trusted_setups('minimal'),
     'mainnet': _load_kzg_trusted_setups('mainnet')
+}
+
+ALL_CURDLEPROOFS_CRS = {
+    'minimal': _load_curdleproofs_crs('minimal'),
+    'mainnet': _load_curdleproofs_crs('mainnet'),
 }
 
 
@@ -136,7 +155,7 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
 
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
-    if name == "BLS12_381_Q":
+    if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
@@ -151,9 +170,10 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
+    constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G1_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
-
+    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
+    
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
@@ -261,6 +281,13 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):
         _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
+
+    if any('CURDLEPROOFS_CRS' in name for name in constant_vars):
+        constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
+            None,
+            'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
+            "noqa: E501", None
+        )
 
     return SpecObject(
         functions=functions,

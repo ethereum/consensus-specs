@@ -22,8 +22,11 @@ def collect_prev_forks(fork: str) -> list[str]:
         forks.append(fork)
 
 
-def is_byte_vector(value: str) -> bool:
-    return value.startswith(('ByteVector'))
+def requires_mypy_type_ignore(value: str) -> bool:
+    return (
+        value.startswith(('ByteVector'))
+        or (value.startswith(('Vector')) and 'floorlog2' in value)
+    )
 
 
 def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
@@ -41,7 +44,8 @@ def objects_to_spec(preset_name: str,
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n    pass\n" if not is_byte_vector(value) else f"class {key}({value}):  # type: ignore\n    pass\n"
+                f"class {key}({value}):\n    pass\n" if not requires_mypy_type_ignore(value)
+                else f"class {key}({value}):  # type: ignore\n    pass\n"
                 for key, value in spec_object.custom_types.items()
             ]
         )
@@ -108,7 +112,7 @@ def objects_to_spec(preset_name: str,
         if vardef.comment is not None:
             out += f'  # {vardef.comment}'
         return out
-    
+
     # Merge all constant objects
     hardcoded_ssz_dep_constants =         reduce(lambda obj, builder: {**obj, **builder.hardcoded_ssz_dep_constants()}, builders, {})
     hardcoded_custom_type_dep_constants = reduce(lambda obj, builder: {**obj, **builder.hardcoded_custom_type_dep_constants(spec_object)}, builders, {})
@@ -131,12 +135,13 @@ def objects_to_spec(preset_name: str,
         imports,
         preparations,
         f"fork = \'{fork}\'\n",
+        # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`
+        CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `new_type_definitions`
         custom_type_dep_constants,
-        new_type_definitions,
-        CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `constants_spec`
         ssz_dep_constants,
+        new_type_definitions,
         constant_vars_spec,
         preset_vars_spec,
         config_spec,
