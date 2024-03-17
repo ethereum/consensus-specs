@@ -104,11 +104,7 @@ def get_valid_attestation(spec,
 
     attestation_data = build_attestation_data(spec, state, slot=slot, index=index, beacon_block_root=beacon_block_root)
 
-    beacon_committee = spec.get_beacon_committee(
-        state,
-        attestation_data.slot,
-        attestation_data.index,
-    )
+    beacon_committee = spec.get_beacon_committee(state, slot, index)
 
     committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
@@ -144,11 +140,7 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
 
 
 def sign_attestation(spec, state, attestation):
-    participants = spec.get_attesting_indices(
-        state,
-        attestation.data,
-        attestation.aggregation_bits,
-    )
+    participants = spec.get_attesting_indices(state, attestation)
 
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
 
