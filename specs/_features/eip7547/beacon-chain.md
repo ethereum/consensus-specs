@@ -23,8 +23,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Engine APIs](#engine-apis)
-      - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
-      - [New `is_inclusion_list_available`](#new-is_inclusion_list_available)
+      - [New `verify_and_notify_new_inclusion_list`](#new-verify_and_notify_new_inclusion_list)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -158,7 +157,7 @@ class ExecutionPayloadHeader(Container):
 
 #### Engine APIs
 
-##### New `notify_new_inclusion_list`
+##### New `verify_and_notify_new_inclusion_list`
 
 ```python
 def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
@@ -169,17 +168,6 @@ def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
     summary. The execution engine also checks that the total gas limit is less or equal that
     ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to
     the signed summary.
-    """
-    ...
-```
-
-
-##### New `is_inclusion_list_available`
-
-```python
-def is_inclusion_list_available(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
-    """
-    Return ``True`` if and only if the payload has a corresponding inclusion list.
     """
     ...
 ```

@@ -7,7 +7,8 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
-  - [`verify_inclusion_list`](#verify_inclusion_list)
+  - [New `verify_inclusion_list`](#new-verify_inclusion_list)
+  - [New `is_inclusion_list_available`](#new-is_inclusion_list_available)
 - [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
 
@@ -20,8 +21,7 @@ This is the modification of the fork choice accompanying EIP-7547.
 
 ## Helpers
 
-### `verify_inclusion_list`
-*[New in EIP-7547]*
+### New `verify_inclusion_list`
 
 ```python
 def verify_inclusion_list(state: BeaconState, block: BeaconBlock, inclusion_list: InclusionList,
@@ -43,6 +43,16 @@ def verify_inclusion_list(state: BeaconState, block: BeaconBlock, inclusion_list
         summary=inclusion_list.signed_summary.message.summary,
         parent_block_hash=state.latest_execution_payload_header.block_hash,
     ))
+```
+
+### New `is_inclusion_list_available`
+
+```python
+def is_inclusion_list_available(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if the payload has a corresponding inclusion list.
+    """
+    ...
 ```
 
 ## New fork-choice handlers
