@@ -1037,7 +1037,7 @@ The mapping that links a node-id to a network shard is:
 def compute_network_shard(node_id: NodeID, epoch: Epoch) -> ShardID:
     # The main prefix bits to determine a network shard
     shard_prefix = node_id >> (NODE_ID_BITS - NETWORK_SHARD_PREFIX_BITS)
-    # Used to extract the total prefix bytes (prefix + shuffling_bits)
+    # Used to extract the total prefix bits (prefix + shuffling_bits)
     shuffling_bit_size = (
         NODE_ID_BITS
         - NETWORK_SHARD_PREFIX_BITS
@@ -1075,7 +1075,8 @@ def compute_network_shard(node_id: NodeID, epoch: Epoch) -> ShardID:
 
 The `compute_network_shard` function is designed with the following
 desirable properties:
-* It uses only the first set of bytes (defined by prefix_bytes_size) of the
+* It uses only the first set of bits (defined by NETWORK_SHARD_PREFIX_BITS and
+    NETWORK_SHARD_SHUFFLING_PREFIX_BITS) of the
   node-id. This allows for efficient discovery searches, by allowing nodes to
   search for specific nodes of network shards based on the kademilia XOR
   metric.
