@@ -15,7 +15,7 @@
   - [New Containers](#new-containers)
     - [`InclusionListSummaryEntry`](#inclusionlistsummaryentry)
     - [`InclusionListSummary`](#inclusionlistsummary)
-    - [`SigmedInclusionListSummary`](#sigmedinclusionlistsummary)
+    - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
   - [Extended containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -79,10 +79,10 @@ class InclusionListSummary(Container):
     summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-#### `SigmedInclusionListSummary`
+#### `SignedInclusionListSummary`
 
 ```python
-class SigmedInclusionListSummary(Container):
+class SignedInclusionListSummary(Container):
     message: InclusionListSummary
     signature: BLSSignature
 ```
