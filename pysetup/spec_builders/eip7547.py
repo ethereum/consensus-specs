@@ -50,4 +50,3 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
 '''
-    

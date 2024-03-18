@@ -53,7 +53,7 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(256)` |
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(16384) = 2**14` |
 
 ## Containers
 
@@ -120,7 +120,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    previous_inclusion_list_summary: SignedInclusionListSummary  # [New in EIP7547]
+    previous_inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -165,9 +165,7 @@ def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
     """
     Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
     starting from the execution state corresponding to the `parent_hash` in the inclusion list 
-    summary. The execution engine also checks that the total gas limit is less or equal that
-    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to
-    the signed summary.
+    summary.
     """
     ...
 ```
