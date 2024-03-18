@@ -16,13 +16,12 @@
     - [`InclusionListSummaryEntry`](#inclusionlistsummaryentry)
     - [`InclusionListSummary`](#inclusionlistsummary)
     - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
+    - [`InclusionList`](#inclusionlist)
   - [Extended containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-      - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
     - [Engine APIs](#engine-apis)
       - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
       - [New `is_inclusion_list_available`](#new-is_inclusion_list_available)
@@ -87,6 +86,14 @@ class SignedInclusionListSummary(Container):
     signature: BLSSignature
 ```
 
+#### `InclusionList`
+
+```python
+class InclusionList(Container):
+    signedSummary: SignedInclusionListSummary
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+```
+
 ### Extended containers
 
 #### `ExecutionPayload`
@@ -149,24 +156,13 @@ class ExecutionPayloadHeader(Container):
 
 ### Execution engine
 
-#### Request data
-
-##### New `NewInclusionListRequest`
-
-```python
-@dataclass
-class NewInclusionListRequest(object):
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    signedSummary: SignedInclusionListSummary
-```
-
 #### Engine APIs
 
 ##### New `notify_new_inclusion_list`
 
 ```python
-def notify_new_inclusion_list(self: ExecutionEngine,
-                              inclusion_list_request: NewInclusionListRequest) -> bool:
+def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
+                              inclusion_list: InclusionList) -> bool:
     """
     Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
     starting from the execution state corresponding to the `parent_hash` in the inclusion list 
