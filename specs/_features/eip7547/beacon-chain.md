@@ -13,20 +13,24 @@
   - [Execution](#execution)
 - [Containers](#containers)
   - [New Containers](#new-containers)
-    - [`SignedInclusionListSummary`](#signedinclusionlistsummary)
+    - [`InclusionListSummaryEntry`](#inclusionlistsummaryentry)
+    - [`InclusionListSummary`](#inclusionlistsummary)
+    - [`SigmedInclusionListSummary`](#sigmedinclusionlistsummary)
+  - [Extended containers](#extended-containers)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [New `NewInclusionListRequest`](#new-newinclusionlistrequest)
     - [Engine APIs](#engine-apis)
-    - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
-  - [Extended containers](#extended-containers)
-    - [`ExecutionPayload`](#executionpayload)
-    - [`ExecutionPayloadHeader`](#executionpayloadheader)
-    - [`BeaconState`](#beaconstate)
+      - [New `notify_new_inclusion_list`](#new-notify_new_inclusion_list)
+      - [New `is_inclusion_list_available`](#new-is_inclusion_list_available)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
-    - [Block header](#block-header)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
+      - [New `verify_inclusion_list_summary_signature`](#new-verify_inclusion_list_summary_signature)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -57,48 +61,37 @@ This is the beacon chain specification to add an inclusion list mechanism to all
 
 ### New Containers
 
-#### `SignedInclusionListSummary`
+#### `InclusionListSummaryEntry`
 
 ```python
-class SignedInclusionListSummary(Container):
-    summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    signature: BLSSignature 
+class InclusionListSummaryEntry(Container):
+    address: ExecutionAddress
+    nonce: uint64
 ```
 
-### Execution engine
-
-#### Request data
-
-##### New `NewInclusionListRequest`
+#### `InclusionListSummary`
 
 ```python
-@dataclass
-class NewInclusionListRequest(object):
-    inclusion_list: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    summary: List[ExecutionAddress, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
-    parent_block_hash: Hash32
+class InclusionListSummary(Container):
+    slot: Slot
+    proposer_index: ValidatorIndex
+    parent_hash: Hash32
+    summary: List[InclusionListSummaryEntry, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-#### Engine APIs
-
-#### New `notify_new_inclusion_list`
+#### `SigmedInclusionListSummary`
 
 ```python
-def notify_new_inclusion_list(self: ExecutionEngine,
-                              inclusion_list_request: NewInclusionListRequest) -> bool:
-    """
-    Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
-    starting from the execution state corresponding to the `parent_block_hash` in the inclusion list 
-    summary. The execution engine also checks that the total gas limit is less or equal that
-    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to
-    the signed summary.
-    """
-    ...
+class SigmedInclusionListSummary(Container):
+    message: InclusionListSummary
+    signature: BLSSignature
 ```
 
 ### Extended containers
 
 #### `ExecutionPayload`
+
+Adding `previous_inclusion_list_summary`.
 
 ```python
 class ExecutionPayload(Container):
@@ -126,6 +119,8 @@ class ExecutionPayload(Container):
 
 #### `ExecutionPayloadHeader`
 
+Adding `previous_inclusion_list_summary_root`.
+
 ```python
 class ExecutionPayloadHeader(Container):
     # Execution block header fields
@@ -150,88 +145,88 @@ class ExecutionPayloadHeader(Container):
     previous_inclusion_list_summary_root: Root  # [New in EIP7547]
 ```
 
-#### `BeaconState`
+## Beacon chain state transition function
+
+### Execution engine
+
+#### Request data
+
+##### New `NewInclusionListRequest`
 
 ```python
-class BeaconState(Container):
-    # Versioning
-    genesis_time: uint64
-    genesis_validators_root: Root
-    slot: Slot
-    fork: Fork
-    # History
-    latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  
-    # Eth1
-    eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
-    # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Participation
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
-    previous_justified_checkpoint: Checkpoint
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
-    # Inactivity
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    # Sync
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
-    # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader
-    # Withdrawals
-    next_withdrawal_index: WithdrawalIndex
-    next_withdrawal_validator_index: ValidatorIndex 
-    # Deep history valid from Capella onwards
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT] 
-    # Needed for inclusion list validation
-    previous_proposer_index: ValidatorIndex  # [New in EIP7547]
+@dataclass
+class NewInclusionListRequest(object):
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    signedSummary: SignedInclusionListSummary
+```
+
+#### Engine APIs
+
+##### New `notify_new_inclusion_list`
+
+```python
+def notify_new_inclusion_list(self: ExecutionEngine,
+                              inclusion_list_request: NewInclusionListRequest) -> bool:
+    """
+    Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
+    starting from the execution state corresponding to the `parent_hash` in the inclusion list 
+    summary. The execution engine also checks that the total gas limit is less or equal that
+    ``MAX_GAS_PER_INCLUSION_LIST``, and the transactions in the list of transactions correspond to
+    the signed summary.
+    """
+    ...
+```
+
+
+##### New `is_inclusion_list_available`
+
+```python
+def is_inclusion_list_available(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if the payload has a corresponding inclusion list.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+Add `is_inclusion_list_available` check.
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    execution_payload = new_payload_request.execution_payload
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+
+    # [Modified in Deneb:EIP4788]
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+        return False
+
+    # [New in Deneb:EIP4844]
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    # [New in EIP7547]
+    if not self.is_inclusion_list_available(new_payload_request):
+        return False
+
+    # [Modified in Deneb:EIP4788]
+    if not self.notify_new_payload(execution_payload, parent_beacon_block_root):
+        return False
+
+    return True
 ```
 
 ### Block processing
 
-#### Block header
-
-```python
-def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
-    # Verify that the slots match
-    assert block.slot == state.slot
-    # Verify that the block is newer than latest block header
-    assert block.slot > state.latest_block_header.slot
-    # Verify that proposer index is the correct index
-    assert block.proposer_index == get_beacon_proposer_index(state)
-    # Verify that the parent matches
-    assert block.parent_root == hash_tree_root(state.latest_block_header)
-    # Set previous proposer index before overwriting latest block header
-    state.previous_proposer_index = state.latest_block_header.proposer_index  # [New in EIP7547]
-    # Cache current block as the new latest block
-    state.latest_block_header = BeaconBlockHeader(
-        slot=block.slot,
-        proposer_index=block.proposer_index,
-        parent_root=block.parent_root,
-        state_root=Bytes32(),  # Overwritten in the next process_slot call
-        body_root=hash_tree_root(block.body),
-    )
-
-    # Verify proposer is not slashed
-    proposer = state.validators[block.proposer_index]
-    assert not proposer.slashed
-```
-
 #### Execution payload
 
 ##### Modified `process_execution_payload`
+
+Assert validity of inclusion list summary with `verify_inclusion_list_summary_signature`.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -282,6 +277,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     )
 ```
 
+##### New `verify_inclusion_list_summary_signature`
+
 ```python
 def verify_inclusion_list_summary_signature(state: BeaconState,
                                             inclusion_list_summary: SignedInclusionListSummary) -> bool:
@@ -289,6 +286,6 @@ def verify_inclusion_list_summary_signature(state: BeaconState,
         inclusion_list_summary.message,
         get_domain(state, DOMAIN_INCLUSION_LIST_SUMMARY),
     )
-    previous_proposer = state.validators[state.previous_proposer_index]
-    return bls.Verify(previous_proposer.pubkey, signing_root, inclusion_list_summary.signature)
+    il_proposer = state.validators[inclusion_list_summary.message.proposer_index]
+    return bls.Verify(il_proposer.pubkey, signing_root, inclusion_list_summary.signature)
 ```
