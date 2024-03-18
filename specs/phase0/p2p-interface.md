@@ -191,7 +191,7 @@ This section outlines configurations that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
-| `EPOCHS_PER_SHARD_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
+| `EPOCHS_PER_SHARD_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a shard subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
@@ -214,7 +214,7 @@ Clients MUST locally store the following `MetaData`:
 ```
 (
   seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  shards: Bitvector[NETWORK_SHARD_COUNT]
 )
 ```
 
@@ -222,7 +222,7 @@ Where
 
 - `seq_number` is a `uint64` starting at `0` used to version the node's metadata.
   If any other field in the local `MetaData` changes, the node MUST increment `seq_number` by 1.
-- `attnets` is a `Bitvector` representing the node's persistent attestation subnet subscriptions.
+- `shards` is a `Bitvector` representing the node's persistent attestation subnet subscriptions.
 
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata,
 is entirely independent of the ENR sequence number,
@@ -958,16 +958,16 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 ##### Attestation subnet bitfield
 
-The ENR `attnets` entry signifies the attestation subnet bitfield with the following form
+The ENR `shards` entry signifies the attestation subnet bitfield with the following form
 to more easily discover peers participating in particular attestation gossip subnets.
 
 | Key          | Value                                            |
 |:-------------|:-------------------------------------------------|
-| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+| `shards`    | SSZ `Bitvector[NETWORK_SHARD_COUNT]`        |
 
-If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `attnets` entry with the same value as `MetaData.attnets`.
+If a node's `MetaData.shards` has any non-zero bit, the ENR MUST include the `shards` entry with the same value as `MetaData.shards`.
 
-If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally include the `attnets` entry or leave it out entirely.
+If a node's `MetaData.shards` is composed of all zeros, the ENR MAY optionally include the `shards` entry or leave it out entirely.
 
 ##### `eth2` field
 
@@ -1033,11 +1033,11 @@ topics (i.e attestation_subnets, DAS-related columns).
 The mapping that links a node-id to a network shard is:
 
 ```python
-def compute_network_shard(node_id: NodeID, epoch: Epoch) -> SubnetID:
+def compute_network_shard(node_id: NodeID, epoch: Epoch) -> ShardID:
     # The main prefix bits to determine a network shard
     shard_prefix = node_id >> (NODE_ID_BITS - NETWORK_SHARD_PREFIX_BITS)
     # Used to extract the total prefix bytes (prefix + shuffling_bits)
-    shuffling_bits = (
+    shuffling_bit_size = (
         NODE_ID_BITS
         - NETWORK_SHARD_PREFIX_BITS
         - NETWORK_SHARD_SHUFFLING_PREFIX_BITS
@@ -1095,10 +1095,15 @@ network shard via the following:
 ```python
 def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
     network_shard = compute_network_shard(node_id, epoch)
-    return [ShardId(network_shard + index) % ATTESTATION_SUBNET_COUNT for index in range(SUBNETS_PER_NODE)]
+    return [SubnetId(network_shard + index) % ATTESTATION_SUBNET_COUNT for index in range(SUBNETS_PER_NODE)]
 ```
 
 *Note*: When preparing for a hard fork, a node must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
+
+*Note*: A node MUST subscribe to the defined `SUBNETS_PER_NODE` attestation
+subnets for the required period of time, but may optionally subscribe to more.
+If a node chooses to subscribe to extra subnets, they SHOULD update their
+metadata and ENR fields accordingly.
 
 ## Design decision rationale
 
@@ -1410,7 +1415,7 @@ due to not being fully synced to ensure that such (amplified) DOS attacks are no
 
 #### How are we going to discover peers in a gossipsub topic?
 
-In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
+In Phase 0, peers for attestation subnets will be found using the `shards` entry in the ENR.
 
 Although this method will be sufficient for early upgrade of the beacon chain, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future.
 ENRs should ultimately not be used for this purpose.
