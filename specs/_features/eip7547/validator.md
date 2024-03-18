@@ -8,11 +8,11 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Helpers](#helpers)
-- [Protocols](#protocols)
+- [Protocol](#protocol)
   - [`ExecutionEngine`](#executionengine)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Inclusion list validation](#inclusion-list-validation)
+  - [Block validation](#block-validation)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the inclusion list](#constructing-the-inclusion-list)
 
@@ -31,9 +31,8 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP-7547](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
-## Helpers
 
-## Protocols
+## Protocol
 
 ### `ExecutionEngine`
 
@@ -47,19 +46,23 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ### Inclusion list validation
 
-When receiving a new block, the validator must verify the inclusion list by calling `engine_newInclusionListV1` after verifying the signature. The execution layer will process inclusion list transactions to ensure they are valid. Once the inclusion list validity is asserted, the validator must check the block by calling `engine_newPayloadV3`.
+When receiving a new inclusion list, the validator must verify the inclusion list by calling `engine_newInclusionListV1` after verifying the signature. The execution layer will process inclusion list transactions to ensure they are valid.
+
+### Block validation
+
+When deciding if a block is the head of the chain for the attestation, the validator must verify that there exists a valid inclusion list accompanying the block by calling `is_inclusion_list_available`.
 
 ### Inclusion list proposal
 
 EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389).
 
-Proposer must construct and broadcast `SignedBeaconBlockAndInclusionList` along with the beacon block.
+The proposer must construct and broadcast a `SignedInclusionList` along with theie beacon block.
 
 #### Constructing the inclusion list
 
 To obtain an inclusion list, a block proposer building a block on top of a `state` must take the following actions:
 
 1. Retrieve `SignedInclusionList` from execution layer by calling `engine_getInclusionListV1`.
-2. Publish the `SignedBeaconBlockAndInclusionList` over the `beacon_block` topic.
+2. Publish the `SignedInclusionList` over the `inclusion_list` topic.
 
 
