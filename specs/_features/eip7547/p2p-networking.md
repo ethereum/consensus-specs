@@ -3,17 +3,14 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [EIP-7547 -- Networking](#eip-7547----networking)
-  - [Preset](#preset)
-    - [Execution](#execution)
   - [Containers](#containers)
     - [New Containers](#new-containers)
       - [`SignedInclusionList`](#signedinclusionlist)
-      - [`SignedBeaconBlockAndInclusionList`](#signedbeaconblockandinclusionlist)
   - [Modifications in EIP7547](#modifications-in-eip7547)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
         - [Global topics](#global-topics)
-          - [`beacon_block`](#beacon_block)
+          - [New `inclusion_list`](#new-inclusion_list)
       - [Transitioning the gossip](#transitioning-the-gossip)
   - [Design rationale](#design-rationale)
   - [Why is it proposer may send multiple inclusion lists? Why not just one per slot?](#why-is-it-proposer-may-send-multiple-inclusion-lists-why-not-just-one-per-slot)
@@ -26,14 +23,6 @@ This document contains the consensus-layer networking specification for EIP-7547
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
-
-### Execution
-
-| Name | Value |
-| - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(143)` |
-
 ## Containers
 
 ### New Containers
@@ -42,17 +31,8 @@ The specification of these changes continues in the same format as the network s
 
 ```python
 class SignedInclusionList(Container):
-    signed_summary: SignedInclusionListSummary
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    message: InclusionList
     signature: BLSSignature
-```
-
-#### `SignedBeaconBlockAndInclusionList`
-
-```python
-class SignedBeaconBlockAndInclusionList(Container):
-    signed_block: SignedBeaconBlock
-    signed_inclusion_list: SignedInclusionList
 ```
 
 ## Modifications in EIP7547
@@ -69,17 +49,20 @@ The derivation of the `message-id` remains stable.
 
 ##### Global topics
 
-###### `beacon_block`
+###### New `inclusion_list`
 
-The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlockAndInclusionList`.
+The *type* of the payload of this topic is `SignedInclusionList`.
 
 New validation:
 
-The following validations MUST pass before forwarding the signed_beacon_block_and_inclusion_list on the network. (We define the following for convenience -- signed_block = signed_beacon_block_and_inclusion_list.signed_block and signed_inclusion_list = signed_beacon_block_and_inclusion_list.signed_inclusion_list)
+The following validations MUST pass before forwarding the inclusion_list on the network.
 
-- _[REJECT]_ The inclusion list transactions `signed_inclusion_list.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[REJECT]_ The inclusion list summary has the same length of transactions `len(signed_inclusion_list.signed_summary.summary) == len(signed_inclusion_list.transactions)`.
-- _[REJECT]_ The inclusion list transactions signature, `signed_inclusion_list.signature`, is valid with respect to the `proposer_index` pubkey.
+- _[REJECT]_ The slot `message.signedSummary.message.slot` is the current slot.
+- _[REJECT]_ The `signature` is valid for the current proposer `message.signedSummary.message.proposer_index`.
+- _[REJECT]_ The `message.signedSummary.message.parent_hash` is not the current head.
+- _[REJECT]_ The inclusion list transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
+- _[REJECT]_ The inclusion list summary has the same length of transactions `len(message.signed_summary.summary) == len(message.transactions)`.
+- _[REJECT]_ The inclusion list transactions signature, `signed_inclusion_list.signature`, is valid with respect to the `message.signedSummary.message.proposer_index` pubkey.
 
 #### Transitioning the gossip
 
@@ -90,4 +73,4 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 ## Why is it proposer may send multiple inclusion lists? Why not just one per slot?
 
-Proposers may submit multiple inclusion lists, providing validators with plausible deniability and eliminating a data availability attack route. This concept stems from the "no free lunch IL design" which lets proposers send multiple ILs. The idea is that since only one IL is eventually chosen from many, thus its contents can't be relied upon for data availability.
+Proposers may submit multiple inclusion lists which provides plausible deniability and eliminating the free data availability proplem.
