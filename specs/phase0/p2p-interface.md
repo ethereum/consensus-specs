@@ -200,12 +200,13 @@ This section outlines configurations that are used in this spec.
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
-| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `NETWORK_SHARD_COUNT` | `2**6` (= 64) | The number of network shards. |
 | `NETWORK_SHARD_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a network shard |
 | `NETWORK_SHARD_PREFIX_BITS` | `int(ceillog2(NETWORK_SHARD_COUNT) + NETWORK_SHARD_EXTRA_BITS)` |
 | `NETWORK_SHARD_SHUFFLING_PREFIX_BITS` | `3` | The number of bits used to shuffle nodes to a new shard within `EPOCHS_PER_SHARD_SUBSCRIPTION` |
+| `SHARDS_PER_NODE` | `1` | The number of network shards assigned to each node-id |
+| `SUBNETS_PER_SHARD` | `2` | The number of long-lived subnets a beacon node should be subscribed to per assigned shard. |
 
 ### MetaData
 
@@ -1095,15 +1096,12 @@ network shard via the following:
 ```python
 def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
     network_shard = compute_network_shard(node_id, epoch)
-    return [SubnetId(network_shard + index) % ATTESTATION_SUBNET_COUNT for index in range(SUBNETS_PER_NODE)]
+    return [SubnetId(network_shard + index) % ATTESTATION_SUBNET_COUNT for index in range(SUBNETS_PER_SHARD)]
 ```
 
 *Note*: When preparing for a hard fork, a node must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
-*Note*: A node MUST subscribe to the defined `SUBNETS_PER_NODE` attestation
-subnets for the required period of time, but may optionally subscribe to more.
-If a node chooses to subscribe to extra subnets, they SHOULD update their
-metadata and ENR fields accordingly.
+*Note*: A node MUST subscribe to the subnets defined via `compute_subscribed_subnets` function, but MAY subscribe to more. If a node subscribes to extra subnets they SHOULD update their metadata and ENR bitfields to reflect the extra long-lived subscriptions.
 
 ## Design decision rationale
 
