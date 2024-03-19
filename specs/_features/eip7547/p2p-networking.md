@@ -57,11 +57,9 @@ New validation:
 
 The following validations MUST pass before forwarding the inclusion_list on the network.
 
-- _[REJECT]_ The slot `message.signedSummary.message.slot` is the current slot.
+- _[REJECT]_ The slot `message.signedSummary.message.slot` is greater than or equal to the current slot (clients can queue future inclusion lists).
 - _[REJECT]_ The `signature` is valid for the current proposer `message.signedSummary.message.proposer_index`.
-- _[REJECT]_ The `message.signedSummary.message.parent_hash` is not the current head.
 - _[REJECT]_ The inclusion list transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[REJECT]_ The inclusion list summary has the same length of transactions `len(message.signed_summary.summary) == len(message.transactions)`.
 - _[REJECT]_ The inclusion list transactions signature, `signed_inclusion_list.signature`, is valid with respect to the `message.signedSummary.message.proposer_index` pubkey.
 
 #### Transitioning the gossip

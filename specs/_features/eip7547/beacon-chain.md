@@ -20,11 +20,11 @@
   - [Extended containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`BeaconState`](#beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Engine APIs](#engine-apis)
       - [New `verify_and_notify_new_inclusion_list`](#new-verify_and_notify_new_inclusion_list)
-      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -97,7 +97,7 @@ class InclusionList(Container):
 
 #### `ExecutionPayload`
 
-Adding `previous_inclusion_list_summary`.
+Adding `parent_inclusion_list_summary`.
 
 ```python
 class ExecutionPayload(Container):
@@ -120,12 +120,12 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    previous_inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
+    parent_inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
 
-Adding `previous_inclusion_list_summary_root`.
+Adding `parent_inclusion_list_summary_root`.
 
 ```python
 class ExecutionPayloadHeader(Container):
@@ -148,7 +148,56 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64 
-    previous_inclusion_list_summary_root: Root  # [New in EIP7547]
+    parent_inclusion_list_summary_root: Root  # [New in EIP7547]
+```
+
+#### `BeaconState`
+
+```python
+class BeaconState(Container):
+    # Versioning
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # Randomness
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    # Slashings
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # Finality
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    # Inactivity
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Sync
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # Execution
+    latest_execution_payload_header: ExecutionPayloadHeader
+    # Withdrawals
+    next_withdrawal_index: WithdrawalIndex
+    next_withdrawal_validator_index: ValidatorIndex
+    # Deep history valid from Capella onwards
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    # Needed for inclusion list validation
+    parent_proposer_index: ValidatorIndex  # [New in EIP7547]
 ```
 
 ## Beacon chain state transition function
@@ -170,38 +219,6 @@ def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
     ...
 ```
 
-##### Modified `verify_and_notify_new_payload`
-
-Add `is_inclusion_list_available` check.
-
-```python
-def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
-    """
-    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
-    """
-    execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-
-    # [Modified in Deneb:EIP4788]
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
-        return False
-
-    # [New in Deneb:EIP4844]
-    if not self.is_valid_versioned_hashes(new_payload_request):
-        return False
-
-    # [New in EIP7547]
-    if not self.is_inclusion_list_available(new_payload_request):
-        return False
-
-    # [Modified in Deneb:EIP4788]
-    if not self.notify_new_payload(execution_payload, parent_beacon_block_root):
-        return False
-
-    return True
-```
-
 ### Block processing
 
 #### Execution payload
@@ -220,8 +237,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # [New in EIP7547] Verify previous proposer signature on inclusion list summary
-    assert verify_inclusion_list_summary_signature(state, payload.previous_inclusion_list_summary)
+    # [New in EIP7547] Verify parent proposer signature on inclusion list summary
+    assert verify_inclusion_list_summary_signature(state, payload.parent_inclusion_list_summary)
 
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
@@ -255,7 +272,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        previous_inclusion_list_summary_root=hash_tree_root(payload.previous_inclusion_list_summary)  # [New in EIP7547]
+        parent_inclusion_list_summary_root=hash_tree_root(payload.parent_inclusion_list_summary)  # [New in EIP7547]
     )
 ```
 

@@ -62,7 +62,8 @@ The proposer must construct and broadcast a `SignedInclusionList` along with the
 
 To obtain an inclusion list, a block proposer building a block on top of a `state` must take the following actions:
 
-1. Retrieve `SignedInclusionList` from execution layer by calling `engine_getInclusionListV1`.
-2. Publish the `SignedInclusionList` over the `inclusion_list` topic.
+1. Retrieve `InclusionList` from execution layer by calling `engine_getInclusionListV1`.
+2. Constrcut `SignedInclusionList` by signing the `InclusionList` over the `DOMAIN_INCLUSION_LIST_SUMMARY` domain.
+3. Publish the `SignedInclusionList` over the `inclusion_list` topic.
 
 
