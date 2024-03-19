@@ -153,6 +153,8 @@ class ExecutionPayloadHeader(Container):
 
 #### `BeaconState`
 
+Add `parent_proposer_index`.
+
 ```python
 class BeaconState(Container):
     # Versioning
@@ -285,6 +287,6 @@ def verify_inclusion_list_summary_signature(state: BeaconState,
         inclusion_list_summary.message,
         get_domain(state, DOMAIN_INCLUSION_LIST_SUMMARY),
     )
-    il_proposer = state.validators[inclusion_list_summary.message.proposer_index]
+    proposer = state.validators[state.proposer_index]
     return bls.Verify(il_proposer.pubkey, signing_root, inclusion_list_summary.signature)
 ```
