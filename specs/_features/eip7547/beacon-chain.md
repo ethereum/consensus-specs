@@ -120,7 +120,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    parent_inclusion_list_summary: InclusionListSummary  # [New in EIP7547]
+    parent_inclusion_list_summary: SignedInclusionListSummary  # [New in EIP7547]
 ```
 
 #### `ExecutionPayloadHeader`
