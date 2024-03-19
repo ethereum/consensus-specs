@@ -533,17 +533,23 @@ def process_registry_updates(state: BeaconState) -> None:
 
 ```python
 def process_pending_balance_deposits(state: BeaconState) -> None:
-    state.deposit_balance_to_consume += get_activation_exit_churn_limit(state)
-    next_pending_deposit_index = 0
-    for pending_balance_deposit in state.pending_balance_deposits:
-        if state.deposit_balance_to_consume < pending_balance_deposit.amount:
+    available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
+    processed_amount = 0
+    next_deposit_index = 0
+
+    for deposit in state.pending_balance_deposits:
+        if processed_amount + deposit.amount > available_for_processing:
             break
+        increase_balance(state, deposit.index, deposit.amount)
+        processed_amount += deposit.amount
+        next_deposit_index += 1
 
-        state.deposit_balance_to_consume -= pending_balance_deposit.amount
-        increase_balance(state, pending_balance_deposit.index, pending_balance_deposit.amount)
-        next_pending_deposit_index += 1
+    state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
 
-    state.pending_balance_deposits = state.pending_balance_deposits[next_pending_deposit_index:]
+    if len(state.pending_balance_deposits) == 0:
+        state.deposit_balance_to_consume = 0
+    else:
+        state.deposit_balance_to_consume = available_for_processing - processed_amount
 ```
 
 #### New `process_pending_consolidations`
