@@ -67,8 +67,8 @@ class IndexedAttestation(Container):
 #### `get_committee_indices`
 
 ```python
-def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
-    return [CommitteeIndex(index) for bit, index in enumerate(commitee_bits) if bit]
+def get_committee_indices(committee_bits: Bitvector) -> List[CommitteeIndex]:
+    return [CommitteeIndex(index) for bit, index in enumerate(committee_bits) if bit]
 ```
 
 ### Beacon state accessors
