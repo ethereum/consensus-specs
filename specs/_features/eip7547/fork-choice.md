@@ -47,5 +47,6 @@ def on_inclusion_list(self: ExecutionEngine, store: Store, inclusion_list: Inclu
     assert self.verify_and_notify_new_inclusion_list(inclusion_list)
 
     # Add IL availability to the store.
-    store.inclusion_list_available[inclusion_list.signedSummary.message.slot] = True
+    summary = inclusion_list.signedSummary.message
+    store.inclusion_list_available[(summary.slot, summary.parent_hash)] = True
 ```
