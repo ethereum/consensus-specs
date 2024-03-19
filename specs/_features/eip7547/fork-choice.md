@@ -37,12 +37,15 @@ def is_inclusion_list_available(self: ExecutionEngine, new_payload_request: NewP
 A new handler to be called when a new inclusion list is received.
 
 ```python
-def on_inclusion_list(store: Store, inclusion_list: InclusionList) -> None:
+def on_inclusion_list(self: ExecutionEngine, store: Store, inclusion_list: InclusionList) -> None:
     """
     Run ``on_inclusion_list`` upon receiving a new inclusion lit.
     """
 
     # [New in EIP-7547] Check if the inclusion list is valid.
     state = pre_state.copy()
-    assert execution_engine.verify_and_notify_new_inclusion_list(inclusion_list)
+    assert self.verify_and_notify_new_inclusion_list(inclusion_list)
+
+    # Add IL availability to the store.
+    store.inclusion_list_available[inclusion_list.signedSummary.message.slot] = True
 ```
