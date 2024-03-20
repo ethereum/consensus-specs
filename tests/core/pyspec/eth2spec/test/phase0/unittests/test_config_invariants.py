@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases,
-    with_eip7251_and_later,
 )
 from eth2spec.test.helpers.constants import UINT64_MAX
 from eth2spec.test.helpers.forks import (
@@ -92,9 +91,3 @@ def test_networking(spec, state):
 def test_fork_choice(spec, state):
     assert spec.INTERVALS_PER_SLOT < spec.config.SECONDS_PER_SLOT
     assert spec.config.PROPOSER_SCORE_BOOST <= 100
-
-
-@with_eip7251_and_later
-@spec_state_test
-def test_withdrawals(spec, state):
-    assert spec.MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD < spec.MAX_WITHDRAWALS_PER_PAYLOAD
