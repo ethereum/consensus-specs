@@ -17,7 +17,8 @@ PENDING_CONSOLIDATIONS_LIMIT: 64
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
-MIN_SLASHING_PENALTY_QUOTIENT_EIP7251: 65536 
+MIN_SLASHING_PENALTY_QUOTIENT_EIP7251: 65536
+WHISTLEBLOWER_REWARD_QUOTIENT_EIP7251: 65536
 
 # Max operations per block
 # ---------------------------------------------------------------
