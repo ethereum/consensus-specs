@@ -24,4 +24,4 @@ MAX_CONSOLIDATIONS: 1
 # Execution
 # ---------------------------------------------------------------
 # 2**3 (= 8) partial withdrawals
-MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 16
+MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 8
