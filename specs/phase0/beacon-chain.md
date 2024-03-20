@@ -1086,7 +1086,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     """
     Return the indexed attestation corresponding to ``attestation``.
     """
-    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+    attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
         attesting_indices=sorted(attesting_indices),
@@ -1098,14 +1098,12 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
 #### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState,
-                          data: AttestationData,
-                          bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_beacon_committee(state, data.slot, data.index)
-    return set(index for i, index in enumerate(committee) if bits[i])
+    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
 ```
 
 ### Beacon state mutators
@@ -1343,7 +1341,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
-        output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
+        output = output.union(get_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))
 ```
 
@@ -1516,7 +1514,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min([
             a for a in matching_source_attestations
-            if index in get_attesting_indices(state, a.data, a.aggregation_bits)
+            if index in get_attesting_indices(state, a)
         ], key=lambda a: a.inclusion_delay)
         rewards[attestation.proposer_index] += get_proposer_reward(state, index)
         max_attester_reward = Gwei(get_base_reward(state, index) - get_proposer_reward(state, index))
