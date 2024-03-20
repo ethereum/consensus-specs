@@ -504,12 +504,12 @@ def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_inactivity_updates(state)
     process_rewards_and_penalties(state)
-    process_registry_updates(state) # [Modified in EIP7251]
+    process_registry_updates(state)  # [Modified in EIP7251]
     process_slashings(state)
     process_eth1_data_reset(state)
     process_pending_balance_deposits(state)  # New in EIP7251
     process_pending_consolidations(state)  # New in EIP7251
-    process_effective_balance_updates(state) # [Modified in EIP7251]
+    process_effective_balance_updates(state)  # [Modified in EIP7251]
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
 ```
@@ -661,7 +661,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=get_validator_excess_balance(validator, balance), # [Modified in EIP7251]
+                amount=get_validator_excess_balance(validator, balance),  # [Modified in EIP7251]
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
@@ -674,7 +674,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals, partial_withdrawals_len = get_expected_withdrawals(state) # [Modified in EIP7251]
+    expected_withdrawals, partial_withdrawals_len = get_expected_withdrawals(state)  # [Modified in EIP7251]
 
     assert len(payload.withdrawals) == len(expected_withdrawals)
 
