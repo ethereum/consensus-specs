@@ -116,6 +116,12 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `MAX_CONSOLIDATIONS` | `uint64(1)` |
 
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**3)` (= 8) | Maximum amount of partial withdrawals allowed in each payload |
+
 ### State list lengths
 
 | Name | Value | Unit |
@@ -620,7 +626,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
     # [New in EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD // 2:
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD:
             break
 
         validator = state.validators[withdrawal.index]

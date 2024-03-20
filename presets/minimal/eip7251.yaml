@@ -23,3 +23,7 @@ MIN_SLASHING_PENALTY_QUOTIENT_EIP7251: 65536
 # ---------------------------------------------------------------
 MAX_CONSOLIDATIONS: 1
 
+# Execution
+# ---------------------------------------------------------------
+# [customized] 2**1 (= 2)
+MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 2
