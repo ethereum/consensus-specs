@@ -14,6 +14,7 @@
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
+  - [Execution](#execution)
   - [State list lengths](#state-list-lengths)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
