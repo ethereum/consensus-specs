@@ -109,8 +109,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MIN_SLASHING_PENALTY_QUOTIENT_EIP7251` | `uint64(2**16)`  (= 65,536) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT_EIP7251` | `uint64(2**16)`  (= 65,536) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_EIP7251` | `uint64(2**12)`  (= 4,096) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT_EIP7251` | `uint64(2**12)`  (= 4,096) |
 
 ### Max operations per block
 
