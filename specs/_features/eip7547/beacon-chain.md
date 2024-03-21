@@ -89,7 +89,7 @@ class SignedInclusionListSummary(Container):
 
 ```python
 class InclusionList(Container):
-    signedSummary: SignedInclusionListSummary
+    signed_summary: SignedInclusionListSummary
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 

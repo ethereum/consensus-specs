@@ -56,14 +56,14 @@ When deciding if a block is the head of the chain for the attestation, the valid
 
 EIP7547 introduces forward inclusion list. The detail design is described in this [post](https://ethresear.ch/t/no-free-lunch-a-new-inclusion-list-design/16389).
 
-The proposer must construct and broadcast a `SignedInclusionList` along with theie beacon block.
+The proposer must construct and broadcast a `SignedInclusionList`. They may publish their inclusion list the slot before their proposal or during their proposal slot.
 
 #### Constructing the inclusion list
 
 To obtain an inclusion list, a block proposer building a block on top of a `state` must take the following actions:
 
 1. Retrieve `InclusionList` from execution layer by calling `engine_getInclusionListV1`.
-2. Constrcut `SignedInclusionList` by signing the `InclusionList` over the `DOMAIN_INCLUSION_LIST_SUMMARY` domain.
+2. Construct `SignedInclusionList` by signing the `InclusionList` over the `DOMAIN_INCLUSION_LIST_SUMMARY` domain.
 3. Publish the `SignedInclusionList` over the `inclusion_list` topic.
 
 
