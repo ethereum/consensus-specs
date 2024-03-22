@@ -454,13 +454,13 @@ def verify_cell_proof(commitment_bytes: Bytes48,
                       cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
                       proof_bytes: Bytes48) -> bool:
     """
-    Check a cell proof
+    Check a cell proof.
 
     Public method.
     """
     roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, cell_id)]
-    ys = bit_reversal_permutation(cell_bytes)
+    ys = bit_reversal_permutation(bytes_to_cell(cell_bytes))
     return verify_kzg_proof_multi_impl(commitment_bytes, x, ys, proof_bytes)
 ```
 
