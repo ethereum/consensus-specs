@@ -654,7 +654,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-    partial_withdrawals_len = len(withdrawals)
+    partial_withdrawals_count = len(withdrawals)
     # END: Consume pending partial withdrawals
 
     # Sweep for remaining.
@@ -681,14 +681,14 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-    return withdrawals, partial_withdrawals_len
+    return withdrawals, partial_withdrawals_count
 ```
 
 ##### Updated `process_withdrawals`
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals, partial_withdrawals_len = get_expected_withdrawals(state)  # [Modified in EIP7251]
+    expected_withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)  # [Modified in EIP7251]
 
     assert len(payload.withdrawals) == len(expected_withdrawals)
 
@@ -697,7 +697,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # [New in EIP7251] update pending partial withdrawals
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_len:]
+    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_count:]
 
     # Update the next withdrawal index if this block contained withdrawals
     if len(expected_withdrawals) != 0:
