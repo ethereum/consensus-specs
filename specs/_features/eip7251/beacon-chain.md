@@ -44,6 +44,7 @@
     - [New `get_active_balance`](#new-get_active_balance)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
+    - [New `set_compounding_withdrawal_credentials`](#new-set_compounding_withdrawal_credentials)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Updated `slash_validator`](#updated-slash_validator)
@@ -419,6 +420,15 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 ```
 
+#### New `set_compounding_withdrawal_credentials`
+
+```python
+def set_compounding_withdrawal_credentials(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    if has_eth1_withdrawal_credential(validator):
+        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
+```
+
 #### New `compute_exit_epoch_and_update_churn`
 
 
@@ -579,6 +589,7 @@ def process_pending_consolidations(state: BeaconState) -> None:
         active_balance = get_active_balance(state, pending_consolidation.source_index)
         state.balances[pending_consolidation.source_index] -= active_balance
         state.balances[pending_consolidation.target_index] += active_balance
+        set_compounding_withdrawal_credentials(state, pending_consolidation.target_index)
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
 ```
