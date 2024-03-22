@@ -44,7 +44,7 @@ This is the beacon chain specification to move the attestation committee index o
 
 ```python
 class Attestation(Container):
-    aggregation_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
+    aggregation_bits_list: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
     data: AttestationData
     committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in EIP7549]
     signature: BLSSignature
@@ -78,13 +78,13 @@ def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
 ```python
 def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
     """
-    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
+    Return the set of attesting indices corresponding to ``aggregation_bits_list`` and ``committee_bits``.
     """
 
     output = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     for index in committee_indices:
-        attesting_bits = attestation.aggregation_bits[index]
+        attesting_bits = attestation.aggregation_bits_list[index]
         committee = get_beacon_committee(state, attestation.data.slot, index)
         committee_attesters = set(index for i, index in enumerate(committee) if attesting_bits[i])
         output = output.union(committee_attesters)
@@ -106,11 +106,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # [Modified in EIP7549]
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
-    assert len(committee_indices) == len(attestation.aggregation_bits)
+    assert len(committee_indices) == len(attestation.aggregation_bits_list)
     for index in committee_indices:
         assert index < get_committee_count_per_slot(state, data.target.epoch)
         committee = get_beacon_committee(state, data.slot, index)
-        assert len(attestation.aggregation_bits[index]) == len(committee)
+        assert len(attestation.aggregation_bits_list[index]) == len(committee)
 
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
