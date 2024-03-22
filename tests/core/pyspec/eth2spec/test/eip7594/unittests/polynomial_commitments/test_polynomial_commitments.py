@@ -42,6 +42,7 @@ def test_reverse_bits_limited(spec):
         value = rng.randrange(0, length)
         assert value == spec.reverse_bits_limited(length, spec.reverse_bits_limited(length, value))
 
+
 @with_eip7594_and_later
 @spec_test
 @single_phase
