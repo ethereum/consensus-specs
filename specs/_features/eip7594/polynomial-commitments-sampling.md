@@ -343,7 +343,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 ```python
 def coset_for_cell(cell_id: int) -> Cell:
     """
-    Get the coset for a given ``cell_id``
+    Get the coset for a given ``cell_id``.
     """
     assert cell_id < CELLS_PER_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
@@ -355,11 +355,13 @@ def coset_for_cell(cell_id: int) -> Cell:
 #### `reverse_bits_limited`
 
 ```python
-def reverse_bits_limited(max_value: uint64, value: uint64) -> uint64:
+def reverse_bits_limited(length: uint64, value: uint64) -> uint64:
     """
     Reverse the low-order bits in an integer.
     """
-    assert 0 <= value <= max_value
+    assert value < length
+    assert is_power_of_two(length)
+    max_value = length - 1
     num_bits = max_value.bit_length()
     reversed_bits = uint64(0)
     for _ in range(num_bits):
@@ -434,7 +436,7 @@ def verify_cell_proof(commitment: KZGCommitment,
     Public method.
     """
     roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
-    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB - 1, column_id)]
+    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, column_id)]
     ys = bit_reversal_permutation(cell)
     return verify_kzg_proof_multi_impl(commitment, x, ys, proof)
 ```
@@ -466,7 +468,7 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
     return all(
         verify_kzg_proof_multi_impl(
             commitment,
-            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB - 1, column_id)],
+            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, column_id)],
             bit_reversal_permutation(cell),
             proof)
         for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)

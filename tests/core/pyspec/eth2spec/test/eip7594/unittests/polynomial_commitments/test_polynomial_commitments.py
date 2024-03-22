@@ -26,6 +26,15 @@ def test_fft(spec):
     assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
     assert poly_coeff_inversed == poly_coeff
 
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_reverse_bits_limited(spec):
+    rng = random.Random(5566)
+    for exp in range(64):
+        length = 2**exp
+        value = rng.randrange(0, length)
+        assert value == spec.reverse_bits_limited(length, spec.reverse_bits_limited(length, value))
 
 @with_eip7594_and_later
 @spec_test
