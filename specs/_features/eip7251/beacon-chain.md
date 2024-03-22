@@ -584,12 +584,12 @@ def process_pending_consolidations(state: BeaconState) -> None:
         if source_validator.withdrawable_epoch > get_current_epoch(state):
             break
 
-        next_pending_consolidation += 1
         # Move active balance to target. Excess balance is withdrawable.
         active_balance = get_active_balance(state, pending_consolidation.source_index)
-        state.balances[pending_consolidation.source_index] -= active_balance
-        state.balances[pending_consolidation.target_index] += active_balance
+        decrease_balance(state, pending_consolidation.source_index, active_balance)
+        increase_balance(state, pending_consolidation.target_index, active_balance)
         set_compounding_withdrawal_credentials(state, pending_consolidation.target_index)
+        next_pending_consolidation += 1
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
 ```
