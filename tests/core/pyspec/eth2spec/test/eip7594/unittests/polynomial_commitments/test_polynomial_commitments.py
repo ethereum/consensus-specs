@@ -50,7 +50,7 @@ def test_verify_cell_proof(spec):
     cells, proofs = spec.compute_cells_and_proofs(blob)
     cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
     for cell_id in range(spec.CELLS_PER_BLOB):
-        assert spec.verify_cell_proof(commitment, cell_id, cell_bytes[cell_id], proofs[cell_id])
+        assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
 
 
 @with_eip7594_and_later
