@@ -236,11 +236,7 @@ def test_invalid_future_target_epoch(spec, state):
 
     attestation = get_valid_attestation(spec, state)
 
-    participants = spec.get_attesting_indices(
-        state,
-        attestation.data,
-        attestation.aggregation_bits
-    )
+    participants = spec.get_attesting_indices(state, attestation)
     attestation.data.target.epoch = spec.get_current_epoch(state) + 1  # target epoch will be too new to handle
 
     # manually add signature for correct participants

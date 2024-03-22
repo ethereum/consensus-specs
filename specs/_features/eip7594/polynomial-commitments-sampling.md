@@ -12,6 +12,8 @@
 - [Preset](#preset)
   - [Cells](#cells)
 - [Helper functions](#helper-functions)
+  - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`bytes_to_cell`](#bytes_to_cell)
   - [Linear combinations](#linear-combinations)
     - [`g2_lincomb`](#g2_lincomb)
   - [FFTs](#ffts)
@@ -41,6 +43,9 @@
     - [`verify_cell_proof`](#verify_cell_proof)
     - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
 - [Reconstruction](#reconstruction)
+  - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
+  - [`recover_shifted_data`](#recover_shifted_data)
+  - [`recover_original_data`](#recover_original_data)
   - [`recover_polynomial`](#recover_polynomial)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -58,7 +63,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `PolynomialCoeff` | `List[BLSFieldElement, 2 * FIELD_ELEMENTS_PER_BLOB]` | A polynomial in coefficient form |
+| `PolynomialCoeff` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
 | `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
 | `CellID` | `uint64` | Cell identifier |
 
@@ -75,12 +80,25 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 
 | Name | Value | Description |
 | - | - | - |
+| `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB` | Number of field elements in a Reed-Solomon extended blob |
 | `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
 | `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
-| `CELLS_PER_BLOB` | `((2 * FIELD_ELEMENTS_PER_BLOB) // FIELD_ELEMENTS_PER_CELL)` | The number of cells in a blob |
+| `CELLS_PER_BLOB` | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in a blob |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
 ## Helper functions
+
+### BLS12-381 helpers
+
+#### `bytes_to_cell`
+
+```python
+def bytes_to_cell(cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]) -> Cell:
+    """
+    Convert untrusted bytes into a Cell.
+    """
+    return [bytes_to_bls_field(element) for element in cell_bytes]
+```
 
 ### Linear combinations
 
@@ -157,7 +175,9 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     Sum the coefficient form polynomials ``a`` and ``b``.
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
-    return [(a[i] + (b[i] if i < len(b) else 0)) % BLS_MODULUS for i in range(len(a))]
+    length_a = len(a)
+    length_b = len(b)
+    return [(a[i] + (b[i] if i < length_b else 0)) % BLS_MODULUS for i in range(length_a)]
 ```
 
 #### `neg_polynomialcoeff`
@@ -177,12 +197,15 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
     """
     Multiplies the coefficient form polynomials ``a`` and ``b``
     """
+    assert len(a) + len(b) <= FIELD_ELEMENTS_PER_EXT_BLOB
+
     r = [0]
     for power, coef in enumerate(a):
         summand = [0] * power + [int(coef) * int(x) % BLS_MODULUS for x in b]
         r = add_polynomialcoeff(r, summand)
     return r
 ```
+
 #### `divide_polynomialcoeff`
 
 ```python
@@ -243,7 +266,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
                     summand, [(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment]
                 )
         r = add_polynomialcoeff(r, summand)
-    
+
     return r
 ```
 
@@ -341,13 +364,13 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: int) -> Cell:
+def coset_for_cell(cell_id: CellID) -> Cell:
     """
     Get the coset for a given ``cell_id``.
     """
     assert cell_id < CELLS_PER_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
-        compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+        compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
@@ -414,8 +437,8 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB, 
-                              compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
+                              compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
             for i in range(CELLS_PER_BLOB)]
@@ -426,31 +449,34 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 #### `verify_cell_proof`
 
 ```python
-def verify_cell_proof(commitment: KZGCommitment,
-                      column_id: int,
-                      cell: Cell,
-                      proof: KZGProof) -> bool:
+def verify_cell_proof(commitment_bytes: Bytes48,
+                      cell_id: CellID,
+                      cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
+                      proof_bytes: Bytes48) -> bool:
     """
     Check a cell proof
 
     Public method.
     """
-    roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
-    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, column_id)]
-    ys = bit_reversal_permutation(cell)
-    return verify_kzg_proof_multi_impl(commitment, x, ys, proof)
+    roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
+    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, cell_id)]
+    ys = bit_reversal_permutation(cell_bytes)
+    return verify_kzg_proof_multi_impl(commitment_bytes, x, ys, proof_bytes)
 ```
 
 #### `verify_cell_proof_batch`
 
 ```python
-def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
-                            row_ids: Sequence[int],
-                            column_ids: Sequence[int],
-                            cells: Sequence[Cell],
-                            proofs: Sequence[KZGProof]) -> bool:
+def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
+                            row_ids: Sequence[uint64],
+                            column_ids: Sequence[uint64],
+                            cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
+                            proofs_bytes: Sequence[Bytes48]) -> bool:
     """
-    Check multiple cell proofs. This function implements the naive algorithm of checking every cell
+    Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
+    matrix. The list of all commitments is also provided in row_commitments_bytes.
+
+    This function implements the naive algorithm of checking every cell
     individually; an efficient algorithm can be found here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
 
@@ -460,11 +486,17 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
 
     Public method.
     """
-    roots_of_unity = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
+    assert len(cells_bytes) == len(proofs_bytes) == len(row_ids) == len(column_ids)
+    roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     # Get commitments via row IDs
-    commitments = [row_commitments[row_id] for row_id in row_ids]
-    
+    commitments_bytes = [row_commitments_bytes[row_id] for row_id in row_ids]
+
+    # Get objects from bytes
+    commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in commitments_bytes]
+    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+    proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
+
     return all(
         verify_kzg_proof_multi_impl(
             commitment,
@@ -477,69 +509,99 @@ def verify_cell_proof_batch(row_commitments: Sequence[KZGCommitment],
 
 ## Reconstruction
 
-### `recover_polynomial`
+### `construct_vanishing_polynomial`
 
 ```python
-def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Polynomial:
+def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
+        Sequence[BLSFieldElement],
+        Sequence[BLSFieldElement]]:
     """
-    Recovers a polynomial from 2 * FIELD_ELEMENTS_PER_CELL evaluations, half of which can be missing.
-
-    This algorithm uses FFTs to recover cells faster than using Lagrange implementation. However,
-    a faster version thanks to Qi Zhou can be found here:
-    https://github.com/ethereum/research/blob/51b530a53bd4147d123ab3e390a9d08605c2cdb8/polynomial_reconstruction/polynomial_reconstruction_danksharding.py
-
-    Public method.
+    Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
+    corresponds to a missing field element.
     """
-    assert len(cell_ids) == len(cells)
-    assert len(cells) >= CELLS_PER_BLOB // 2
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
+
+    # Compute polynomial that vanishes at all the missing cells (over the small domain)
     short_zero_poly = vanishing_polynomialcoeff([
-        roots_of_unity_reduced[reverse_bits(cell_id, CELLS_PER_BLOB)]
-        for cell_id in missing_cell_ids
+        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_BLOB)]
+        for missing_cell_id in missing_cell_ids
     ])
 
-    full_zero_poly = []
-    for i in short_zero_poly:
-        full_zero_poly.append(i)
-        full_zero_poly.extend([0] * (FIELD_ELEMENTS_PER_CELL - 1))
-    full_zero_poly = full_zero_poly + [0] * (2 * FIELD_ELEMENTS_PER_BLOB - len(full_zero_poly))
+    # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
+    zero_poly_coeff = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
+    for i, coeff in enumerate(short_zero_poly):
+        zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
-    zero_poly_eval = fft_field(full_zero_poly,
-                               compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB))
+    # Compute evaluations of the extended vanishing polynomial
+    zero_poly_eval = fft_field(zero_poly_coeff,
+                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
-    for cell_id in missing_cell_ids:
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        assert zero_poly_eval_brp[start:end] == [0] * FIELD_ELEMENTS_PER_CELL
-    for cell_id in cell_ids:
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
-    extended_evaluation_rbo = [0] * (FIELD_ELEMENTS_PER_BLOB * 2)
+    # Sanity check
+    for cell_id in range(CELLS_PER_BLOB):
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        if cell_id in missing_cell_ids:
+            assert all(a == 0 for a in zero_poly_eval_brp[start:end])
+        else:  # cell_id in cell_ids
+            assert all(a != 0 for a in zero_poly_eval_brp[start:end])
+
+    return zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp
+```
+
+### `recover_shifted_data`
+
+```python
+def recover_shifted_data(cell_ids: Sequence[CellID],
+                         cells: Sequence[Cell],
+                         zero_poly_eval: Sequence[BLSFieldElement],
+                         zero_poly_coeff: Sequence[BLSFieldElement],
+                         roots_of_unity_extended: Sequence[BLSFieldElement]) -> Tuple[
+                             Sequence[BLSFieldElement],
+                             Sequence[BLSFieldElement],
+                             BLSFieldElement]:
+    """
+    Given Z(x), return polynomial Q_1(x)=(E*Z)(k*x) and Q_2(x)=Z(k*x) and k^{-1}.
+    """
+    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
+    shift_inv = div(BLSFieldElement(1), shift_factor)
+
+    extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
+    # Compute (E*Z)(x)
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    roots_of_unity_extended = compute_roots_of_unity(2 * FIELD_ELEMENTS_PER_BLOB)
-
     extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
-    shift_inv = div(BLSFieldElement(1), shift_factor)
-
+    # Compute (E*Z)(k*x)
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
-    shifted_zero_poly = shift_polynomialcoeff(full_zero_poly, shift_factor)
+    # Compute Z(k*x)
+    shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
 
     eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
     eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
-    
+
+    return eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv
+```
+
+### `recover_original_data`
+
+```python
+def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldElement],
+                          eval_shifted_zero_poly: Sequence[BLSFieldElement],
+                          shift_inv: BLSFieldElement,
+                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+    """
+    Given Q_1, Q_2 and k^{-1}, compute P(x).
+    """
+    # Compute Q_3 = Q_1(x)/Q_2(x) = P(k*x)
     eval_shifted_reconstructed_poly = [
         div(a, b)
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
@@ -547,9 +609,58 @@ def recover_polynomial(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Pol
 
     shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
 
+    # Unshift P(k*x) by k^{-1} to get P(x)
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
+
+    return reconstructed_data
+```
+
+### `recover_polynomial`
+
+```python
+def recover_polynomial(cell_ids: Sequence[CellID],
+                       cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Polynomial:
+    """
+    Recover original polynomial from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, half of which can be missing. This
+    algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
+    https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
+
+    A faster version thanks to Qi Zhou can be found here:
+    https://github.com/ethereum/research/blob/51b530a53bd4147d123ab3e390a9d08605c2cdb8/polynomial_reconstruction/polynomial_reconstruction_danksharding.py
+
+    Public method.
+    """
+    assert len(cell_ids) == len(cells_bytes)
+    # Check we have enough cells to be able to perform the reconstruction
+    assert CELLS_PER_BLOB / 2 <= len(cell_ids) <= CELLS_PER_BLOB
+    # Check for duplicates
+    assert len(cell_ids) == len(set(cell_ids))
+
+    # Get the extended domain
+    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
+
+    # Convert from bytes to cells
+    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+
+    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
+
+    eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
+        cell_ids,
+        cells,
+        zero_poly_eval,
+        zero_poly_coeff,
+        roots_of_unity_extended,
+    )
+
+    reconstructed_data = recover_original_data(
+        eval_shifted_extended_evaluation,
+        eval_shifted_zero_poly,
+        shift_inv,
+        roots_of_unity_extended,
+    )
 
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
