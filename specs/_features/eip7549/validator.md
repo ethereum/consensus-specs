@@ -32,21 +32,17 @@ The proposer should run the following function to construct an on chain final ag
 
 ```python
 def compute_on_chain_aggregate(network_aggregates: List[Attestation]) -> Attestation:
-    
     aggregates = sorted(network_aggregates, key=lambda a: get_committee_indices(a.committee_bits)[0])
-    
+
     data = aggregates[0].data
     aggregation_bits = [a.aggregation_bits[0] for a in aggregates]
     signature = bls.Aggregate([a.signature for a in aggregates])
-    
+
     committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
     committee_flags = [(index in committee_indices) for index in range(0, MAX_COMMITTEES_PER_SLOT)]        
     committee_bits = Bitvector[MAX_COMMITTEES_PER_SLOT](committee_flags)
 
-    return Attestation(aggregation_bits=aggregation_bits,
-                       data=data,
-                       committee_bits=committee_bits,
-                       signature=signature)
+    return Attestation(aggregation_bits, data, committee_bits, signature)
 ```
 
 ### Attesting
