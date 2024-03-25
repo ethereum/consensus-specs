@@ -64,9 +64,10 @@ def test_basic_is_head_root(spec, state):
 
     yield 'steps', test_steps
 
+
 @with_altair_and_later
 @spec_state_test
-def test_head_weak_parent_weak(spec, state):
+def test_parent_weak(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -83,7 +84,7 @@ def test_head_weak_parent_weak(spec, state):
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
             spec, state, store, True, True, test_steps=test_steps)
-        
+
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
@@ -146,6 +147,7 @@ def test_head_weak_parent_weak(spec, state):
 
     proposer_head = spec.get_proposer_head(store, head_root, state.slot)
     assert proposer_head != parent_root
+    assert proposer_head == head_root
 
     output_store_checks(spec, store, test_steps)
     test_steps.append({
@@ -155,6 +157,7 @@ def test_head_weak_parent_weak(spec, state):
     })
 
     yield 'steps', test_steps
+
 
 @with_altair_and_later
 @spec_state_test
