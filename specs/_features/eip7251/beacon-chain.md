@@ -764,7 +764,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index=amount, amount=amount))  # [Modified in EIP-7251]
+        state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
 ```
 
 #### Modified `add_validator_to_registry`

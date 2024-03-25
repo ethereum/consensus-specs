@@ -13,8 +13,9 @@ def test_pending_deposit_min_activation_balance(spec, state):
     state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=index, amount=amount))
     pre_balance = state.balances[index]
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
-    assert state.balances[index] == pre_balance + amount
-    assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state) - amount
+    assert state.balances[index] == pre_balance + amount 
+    # No leftover deposit balance to consume when there are no deposits left to process 
+    assert state.deposit_balance_to_consume == 0
     assert state.pending_balance_deposits == []
 
 @with_eip7251_and_later
@@ -55,8 +56,8 @@ def test_pending_deposit_preexisting_churn(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
     # balance was deposited correctly
     assert state.balances[index] == pre_balance + amount
-    # the churn limit was added to deposit balance to consume, and the deposited balance was taken from it
-    assert state.deposit_balance_to_consume == amount + spec.get_activation_exit_churn_limit(state)
+    # No leftover deposit balance to consume when there are no deposits left to process 
+    assert state.deposit_balance_to_consume == 0
     # queue emptied
     assert state.pending_balance_deposits == []
 
@@ -70,7 +71,8 @@ def test_multiple_pending_deposits_below_churn(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
     for i in [0,1]:
         assert  state.balances[i] == pre_balances[i] + amount
-    assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state) - 2*amount
+    # No leftover deposit balance to consume when there are no deposits left to process 
+    assert state.deposit_balance_to_consume == 0
     assert state.pending_balance_deposits == []
 
 @with_eip7251_and_later
