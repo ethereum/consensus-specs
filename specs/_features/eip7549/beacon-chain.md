@@ -44,7 +44,7 @@ This is the beacon chain specification to move the attestation committee index o
 
 ```python
 class Attestation(Container):
-    aggregation_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in EIP7549]
     data: AttestationData
     committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in EIP7549]
     signature: BLSSignature
@@ -83,11 +83,14 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
     output = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
+    committee_offset = 0
     for index in committee_indices:
-        attesting_bits = attestation.aggregation_bits[index]
         committee = get_beacon_committee(state, attestation.data.slot, index)
-        committee_attesters = set(index for i, index in enumerate(committee) if attesting_bits[i])
+        committee_attesters = set(
+            index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
         output = output.union(committee_attesters)
+
+        committee_offset += len(committee)
 
     return output
 ```
@@ -106,11 +109,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # [Modified in EIP7549]
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
-    assert len(committee_indices) == len(attestation.aggregation_bits)
+    participants_count = 0
     for index in committee_indices:
         assert index < get_committee_count_per_slot(state, data.target.epoch)
         committee = get_beacon_committee(state, data.slot, index)
-        assert len(attestation.aggregation_bits[index]) == len(committee)
+        participants_count += len(committee)
+
+    assert len(attestation.aggregation_bits) == participants_count
 
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
