@@ -34,6 +34,7 @@
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
   - [Cell cosets](#cell-cosets)
     - [`coset_for_cell`](#coset_for_cell)
+  - [Bitwise manipulation](#bitwise-manipulation)
     - [`reverse_bits_limited`](#reverse_bits_limited)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
@@ -374,6 +375,8 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     )
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
+
+### Bitwise manipulation
 
 #### `reverse_bits_limited`
 
