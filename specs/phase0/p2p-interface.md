@@ -367,7 +367,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, aggregate.data.index))`.
+  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, index))`.
 - _[REJECT]_ The aggregate attestation has participants --
   that is, `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[IGNORE]_ A valid aggregate attestation defined by `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict superset has _not_ already been seen.
