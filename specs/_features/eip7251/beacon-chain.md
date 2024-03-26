@@ -32,6 +32,7 @@
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [Updated `is_eligible_for_activation_queue`](#updated-is_eligible_for_activation_queue)
+    - [New `is_compounding_withdrawal_credential`](#new-is_compounding_withdrawal_credential)
     - [New `has_compounding_withdrawal_credential`](#new-has_compounding_withdrawal_credential)
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
@@ -45,6 +46,8 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `set_compounding_withdrawal_credentials`](#new-set_compounding_withdrawal_credentials)
+    - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
+    - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Updated `slash_validator`](#updated-slash_validator)
@@ -62,7 +65,8 @@
       - [Updated `process_operations`](#updated-process_operations)
       - [Deposits](#deposits)
         - [Updated  `apply_deposit`](#updated--apply_deposit)
-    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+        - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
+        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
         - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
       - [Withdrawals](#withdrawals)
         - [New `process_execution_layer_withdraw_request`](#new-process_execution_layer_withdraw_request)
@@ -292,6 +296,13 @@ def is_eligible_for_activation_queue(validator: Validator) -> bool:
     )
 ```
 
+#### New `is_compounding_withdrawal_credential`
+
+```python
+def is_compounding_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
+    return withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
+```
+
 #### New `has_compounding_withdrawal_credential`
 
 ```python
@@ -299,7 +310,7 @@ def has_compounding_withdrawal_credential(validator: Validator) -> bool:
     """
     Check if ``validator`` has an 0x02 prefixed "compounding" withdrawal credential.
     """
-    return validator.withdrawal_credentials[:1] == COMPOUNDING_WITHDRAWAL_PREFIX
+    return is_compounding_withdrawal_credential(validator.withdrawal_credentials)
 ```
 
 #### New `has_execution_withdrawal_credential`
@@ -427,6 +438,29 @@ def set_compounding_withdrawal_credentials(state: BeaconState, index: ValidatorI
     validator = state.validators[index]
     if has_eth1_withdrawal_credential(validator):
         validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
+```
+
+#### New `switch_to_compounding_validator`
+
+```python
+def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    if has_eth1_withdrawal_credential(validator):
+        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
+        queue_excess_active_balance(state, index)
+```
+
+#### New `queue_excess_active_balance`
+
+```python
+def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> None:
+    balance = state.balances[index]
+    if balance > MAX_EFFECTIVE_BALANCE:
+        excess_balance = balance - MAX_EFFECTIVE_BALANCE
+        state.balances[index] = balance - excess_balance
+        state.pending_balance_deposits.append(
+            PendingBalanceDeposit(index=index, amount=excess_balance)
+        )
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
@@ -584,11 +618,12 @@ def process_pending_consolidations(state: BeaconState) -> None:
         if source_validator.withdrawable_epoch > get_current_epoch(state):
             break
 
+        # Churn any target excess active balance of target and raise its max
+        switch_to_compounding_validator(state, pending_consolidation.target_index)
         # Move active balance to target. Excess balance is withdrawable.
         active_balance = get_active_balance(state, pending_consolidation.source_index)
         decrease_balance(state, pending_consolidation.source_index, active_balance)
         increase_balance(state, pending_consolidation.target_index, active_balance)
-        set_compounding_withdrawal_credentials(state, pending_consolidation.target_index)
         next_pending_consolidation += 1
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
@@ -752,6 +787,29 @@ def apply_deposit(state: BeaconState,
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
+        # Check if valid deposit switch to compounding credentials
+        if (
+            is_compounding_withdrawal_credential(withdrawal_credentials)
+            and has_eth1_withdrawal_credential(state.validators[index])
+            and is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature)
+        ):
+            switch_to_compounding_validator(state, index)
+
+```
+
+###### New `is_valid_deposit_signature`
+
+```python
+def is_valid_deposit_signature(pubkey: BLSPubkey,
+                               withdrawal_credentials: Bytes32,
+                               amount: uint64,
+                               signature: BLSSignature) -> None:
         deposit_message = DepositMessage(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
@@ -759,15 +817,10 @@ def apply_deposit(state: BeaconState,
         )
         domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
         signing_root = compute_signing_root(deposit_message, domain)
-        if bls.Verify(pubkey, signing_root, signature):
-            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
+        return bls.Verify(pubkey, signing_root, signature)
 ```
 
-#### Modified `add_validator_to_registry`
+###### Modified `add_validator_to_registry`
 
 ```python
 def add_validator_to_registry(state: BeaconState,
