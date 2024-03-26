@@ -2,30 +2,22 @@ from eth2spec.test.context import (
     spec_state_test,
     expect_assertion_error,
     with_eip7251_and_later,
-    with_presets, 
+    with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_slot,
+    get_validator_index_by_pubkey,
 )
 from eth2spec.test.helpers.withdrawals import (
-    prepare_expected_withdrawals,
     set_eth1_withdrawal_credential_with_balance,
-    set_validator_fully_withdrawable,
-    set_validator_partially_withdrawable,
 )
 
-from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.state import get_validator_index_by_pubkey
-from eth2spec.test.helpers.withdrawals import set_eth1_withdrawal_credential_with_balance
+
+# Only failing test from capella process_withdrawals is
+# test_success_excess_balance_but_no_max_effective_balance
 
 
-## Only failing test from capella process_withdrawals is 
-## test_success_excess_balance_but_no_max_effective_balance
-
-
-#### Modified tests from 7002. Just testing EL-triggered exits, not partial withdrawals
+# Modified tests from 7002. Just testing EL-triggered exits, not partial withdrawals
 
 @with_eip7251_and_later
 @spec_state_test
@@ -41,7 +33,7 @@ def test_basic_exit(spec, state):
     execution_layer_withdraw_request = spec.ExecutionLayerWithdrawRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
-        amount = 0,
+        amount=0,
     )
 
     yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request)
@@ -65,7 +57,9 @@ def test_incorrect_source_address(spec, state):
         amount=0,
     )
 
-    yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, success=False)
+    yield from run_execution_layer_withdraw_request_processing(
+        spec, state, execution_layer_withdraw_request, success=False
+    )
 
 
 @with_eip7251_and_later
@@ -90,7 +84,9 @@ def test_incorrect_withdrawal_credential_prefix(spec, state):
         amount=0,
     )
 
-    yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, success=False)
+    yield from run_execution_layer_withdraw_request_processing(
+        spec, state, execution_layer_withdraw_request, success=False
+    )
 
 
 @with_eip7251_and_later
@@ -112,7 +108,9 @@ def test_on_exit_initiated_validator(spec, state):
         amount=0,
     )
 
-    yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, success=False)
+    yield from run_execution_layer_withdraw_request_processing(
+        spec, state, execution_layer_withdraw_request, success=False
+    )
 
 
 @with_eip7251_and_later
@@ -133,12 +131,12 @@ def test_activation_epoch_less_than_shard_committee_period(spec, state):
         state.validators[validator_index].activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
     )
 
-    yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, success=False)
+    yield from run_execution_layer_withdraw_request_processing(
+        spec, state, execution_layer_withdraw_request, success=False
+    )
 
 
-
-## Partial withdrawals tests
-    
+# Partial withdrawals tests
 
 @with_eip7251_and_later
 @spec_state_test
@@ -153,21 +151,23 @@ def test_partial_withdrawal_queue_full(spec, state):
     execution_layer_withdraw_request = spec.ExecutionLayerWithdrawRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
-        amount = 10**9,
+        amount=10 ** 9,
     )
 
-    partial_withdrawal = spec.PartialWithdrawal(index=0,amount=1,withdrawable_epoch=current_epoch)
+    partial_withdrawal = spec.PartialWithdrawal(index=0, amount=1, withdrawable_epoch=current_epoch)
     state.pending_partial_withdrawals = [partial_withdrawal] * spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
-    yield from run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, success=False)
-
+    yield from run_execution_layer_withdraw_request_processing(
+        spec, state, execution_layer_withdraw_request, success=False
+    )
 
 
 #
 # Run processing
 #
 
-
-def run_execution_layer_withdraw_request_processing(spec, state, execution_layer_withdraw_request, valid=True, success=True):
+def run_execution_layer_withdraw_request_processing(
+    spec, state, execution_layer_withdraw_request, valid=True, success=True
+):
     """
     Run ``process_execution_layer_withdraw_request``, yielding:
       - pre-state ('pre')
@@ -182,7 +182,8 @@ def run_execution_layer_withdraw_request_processing(spec, state, execution_layer
     yield 'execution_layer_withdraw_request', execution_layer_withdraw_request
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_layer_withdraw_request(state, execution_layer_withdraw_request))
+        expect_assertion_error(
+            lambda: spec.process_execution_layer_withdraw_request(state, execution_layer_withdraw_request))
         yield 'post', None
         return
 
@@ -207,6 +208,6 @@ def run_execution_layer_withdraw_request_processing(spec, state, execution_layer
             post_length = len(state.pending_partial_withdrawals)
             assert post_length == len(pre_pending_partial_withdrawals) + 1
             assert post_length < spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
-            assert state.pending_partial_withdrawals[post_length-1].validator_index == validator_index
+            assert state.pending_partial_withdrawals[post_length - 1].validator_index == validator_index
         else:
             assert state.pending_partial_withdrawals == pre_pending_partial_withdrawals

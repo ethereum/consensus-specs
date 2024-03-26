@@ -13,6 +13,7 @@ from eth2spec.test.context import (
     always_bls,
 )
 
+
 @with_eip7251_and_later
 @spec_state_test
 def test_new_deposit_under_min_activation_balance(spec, state):
@@ -24,6 +25,7 @@ def test_new_deposit_under_min_activation_balance(spec, state):
 
     yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index)
 
+
 @with_eip7251_and_later
 @spec_state_test
 def test_new_deposit_min(spec, state):
@@ -32,6 +34,7 @@ def test_new_deposit_min(spec, state):
     amount = spec.MIN_DEPOSIT_AMOUNT
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
     yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index)
+
 
 @with_eip7251_and_later
 @spec_state_test
@@ -64,8 +67,6 @@ def test_new_deposit_over_max(spec, state):
     yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index)
 
 
-
-
 # @with_eip7251_and_later
 # @spec_state_test
 # def test_top_up__max_effective_balance(spec, state):
@@ -80,7 +81,7 @@ def test_new_deposit_over_max(spec, state):
 
 #     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_EIP7251 + amount
 #     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_EIP7251
-    
+
 @with_eip7251_and_later
 @spec_state_test
 @always_bls

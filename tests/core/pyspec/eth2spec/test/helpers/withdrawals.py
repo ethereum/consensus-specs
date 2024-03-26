@@ -58,7 +58,7 @@ def prepare_expected_withdrawals(spec, state,
 
 def set_compounding_withdrawal_credential(spec, state, index, address=None):
     if address is None:
-       address = b'\x11' * 20
+        address = b'\x11' * 20
 
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b'\x00' * 11 + address

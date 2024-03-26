@@ -130,9 +130,9 @@ def upgrade_to_eip7251(pre: deneb.BeaconState) -> BeaconState:
 
     # Ensure early adopters of compounding credentials go through the activation churn
     queue_excess_active_balance(post)
-    for index, validator in enumerate(state.validators):
+    for index, validator in enumerate(post.validators):
         if has_compounding_withdrawal_credential(validator):
-            queue_excess_active_balance(state, index)
+            queue_excess_active_balance(post, index)
 
     return post
 ```

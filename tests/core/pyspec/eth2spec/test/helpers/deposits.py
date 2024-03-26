@@ -395,7 +395,7 @@ def run_deposit_receipt_processing_with_specific_fork_version(
 #  ********************
 #  *      EIP7251       *
 #  ********************
-    
+
 
 def run_deposit_processing_eip7251(spec, state, deposit, validator_index, valid=True, effective=True):
     """
@@ -413,7 +413,7 @@ def run_deposit_processing_eip7251(spec, state, deposit, validator_index, valid=
     # is a top-up
     if validator_index < pre_validator_count:
         is_top_up = True
-        pre_balance = get_balance(state, validator_index) 
+        pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
     yield 'pre', state

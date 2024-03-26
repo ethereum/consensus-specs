@@ -135,16 +135,18 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
+
 def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (The number of validators is double the amount need for the max activation/exit  churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
-    num_validators = 2 * spec.config.CHURN_LIMIT_QUOTIENT * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT // spec.MIN_ACTIVATION_BALANCE
+    num_validators = (
+        2 * spec.config.CHURN_LIMIT_QUOTIENT
+        * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
+        // spec.MIN_ACTIVATION_BALANCE)
     return [spec.MIN_ACTIVATION_BALANCE] * num_validators
-
-
 
 
 with_state = with_custom_state(default_balances, default_activation_threshold)

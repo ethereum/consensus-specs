@@ -792,7 +792,8 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
+        state.pending_balance_deposits.append(
+            PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
         # Check if valid deposit switch to compounding credentials
         if (
             is_compounding_withdrawal_credential(withdrawal_credentials)
@@ -810,14 +811,14 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
                                withdrawal_credentials: Bytes32,
                                amount: uint64,
                                signature: BLSSignature) -> None:
-        deposit_message = DepositMessage(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        return bls.Verify(pubkey, signing_root, signature)
+    deposit_message = DepositMessage(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+    )
+    domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+    signing_root = compute_signing_root(deposit_message, domain)
+    return bls.Verify(pubkey, signing_root, signature)
 ```
 
 ###### Modified `add_validator_to_registry`

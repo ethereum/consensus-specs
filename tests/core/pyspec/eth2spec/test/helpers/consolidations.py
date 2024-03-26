@@ -1,4 +1,3 @@
-from random import Random
 from eth2spec.utils import bls
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.keys import privkeys
@@ -11,9 +10,11 @@ def prepare_signed_consolidations(spec, state, index_pairs, fork_version=None):
             source_index=source_index,
             target_index=target_index,
         )
-        return sign_consolidation(spec, state, consolidation, privkeys[source_index], privkeys[target_index], fork_version=fork_version)
+        return sign_consolidation(spec, state, consolidation, privkeys[source_index], privkeys[target_index],
+                                  fork_version=fork_version)
 
     return [create_signed_consolidation(source_index, target_index) for (source_index, target_index) in index_pairs]
+
 
 def sign_consolidation(spec, state, consolidation, source_privkey, target_privkey, fork_version=None):
     domain = spec.compute_domain(spec.DOMAIN_CONSOLIDATION, genesis_validators_root=state.genesis_validators_root)
@@ -22,6 +23,7 @@ def sign_consolidation(spec, state, consolidation, source_privkey, target_privke
         message=consolidation,
         signature=bls.Aggregate([bls.Sign(source_privkey, signing_root), bls.Sign(target_privkey, signing_root)])
     )
+
 
 def run_consolidation_processing(spec, state, signed_consolidation, valid=True):
     """
@@ -43,7 +45,6 @@ def run_consolidation_processing(spec, state, signed_consolidation, valid=True):
         yield 'post', None
         return
 
-
     pre_exit_epoch = source_validator.exit_epoch
 
     spec.process_consolidation(state, signed_consolidation)
@@ -54,8 +55,7 @@ def run_consolidation_processing(spec, state, signed_consolidation, valid=True):
     assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.validators[signed_consolidation.message.source_index].exit_epoch < spec.FAR_FUTURE_EPOCH
     assert state.validators[signed_consolidation.message.source_index].exit_epoch == state.earliest_consolidation_epoch
-    assert state.pending_consolidations[len(state.pending_consolidations)-1] == spec.PendingConsolidation(
-        source_index = signed_consolidation.message.source_index,
-        target_index = signed_consolidation.message.target_index
-        )
-
+    assert state.pending_consolidations[len(state.pending_consolidations) - 1] == spec.PendingConsolidation(
+        source_index=signed_consolidation.message.source_index,
+        target_index=signed_consolidation.message.target_index
+    )

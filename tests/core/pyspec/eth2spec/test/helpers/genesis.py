@@ -157,5 +157,3 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_partial_withdrawals = []
 
     return state
-
-

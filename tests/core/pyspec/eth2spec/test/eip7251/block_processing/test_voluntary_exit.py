@@ -2,7 +2,7 @@ from eth2spec.test.helpers.constants import (MINIMAL, MAINNET)
 from eth2spec.test.context import (
     spec_state_test,
     with_eip7251_and_later,
-    with_presets, 
+    with_presets,
     always_bls,
     spec_test, single_phase,
     with_custom_state,
@@ -16,6 +16,7 @@ from eth2spec.test.helpers.voluntary_exits import (
 #  ********************
 #  * EXIT QUEUE TESTS *
 #  ********************
+
 
 @with_eip7251_and_later
 @spec_state_test
@@ -32,7 +33,7 @@ def test_min_balance_exit(spec, state):
     yield "post", state
 
     # Check exit queue churn is set
-    assert state.exit_balance_to_consume == churn_limit  - spec.MIN_ACTIVATION_BALANCE
+    assert state.exit_balance_to_consume == churn_limit - spec.MIN_ACTIVATION_BALANCE
     # Check exit epoch
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
@@ -54,10 +55,11 @@ def test_min_balance_exits_up_to_churn(spec, state):
         spec.initiate_validator_exit(state, validator_index)
         yield f"post{i}", state
         # Check exit queue churn is set
-        assert state.exit_balance_to_consume == churn_limit  - single_validator_balance * (i + 1)
+        assert state.exit_balance_to_consume == churn_limit - single_validator_balance * (i + 1)
         # Check exit epoch
         assert state.validators[validator_index].exit_epoch == expected_exit_epoch
     yield "post", state
+
 
 @with_eip7251_and_later
 @spec_state_test
@@ -75,7 +77,7 @@ def test_min_balance_exits_above_churn(spec, state):
         validator_index = i
         spec.initiate_validator_exit(state, validator_index)
         # Check exit queue churn is set
-        assert state.exit_balance_to_consume == churn_limit  - single_validator_balance * (i + 1)
+        assert state.exit_balance_to_consume == churn_limit - single_validator_balance * (i + 1)
         # Check exit epoch
         assert state.validators[validator_index].exit_epoch == expected_exit_epoch
 
@@ -94,12 +96,11 @@ def test_min_balance_exits_above_churn(spec, state):
     assert state.exit_balance_to_consume == churn_limit - single_validator_balance
 
 
-
 # @with_eip7251_and_later
 # @spec_state_test
 # def test_exit_balance_to_consume_large_validator(spec, state):
 #     # Set 0th validator effective balance to 2048 ETH
-#     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE_EIP7251 
+#     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE_EIP7251
 #     churn_limit = spec.get_validator_churn_limit(state)
 #     expected_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
 #     expected_exit_epoch += spec.MAX_EFFECTIVE_BALANCE_EIP7251 // churn_limit
@@ -154,18 +155,20 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
 
     yield 'post', state
     # Validator consumes churn limit fully in the current epoch
-    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+    assert (state.validators[validator_index].exit_epoch ==
+            spec.compute_activation_exit_epoch(spec.get_current_epoch(state)))
     # Check exit_balance_to_consume
     assert state.exit_balance_to_consume == 0
     # Check earliest_exit_epoch
     assert state.earliest_exit_epoch == state.validators[validator_index].exit_epoch
+
 
 @with_eip7251_and_later
 @spec_state_test
 @with_presets([MAINNET], "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit")
 def test_exit_churn_limit_balance_existing_churn_(spec, state):
     cl = spec.get_activation_exit_churn_limit(state)
-    
+
     # set exit epoch to the first available one and set exit balance to consume to full churn limit
     state.earliest_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     state.exit_balance_to_consume = cl
@@ -187,7 +190,7 @@ def test_exit_churn_limit_balance_existing_churn_(spec, state):
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
     # Check balance consumed in exit epoch is the remainder 1 ETH
     assert state.exit_balance_to_consume == cl - 1000000000
-    # check earliest exit epoch 
+    # check earliest exit epoch
     assert expected_exit_epoch == state.earliest_exit_epoch
 
 
@@ -203,9 +206,8 @@ def test_multi_epoch_exit_existing_churn(spec, state):
     # consume some churn in exit epoch
     state.exit_balance_to_consume -= 1000000000
 
-
     # Set 0th validator effective balance to 2x the churn limit
-    state.validators[0].effective_balance = 2*cl
+    state.validators[0].effective_balance = 2 * cl
 
     yield 'pre', state
     # Two extra epochs will be necessary
@@ -218,11 +220,11 @@ def test_multi_epoch_exit_existing_churn(spec, state):
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
     # Check balance consumed in exit epoch is the remainder 1 ETH
     assert state.exit_balance_to_consume == cl - 1000000000
-    # check earliest exit epoch 
+    # check earliest exit epoch
     assert expected_exit_epoch == state.earliest_exit_epoch
-    
 
-### Repurposed from  phase0 voluntary exit tests, should disable the phase0 ones
+
+# Repurposed from  phase0 voluntary exit tests, should disable the phase0 ones
 
 def run_test_success_exit_queue(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -267,14 +269,15 @@ def run_test_success_exit_queue(spec, state):
             state.validators[index].exit_epoch + 1
         )
     assert state.earliest_exit_epoch == state.validators[validator_index].exit_epoch
-    consumed_churn = spec.MIN_ACTIVATION_BALANCE * (max_exits+1)
-    assert state.exit_balance_to_consume ==  churn_limit - (consumed_churn % churn_limit)
+    consumed_churn = spec.MIN_ACTIVATION_BALANCE * (max_exits + 1)
+    assert state.exit_balance_to_consume == churn_limit - (consumed_churn % churn_limit)
 
 
 @with_eip7251_and_later
 @spec_state_test
 def test_success_exit_queue__min_churn(spec, state):
     yield from run_test_success_exit_queue(spec, state)
+
 
 @with_eip7251_and_later
 @with_presets([MINIMAL],
@@ -289,8 +292,7 @@ def test_success_exit_queue__scaled_churn(spec, state):
     yield from run_test_success_exit_queue(spec, state)
 
 
-#### After here no modifications were made, can just leave them in phase0 as is
-
+# After here no modifications were made, can just leave them in phase0 as is
 
 @with_eip7251_and_later
 @spec_state_test
@@ -325,11 +327,6 @@ def test_invalid_incorrect_signature(spec, state):
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, 12345)
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
-
-
-
-
-
 
 
 @with_eip7251_and_later
