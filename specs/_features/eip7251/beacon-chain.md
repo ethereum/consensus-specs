@@ -38,7 +38,7 @@
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
     - [Updated `is_partially_withdrawable_validator`](#updated-is_partially_withdrawable_validator)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_validator_excess_balance`](#new-get_validator_excess_balance)
+    - [New `get_validator_max_effective_balance`](#new-get_validator_max_effective_balance)
     - [New `get_churn_limit`](#new-get_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
@@ -344,26 +344,25 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    return (
-        has_execution_withdrawal_credential(validator)  # [Modified in EIP7251]
-        and get_validator_excess_balance(validator, balance) > 0
-    )
+    max_effective_balance = get_validator_max_effective_balance(validator)
+    has_max_effective_balance = validator.effective_balance == max_effective_balance  # [Modified in EIP7251]
+    has_excess_balance = balance > max_effective_balance  # [Modified in EIP7251]
+    return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
 ```
 
 ### Beacon state accessors
 
-#### New `get_validator_excess_balance`
+#### New `get_validator_max_effective_balance`
 
 ```python
-def get_validator_excess_balance(validator: Validator, balance: Gwei) -> Gwei:
+def get_validator_max_effective_balance(validator: Validator) -> Gwei:
     """
-    Get excess balance for partial withdrawals for ``validator``.
+    Get max effective balance for ``validator``.
     """
-    if has_compounding_withdrawal_credential(validator) and balance > MAX_EFFECTIVE_BALANCE_EIP7251:
-        return balance - MAX_EFFECTIVE_BALANCE_EIP7251
-    elif has_eth1_withdrawal_credential(validator) and balance > MIN_ACTIVATION_BALANCE:
-        return balance - MIN_ACTIVATION_BALANCE
-    return Gwei(0)
+    if has_compounding_withdrawal_credential(validator):
+        return MAX_EFFECTIVE_BALANCE_EIP7251
+    else:
+        return MIN_ACTIVATION_BALANCE
 ```
 
 #### New `get_churn_limit`
@@ -710,7 +709,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=get_validator_excess_balance(validator, balance),  # [Modified in EIP7251]
+                amount=balance - get_validator_max_effective_balance(validator),  # [Modified in EIP7251]
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
