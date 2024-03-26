@@ -28,7 +28,7 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIP7002_FORK_VERSION` | `Version('0x05000000')` |
+| `EIP7002_FORK_VERSION` | `Version('0x07000000')` |
 | `EIP7002_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
