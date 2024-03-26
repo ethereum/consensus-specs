@@ -764,7 +764,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))  # [Modified in EIP-7251]
+        state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [Modified in EIP-7251]
 ```
 
 #### Modified `add_validator_to_registry`
@@ -775,13 +775,13 @@ def add_validator_to_registry(state: BeaconState,
                               withdrawal_credentials: Bytes32,
                               amount: uint64) -> None:
     index = get_index_for_new_validator(state)
-    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials)
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, 0)  # [Modified in EIP7251]
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, uint64(0))
-    state.pending_balance_deposits.append(PendingBalanceDeposit(index, amount))  # [New in EIP7251]
+    state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [New in EIP7251]
 ```
 
 ###### Updated `get_validator_from_deposit`

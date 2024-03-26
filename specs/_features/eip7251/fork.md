@@ -141,5 +141,5 @@ def queue_excess_active_balance(state: BeaconState):
         if has_compounding_withdrawal_credential(validator) and balance > MAX_EFFECTIVE_BALANCE:
             excess_balance = balance - MAX_EFFECTIVE_BALANCE
             state.balances[index] = balance - excess_balance
-            state.pending_balance_deposits.append(PendingBalanceDeposit(index, excess_balance))
+            state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=excess_balance))
 ```
