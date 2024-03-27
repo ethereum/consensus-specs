@@ -896,7 +896,10 @@ def process_execution_layer_withdraw_request(
         item.amount for item in state.pending_partial_withdrawals if item.index == index
     )
     # only exit validator if it has no pending withdrawals in the queue
-    if is_full_exit_request and pending_balance_to_withdraw == 0:
+    if is_full_exit_request and pending_balance_to_withdraw > 0:
+        return
+
+    if is_full_exit_request:
         initiate_validator_exit(state, index)
     elif state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw:
         to_withdraw = min(
