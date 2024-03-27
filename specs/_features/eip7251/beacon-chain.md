@@ -950,7 +950,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     assert has_execution_withdrawal_credential(source_validator)
     assert has_execution_withdrawal_credential(target_validator)
     # Verify the same withdrawal address
-    assert source_validator.withdrawal_credentials[1:] == target_validator.withdrawal_credentials[1:]
+    assert source_validator.withdrawal_credentials[12:] == target_validator.withdrawal_credentials[12:]
 
     # Verify consolidation is signed by the source and the target
     domain = compute_domain(DOMAIN_CONSOLIDATION, genesis_validators_root=state.genesis_validators_root)
