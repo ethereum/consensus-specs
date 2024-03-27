@@ -44,6 +44,7 @@
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_active_balance`](#new-get_active_balance)
+    - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
@@ -72,6 +73,8 @@
         - [New `process_execution_layer_withdraw_request`](#new-process_execution_layer_withdraw_request)
       - [Consolidations](#consolidations)
         - [New `process_consolidation`](#new-process_consolidation)
+      - [Voluntary exits](#voluntary-exits)
+        - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -412,6 +415,14 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     max_effective_balance = get_validator_max_effective_balance(state.validators[validator_index])
     return min(state.balances[validator_index], max_effective_balance)
+```
+
+#### New `get_pending_balance_to_withdraw`
+
+```python
+def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
+    return sum(
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index)
 ```
 
 ### Beacon state mutators
@@ -762,7 +773,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)  # [Modified in EIP7251]
-    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.execution_payload.withdraw_requests, process_execution_layer_withdraw_request)  # New in EIP7251
     for_ops(body.consolidations, process_consolidation)  # New in EIP7251
@@ -881,9 +892,7 @@ def process_execution_layer_withdraw_request(
     ):
         return
 
-    pending_balance_to_withdraw = sum(
-        item.amount for item in state.pending_partial_withdrawals if item.index == index
-    )
+    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, index)
 
     if is_full_exit_request:
         # Only exit validator if it has no pending withdrawals in the queue
@@ -961,3 +970,28 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     ))
 ```
 
+##### Voluntary exits
+
+###### Updated `process_voluntary_exit`
+
+```python
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= voluntary_exit.epoch
+    # Verify the validator has been active long enough
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    # Verify signature
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    # Only exit validator if it has no pending withdrawals in the queue
+    assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in EIP7251]
+    # Initiate exit
+    initiate_validator_exit(state, voluntary_exit.validator_index)
+```
