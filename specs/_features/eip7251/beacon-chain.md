@@ -681,7 +681,9 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             break
 
         validator = state.validators[withdrawal.index]
-        if validator.exit_epoch == FAR_FUTURE_EPOCH and state.balances[withdrawal.index] > MAX_EFFECTIVE_BALANCE:
+        has_sufficient_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
+        has_excess_balance = state.balances[withdrawal.index] > MAX_EFFECTIVE_BALANCE
+        if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
             withdrawable_balance = min(state.balances[withdrawal.index] - MAX_EFFECTIVE_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -901,10 +903,11 @@ def process_execution_layer_withdraw_request(
         return
 
 
+    has_sufficient_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
     has_excess_balance = state.balances[index] > MAX_EFFECTIVE_BALANCE + pending_balance_to_withdraw
 
     # Only allow partial withdrawals with compounding withdrawal credentials
-    if has_compounding_withdrawal_credential(validator) and has_excess_balance:
+    if has_compounding_withdrawal_credential(validator) and has_sufficient_effective_balance and has_excess_balance:
         to_withdraw = min(
             state.balances[index] - MAX_EFFECTIVE_BALANCE - pending_balance_to_withdraw,
             amount
