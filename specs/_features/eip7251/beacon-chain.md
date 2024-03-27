@@ -46,7 +46,6 @@
     - [New `get_active_balance`](#new-get_active_balance)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
-    - [New `set_compounding_withdrawal_credentials`](#new-set_compounding_withdrawal_credentials)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
@@ -435,15 +434,6 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
-```
-
-#### New `set_compounding_withdrawal_credentials`
-
-```python
-def set_compounding_withdrawal_credentials(state: BeaconState, index: ValidatorIndex) -> None:
-    validator = state.validators[index]
-    if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
 ```
 
 #### New `switch_to_compounding_validator`
