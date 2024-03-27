@@ -8,6 +8,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Domains](#domains)
 - [Presets](#presets)
@@ -86,6 +87,12 @@ See [a modest proposal](https://notes.ethereum.org/@mikeneuder/increase-maxeb), 
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(2**64 - 1)` |
 
 ### Withdrawal prefixes
 
@@ -866,7 +873,8 @@ def process_execution_layer_withdraw_request(
     execution_layer_withdraw_request: ExecutionLayerWithdrawRequest
 ) -> None:
     amount = execution_layer_withdraw_request.amount
-    is_full_exit_request = amount == 0
+    is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
+
     # If partial withdrawal queue is full, only full exits are processed 
     if len(state.pending_partial_withdrawals) >= PENDING_PARTIAL_WITHDRAWALS_LIMIT and not is_full_exit_request:
         return
@@ -888,20 +896,23 @@ def process_execution_layer_withdraw_request(
         and get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     ):
         return
-    # New condition: only allow partial withdrawals with compounding withdrawal credentials
-    if not (is_full_exit_request or has_compounding_withdrawal_credential(validator)):
-        return
 
     pending_balance_to_withdraw = sum(
         item.amount for item in state.pending_partial_withdrawals if item.index == index
     )
-    # only exit validator if it has no pending withdrawals in the queue
-    if is_full_exit_request and pending_balance_to_withdraw > 0:
-        return
 
     if is_full_exit_request:
-        initiate_validator_exit(state, index)
-    elif state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw:
+        # Only exit validator if it has no pending withdrawals in the queue
+        if pending_balance_to_withdraw == 0:
+            initiate_validator_exit(state, index)
+
+        return
+
+
+    has_excess_balance = state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
+
+    # Only allow partial withdrawals with compounding withdrawal credentials
+    if has_compounding_withdrawal_credential(validator) and has_excess_balance:
         to_withdraw = min(
             state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
             amount
