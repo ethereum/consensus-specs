@@ -347,7 +347,11 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     max_effective_balance = get_validator_max_effective_balance(validator)
     has_max_effective_balance = validator.effective_balance == max_effective_balance  # [Modified in EIP7251]
     has_excess_balance = balance > max_effective_balance  # [Modified in EIP7251]
-    return has_eth1_withdrawal_credential(validator) and has_max_effective_balance and has_excess_balance
+    return (
+        has_execution_withdrawal_credential(validator)  # [Modified in EIP7251]
+        and has_max_effective_balance
+        and has_excess_balance
+    )
 ```
 
 ### Beacon state accessors
