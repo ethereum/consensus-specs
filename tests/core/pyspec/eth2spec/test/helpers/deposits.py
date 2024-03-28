@@ -390,3 +390,88 @@ def run_deposit_receipt_processing_with_specific_fork_version(
         valid=valid,
         effective=effective
     )
+
+
+#  ********************
+#  *      EIP7251       *
+#  ********************
+
+
+def run_deposit_processing_eip7251(spec, state, deposit, validator_index, valid=True, effective=True):
+    """
+    Run ``process_deposit``, yielding:
+      - pre-state ('pre')
+      - deposit ('deposit')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    pre_validator_count = len(state.validators)
+    pre_pending_deposits = len(state.pending_balance_deposits)
+    pre_balance = 0
+    pre_effective_balance = 0
+    is_top_up = False
+    # is a top-up
+    if validator_index < pre_validator_count:
+        is_top_up = True
+        pre_balance = get_balance(state, validator_index)
+        pre_effective_balance = state.validators[validator_index].effective_balance
+
+    yield 'pre', state
+    yield 'deposit', deposit
+
+    if not valid:
+        expect_assertion_error(lambda: spec.process_deposit(state, deposit))
+        yield 'post', None
+        return
+
+    spec.process_deposit(state, deposit)
+
+    yield 'post', state
+
+    if not effective or not bls.KeyValidate(deposit.data.pubkey):
+        assert len(state.validators) == pre_validator_count
+        assert len(state.balances) == pre_validator_count
+    else:
+        # no balance changes on deposit processing
+        assert get_balance(state, validator_index) == pre_balance
+        assert state.validators[validator_index].effective_balance == pre_effective_balance
+        if is_top_up:
+            assert len(state.validators) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
+        else:
+            # new validator
+            assert len(state.validators) == pre_validator_count + 1
+            assert len(state.balances) == pre_validator_count + 1
+        # new correct balance deposit has been appended
+        assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
+        assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit.data.amount
+        assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
+    assert state.eth1_deposit_index == state.eth1_data.deposit_count
+
+
+def run_deposit_processing_eip7251_with_specific_fork_version(
+        spec,
+        state,
+        fork_version,
+        valid=True,
+        effective=True):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    pubkey = pubkeys[validator_index]
+    privkey = privkeys[validator_index]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+
+    deposit_message = spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)
+    domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=fork_version)
+    deposit_data = spec.DepositData(
+        pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
+        signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
+    )
+    deposit, root, _ = deposit_from_context(spec, [deposit_data], 0)
+
+    state.eth1_deposit_index = 0
+    state.eth1_data.deposit_root = root
+    state.eth1_data.deposit_count = 1
+
+    yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index, valid=valid, effective=effective)
