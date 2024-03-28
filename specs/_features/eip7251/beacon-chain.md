@@ -959,8 +959,8 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     assert bls.FastAggregateVerify(pubkeys, signing_root, signed_consolidation.signature)
 
     # Initiate source validator exit and append pending consolidation
-    active_balance = get_active_balance(state, consolidation.source_index)
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(state, active_balance)
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance)
     source_validator.withdrawable_epoch = Epoch(
         source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
