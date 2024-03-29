@@ -23,8 +23,7 @@ def _find_model_solutions(anchor_epoch: int,
                           store_justified_epoch_equal_zero: bool,
                           block_voting_source_epoch_equal_store_justified_epoch: bool,
                           block_voting_source_epoch_plus_two_greater_or_equal_current_epoch: bool,
-                          block_is_leaf: bool,
-                          block_is_justified_root_descendant: bool) -> Iterable[Iterable[tuple]]:
+                          block_is_leaf: bool) -> []:
     block_cover3 = Model('./model/minizinc/Block_cover3.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, block_cover3)
@@ -33,19 +32,27 @@ def _find_model_solutions(anchor_epoch: int,
     instance['block_vse_eq_store_je'] = block_voting_source_epoch_equal_store_justified_epoch
     instance['block_vse_plus_two_ge_curr_e'] = block_voting_source_epoch_plus_two_greater_or_equal_current_epoch
     instance['block_is_leaf'] = block_is_leaf
-    instance['block_is_justified_descendant'] = block_is_justified_root_descendant
 
     result = instance.solve(nr_solutions=5)
 
+    output = []
     for s in result.solution:
         max_block = s.max_block
-        yield {'block_epochs': s.es[:max_block + 1],
-               'ancestors': s.ancestors[:max_block + 1],
+        output.append({'block_epochs': s.es[:max_block + 1],
+               'parents': s.parents[:max_block + 1],
                'previous_justifications': s.prevs[:max_block + 1],
                'current_justifications': s.currs[:max_block + 1],
                'current_epoch': s.curr_e,
                'store_justified_epoch': s.store_je,
-               'target_block': s.target_block}
+               'target_block': s.target_block,
+               'predicates': {
+                   'store_je_eq_zero': store_justified_epoch_equal_zero,
+                   'block_vse_eq_store_je': block_voting_source_epoch_equal_store_justified_epoch,
+                   'block_vse_plus_two_ge_curr_e': block_voting_source_epoch_plus_two_greater_or_equal_current_epoch,
+                   'block_is_leaf': block_is_leaf
+               }})
+
+    return output
 
 
 def _create_providers(forks: Iterable[SpecForkName],
@@ -67,12 +74,28 @@ def _create_providers(forks: Iterable[SpecForkName],
             seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
             seeds[0] = initial_seed
 
-        solutions = _find_model_solutions(anchor_epoch=anchor_epoch,
-                                          store_justified_epoch_equal_zero=False,
-                                          block_voting_source_epoch_equal_store_justified_epoch=False,
-                                          block_voting_source_epoch_plus_two_greater_or_equal_current_epoch=True,
-                                          block_is_leaf=True,
-                                          block_is_justified_root_descendant=True)
+        solutions = []
+
+        for store_je_eq_zero in [True, False]:
+            for block_vse_eq_store_je in [True, False]:
+                for block_vse_plus_two_ge_curr_e in [True, False]:
+                    for block_is_leaf in [True, False]:
+                        if store_je_eq_zero and not block_vse_eq_store_je:
+                            continue
+                        results = _find_model_solutions(anchor_epoch=0 if store_je_eq_zero else anchor_epoch,
+                                                        store_justified_epoch_equal_zero=store_je_eq_zero,
+                                                        block_voting_source_epoch_equal_store_justified_epoch=block_vse_eq_store_je,
+                                                        block_voting_source_epoch_plus_two_greater_or_equal_current_epoch=block_vse_plus_two_ge_curr_e,
+                                                        block_is_leaf=block_is_leaf)
+                        print('\n\n')
+                        print(['store_je_eq_zero=' + str(store_je_eq_zero),
+                               'block_vse_eq_store_je=' + str(block_vse_eq_store_je),
+                               'block_vse_plus_two_ge_curr_e=' + str(block_vse_plus_two_ge_curr_e),
+                               'block_is_leaf=' + str(block_is_leaf)])
+                        for r in results:
+                            print(r)
+
+                        solutions = solutions + results
 
         for i, solution in enumerate(solutions):
             for seed in seeds:
