@@ -46,6 +46,7 @@ MIN_UNDERJUSTIFICATION_RATE = 55
 EMPTY_SLOTS_RATE = 3
 MAX_TIPS_TO_ATTEST = 2
 
+
 class SmLink(tuple):
     @property
     def source(self):
@@ -719,7 +720,7 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
     yield 'steps', test_steps
 
 
-def _generate_filter_block_tree(spec, genesis_state, block_epochs, ancestors, previous_justifications,
+def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, previous_justifications,
         current_justifications, rnd: random.Random, debug) -> ([], []):
     anchor_epoch = block_epochs[0]
 
@@ -738,14 +739,14 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, ancestors, pr
 
         # There should be enough slots to propose all blocks
         assert (spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT) >= len(
-            current_blocks), "Unsatisfiable constraints: not enough slots to propose all block: " + str(current_blocks)
+            current_blocks), "Unsatisfiable constraints: not enough slots to propose all blocks: " + str(current_blocks)
 
         # Case 2. Blocks are from disjoint subtrees -- not supported yet
         assert len(
-            set([a for i, a in enumerate(ancestors) if i in current_blocks])) == 1, 'Disjoint trees are not supported'
+            set([a for i, a in enumerate(parents) if i in current_blocks])) == 1, 'Disjoint trees are not supported'
 
         # Case 1. Blocks have common ancestor
-        a = ancestors[current_blocks[0]]
+        a = parents[current_blocks[0]]
         ancestor_tip = block_tips[a].copy()
 
         state = ancestor_tip.beacon_state
@@ -794,7 +795,8 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, ancestors, pr
             if block > -1:
                 previous_epoch_attestations = [a for a in attestations if
                                                epoch == spec.compute_epoch_at_slot(a.data.slot) + 1]
-                current_epoch_attestations = [a for a in attestations if epoch == spec.compute_epoch_at_slot(a.data.slot)]
+                current_epoch_attestations = [a for a in attestations if
+                                              epoch == spec.compute_epoch_at_slot(a.data.slot)]
                 if (previous_justifications[block]):
                     block_attestations = block_attestations + previous_epoch_attestations
                 if (current_justifications[block]):
@@ -837,42 +839,41 @@ def test_filter_block_tree_model(spec, state, model_params=None, debug=False, se
     if model_params is None:
         return
 
-    if debug:
-        print('\nseed:', seed)
-        print('\nmodel_params:', str(model_params))
+    print('\nseed:', seed)
+    print('predicates:', str(model_params['predicates']))
+    print('model_params:', str(model_params))
 
     block_epochs = model_params['block_epochs']
-    ancestors = model_params['ancestors']
+    parents = model_params['parents']
     previous_justifications = model_params['previous_justifications']
     current_justifications = model_params['current_justifications']
-    current_epoch = model_params['current_epoch']
 
     store_justified_epoch = model_params['store_justified_epoch']
     target_block = model_params['target_block']
 
     anchor_epoch = block_epochs[0]
 
-    # Ensure that epoch(block) = epoch(ancenstor) + 1
+    # Ensure that epoch(block) == epoch(parent) + 1
     for b in range(1, len(block_epochs)):
-        assert block_epochs[b] == block_epochs[ancestors[b]] + 1, 'epoch(' + str(b) + ') != epoch(' + str(
-            ancestors[b]) + ')'
+        assert block_epochs[b] == block_epochs[parents[b]] + 1, 'epoch(' + str(b) + ') != epoch(' + str(
+            parents[b]) + ') + 1, block_epochs=' + str(block_epochs) + ', parents=' + str(parents)
 
     # Ensure that a descendant doesn't attempt to justify the previous epoch checkpoint
     # if it has already been justified by its ancestor
     for b in range(1, len(block_epochs)):
         if previous_justifications[b]:
-            a = ancestors[b]
+            a = parents[b]
             assert not current_justifications[a], str(b) + ' attempts to justify already justified epoch'
 
     rnd = random.Random(seed)
     signed_blocks, post_block_tips = _generate_filter_block_tree(spec,
-                                                                   state,
-                                                                   block_epochs,
-                                                                   ancestors,
-                                                                   previous_justifications,
-                                                                   current_justifications,
-                                                                   rnd,
-                                                                   debug)
+                                                                 state,
+                                                                 block_epochs,
+                                                                 parents,
+                                                                 previous_justifications,
+                                                                 current_justifications,
+                                                                 rnd,
+                                                                 debug)
 
     # Yield run parameters
     yield 'seed', 'meta', seed
@@ -894,20 +895,50 @@ def test_filter_block_tree_model(spec, state, model_params=None, debug=False, se
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
 
-    # Advance the store to the current epoch
-    current_epoch_time = state.genesis_time + spec.compute_start_slot_at_epoch(
-        current_epoch) * spec.config.SECONDS_PER_SLOT
+    # Advance the store to the current epoch as per model
+    current_epoch_slot = spec.compute_start_slot_at_epoch(model_params['current_epoch'])
+    current_epoch_time = state.genesis_time + current_epoch_slot * spec.config.SECONDS_PER_SLOT
     if store.time < current_epoch_time:
         on_tick_and_append_step(spec, store, current_epoch_time, test_steps)
 
-    # Ensure the time is set correct
-    assert store.time == current_epoch_time
+    current_epoch = spec.get_current_store_epoch(store)
+    # Ensure the epoch is correct
+    assert current_epoch == model_params['current_epoch']
     # Ensure the store.justified_checkpoint.epoch is as expected
     assert store.justified_checkpoint.epoch == store_justified_epoch
     # Ensure the target block is in filtered_blocks
     filtered_block_roots = list(spec.get_filtered_block_tree(store).keys())
     target_block_root = spec.hash_tree_root(post_block_tips[target_block].beacon_state.latest_block_header)
-    assert target_block_root in filtered_block_roots
+
+    # Check predicates
+    predicates = model_params['predicates']
+    if predicates['store_je_eq_zero']:
+        assert store.justified_checkpoint.epoch == spec.GENESIS_EPOCH, "store_je_eq_zero not satisfied"
+
+    if predicates['block_is_leaf']:
+        assert not any(
+            b for b in store.blocks.values() if b.parent_root == target_block_root), "block_is_leaf not satisfied"
+    else:
+        assert any(
+            b for b in store.blocks.values() if b.parent_root == target_block_root), "block_is_leaf not satisfied"
+
+    voting_source = spec.get_voting_source(store, target_block_root)
+    if predicates['block_vse_eq_store_je']:
+        assert voting_source.epoch == store.justified_checkpoint.epoch, "block_vse_eq_store_je not satisfied"
+    else:
+        assert voting_source.epoch != store.justified_checkpoint.epoch, "block_vse_eq_store_je not satisfied"
+
+    if predicates['block_vse_plus_two_ge_curr_e']:
+        assert voting_source.epoch + 2 >= current_epoch, "block_vse_plus_two_ge_curr_e not satisfied"
+    else:
+        assert voting_source.epoch + 2 < current_epoch, "block_vse_plus_two_ge_curr_e not satisfied"
+
+    # Ensure the target block is in filtered blocks if it is a leaf and eligible
+    if (predicates['block_is_leaf']
+            and (predicates['store_je_eq_zero']
+                 or predicates['block_vse_eq_store_je']
+                 or predicates['block_vse_plus_two_ge_curr_e'])):
+        assert target_block_root in filtered_block_roots
 
     test_steps.append({'property_checks': {'filtered_block_roots': [str(r) for r in filtered_block_roots]}})
 
