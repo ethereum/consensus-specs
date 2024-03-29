@@ -375,7 +375,7 @@ def get_validator_max_effective_balance(validator: Validator) -> Gwei:
     if has_compounding_withdrawal_credential(validator):
         return MAX_EFFECTIVE_BALANCE_EIP7251
     else:
-        return MAX_EFFECTIVE_BALANCE
+        return MIN_ACTIVATION_BALANCE
 ```
 
 #### New `get_churn_limit`
@@ -413,8 +413,12 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 
 ```python
 def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    max_effective_balance = get_validator_max_effective_balance(state.validators[validator_index])
-    return min(state.balances[validator_index], max_effective_balance)
+    active_balance_ceil = (
+        MIN_ACTIVATION_BALANCE 
+        if has_eth1_withdrawal_credential(state.validators[validator_index]) 
+        else MAX_EFFECTIVE_BALANCE_EIP7251
+    )
+    return min(state.balances[validator_index], active_balance_ceil)
 ```
 
 #### New `get_pending_balance_to_withdraw`
@@ -646,12 +650,16 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         HYSTERESIS_INCREMENT = uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
-        max_effective_balance = get_validator_max_effective_balance(validator)
+        EFFECTIVE_BALANCE_LIMIT = (
+            MAX_EFFECTIVE_BALANCE_EIP7251 if has_compounding_withdrawal_credential(validator)
+            else MIN_ACTIVATION_BALANCE
+        )
+
         if (
             balance + DOWNWARD_THRESHOLD < validator.effective_balance
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
-            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)  # [Modified in EIP7251]
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, EFFECTIVE_BALANCE_LIMIT)
 ```
 
 ### Block processing
@@ -682,10 +690,10 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             break
 
         validator = state.validators[withdrawal.index]
-        has_sufficient_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
-        has_excess_balance = state.balances[withdrawal.index] > MAX_EFFECTIVE_BALANCE
+        has_sufficient_effective_balance = validator.effective_balance == MIN_ACTIVATION_BALANCE
+        has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
-            withdrawable_balance = min(state.balances[withdrawal.index] - MAX_EFFECTIVE_BALANCE, withdrawal.amount)
+            withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
                 validator_index=withdrawal.index,
@@ -902,13 +910,13 @@ def process_execution_layer_withdraw_request(
         return
 
 
-    has_sufficient_effective_balance = validator.effective_balance == MAX_EFFECTIVE_BALANCE
-    has_excess_balance = state.balances[index] > MAX_EFFECTIVE_BALANCE + pending_balance_to_withdraw
+    has_sufficient_effective_balance = validator.effective_balance == MIN_ACTIVATION_BALANCE
+    has_excess_balance = state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
 
     # Only allow partial withdrawals with compounding withdrawal credentials
     if has_compounding_withdrawal_credential(validator) and has_sufficient_effective_balance and has_excess_balance:
         to_withdraw = min(
-            state.balances[index] - MAX_EFFECTIVE_BALANCE - pending_balance_to_withdraw,
+            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
             amount
         )
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
@@ -929,7 +937,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     # If the pending consolidations queue is full, no consolidations are allowed in the block
     assert len(state.pending_consolidations) < PENDING_CONSOLIDATIONS_LIMIT
     # If there is too little available consolidation churn limit, no consolidations are allowed in the block
-    assert get_consolidation_churn_limit(state) > MAX_EFFECTIVE_BALANCE
+    assert get_consolidation_churn_limit(state) > MIN_ACTIVATION_BALANCE
     consolidation = signed_consolidation.message
     # Verify that source != target, so a consolidation cannot be used as an exit.
     assert consolidation.source_index != consolidation.target_index
