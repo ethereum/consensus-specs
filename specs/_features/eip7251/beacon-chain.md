@@ -909,7 +909,6 @@ def process_execution_layer_withdraw_request(
 
         return
 
-
     has_sufficient_effective_balance = validator.effective_balance == MIN_ACTIVATION_BALANCE
     has_excess_balance = state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
 
