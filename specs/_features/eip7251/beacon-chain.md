@@ -404,12 +404,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 
 ```python
 def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    active_balance_ceil = (
-        MIN_ACTIVATION_BALANCE 
-        if has_eth1_withdrawal_credential(state.validators[validator_index]) 
-        else MAX_EFFECTIVE_BALANCE_EIP7251
-    )
-    return min(state.balances[validator_index], active_balance_ceil)
+    max_effective_balance = get_validator_max_effective_balance(state.validators[validator_index])
+    return min(state.balances[validator_index], max_effective_balance)
 ```
 
 ### Beacon state mutators
