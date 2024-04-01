@@ -20,6 +20,7 @@ EIP6110 = SpecForkName('eip6110')
 EIP7002 = SpecForkName('eip7002')
 EIP7549 = SpecForkName('eip7549')
 WHISK = SpecForkName('whisk')
+EIP7251 = SpecForkName('eip7251')
 EIP7594 = SpecForkName('eip7594')
 
 #
@@ -39,6 +40,7 @@ ALL_PHASES = (
     # Experimental patches
     EIP6110,
     EIP7002,
+    EIP7251,
     EIP7549,
     EIP7594,
 )
@@ -62,6 +64,7 @@ PREVIOUS_FORK_OF = {
     WHISK: CAPELLA,
     EIP7002: CAPELLA,
     EIP7549: DENEB,
+    EIP7251: DENEB,
     EIP7594: DENEB,
 }
 

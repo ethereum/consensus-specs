@@ -25,6 +25,7 @@ tests/core/pyspec/eth2spec/eip6110/
 tests/core/pyspec/eth2spec/eip7002/
 tests/core/pyspec/eth2spec/eip7549/
 tests/core/pyspec/eth2spec/whisk/
+tests/core/pyspec/eth2spec/eip7251/
 tests/core/pyspec/eth2spec/eip7594/
 
 # coverage reports

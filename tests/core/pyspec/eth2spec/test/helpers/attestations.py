@@ -106,14 +106,12 @@ def get_valid_attestation(spec,
 
     beacon_committee = spec.get_beacon_committee(state, slot, index)
 
-    committee_size = len(beacon_committee)
-    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     if is_post_eip7549(spec):
-        attestation = spec.Attestation(
-            aggregation_bits_list=[aggregation_bits],
-            data=attestation_data,
-        )
+        # will fill aggregation_bits later
+        attestation = spec.Attestation(data=attestation_data)
     else:
+        committee_size = len(beacon_committee)
+        aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
         attestation = spec.Attestation(
             aggregation_bits=aggregation_bits,
             data=attestation_data,
@@ -182,16 +180,19 @@ def fill_aggregate_attestation(spec, state, attestation, committee_index, signed
     if filter_participant_set is not None:
         participants = filter_participant_set(participants)
 
-    committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
+    if is_post_eip7549(spec):
+        attestation.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
+        attestation.committee_bits[committee_index] = True
+        attestation.aggregation_bits = get_empty_eip7549_aggregation_bits(
+            spec, state, attestation.committee_bits, attestation.data.slot)
     for i in range(len(beacon_committee)):
         if is_post_eip7549(spec):
-            committee_bits[committee_index] = True
-            attestation.aggregation_bits_list[0][i] = beacon_committee[i] in participants
+            offset = get_eip7549_aggregation_bits_offset(
+                spec, state, attestation.data.slot, attestation.committee_bits, committee_index)
+            aggregation_bits_index = offset + i
+            attestation.aggregation_bits[aggregation_bits_index] = beacon_committee[i] in participants
         else:
             attestation.aggregation_bits[i] = beacon_committee[i] in participants
-
-    if is_post_eip7549(spec):
-        attestation.committee_bits = committee_bits
 
     if signed and len(participants) > 0:
         sign_attestation(spec, state, attestation)
@@ -365,12 +366,8 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
                         return participation_fn(state.slot, committee_index, comm)
                 attestation = get_valid_attestation(spec, state, index=committee_index,
                                                     filter_participant_set=temp_participants_filter, signed=True)
-                if is_post_eip7549(spec):
-                    if any(attestation.aggregation_bits_list):
-                        attestations.append(attestation)
-                else:
-                    if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
-                        attestations.append(attestation)
+                if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
+                    attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
             inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
@@ -411,3 +408,27 @@ def get_max_attestations(spec):
         return spec.MAX_ATTESTATIONS_EIP7549
     else:
         return spec.MAX_ATTESTATIONS
+
+
+def get_empty_eip7549_aggregation_bits(spec, state, committee_bits, slot):
+    committee_indices = spec.get_committee_indices(committee_bits)
+    participants_count = 0
+    for index in committee_indices:
+        committee = spec.get_beacon_committee(state, slot, index)
+        participants_count += len(committee)
+    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT](
+        [False] * participants_count
+    )
+    return aggregation_bits
+
+
+def get_eip7549_aggregation_bits_offset(spec, state, slot, committee_bits, committee_index):
+    committee_indices = spec.get_committee_indices(committee_bits)
+    assert committee_index in committee_indices
+    offset = 0
+    for i in committee_indices:
+        if committee_index == i:
+            break
+        committee = spec.get_beacon_committee(state, slot, committee_indices[i])
+        offset += len(committee)
+    return offset

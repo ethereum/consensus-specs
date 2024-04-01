@@ -11,7 +11,6 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
 )
 from eth2spec.test.helpers.constants import MAINNET
-from eth2spec.test.helpers.forks import is_post_eip7549
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -33,10 +32,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
 
 
 def _get_aggregation_bits(spec, attestation):
-    if is_post_eip7549(spec):
-        aggregation_bits = attestation.aggregation_bits_list[0]
-    else:
-        aggregation_bits = attestation.aggregation_bits
+    aggregation_bits = attestation.aggregation_bits
     return aggregation_bits
 
 
