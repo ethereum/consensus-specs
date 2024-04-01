@@ -31,11 +31,6 @@ def _apply_base_block_a(spec, state, store, test_steps):
     assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
 
 
-def _get_aggregation_bits(spec, attestation):
-    aggregation_bits = attestation.aggregation_bits
-    return aggregation_bits
-
-
 @with_altair_and_later
 @spec_state_test
 def test_ex_ante_vanilla(spec, state):
@@ -83,8 +78,7 @@ def test_ex_ante_vanilla(spec, state):
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    aggregation_bits = _get_aggregation_bits(spec, attestation)
-    assert len([i for i in aggregation_bits if i == 1]) == 1
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
     sign_attestation(spec, state_b, attestation)
 
     # Block C received at N+2 — C is head
@@ -186,8 +180,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
         spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    aggregation_bits = _get_aggregation_bits(spec, attestation)
-    assert len([i for i in aggregation_bits if i == 1]) == participant_num
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
     sign_attestation(spec, state_b, attestation)
 
     # Attestation_set_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
@@ -311,8 +304,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
         spec, state_c, slot=state_c.slot, signed=False, filter_participant_set=_filter_participant_set
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
-    aggregation_bits = _get_aggregation_bits(spec, attestation)
-    assert len([i for i in aggregation_bits if i == 1]) == 1
+    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
     sign_attestation(spec, state_c, attestation)
 
     # Block D at slot `N + 3`, parent is B

@@ -358,8 +358,7 @@ def test_invalid_too_few_aggregation_bits(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
-        *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1))
-    )
+        *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1)))
 
     sign_attestation(spec, state, attestation)
 
