@@ -101,7 +101,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
     """
-    output = set()
+    output: Set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for index in committee_indices:
