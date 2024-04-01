@@ -46,8 +46,8 @@ def _find_sm_link_solutions(anchor_epoch: int,
         yield [_ for _ in zip(solutions[i, 'sources'], solutions[i, 'targets'])]
 
 
-def _load_sm_link_solutions(sm_links_path: str) -> Iterable[Iterable[tuple]]:
-    solutions = yaml.load(open(sm_links_path, 'r'))
+def _load_sm_link_solutions(instance_path: str) -> Iterable[Iterable[tuple]]:
+    solutions = yaml.load(open(instance_path, 'r'))
     print('solutions', solutions)
     for solution in solutions:
         yield list(zip(solution['sources'], solution['targets']))
