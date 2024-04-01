@@ -148,14 +148,13 @@ if __name__ == "__main__":
         required=False,
         help='Number of super majority links per solution'
     )
-
     arg_parser.add_argument(
         '--fc-gen-instances-path',
         dest='fc_gen_instances_path',
         default=None,
         type=str,
         required=False,
-        help='Path to a file with SM link instances'
+        help='Path to a file with pre-generated instances'
     )
 
     args = arg_parser.parse_args()
