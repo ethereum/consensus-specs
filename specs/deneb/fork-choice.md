@@ -102,6 +102,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
+    if compute_timestamp_at_slot(block.slot) > 1735117200 and state.fork.current_version != ELECTRA_FORK_VERSION:
+        return
+
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
