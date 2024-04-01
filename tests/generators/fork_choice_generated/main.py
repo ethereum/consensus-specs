@@ -7,7 +7,12 @@ from importlib import import_module
 from eth2spec.utils import bls
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from minizinc import Instance, Model, Solver
+from ruamel.yaml import YAML
 import random
+
+
+yaml = YAML(typ='safe')
+
 
 BLS_ACTIVE = False
 GENERATOR_NAME = 'fork_choice_generated'
@@ -41,13 +46,18 @@ def _find_sm_link_solutions(anchor_epoch: int,
         yield [_ for _ in zip(solutions[i, 'sources'], solutions[i, 'targets'])]
 
 
+def _load_sm_link_solutions(sm_links_path: str) -> Iterable[Iterable[tuple]]:
+    solutions = yaml.load(open(sm_links_path, 'r'))
+    print('solutions', solutions)
+    for solution in solutions:
+        yield list(zip(solution['sources'], solution['targets']))
+
+
 def _create_providers(forks: Iterable[SpecForkName],
         presets: Iterable[PresetBaseName],
         debug: bool,
         initial_seed: int,
-        anchor_epoch: int,
-        number_of_epochs: int,
-        number_of_links: int,
+        solutions: Iterable[Iterable[tuple]],
         number_of_variations: int) -> Iterable[TestProvider]:
     def prepare_fn() -> None:
         bls.use_milagro()
@@ -55,7 +65,7 @@ def _create_providers(forks: Iterable[SpecForkName],
 
     def make_cases_fn() -> Iterable[TestCase]:
         test_fn = _import_test_fn()
-        solutions = _find_sm_link_solutions(anchor_epoch, number_of_epochs, number_of_links)
+        # solutions = _find_sm_link_solutions(anchor_epoch, number_of_epochs, number_of_links)
 
         seeds = [initial_seed]
         if number_of_variations > 1:
@@ -139,15 +149,27 @@ if __name__ == "__main__":
         help='Number of super majority links per solution'
     )
 
+    arg_parser.add_argument(
+        '--fc-gen-instances-path',
+        dest='fc_gen_instances_path',
+        default=None,
+        type=str,
+        required=False,
+        help='Path to a file with SM link instances'
+    )
+
     args = arg_parser.parse_args()
+
+    if args.fc_gen_instances_path is not None:
+        solutions = _load_sm_link_solutions(args.fc_gen_instances_path)
+    else:
+        solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
 
     gen_runner.run_generator(GENERATOR_NAME,
                              _create_providers(forks=forks,
                                                presets=presets,
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,
-                                               anchor_epoch=args.fc_gen_anchor_epoch,
-                                               number_of_epochs=args.fc_gen_epochs,
-                                               number_of_links=args.fc_gen_links,
+                                               solutions=solutions,
                                                number_of_variations=args.fc_gen_variations),
                              arg_parser)
