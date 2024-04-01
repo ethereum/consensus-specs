@@ -616,7 +616,7 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
             k, m = divmod(len(lst), n)
             return [lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
 
-        attesting_tips = rnd.sample(block_tree_tips, min(len(block_tree_tips), MAX_TIPS_TO_ATTEST))
+        attesting_tips = rnd.sample(sorted(block_tree_tips), min(len(block_tree_tips), MAX_TIPS_TO_ATTEST))
         attesters = split_list([i for i in range(len(post_state.validators))], len(attesting_tips))
         for index, attesting_block_index in enumerate(attesting_tips):
             # Advance the state to the current slot
