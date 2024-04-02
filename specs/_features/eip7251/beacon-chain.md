@@ -21,7 +21,7 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [New `PendingBalanceDeposit`](#new-pendingbalancedeposit)
-    - [New `PartialWithdrawal`](#new-partialwithdrawal)
+    - [New `PendingPartialWithdrawal`](#new-pendingPartialWithdrawal)
     - [New `ExecutionLayerWithdrawRequest`](#new-executionlayerwithdrawrequest)
     - [New `Consolidation`](#new-consolidation)
     - [New `SignedConsolidation`](#new-signedconsolidation)
@@ -160,10 +160,10 @@ class PendingBalanceDeposit(Container):
     amount: Gwei
 ```
 
-#### New `PartialWithdrawal`
+#### New `PendingPartialWithdrawal`
 
 ```python
-class PartialWithdrawal(Container):
+class PendingPartialWithdrawal(Container):
     index: ValidatorIndex
     amount: Gwei
     withdrawable_epoch: Epoch
@@ -254,7 +254,7 @@ class BeaconState(Container):
     consolidation_balance_to_consume: Gwei  # [New in EIP-7251]
     earliest_consolidation_epoch: Epoch  # [New in EIP-7251]
     pending_balance_deposits: List[PendingBalanceDeposit, PENDING_BALANCE_DEPOSITS_LIMIT]  # [New in EIP-7251]
-    pending_partial_withdrawals: List[PartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]  # [New in EIP-7251]
+    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]  # [New in EIP-7251]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in EIP-7251]
 ```
 
@@ -904,7 +904,7 @@ def process_execution_layer_withdraw_request(
         )
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
         withdrawable_epoch = Epoch(exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
-        state.pending_partial_withdrawals.append(PartialWithdrawal(
+        state.pending_partial_withdrawals.append(PendingPartialWithdrawal(
             index=index,
             amount=to_withdraw,
             withdrawable_epoch=withdrawable_epoch,

@@ -154,7 +154,7 @@ def test_partial_withdrawal_queue_full(spec, state):
         amount=10 ** 9,
     )
 
-    partial_withdrawal = spec.PartialWithdrawal(index=0, amount=1, withdrawable_epoch=current_epoch)
+    partial_withdrawal = spec.PendingPartialWithdrawal(index=0, amount=1, withdrawable_epoch=current_epoch)
     state.pending_partial_withdrawals = [partial_withdrawal] * spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
     yield from run_execution_layer_withdraw_request_processing(
         spec, state, execution_layer_withdraw_request, success=False
