@@ -21,7 +21,7 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [New `PendingBalanceDeposit`](#new-pendingbalancedeposit)
-    - [New `PendingPartialWithdrawal`](#new-pendingPartialWithdrawal)
+    - [New `PendingPartialWithdrawal`](#new-pendingpartialwithdrawal)
     - [New `ExecutionLayerWithdrawRequest`](#new-executionlayerwithdrawrequest)
     - [New `Consolidation`](#new-consolidation)
     - [New `SignedConsolidation`](#new-signedconsolidation)
