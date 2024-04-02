@@ -15,6 +15,10 @@ BLS_ACTIVE = False
 GENERATOR_NAME = 'filter_block_tree'
 
 
+forks = [ALTAIR]
+presets = [MINIMAL]
+
+
 def _load_model_solutions(instance_path: str):
     yaml = YAML(typ='safe')
     solutions = yaml.load(open(instance_path, 'r'))
@@ -134,9 +138,6 @@ def _create_providers(forks: Iterable[SpecForkName],
 
 
 if __name__ == "__main__":
-    forks = [ALTAIR]
-    presets = [MINIMAL]
-
     arg_parser = gen_runner.create_arg_parser(GENERATOR_NAME)
 
     arg_parser.add_argument(

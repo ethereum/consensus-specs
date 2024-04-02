@@ -18,6 +18,10 @@ BLS_ACTIVE = False
 GENERATOR_NAME = 'fork_choice_generated'
 
 
+forks = [ALTAIR]
+presets = [MINIMAL]
+
+
 def _import_test_fn():
     src = import_module('eth2spec.test.phase0.fork_choice.test_sm_links_tree_model')
     print("generating test vectors from tests source: %s" % src.__name__)
@@ -97,9 +101,6 @@ def _create_providers(forks: Iterable[SpecForkName],
 
 
 if __name__ == "__main__":
-    forks = [ALTAIR]
-    presets = [MINIMAL]
-
     arg_parser = gen_runner.create_arg_parser(GENERATOR_NAME)
 
     arg_parser.add_argument(
