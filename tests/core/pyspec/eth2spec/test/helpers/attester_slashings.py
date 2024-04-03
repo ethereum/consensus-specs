@@ -1,4 +1,5 @@
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation, sign_indexed_attestation
+from eth2spec.test.helpers.forks import is_post_eip7549
 
 
 def get_valid_attester_slashing(spec, state, slot=None, signed_1=False, signed_2=False, filter_participant_set=None):
@@ -62,3 +63,10 @@ def get_attestation_1_data(spec, att_slashing):
 
 def get_attestation_2_data(spec, att_slashing):
     return att_slashing.attestation_2.data
+
+
+def get_max_attester_slashings(spec):
+    if is_post_eip7549(spec):
+        return spec.MAX_ATTESTER_SLASHINGS_EIP7549
+    else:
+        return spec.MAX_ATTESTER_SLASHINGS

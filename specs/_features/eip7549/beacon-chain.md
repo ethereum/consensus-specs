@@ -12,6 +12,7 @@
   - [Modified containers](#modified-containers)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
+    - [`BeaconBlockBody`](#beaconblockbody)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`get_committee_indices`](#get_committee_indices)
@@ -33,8 +34,8 @@ This is the beacon chain specification to move the attestation committee index o
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_ATTESTER_SLASHINGS` | `2**0` (= 1) |
-| `MAX_ATTESTATIONS`       | `2**3` (= 8) |
+| `MAX_ATTESTER_SLASHINGS_EIP7549`   | `2**0` (= 1) |
+| `MAX_ATTESTATIONS_EIP7549` | `2**3` (= 8) |
 
 ## Containers
 
@@ -60,6 +61,26 @@ class IndexedAttestation(Container):
     signature: BLSSignature
 ```
 
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_EIP7549]  # [Modified in EIP7549]
+    attestations: List[Attestation, MAX_ATTESTATIONS_EIP7549]  # [Modified in EIP7549]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
+    # Execution
+    execution_payload: ExecutionPayload
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
+
 ## Helper functions
 
 ### Misc
@@ -67,8 +88,8 @@ class IndexedAttestation(Container):
 #### `get_committee_indices`
 
 ```python
-def get_committee_indices(commitee_bits: Bitvector) -> List[CommitteeIndex]:
-    return [CommitteeIndex(index) for bit, index in enumerate(commitee_bits) if bit]
+def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
+    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
 ```
 
 ### Beacon state accessors
@@ -80,8 +101,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
     """
-
-    output = set()
+    output: Set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for index in committee_indices:

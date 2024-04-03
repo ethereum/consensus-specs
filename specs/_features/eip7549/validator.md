@@ -9,6 +9,7 @@
 - [Modifications in EIP-7549](#modifications-in-eip-7549)
   - [Block proposal](#block-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Attester slashings](#attester-slashings)
       - [Attestations](#attestations)
   - [Attesting](#attesting)
     - [Construct attestation](#construct-attestation)
@@ -24,6 +25,10 @@
 
 #### Constructing the `BeaconBlockBody`
 
+##### Attester slashings
+
+Changed the max attestations size to `MAX_ATTESTER_SLASHINGS_EIP7549`.
+
 ##### Attestations
 
 The network attestation aggregates contain only the assigned committee attestations.
@@ -31,7 +36,7 @@ Attestation aggregates received by the block proposer from the committee aggrega
 The proposer should run the following function to construct an on chain final aggregate form a list of network aggregates with equal `AttestationData`:
 
 ```python
-def compute_on_chain_aggregate(network_aggregates: List[Attestation]) -> Attestation:
+def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Attestation:
     aggregates = sorted(network_aggregates, key=lambda a: get_committee_indices(a.committee_bits)[0])
 
     data = aggregates[0].data

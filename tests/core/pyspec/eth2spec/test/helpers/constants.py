@@ -18,6 +18,7 @@ CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 EIP6110 = SpecForkName('eip6110')
 EIP7002 = SpecForkName('eip7002')
+EIP7549 = SpecForkName('eip7549')
 WHISK = SpecForkName('whisk')
 EIP7251 = SpecForkName('eip7251')
 EIP7594 = SpecForkName('eip7594')
@@ -40,6 +41,7 @@ ALL_PHASES = (
     EIP6110,
     EIP7002,
     EIP7251,
+    EIP7549,
     EIP7594,
 )
 # The forks that have light client specs
@@ -61,6 +63,7 @@ PREVIOUS_FORK_OF = {
     EIP6110: DENEB,
     WHISK: CAPELLA,
     EIP7002: CAPELLA,
+    EIP7549: DENEB,
     EIP7251: DENEB,
     EIP7594: DENEB,
 }
