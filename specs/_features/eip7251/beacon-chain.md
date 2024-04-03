@@ -454,9 +454,9 @@ def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -
 ```python
 def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> None:
     balance = state.balances[index]
-    if balance > MAX_EFFECTIVE_BALANCE:
-        excess_balance = balance - MAX_EFFECTIVE_BALANCE
-        state.balances[index] = balance - excess_balance
+    if balance > MIN_ACTIVATION_BALANCE:
+        excess_balance = balance - MIN_ACTIVATION_BALANCE
+        state.balances[index] = MIN_ACTIVATION_BALANCE
         state.pending_balance_deposits.append(
             PendingBalanceDeposit(index=index, amount=excess_balance)
         )
