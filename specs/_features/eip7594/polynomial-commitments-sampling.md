@@ -1,4 +1,4 @@
-# Deneb -- Polynomial Commitments
+# EIP-7594 -- Polynomial Commitments
 
 ## Table of contents
 
@@ -65,6 +65,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `PolynomialCoeff` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
 | `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
 | `CellID` | `uint64` | Cell identifier |
+| `RowIndex` | `uint64` | Row identifier |
+| `ColumnIndex` | `uint64` | Column identifier |
 
 ## Constants
 
@@ -442,8 +444,8 @@ def verify_cell_proof(commitment_bytes: Bytes48,
 
 ```python
 def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
-                            row_ids: Sequence[uint64],
-                            column_ids: Sequence[uint64],
+                            row_indices: Sequence[RowIndex],
+                            column_indices: Sequence[ColumnIndex],
                             cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
                             proofs_bytes: Sequence[Bytes48]) -> bool:
     """
@@ -460,10 +462,10 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 
     Public method.
     """
-    assert len(cells_bytes) == len(proofs_bytes) == len(row_ids) == len(column_ids)
+    assert len(cells_bytes) == len(proofs_bytes) == len(row_indices) == len(column_indices)
 
     # Get commitments via row IDs
-    commitments_bytes = [row_commitments_bytes[row_id] for row_id in row_ids]
+    commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
 
     # Get objects from bytes
     commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in commitments_bytes]
@@ -471,8 +473,8 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
     return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_id), cell, proof)
-        for commitment, column_id, cell, proof in zip(commitments, column_ids, cells, proofs)
+        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), cell, proof)
+        for commitment, column_index, cell, proof in zip(commitments, column_indices, cells, proofs)
     )
 ```
 
