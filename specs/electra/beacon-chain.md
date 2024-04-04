@@ -200,7 +200,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Electra:EIP6110]
+    process_operations(state, block.body)  # [Modified in Electra:EIP6110:EIP7002]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
