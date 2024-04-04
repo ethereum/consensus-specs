@@ -588,6 +588,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
+    deposits_to_postpone = []
 
     for deposit in state.pending_balance_deposits:
         # Validator is exited, balance never becomes active, no need to consume churn
@@ -595,7 +596,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
             increase_balance(state, deposit.index, deposit.amount)
         # Validator is active but exiting, postpone the deposit
         elif validator.exit_epoch < FAR_FUTURE_EPOCH:
-            state.pending_balance_deposits.append(deposit)
+            deposits_to_postpone.append(deposit)
         # Validator is active and not exiting, but deposit does not fit in the churn
         elif processed_amount + deposit.amount > available_for_processing:
             break
@@ -611,6 +612,8 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
         state.deposit_balance_to_consume = 0
     else:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
+
+    state.pending_balance_deposits += deposits_to_postpone
 ```
 
 #### New `process_pending_consolidations`
