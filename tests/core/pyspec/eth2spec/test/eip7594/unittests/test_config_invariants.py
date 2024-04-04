@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    spec_test,
     single_phase,
+    spec_test,
     with_eip7594_and_later,
 )
 
@@ -18,3 +18,7 @@ def test_invariants(spec):
     assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
         spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.NUMBER_OF_COLUMNS
     )
+
+
+def test_polynomical_commitments_sampling(spec):
+    assert spec.FIELD_ELEMENTS_PER_EXT_BLOB == 2 * spec.FIELD_ELEMENTS_PER_BLOB

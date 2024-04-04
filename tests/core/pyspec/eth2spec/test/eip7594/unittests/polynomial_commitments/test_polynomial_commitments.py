@@ -2,6 +2,7 @@ import random
 from eth2spec.test.context import (
     spec_test,
     single_phase,
+    expect_assertion_error,
     with_eip7594_and_later,
 )
 from eth2spec.test.helpers.sharding import (
@@ -101,3 +102,19 @@ def test_recover_polynomial(spec):
     # Now flatten the cells and check that they match the entirety of the recovered data
     flattened_cells = [x for xs in cells for x in xs]
     assert flattened_cells == recovered_data
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_multiply_polynomial_degree_overflow(spec):
+    rng = random.Random(5566)
+
+    # Perform a legitimate-but-maxed-out polynomial multiplication
+    poly1_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    poly2_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    _ = spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff)
+
+    # Now overflow the degree by pumping the degree of one of the inputs by one
+    poly2_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)]
+    expect_assertion_error(lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff))

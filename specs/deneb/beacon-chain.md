@@ -1,7 +1,5 @@
 # Deneb -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -337,7 +335,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+    for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)

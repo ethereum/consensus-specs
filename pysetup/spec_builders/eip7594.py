@@ -24,4 +24,5 @@ from eth2spec.deneb import {preset_name} as deneb
     def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
         return {
             'KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH'].value,
+            'FIELD_ELEMENTS_PER_EXT_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_EXT_BLOB'].value,
         }

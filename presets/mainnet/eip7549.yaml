@@ -1,0 +1,8 @@
+# Mainnet preset - EIP7594
+
+# # Max operations per block
+# ---------------------------------------------------------------
+# `uint64(2**0)` (= 1)
+MAX_ATTESTER_SLASHINGS_EIP7549: 1
+# `uint64(2 * 3)` (= 8)
+MAX_ATTESTATIONS_EIP7549: 8
