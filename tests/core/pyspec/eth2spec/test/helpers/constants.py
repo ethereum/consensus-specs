@@ -11,13 +11,15 @@ ALTAIR = SpecForkName('altair')
 BELLATRIX = SpecForkName('bellatrix')
 CAPELLA = SpecForkName('capella')
 DENEB = SpecForkName('deneb')
+ELECTRA = SpecForkName('electra')
 
 # Experimental phases (not included in default "ALL_PHASES"):
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
-ELECTRA = SpecForkName('electra')
+EIP7549 = SpecForkName('eip7549')
 WHISK = SpecForkName('whisk')
+EIP7251 = SpecForkName('eip7251')
 EIP7594 = SpecForkName('eip7594')
 
 #
@@ -36,6 +38,8 @@ ALL_PHASES = (
     DENEB,
     ELECTRA,
     # Experimental patches
+    EIP7251,
+    EIP7549,
     EIP7594,
 )
 # The forks that have light client specs
@@ -56,6 +60,8 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
+    EIP7549: DENEB,
+    EIP7251: DENEB,
     EIP7594: DENEB,
 }
 
