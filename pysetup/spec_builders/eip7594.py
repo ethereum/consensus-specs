@@ -17,6 +17,7 @@ from eth2spec.deneb import {preset_name} as deneb
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         return {
             'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
+            'FIELD_ELEMENTS_PER_EXT_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_EXT_BLOB'].value,
             'NUMBER_OF_COLUMNS': spec_object.config_vars['NUMBER_OF_COLUMNS'].value,
         }
 
@@ -24,5 +25,4 @@ from eth2spec.deneb import {preset_name} as deneb
     def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
         return {
             'KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH'].value,
-            'FIELD_ELEMENTS_PER_EXT_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_EXT_BLOB'].value,
         }
