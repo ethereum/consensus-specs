@@ -20,6 +20,7 @@
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
+    - [`bls_field_to_bytes`](#bls_field_to_bytes)
     - [`validate_kzg_g1`](#validate_kzg_g1)
     - [`bytes_to_kzg_commitment`](#bytes_to_kzg_commitment)
     - [`bytes_to_kzg_proof`](#bytes_to_kzg_proof)
@@ -170,6 +171,12 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element)
 ```
 
+#### `bls_field_to_bytes`
+
+```python
+def bls_field_to_bytes(x: BLSFieldElement) -> Bytes32:
+    return int.to_bytes(x % BLS_MODULUS, 32, KZG_ENDIANNESS)
+```
 
 #### `validate_kzg_g1`
 

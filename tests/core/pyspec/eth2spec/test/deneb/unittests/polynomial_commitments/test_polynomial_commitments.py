@@ -32,10 +32,6 @@ def bls_add_one(x):
     )
 
 
-def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "big")
-
-
 @with_deneb_and_later
 @spec_test
 @single_phase
@@ -43,7 +39,7 @@ def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
-    x = field_element_bytes(3)
+    x = spec.bls_field_to_bytes(3)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -58,7 +54,7 @@ def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = field_element_bytes(3465)
+    x = spec.bls_field_to_bytes(3465)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)

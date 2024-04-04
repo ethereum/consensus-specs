@@ -61,6 +61,19 @@ class GetPayloadResponse(object):
     blobs_bundle: BlobsBundle  # [New in Deneb:EIP4844]
 ```
 
+```python
+def compute_signed_block_header(signed_block: SignedBeaconBlock) -> SignedBeaconBlockHeader:
+    block = signed_block.message
+    block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=block.state_root,
+        body_root=hash_tree_root(block.body),
+    )
+    return SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
+```
+
 ## Protocol
 
 ### `ExecutionEngine`
@@ -145,14 +158,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
     block = signed_block.message
-    block_header = BeaconBlockHeader(
-        slot=block.slot,
-        proposer_index=block.proposer_index,
-        parent_root=block.parent_root,
-        state_root=block.state_root,
-        body_root=hash_tree_root(block.body),
-    )
-    signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
+    signed_block_header = compute_signed_block_header(signed_block)
     return [
         BlobSidecar(
             index=index,
