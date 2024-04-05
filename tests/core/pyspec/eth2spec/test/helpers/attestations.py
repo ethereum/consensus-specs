@@ -272,7 +272,7 @@ def _aggregate_aggregation_bits_and_signatures(spec, state, slot, aggregate, att
 
 def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None):
     """
-    Return the aggregate attestation post EIP-7549. 
+    Return the aggregate attestation post EIP-7549.
     Note: this EIP supports dense packing of on-chain aggregates so we can just return a single `Attestation`.
     """
     assert is_post_eip7549(spec)
