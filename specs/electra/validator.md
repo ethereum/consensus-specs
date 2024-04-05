@@ -30,7 +30,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### Deposits
 
-*[New in Electra:EIP6110* The expected number of deposits MUST be changed from `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)` to the result of the following function:
+*[New in Electra:EIP6110]* The expected number of deposits MUST be changed from `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)` to the result of the following function:
 
 ```python
 def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
