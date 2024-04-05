@@ -114,7 +114,7 @@ def test_activation_queue_sorting(spec, state):
     assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
     # the one at churn_limit did not make it, it was out-prioritized
     assert state.validators[churn_limit].activation_epoch == spec.FAR_FUTURE_EPOCH
-    # but the the one in front of the above did
+    # but the one in front of the above did
     assert state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
 
 
