@@ -94,7 +94,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(2**64 - 1)` |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` |
 
 ### Withdrawal prefixes
 
