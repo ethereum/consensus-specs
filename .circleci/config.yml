@@ -168,19 +168,6 @@ jobs:
           command: make citest fork=electra
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  test-eip7549:
-    docker:
-      - image: circleci/python:3.9
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_pyspec_cached_venv
-      - run:
-          name: Run py-tests
-          command: make citest fork=eip7549
-      - store_test_results:
-          path: tests/core/pyspec/test-reports
   test-whisk:
     docker:
       - image: circleci/python:3.9
@@ -328,9 +315,6 @@ workflows:
           requires:
             - install_pyspec_test
       - test-electra:
-          requires:
-            - install_pyspec_test
-      - test-eip7549:
           requires:
             - install_pyspec_test
       - test-whisk:

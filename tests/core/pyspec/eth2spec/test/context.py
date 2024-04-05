@@ -9,7 +9,6 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     EIP7251,
-    EIP7549,
     EIP7594,
     WHISK,
     MINIMAL,
@@ -523,7 +522,6 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip7549_and_later = with_all_phases_from(EIP7549)
 with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7251_and_later = with_all_phases_from(EIP7251, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
