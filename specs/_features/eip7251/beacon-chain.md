@@ -81,7 +81,7 @@
 
 ## Introduction
 
-See [a modest proposal](https://notes.ethereum.org/@mikeneuder/increase-maxeb), the [diff view](https://github.com/michaelneuder/consensus-specs/pull/3/files) and 
+See [a modest proposal](https://notes.ethereum.org/@mikeneuder/increase-maxeb), the [diff view](https://github.com/michaelneuder/consensus-specs/pull/3/files) and
 [security considerations](https://notes.ethereum.org/@fradamt/meb-increase-security).
 
 *Note:* This specification is built upon [Deneb](../../deneb/beacon-chain.md).
@@ -282,7 +282,7 @@ class BeaconBlockBody(Container):
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    execution_payload: ExecutionPayload 
+    execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     consolidations: List[SignedConsolidation, MAX_CONSOLIDATIONS]  # [New in EIP-7251]
@@ -386,7 +386,7 @@ def get_churn_limit(state: BeaconState) -> Gwei:
     Return the churn limit for the current epoch.
     """
     churn = max(
-        MIN_PER_EPOCH_CHURN_LIMIT_EIP7251, 
+        MIN_PER_EPOCH_CHURN_LIMIT_EIP7251,
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT
     )
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
@@ -471,7 +471,6 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
-
 
 ```python
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
@@ -570,12 +569,16 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Updated  `process_registry_updates`
 
+`process_registry_updates` uses the updated definition of `initiate_validator_exit`
+and changes how the activation epochs are computed for eligible validators.
+
 ```python
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
         if is_eligible_for_activation_queue(validator):
             validator.activation_eligibility_epoch = get_current_epoch(state) + 1
+
         if (
             is_active_validator(validator, get_current_epoch(state))
             and validator.effective_balance <= EJECTION_BALANCE
@@ -607,7 +610,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
     state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
 
     if len(state.pending_balance_deposits) == 0:
-        state.deposit_balance_to_consume = 0
+        state.deposit_balance_to_consume = Gwei(0)
     else:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
 ```
@@ -637,6 +640,8 @@ def process_pending_consolidations(state: BeaconState) -> None:
 ```
 
 #### Updated `process_effective_balance_updates`
+
+`process_effective_balance_updates` is updated with a new limit for the maximum effective balance.
 
 ```python
 def process_effective_balance_updates(state: BeaconState) -> None:
@@ -760,7 +765,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         state.next_withdrawal_validator_index = next_validator_index
 ```
 
-#### Operations 
+#### Operations
 
 ##### Updated `process_operations`
 
@@ -779,13 +784,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)  # [Modified in EIP7251]
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    for_ops(body.execution_payload.withdraw_requests, process_execution_layer_withdraw_request)  # New in EIP7251
-    for_ops(body.consolidations, process_consolidation)  # New in EIP7251
+    for_ops(body.execution_payload.withdraw_requests, process_execution_layer_withdraw_request)  # [New in EIP7251]
+    for_ops(body.consolidations, process_consolidation)  # [New in EIP7251]
 ```
 
 ##### Deposits
 
 ###### Updated  `apply_deposit`
+
+*NOTE*: `process_deposit` is updated with a new definition of `apply_deposit`.
 
 ```python
 def apply_deposit(state: BeaconState,
@@ -819,7 +826,7 @@ def apply_deposit(state: BeaconState,
 def is_valid_deposit_signature(pubkey: BLSPubkey,
                                withdrawal_credentials: Bytes32,
                                amount: uint64,
-                               signature: BLSSignature) -> None:
+                               signature: BLSSignature) -> bool:
     deposit_message = DepositMessage(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -862,7 +869,7 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     )
 ```
 
-##### Withdrawals 
+##### Withdrawals
 
 ###### New `process_execution_layer_withdraw_request`
 
@@ -874,7 +881,7 @@ def process_execution_layer_withdraw_request(
     amount = execution_layer_withdraw_request.amount
     is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
 
-    # If partial withdrawal queue is full, only full exits are processed 
+    # If partial withdrawal queue is full, only full exits are processed
     if len(state.pending_partial_withdrawals) >= PENDING_PARTIAL_WITHDRAWALS_LIMIT and not is_full_exit_request:
         return
 
@@ -947,7 +954,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     assert source_validator.exit_epoch == FAR_FUTURE_EPOCH
     assert target_validator.exit_epoch == FAR_FUTURE_EPOCH
     # Consolidations must specify an epoch when they become valid; they are not valid before then
-    assert current_epoch >= consolidation.epoch 
+    assert current_epoch >= consolidation.epoch
 
     # Verify the source and the target have Execution layer withdrawal credentials
     assert has_execution_withdrawal_credential(source_validator)
