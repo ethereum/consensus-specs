@@ -24,6 +24,7 @@ from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block,
+    add_attestation,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -46,6 +47,8 @@ MIN_UNDERJUSTIFICATION_RATE = 55
 EMPTY_SLOTS_RATE = 3
 MAX_TIPS_TO_ATTEST = 2
 
+OUT_OF_BLOCK_ATTESTATION_RATE = 10
+IN_AND_OUT_OF_BLOCK_ATTESTATION_RATE = 90
 
 class SmLink(tuple):
     @property
@@ -578,14 +581,15 @@ def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, de
     return sorted(signed_blocks, key=lambda b: b.message.slot), branch_tips[highest_target_sm_link]
 
 
-def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug, block_parents) -> []:
+def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug, block_parents) -> ([], []):
     signed_blocks = []
 
-    attestations = anchor_tip.attestations.copy()
+    in_block_attestations = anchor_tip.attestations.copy()
     post_states = [anchor_tip.beacon_state.copy()]
     current_slot = anchor_tip.beacon_state.slot
     block_index = 1
     block_tree_tips = set([0])
+    out_of_block_attestations = []
 
     while block_index < len(block_parents):
         # Propose a block if slot shouldn't be empty
@@ -596,11 +600,12 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
             transition_to(spec, parent_state, current_slot)
 
             # Filter out non-viable attestations
-            attestations = [a for a in attestations if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+            in_block_attestations = [a for a in in_block_attestations
+                                     if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
 
             # Produce block
             proposer = spec.get_beacon_proposer_index(parent_state)
-            signed_block, post_state, attestations = _produce_block(spec, parent_state, attestations)
+            signed_block, post_state, in_block_attestations = _produce_block(spec, parent_state, in_block_attestations)
             signed_blocks.append(signed_block)
             post_states.append(post_state)
 
@@ -617,7 +622,8 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
             return [lst[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
 
         attesting_tips = rnd.sample(sorted(block_tree_tips), min(len(block_tree_tips), MAX_TIPS_TO_ATTEST))
-        attesters = split_list([i for i in range(len(post_state.validators))], len(attesting_tips))
+        validator_count = len(post_states[attesting_tips[0]].validators)
+        attesters = split_list([i for i in range(validator_count)], len(attesting_tips))
         for index, attesting_block_index in enumerate(attesting_tips):
             # Advance the state to the current slot
             attesting_state = post_states[attesting_block_index]
@@ -626,8 +632,19 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
             # Attest to the block
             attestations_in_slot = _attest_to_slot(spec, attesting_state, attesting_state.slot,
                                                    lambda comm: [i for i in comm if i in attesters[index]])
-            # Prepend attestations to the list
-            attestations = list(attestations_in_slot) + attestations
+
+            # Sample strictly out of block attestations
+            new_out_of_block_attestations = rnd.sample(
+                attestations_in_slot, len(attestations_in_slot) * OUT_OF_BLOCK_ATTESTATION_RATE // 100)
+
+            # Prepend in block attestations to the list
+            new_in_block_attestations = [a for a in attestations_in_slot if a not in new_out_of_block_attestations]
+            in_block_attestations = new_in_block_attestations + in_block_attestations
+
+            # Sample out of block attestations that are also included in block
+            new_in_and_out_of_block_attestations = rnd.sample(
+                new_in_block_attestations, len(new_in_block_attestations) * IN_AND_OUT_OF_BLOCK_ATTESTATION_RATE // 100)
+            out_of_block_attestations += new_out_of_block_attestations + new_in_and_out_of_block_attestations
 
         # Next slot
         current_slot += 1
@@ -638,8 +655,11 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
         print('              ', 'state.current_justified_checkpoint:',
               '(epoch=' + str(post_states[len(post_states) - 1].current_justified_checkpoint.epoch) +
               ', root=' + str(post_states[len(post_states) - 1].current_justified_checkpoint.root)[:6] + ')')
+        print('on_attestation: ')
+        print('              ', 'count =', len(out_of_block_attestations))
 
-    return sorted(signed_blocks, key=lambda b: b.message.slot)
+    return (sorted(signed_blocks, key=lambda b: b.message.slot),
+            sorted(out_of_block_attestations, key=lambda a: a.data.slot))
 
 
 def _print_head(spec, store):
@@ -651,6 +671,11 @@ def _print_head(spec, store):
     return '(slot=' + str(store.blocks[head].slot) + ', root=' + str(head)[:6] + ', weight=' + str(
         weight * 100 // total_active_balance) + '%)'
 
+
+def _on_tick_and_append_step(spec, store, slot, test_steps):
+    time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, time, test_steps)
+    assert store.time == time
 
 @with_altair_and_later
 @spec_state_test
@@ -687,8 +712,9 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
         seed = new_seed
 
     # Block tree model
+    attestations = []
     if block_parents is not None:
-        block_tree = _generate_block_tree(spec, highest_tip, rnd, debug, block_parents)
+        block_tree, attestations = _generate_block_tree(spec, highest_tip, rnd, debug, block_parents)
         # Merge block_tree and sm_link_tree blocks
         block_tree_root_slot = block_tree[0].message.slot
         signed_blocks = [sb for sb in signed_blocks if sb.message.slot < block_tree_root_slot]
@@ -703,16 +729,30 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    _on_tick_and_append_step(spec, store, state.slot, test_steps)
 
-    # Apply generated blocks
-    for signed_block in signed_blocks:
-        block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        block_root = block.hash_tree_root()
-        assert store.blocks[block_root] == block
+    # Apply generated messages
+    start_slot = min(b.message.slot for b in signed_blocks)
+    end_slot = max(max(b.message.slot for b in signed_blocks),
+                   max(a.data.slot for a in attestations)) + 1
+
+    # Advance time to start_slot
+    _on_tick_and_append_step(spec, store, start_slot, test_steps)
+
+    # Apply messages to store
+    for slot in range(start_slot, end_slot + 1):
+        # on_tick
+        _on_tick_and_append_step(spec, store, slot, test_steps)
+
+        # on_attestation for attestations from the previous slot
+        for attestation in (a for a in attestations if a.data.slot == slot - 1):
+            yield from add_attestation(spec, store, attestation, test_steps)
+
+        # on_block for blocks from the current slot
+        for block in (b for b in signed_blocks if b.message.slot == slot):
+            yield from tick_and_add_block(spec, store, block, test_steps)
+            block_root = block.message.hash_tree_root()
+            assert store.blocks[block_root] == block.message
 
     if debug:
         print('               head: ' + _print_head(spec, store))
