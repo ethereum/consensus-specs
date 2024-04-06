@@ -8,6 +8,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Domains](#domains)
 - [Presets](#presets)
@@ -43,9 +44,9 @@
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_active_balance`](#new-get_active_balance)
+    - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
-    - [New `set_compounding_withdrawal_credentials`](#new-set_compounding_withdrawal_credentials)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
@@ -72,6 +73,8 @@
         - [New `process_execution_layer_withdraw_request`](#new-process_execution_layer_withdraw_request)
       - [Consolidations](#consolidations)
         - [New `process_consolidation`](#new-process_consolidation)
+      - [Voluntary exits](#voluntary-exits)
+        - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -86,6 +89,12 @@ See [a modest proposal](https://notes.ethereum.org/@mikeneuder/increase-maxeb), 
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` |
 
 ### Withdrawal prefixes
 
@@ -408,6 +417,14 @@ def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> G
     return min(state.balances[validator_index], max_effective_balance)
 ```
 
+#### New `get_pending_balance_to_withdraw`
+
+```python
+def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
+    return sum(
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index)
+```
+
 ### Beacon state mutators
 
 #### Updated  `initiate_validator_exit`
@@ -428,15 +445,6 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
-```
-
-#### New `set_compounding_withdrawal_credentials`
-
-```python
-def set_compounding_withdrawal_credentials(state: BeaconState, index: ValidatorIndex) -> None:
-    validator = state.validators[index]
-    if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
 ```
 
 #### New `switch_to_compounding_validator`
@@ -678,7 +686,9 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             break
 
         validator = state.validators[withdrawal.index]
-        if validator.exit_epoch == FAR_FUTURE_EPOCH and state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE:
+        has_sufficient_effective_balance = validator.effective_balance == MIN_ACTIVATION_BALANCE
+        has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
+        if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
             withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -767,7 +777,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)  # [Modified in EIP7251]
-    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.execution_payload.withdraw_requests, process_execution_layer_withdraw_request)  # New in EIP7251
     for_ops(body.consolidations, process_consolidation)  # New in EIP7251
@@ -862,7 +872,8 @@ def process_execution_layer_withdraw_request(
     execution_layer_withdraw_request: ExecutionLayerWithdrawRequest
 ) -> None:
     amount = execution_layer_withdraw_request.amount
-    is_full_exit_request = amount == 0
+    is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
+
     # If partial withdrawal queue is full, only full exits are processed 
     if len(state.pending_partial_withdrawals) >= PENDING_PARTIAL_WITHDRAWALS_LIMIT and not is_full_exit_request:
         return
@@ -884,20 +895,21 @@ def process_execution_layer_withdraw_request(
         and get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     ):
         return
-    # New condition: only allow partial withdrawals with compounding withdrawal credentials
-    if not (is_full_exit_request or has_compounding_withdrawal_credential(validator)):
-        return
 
-    pending_balance_to_withdraw = sum(
-        item.amount for item in state.pending_partial_withdrawals if item.index == index
-    )
-    # only exit validator if it has no pending withdrawals in the queue
-    if is_full_exit_request and pending_balance_to_withdraw > 0:
-        return
+    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, index)
 
     if is_full_exit_request:
-        initiate_validator_exit(state, index)
-    elif state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw:
+        # Only exit validator if it has no pending withdrawals in the queue
+        if pending_balance_to_withdraw == 0:
+            initiate_validator_exit(state, index)
+
+        return
+
+    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    has_excess_balance = state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
+
+    # Only allow partial withdrawals with compounding withdrawal credentials
+    if has_compounding_withdrawal_credential(validator) and has_sufficient_effective_balance and has_excess_balance:
         to_withdraw = min(
             state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
             amount
@@ -941,7 +953,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     assert has_execution_withdrawal_credential(source_validator)
     assert has_execution_withdrawal_credential(target_validator)
     # Verify the same withdrawal address
-    assert source_validator.withdrawal_credentials[1:] == target_validator.withdrawal_credentials[1:]
+    assert source_validator.withdrawal_credentials[12:] == target_validator.withdrawal_credentials[12:]
 
     # Verify consolidation is signed by the source and the target
     domain = compute_domain(DOMAIN_CONSOLIDATION, genesis_validators_root=state.genesis_validators_root)
@@ -950,8 +962,8 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     assert bls.FastAggregateVerify(pubkeys, signing_root, signed_consolidation.signature)
 
     # Initiate source validator exit and append pending consolidation
-    active_balance = get_active_balance(state, consolidation.source_index)
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(state, active_balance)
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance)
     source_validator.withdrawable_epoch = Epoch(
         source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
@@ -961,3 +973,28 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
     ))
 ```
 
+##### Voluntary exits
+
+###### Updated `process_voluntary_exit`
+
+```python
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= voluntary_exit.epoch
+    # Verify the validator has been active long enough
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    # Verify signature
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    # Only exit validator if it has no pending withdrawals in the queue
+    assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in EIP7251]
+    # Initiate exit
+    initiate_validator_exit(state, voluntary_exit.validator_index)
+```
