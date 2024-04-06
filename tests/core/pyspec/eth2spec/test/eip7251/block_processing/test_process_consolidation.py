@@ -106,13 +106,12 @@ def test_basic_consolidation_with_compounding_credential(spec, state):
 def test_consolidation_churn_limit_balance(spec, state):
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
-    # Set the consolidation balance to consume equal to churn limit
-    state.consolidation_balance_to_consume = consolidation_churn_limit
     current_epoch = spec.get_current_epoch(state)
 
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    # Set source balance to consolidation churn limit
-    state.balances[source_index] = consolidation_churn_limit
+    source_validator = state.validators[source_index]
+    source_validator.effective_balance = consolidation_churn_limit
+    updated_consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
     target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
@@ -131,7 +130,7 @@ def test_consolidation_churn_limit_balance(spec, state):
 
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
     # Check consolidation churn is decremented correctly
-    assert state.consolidation_balance_to_consume == 0
+    assert state.consolidation_balance_to_consume == updated_consolidation_churn_limit - consolidation_churn_limit
     # Check exit epoch
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
@@ -145,13 +144,11 @@ def test_consolidation_churn_limit_balance(spec, state):
 def test_consolidation_balance_larger_than_churn_limit(spec, state):
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
-    # Set the consolidation balance to consume equal to churn limit
-    state.consolidation_balance_to_consume = consolidation_churn_limit
     current_epoch = spec.get_current_epoch(state)
 
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set source balance higher than consolidation churn limit
-    state.balances[source_index] = consolidation_churn_limit + 1
+    state.validators[source_index].effective_balance = 2 * consolidation_churn_limit
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
     target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
@@ -159,6 +156,10 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
     # Set source and target withdrawal credentials to the same eth1 credential
     set_compounding_withdrawal_credential(spec, state, source_index)
     set_compounding_withdrawal_credential(spec, state, target_index)
+
+    new_churn_limit = spec.get_consolidation_churn_limit(state)
+    remainder = state.validators[source_index].effective_balance % new_churn_limit
+    expected_balance = new_churn_limit - remainder
 
     signed_consolidation = sign_consolidation(spec, state,
                                               spec.Consolidation(
@@ -170,7 +171,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
 
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch) + 1
     # Check consolidation churn is decremented correctly
-    assert state.consolidation_balance_to_consume == consolidation_churn_limit - 1
+    assert state.consolidation_balance_to_consume == expected_balance
     # Check exit epoch
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
@@ -181,11 +182,9 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit, threshold_fn=default_activation_threshold)
 @spec_test
 @single_phase
-def test_consolidation_balance_twice_the_churn_limit(spec, state):
+def test_consolidation_balance_through_two_churn_epochs(spec, state):
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
-    # Set the consolidation balance to consume equal to churn limit
-    state.consolidation_balance_to_consume = consolidation_churn_limit
     current_epoch = spec.get_current_epoch(state)
 
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -198,7 +197,11 @@ def test_consolidation_balance_twice_the_churn_limit(spec, state):
     set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set source balance higher than consolidation churn limit
-    state.balances[source_index] = 2 * consolidation_churn_limit
+    state.validators[source_index].effective_balance = 3 * consolidation_churn_limit
+
+    new_churn_limit = spec.get_consolidation_churn_limit(state)
+    remainder = state.validators[source_index].effective_balance % new_churn_limit
+    expected_balance = new_churn_limit - remainder
 
     signed_consolidation = sign_consolidation(spec, state,
                                               spec.Consolidation(
@@ -212,7 +215,7 @@ def test_consolidation_balance_twice_the_churn_limit(spec, state):
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch) + 2
     assert state.validators[0].exit_epoch == expected_exit_epoch
     # since the earliest exit epoch moves to a new one, consolidation balance is back to full
-    assert state.consolidation_balance_to_consume == consolidation_churn_limit
+    assert state.consolidation_balance_to_consume == expected_balance
 
 
 @with_eip7251_and_later
