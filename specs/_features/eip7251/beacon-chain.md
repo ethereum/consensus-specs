@@ -620,6 +620,9 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)  # [Modified in EIP7251]
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
+    process_historical_summaries_update(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
 ```
 
 #### Updated  `process_registry_updates`
