@@ -34,6 +34,7 @@ from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
+    is_post_eip7251,
     is_post_capella,
 )
 from eth2spec.test.context import (
@@ -743,9 +744,14 @@ def test_deposit_in_block(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
+    if is_post_eip7251(spec):
+        balance = state.pending_balance_deposits[0].amount
+    else:
+        balance = get_balance(state, validator_index)
+
     assert len(state.validators) == initial_registry_len + 1
     assert len(state.balances) == initial_balances_len + 1
-    assert get_balance(state, validator_index) == spec.MAX_EFFECTIVE_BALANCE
+    assert balance == spec.MAX_EFFECTIVE_BALANCE
     assert state.validators[validator_index].pubkey == pubkeys[validator_index]
 
 
@@ -808,7 +814,11 @@ def test_deposit_top_up(spec, state):
             committee_bits,
         )
 
-    assert get_balance(state, validator_index) == (
+    balance = get_balance(state, validator_index)
+    if is_post_eip7251(spec):
+        balance += state.pending_balance_deposits[0].amount
+
+    assert balance == (
         validator_pre_balance + amount + sync_committee_reward - sync_committee_penalty
     )
 

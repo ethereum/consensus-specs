@@ -10,7 +10,10 @@ from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing, get_valid_attester_slashing_by_indices,
     get_indexed_attestation_participants, get_attestation_2_data, get_attestation_1_data,
 )
-from eth2spec.test.helpers.proposer_slashings import get_min_slashing_penalty_quotient
+from eth2spec.test.helpers.proposer_slashings import (
+    get_min_slashing_penalty_quotient,
+    get_whistleblower_reward_quotient,
+)
 from eth2spec.test.helpers.state import (
     get_balance,
     next_epoch_via_block,
@@ -49,7 +52,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
     }
 
     total_proposer_rewards = sum(
-        effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
+        effective_balance // get_whistleblower_reward_quotient(spec)
         for effective_balance in pre_slashing_effectives.values()
     )
 
@@ -71,7 +74,9 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
             assert slashed_validator.withdrawable_epoch == expected_withdrawable_epoch
         else:
             assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-        assert get_balance(state, slashed_index) < pre_slashing_balances[slashed_index]
+        if slashed_index != proposer_index:
+            # NOTE: check proposer balances below
+            assert get_balance(state, slashed_index) < pre_slashing_balances[slashed_index]
 
     if proposer_index not in slashed_indices:
         # gained whistleblower reward

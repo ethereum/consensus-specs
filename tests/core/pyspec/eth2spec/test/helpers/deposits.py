@@ -1,7 +1,7 @@
 from random import Random
 
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.forks import is_post_altair
+from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7251
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
@@ -241,6 +241,9 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
+    if is_post_eip7251(spec):
+        assert len(state.pending_balance_deposits) == 0
+
     yield 'pre', state
     yield 'deposit', deposit
 
@@ -252,6 +255,20 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     spec.process_deposit(state, deposit)
 
     yield 'post', state
+
+    if is_post_eip7251(spec):
+        # balance additions are now routed through "pending balance deposits"
+        # process them here along with any effective balance updates
+        updates_count = len(state.pending_balance_deposits)
+        if updates_count != 0:
+            assert updates_count == 1
+            pending_balance_deposit = state.pending_balance_deposits[0]
+            assert pending_balance_deposit.index == validator_index
+            assert pending_balance_deposit.amount == deposit.data.amount
+            spec.increase_balance(state, validator_index, deposit.data.amount)
+            if not is_top_up:
+                # run effective balance update for new validators
+                spec.process_effective_balance_updates(state)
 
     if not effective or not bls.KeyValidate(deposit.data.pubkey):
         assert len(state.validators) == pre_validator_count
