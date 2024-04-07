@@ -686,7 +686,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             break
 
         validator = state.validators[withdrawal.index]
-        has_sufficient_effective_balance = validator.effective_balance == MIN_ACTIVATION_BALANCE
+        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
         has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
             withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
