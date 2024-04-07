@@ -20,11 +20,15 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation_at_slot,
     get_valid_attestation,
 )
+from eth2spec.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+)
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block,
     add_attestation,
+    add_attester_slashing,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -49,6 +53,10 @@ MAX_TIPS_TO_ATTEST = 2
 
 OUT_OF_BLOCK_ATTESTATION_RATE = 10
 IN_AND_OUT_OF_BLOCK_ATTESTATION_RATE = 90
+
+MAX_ATTESTER_SLASHINGS = 8
+ATTESTER_SLASHINGS_RATE = 8
+OFF_AND_ON_CHAIN_SLASHING_RATES = [33, 66]  # Off chain, on chain
 
 class SmLink(tuple):
     @property
@@ -194,7 +202,7 @@ def _get_eligible_attestations(spec, state, attestations) -> []:
     return [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
 
 
-def _produce_block(spec, state, attestations):
+def _produce_block(spec, state, attestations, attester_slashings=[]):
     """
     Produces a block including as many attestations as it is possible.
     :return: Signed block, the post block state and attestations that were not included into the block.
@@ -211,6 +219,11 @@ def _produce_block(spec, state, attestations):
     for a in attestation_in_block:
         block.body.attestations.append(a)
 
+    # Add attester slashings
+    attester_slashings_in_block = attester_slashings[:spec.MAX_ATTESTER_SLASHINGS]
+    for s in attester_slashings_in_block:
+        block.body.attester_slashings.append(s)
+
     # Run state transition and sign off on a block
     post_state = state.copy()
     spec.process_block(post_state, block)
@@ -218,8 +231,9 @@ def _produce_block(spec, state, attestations):
     signed_block = sign_block(spec, post_state, block)
 
     not_included_attestations = [a for a in attestations if a not in attestation_in_block]
+    not_included_attester_slashings = [s for s in attester_slashings if s not in attester_slashings_in_block]
 
-    return signed_block, post_state, not_included_attestations
+    return signed_block, post_state, not_included_attestations, not_included_attester_slashings
 
 
 def _attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
@@ -287,7 +301,7 @@ def _advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
         # Produce block if the proposer is among participanting validators
         proposer = spec.get_beacon_proposer_index(state)
         if state.slot > spec.GENESIS_SLOT and proposer in branch_tip.participants:
-            signed_block, state, attestations = _produce_block(spec, state, attestations)
+            signed_block, state, attestations, _ = _produce_block(spec, state, attestations)
             signed_blocks.append(signed_block)
 
         if enable_attesting:
@@ -531,7 +545,7 @@ def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, de
                 while (spec.get_beacon_proposer_index(state) not in advanced_branch_tip.participants):
                     next_slot(spec, state)
 
-                tip_block, _, _ = _produce_block(spec, state, [])
+                tip_block, _, _, _ = _produce_block(spec, state, [])
                 new_signed_blocks.append(tip_block)
 
                 assert state.current_justified_checkpoint.epoch == sm_link.target, \
@@ -581,7 +595,12 @@ def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, de
     return sorted(signed_blocks, key=lambda b: b.message.slot), branch_tips[highest_target_sm_link]
 
 
-def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug, block_parents) -> ([], []):
+def _generate_block_tree(spec,
+        anchor_tip: BranchTip,
+        rnd: random.Random,
+        debug,
+        block_parents,
+        with_attester_slashings) -> ([], [], []):
     signed_blocks = []
 
     in_block_attestations = anchor_tip.attestations.copy()
@@ -590,6 +609,9 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
     block_index = 1
     block_tree_tips = set([0])
     out_of_block_attestations = []
+    in_block_attester_slashings = []
+    out_of_block_attester_slashings = []
+    attester_slashings_count = 0
 
     while block_index < len(block_parents):
         # Propose a block if slot shouldn't be empty
@@ -605,7 +627,8 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
 
             # Produce block
             proposer = spec.get_beacon_proposer_index(parent_state)
-            signed_block, post_state, in_block_attestations = _produce_block(spec, parent_state, in_block_attestations)
+            signed_block, post_state, in_block_attestations, in_block_attester_slashings = _produce_block(
+                spec, parent_state, in_block_attestations, in_block_attester_slashings)
             signed_blocks.append(signed_block)
             post_states.append(post_state)
 
@@ -646,6 +669,27 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
                 new_in_block_attestations, len(new_in_block_attestations) * IN_AND_OUT_OF_BLOCK_ATTESTATION_RATE // 100)
             out_of_block_attestations += new_out_of_block_attestations + new_in_and_out_of_block_attestations
 
+        # Create attester slashing
+        if with_attester_slashings and attester_slashings_count < MAX_ATTESTER_SLASHINGS:
+            if rnd.randint(0, 99) < ATTESTER_SLASHINGS_RATE:
+                state = post_states[attesting_tips[0]]
+                indices = [rnd.randint(0, len(state.validators) - 1)]
+                attester_slashing = get_valid_attester_slashing_by_indices(spec, state, indices,
+                                                                           slot=current_slot,
+                                                                           signed_1=True,
+                                                                           signed_2=True)
+
+                choice = rnd.randint(0, 99)
+                if choice < OFF_AND_ON_CHAIN_SLASHING_RATES[0]:
+                    out_of_block_attester_slashings.append(attester_slashing)
+                elif choice < OFF_AND_ON_CHAIN_SLASHING_RATES[1]:
+                    in_block_attester_slashings.append(attester_slashing)
+                else:
+                    out_of_block_attester_slashings.append(attester_slashing)
+                    in_block_attester_slashings.append(attester_slashing)
+
+                attester_slashings_count += 1
+
         # Next slot
         current_slot += 1
 
@@ -657,9 +701,12 @@ def _generate_block_tree(spec, anchor_tip: BranchTip, rnd: random.Random, debug,
               ', root=' + str(post_states[len(post_states) - 1].current_justified_checkpoint.root)[:6] + ')')
         print('on_attestation: ')
         print('              ', 'count =', len(out_of_block_attestations))
+        print('on_attester_slashing: ')
+        print('              ', 'count =', len(out_of_block_attester_slashings))
 
     return (sorted(signed_blocks, key=lambda b: b.message.slot),
-            sorted(out_of_block_attestations, key=lambda a: a.data.slot))
+            sorted(out_of_block_attestations, key=lambda a: a.data.slot),
+            sorted(out_of_block_attester_slashings, key=lambda a: a.attestation_1.data.slot))
 
 
 def _print_head(spec, store):
@@ -679,7 +726,7 @@ def _on_tick_and_append_step(spec, store, slot, test_steps):
 
 @with_altair_and_later
 @spec_state_test
-def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
+def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None, with_attester_slashings=False):
     block_parents = [0, 0, 0, 2, 2, 1, 1, 6, 6, 5, 5, 4, 7, 4, 3, 3]
 
     # This test is mainly used for the test generation purposes
@@ -713,8 +760,10 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
 
     # Block tree model
     attestations = []
+    attester_slashings = []
     if block_parents is not None:
-        block_tree, attestations = _generate_block_tree(spec, highest_tip, rnd, debug, block_parents)
+        block_tree, attestations, attester_slashings = _generate_block_tree(
+            spec, highest_tip, rnd, debug, block_parents, with_attester_slashings)
         # Merge block_tree and sm_link_tree blocks
         block_tree_root_slot = block_tree[0].message.slot
         signed_blocks = [sb for sb in signed_blocks if sb.message.slot < block_tree_root_slot]
@@ -732,9 +781,12 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
     _on_tick_and_append_step(spec, store, state.slot, test_steps)
 
     # Apply generated messages
+    max_block_slot = max(b.message.slot for b in signed_blocks)
+    max_attestation_slot = max(a.data.slot for a in attestations) if any(attestations) else 0
+    max_slashing_slot = max(s.attestation_1.data.slot for s in attester_slashings) if any(attester_slashings) else 0
+
     start_slot = min(b.message.slot for b in signed_blocks)
-    end_slot = max(max(b.message.slot for b in signed_blocks),
-                   max(a.data.slot for a in attestations)) + 1
+    end_slot = max(max_block_slot, max_attestation_slot, max_slashing_slot) + 1
 
     # Advance time to start_slot
     _on_tick_and_append_step(spec, store, start_slot, test_steps)
@@ -747,6 +799,10 @@ def test_sm_links_tree_model(spec, state, debug=False, seed=1, sm_links=None):
         # on_attestation for attestations from the previous slot
         for attestation in (a for a in attestations if a.data.slot == slot - 1):
             yield from add_attestation(spec, store, attestation, test_steps)
+
+        # on_attester_slashing for slashing from the previous slot
+        for attester_slashing in (s for s in attester_slashings if s.attestation_1.data.slot == slot - 1):
+            yield from add_attester_slashing(spec, store, attester_slashing, test_steps)
 
         # on_block for blocks from the current slot
         for block in (b for b in signed_blocks if b.message.slot == slot):
@@ -797,10 +853,10 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
         while (state.slot < threshold_slot):
             # Do not include attestations into blocks
             if (state.slot < spec.compute_start_slot_at_epoch(epoch)):
-                new_block, state, _ = _produce_block(spec, state, [])
+                new_block, state, _, _ = _produce_block(spec, state, [])
                 signed_blocks.append(new_block)
             else:
-                new_block, state, attestations = _produce_block(spec, state, attestations)
+                new_block, state, attestations, _ = _produce_block(spec, state, attestations)
                 signed_blocks.append(new_block)
 
             # Attest
@@ -843,7 +899,7 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
                     block_attestations = block_attestations + current_epoch_attestations
 
                 # Propose block
-                new_block, state, _ = _produce_block(spec, state, block_attestations)
+                new_block, state, _, _ = _produce_block(spec, state, block_attestations)
                 signed_blocks.append(new_block)
 
             # Attest
