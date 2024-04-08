@@ -222,7 +222,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_execution_layer_exit(state: BeaconState, execution_layer_exit: ExecutionLayerExit) -> None:
     validator_pubkeys = [v.pubkey for v in state.validators]
-    validator_index = ValidatorIndex(validator_pubkeys.index(execution_layer_exit.validator_pubkey))
+    pubkey_to_exit = execution_layer_exit.validator_pubkey
+    if pubkey_to_exit not in validator_pubkeys:
+        return
+    validator_index = ValidatorIndex(validator_pubkeys.index(pubkey_to_exit))
     validator = state.validators[validator_index]
 
     # Verify withdrawal credentials
