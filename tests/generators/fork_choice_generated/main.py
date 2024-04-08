@@ -63,7 +63,8 @@ def _create_providers(forks: Iterable[SpecForkName],
         initial_seed: int,
         solutions: Iterable[Iterable[tuple]],
         number_of_variations: int,
-        with_attester_slashings: bool) -> Iterable[TestProvider]:
+        with_attester_slashings: bool,
+        with_invalid_messages: bool) -> Iterable[TestProvider]:
     def prepare_fn() -> None:
         bls.use_milagro()
         return
@@ -95,7 +96,8 @@ def _create_providers(forks: Iterable[SpecForkName],
                                                                debug=debug,
                                                                seed=seed,
                                                                sm_links=solution,
-                                                               with_attester_slashings=with_attester_slashings))
+                                                               with_attester_slashings=with_attester_slashings,
+                                                               with_invalid_messages=with_invalid_messages))
 
     yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
 
@@ -174,5 +176,6 @@ if __name__ == "__main__":
                                                initial_seed=args.fc_gen_seed,
                                                solutions=solutions,
                                                number_of_variations=args.fc_gen_variations,
-                                               with_attester_slashings=True),
+                                               with_attester_slashings=True,
+                                               with_invalid_messages=True),
                              arg_parser)
