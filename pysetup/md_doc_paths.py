@@ -8,6 +8,7 @@ from .constants import (
     DENEB,
     EIP6110,
     EIP7002,
+    EIP7251,
     EIP7549,
     WHISK,
     EIP7594,
@@ -24,6 +25,7 @@ PREVIOUS_FORK_OF = {
     EIP7549: DENEB,
     WHISK: CAPELLA,
     EIP7002: CAPELLA,
+    EIP7251: DENEB,
     EIP7594: DENEB,
 }
 
@@ -36,6 +38,11 @@ IGNORE_SPEC_FILES = [
 EXTRA_SPEC_FILES = {
     BELLATRIX: "sync/optimistic.md"
 }
+
+DEFAULT_ORDER = (
+    "beacon-chain",
+    "polynomial-commitments",
+)
 
 
 def is_post_fork(a, b) -> bool:
@@ -64,15 +71,25 @@ def get_fork_directory(fork):
     raise FileNotFoundError(f"No directory found for fork: {fork}")
 
 
+def sort_key(s):
+    for index, key in enumerate(DEFAULT_ORDER):
+        if key in s:
+            return (index, s)
+    return (len(DEFAULT_ORDER), s)
+
+
 def get_md_doc_paths(spec_fork: str) -> str:
     md_doc_paths = ""
 
     for fork in ALL_FORKS:
         if is_post_fork(spec_fork, fork):
             # Append all files in fork directory recursively
-            for root, dirs, files in os.walk(get_fork_directory(fork)):
+            for root, _, files in os.walk(get_fork_directory(fork)):
+                filepaths = []
                 for filename in files:
                     filepath = os.path.join(root, filename)
+                    filepaths.append(filepath)
+                for filepath in sorted(filepaths, key=sort_key):
                     if filepath.endswith('.md') and filepath not in IGNORE_SPEC_FILES:
                         md_doc_paths += filepath + "\n"
             # Append extra files if any

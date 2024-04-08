@@ -15,6 +15,7 @@ from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
     get_valid_attester_slashing,
     get_indexed_attestation_participants,
+    get_max_attester_slashings,
 )
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
@@ -30,7 +31,11 @@ from eth2spec.test.helpers.sync_committee import (
     compute_sync_committee_participant_reward_and_penalty,
 )
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_capella
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_capella,
+)
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
@@ -550,7 +555,7 @@ def test_attester_slashing(spec, state):
 @with_all_phases
 @spec_state_test
 def test_invalid_duplicate_attester_slashing_same_block(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
@@ -578,7 +583,7 @@ def test_invalid_duplicate_attester_slashing_same_block(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.
@@ -618,7 +623,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_partial_overlap(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.

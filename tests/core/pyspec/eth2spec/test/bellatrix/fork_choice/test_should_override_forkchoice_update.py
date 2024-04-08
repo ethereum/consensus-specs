@@ -7,7 +7,7 @@ from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.attestations import (
-    get_valid_attestation_at_slot,
+    get_valid_attestations_at_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -109,7 +109,7 @@ def test_should_override_forkchoice_update__true(spec, state):
     # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
     parent_block_slot = block.slot - 1
-    block.body.attestations = get_valid_attestation_at_slot(
+    block.body.attestations = get_valid_attestations_at_slot(
         state,
         spec,
         parent_block_slot,
@@ -135,7 +135,7 @@ def test_should_override_forkchoice_update__true(spec, state):
     # Add attestations to the parent block
     temp_state = state.copy()
     next_slot(spec, temp_state)
-    attestations = get_valid_attestation_at_slot(
+    attestations = get_valid_attestations_at_slot(
         temp_state,
         spec,
         slot_to_attest=temp_state.slot - 1,

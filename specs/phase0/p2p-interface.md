@@ -245,7 +245,7 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 - `fanout_ttl` (ttl for fanout maps for topics we are not subscribed to but have published to, seconds): 60
 - `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
-- `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
+- `seen_ttl` (expiry time for cache of seen message ids, seconds): SECONDS_PER_SLOT * SLOTS_PER_EPOCH * 2
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
@@ -367,7 +367,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, aggregate.data.index))`.
+  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, index))`.
 - _[REJECT]_ The aggregate attestation has participants --
   that is, `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[IGNORE]_ A valid aggregate attestation defined by `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict superset has _not_ already been seen.
