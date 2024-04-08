@@ -69,7 +69,9 @@ if __name__ == "__main__":
                                                     debug=args.fc_gen_debug,
                                                     initial_seed=initial_seed,
                                                     solutions=solutions,
-                                                    number_of_variations=nr_variations)
+                                                    number_of_variations=nr_variations,
+                                                    with_attester_slashings=False,
+                                                    with_invalid_messages=False)
         elif test_type == 'block_cover':
             solutions = block_cover_load_solutions(instances_path)
             providers = block_cover_create_providers(forks=block_cover_forks,
