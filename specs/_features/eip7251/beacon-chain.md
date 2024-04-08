@@ -591,6 +591,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
     deposits_to_postpone = []
 
     for deposit in state.pending_balance_deposits:
+        validator = state.validators[deposit.index]
         # Validator is exiting, postpone the deposit until after withdrawable epoch
         if validator.exit_epoch < FAR_FUTURE_EPOCH:
             if get_current_epoch(state) <= validator.withdrawable_epoch:
