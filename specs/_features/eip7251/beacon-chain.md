@@ -51,6 +51,7 @@
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
+    - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Updated `slash_validator`](#updated-slash_validator)
@@ -524,6 +525,19 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
         state.pending_balance_deposits.append(
             PendingBalanceDeposit(index=index, amount=excess_balance)
         )
+```
+
+#### New `queue_entire_balance_and_reset_validator`
+```python
+def queue_entire_balance_and_reset_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    balance = state.balances[index]
+    state.balances[index] = 0
+    validator = state.validators[index]
+    validator.effective_balance = 0
+    validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
+    state.pending_balance_deposits.append(
+        PendingBalanceDeposit(index=index, amount=balance)
+    )
 ```
 
 #### New `compute_exit_epoch_and_update_churn`

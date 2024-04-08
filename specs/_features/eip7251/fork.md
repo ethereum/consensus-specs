@@ -128,6 +128,23 @@ def upgrade_to_eip7251(pre: deneb.BeaconState) -> BeaconState:
         pending_consolidations=[],
     )
 
+    activation_queue = []
+    pre_activation_queue = []
+    below_minimum = []
+    for index, validator in enumerate(post.validators):
+        if validator.activation_epoch == FAR_FUTURE_EPOCH:
+            if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH:
+                activation_queue.append(index)
+            else:
+                if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
+                    pre_activation_queue.append(index)
+                else:
+                    below_minimum.append(index)
+
+    activation_queue.sort(key=lambda index: (post.validators[index].activation_eligibility_epoch, index))
+    for index in activation_queue + pre_activation_queue + below_minimum:
+        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):
         if has_compounding_withdrawal_credential(validator):
