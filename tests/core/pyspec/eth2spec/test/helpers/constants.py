@@ -11,13 +11,12 @@ ALTAIR = SpecForkName('altair')
 BELLATRIX = SpecForkName('bellatrix')
 CAPELLA = SpecForkName('capella')
 DENEB = SpecForkName('deneb')
+ELECTRA = SpecForkName('electra')
 
 # Experimental phases (not included in default "ALL_PHASES"):
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
-EIP6110 = SpecForkName('eip6110')
-EIP7002 = SpecForkName('eip7002')
 EIP7549 = SpecForkName('eip7549')
 WHISK = SpecForkName('whisk')
 EIP7251 = SpecForkName('eip7251')
@@ -37,9 +36,8 @@ ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     DENEB,
+    ELECTRA,
     # Experimental patches
-    EIP6110,
-    EIP7002,
     EIP7251,
     EIP7549,
     EIP7594,
@@ -47,7 +45,7 @@ ALL_PHASES = (
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], DENEB)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, EIP6110, WHISK)
+TESTGEN_FORKS = (*MAINNET_FORKS, DENEB, ELECTRA, WHISK)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK)
 
@@ -59,10 +57,9 @@ PREVIOUS_FORK_OF = {
     BELLATRIX: ALTAIR,
     CAPELLA: BELLATRIX,
     DENEB: CAPELLA,
+    ELECTRA: DENEB,
     # Experimental patches
-    EIP6110: DENEB,
     WHISK: CAPELLA,
-    EIP7002: CAPELLA,
     EIP7549: DENEB,
     EIP7251: DENEB,
     EIP7594: DENEB,
@@ -75,7 +72,7 @@ POST_FORK_OF = {
     ALTAIR: BELLATRIX,
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
-    DENEB: EIP6110,
+    DENEB: ELECTRA,
 }
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()

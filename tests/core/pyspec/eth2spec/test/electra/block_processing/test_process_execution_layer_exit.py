@@ -1,9 +1,9 @@
-from eth2spec.test.context import spec_state_test, with_eip7002_and_later
+from eth2spec.test.context import spec_state_test, with_electra_and_later
 from eth2spec.test.helpers.execution_layer_exits import run_execution_layer_exit_processing
 from eth2spec.test.helpers.withdrawals import set_eth1_withdrawal_credential_with_balance
 
 
-@with_eip7002_and_later
+@with_electra_and_later
 @spec_state_test
 def test_basic_exit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -22,7 +22,7 @@ def test_basic_exit(spec, state):
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit)
 
 
-@with_eip7002_and_later
+@with_electra_and_later
 @spec_state_test
 def test_incorrect_source_address(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -42,7 +42,7 @@ def test_incorrect_source_address(spec, state):
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
 
 
-@with_eip7002_and_later
+@with_electra_and_later
 @spec_state_test
 def test_incorrect_withdrawal_credential_prefix(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -66,7 +66,7 @@ def test_incorrect_withdrawal_credential_prefix(spec, state):
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
 
 
-@with_eip7002_and_later
+@with_electra_and_later
 @spec_state_test
 def test_on_exit_initiated_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -87,7 +87,7 @@ def test_on_exit_initiated_validator(spec, state):
     yield from run_execution_layer_exit_processing(spec, state, execution_layer_exit, success=False)
 
 
-@with_eip7002_and_later
+@with_electra_and_later
 @spec_state_test
 def test_activation_epoch_less_than_shard_committee_period(spec, state):
     current_epoch = spec.get_current_epoch(state)

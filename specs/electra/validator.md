@@ -1,4 +1,4 @@
-# EIP-6110 -- Honest Validator
+# Electra -- Honest Validator
 
 ## Table of contents
 
@@ -16,21 +16,21 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an "honest validator" to implement EIP-6110.
+This document represents the changes to be made in the code of an "honest validator" to implement Electra.
 
 ## Prerequisites
 
 This document is an extension of the [Deneb -- Honest Validator](../../deneb/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP-6110](./beacon-chain.md) are requisite for this document and used throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Block proposal
 
 ### Deposits
 
-The expected number of deposits MUST be changed from `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)` to the result of the following function:
+*[New in Electra:EIP6110* The expected number of deposits MUST be changed from `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)` to the result of the following function:
 
 ```python
 def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:

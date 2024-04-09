@@ -1,4 +1,6 @@
-# EIP-7002 -- The Beacon Chain
+# Electra -- The Beacon Chain
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -7,10 +9,13 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Preset](#preset)
-  - [Max operations per block](#max-operations-per-block)
+  - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
+    - [`DepositReceipt`](#depositreceipt)
     - [`ExecutionLayerExit`](#executionlayerexit)
   - [Extended Containers](#extended-containers)
     - [`ExecutionPayload`](#executionpayload)
@@ -18,11 +23,10 @@
     - [`BeaconState`](#beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Execution payload](#execution-payload)
-      - [Modified `process_execution_payload`](#modified-process_execution_payload)
-    - [Operations](#operations)
-      - [Modified `process_operations`](#modified-process_operations)
-      - [New `process_execution_layer_exit`](#new-process_execution_layer_exit)
+    - [Modified `process_operations`](#modified-process_operations)
+    - [New `process_deposit_receipt`](#new-process_deposit_receipt)
+    - [New `process_execution_layer_exit`](#new-process_execution_layer_exit)
+    - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -30,25 +34,49 @@
 
 ## Introduction
 
-This is the beacon chain specification of the execution layer triggerable exits feature.
+Electra is a consensus-layer upgrade containing a number of features. Including:
+* [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
+* [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
 
-This mechanism relies on the changes proposed by [EIP-7002](http://eips.ethereum.org/EIPS/eip-7002).
+## Constants
 
-*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
+The following values are (non-configurable) constants used throughout the specification.
+
+### Misc
+
+| Name | Value | Description |
+| - | - | - |
+| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
 
 ## Preset
 
-### Max operations per block
+### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |
+| Name | Value | Description |
+| - | - | - |
+| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |  *[New in Electra:EIP7002]* |
 
 ## Containers
 
 ### New containers
 
+#### `DepositReceipt`
+
+*Note*: The container is new in EIP6110.
+
+```python
+class DepositReceipt(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+    signature: BLSSignature
+    index: uint64
+```
+
 #### `ExecutionLayerExit`
+
+*Note*: The container is new in EIP7002.
 
 ```python
 class ExecutionLayerExit(Container):
@@ -79,7 +107,10 @@ class ExecutionPayload(Container):
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in EIP7002]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in Electra:EIP7002]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -103,7 +134,10 @@ class ExecutionPayloadHeader(Container):
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
-    exits_root: Root  # [New in EIP7002]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+    deposit_receipts_root: Root  # [New in Electra:EIP6110]
+    exits_root: Root  # [New in Electra:EIP7002]
 ```
 
 #### `BeaconState`
@@ -145,64 +179,44 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in EIP7002]
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110:EIP7002]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    # [New in Electra:EIP6110]
+    deposit_receipts_start_index: uint64
 ```
 
 ## Beacon chain state transition function
 
 ### Block processing
 
-#### Execution payload
-
-##### Modified `process_execution_payload`
-
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
-    payload = body.execution_payload
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
-    # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify the execution payload is valid
-    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipts_root=payload.receipts_root,
-        logs_bloom=payload.logs_bloom,
-        prev_randao=payload.prev_randao,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
-        exits_root=hash_tree_root(payload.exits),  # [New in EIP7002]
-    )
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body)  # [Modified in Electra:EIP6110:EIP7002]
+    process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### Operations
+#### Modified `process_operations`
 
-##### Modified `process_operations`
-
-*Note*: The function `process_operations` is modified to process `ExecutionLayerExit` operations included in the block.
+*Note*: The function `process_operations` is modified to process `DepositReceipt` and `ExecutionLayerExit` operations included in the payload.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+    # [Modified in Electra:EIP6110]
+    # Disable former deposit mechanism once all prior deposits are processed
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    if state.eth1_deposit_index < eth1_deposit_index_limit:
+        assert len(body.deposits) == min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
+    else:
+        assert len(body.deposits) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
@@ -213,11 +227,35 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
-    for_ops(body.execution_payload.exits, process_execution_layer_exit)  # [New in EIP7002]
+    for_ops(body.execution_payload.exits, process_execution_layer_exit)  # [New in Electra:EIP7002]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+
+    # [New in EIP6110]
+    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
-##### New `process_execution_layer_exit`
+#### New `process_deposit_receipt`
+
+*Note*: This function is new in Electra:EIP6110.
+
+```python
+def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
+    # Set deposit receipt start index
+    if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
+        state.deposit_receipts_start_index = deposit_receipt.index
+
+    apply_deposit(
+        state=state,
+        pubkey=deposit_receipt.pubkey,
+        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+        amount=deposit_receipt.amount,
+        signature=deposit_receipt.signature,
+    )
+```
+
+#### New `process_execution_layer_exit`
+
+*Note*: This function is new in Electra:EIP7002.
 
 ```python
 def process_execution_layer_exit(state: BeaconState, execution_layer_exit: ExecutionLayerExit) -> None:
@@ -248,12 +286,62 @@ def process_execution_layer_exit(state: BeaconState, execution_layer_exit: Execu
     initiate_validator_exit(state, validator_index)
 ```
 
+#### Modified `process_execution_payload`
+
+*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+
+```python
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    # Verify timestamp
+    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    # Verify the execution payload is valid
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
+    )
+    # Cache execution payload header
+    state.latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=payload.parent_hash,
+        fee_recipient=payload.fee_recipient,
+        state_root=payload.state_root,
+        receipts_root=payload.receipts_root,
+        logs_bloom=payload.logs_bloom,
+        prev_randao=payload.prev_randao,
+        block_number=payload.block_number,
+        gas_limit=payload.gas_limit,
+        gas_used=payload.gas_used,
+        timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
+        base_fee_per_gas=payload.base_fee_per_gas,
+        block_hash=payload.block_hash,
+        transactions_root=hash_tree_root(payload.transactions),
+        withdrawals_root=hash_tree_root(payload.withdrawals),
+        blob_gas_used=payload.blob_gas_used,
+        excess_blob_gas=payload.excess_blob_gas,
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
+        exits_root=hash_tree_root(payload.exits),  # [New in Electra:EIP7002]
+    )
+```
+
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-7002 testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Electra testing only.
 Modifications include:
-1. Use `EIP7002_FORK_VERSION` as the previous and current fork version.
-2. Utilize the EIP-7002 `BeaconBlockBody` when constructing the initial `latest_block_header`.
+1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
+2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
+3. *[New in Electra:EIP6110]* Add `deposit_receipts_start_index` variable to the genesis state initialization.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -262,8 +350,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=EIP7002_FORK_VERSION,  # [Modified in EIP7002] for testing only
-        current_version=EIP7002_FORK_VERSION,  # [Modified in EIP7002]
+        previous_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110] for testing only
+        current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
@@ -272,6 +360,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
+        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in Electra:EIP6110]
     )
 
     # Process deposits
