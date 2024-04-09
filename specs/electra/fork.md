@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of EIP-6110 upgrade.
+This document describes the process of the Electra upgrade.
 
 ## Configuration
 

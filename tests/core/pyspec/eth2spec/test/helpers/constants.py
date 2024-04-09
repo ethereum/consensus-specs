@@ -17,7 +17,7 @@ ELECTRA = SpecForkName('electra')
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
-EIP7549 = SpecForkName('eip7549')
+ELECTRA = SpecForkName('electra')
 WHISK = SpecForkName('whisk')
 EIP7251 = SpecForkName('eip7251')
 EIP7594 = SpecForkName('eip7594')
@@ -39,7 +39,6 @@ ALL_PHASES = (
     ELECTRA,
     # Experimental patches
     EIP7251,
-    EIP7549,
     EIP7594,
 )
 # The forks that have light client specs
@@ -60,7 +59,6 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7549: DENEB,
     EIP7251: DENEB,
     EIP7594: DENEB,
 }

@@ -6,7 +6,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_electra, is_post_whisk, is_post_eip7251
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_electra, is_post_whisk, is_post_eip7251,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
