@@ -117,10 +117,10 @@ def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_dat
 def add_attestation(spec, store, attestation, test_steps, is_from_block=False, valid=True):
     run_on_attestation(spec, store, attestation, is_from_block=is_from_block, valid=valid)
     yield get_attestation_file_name(attestation), attestation
-    test_steps.append({
-        "attestation": get_attestation_file_name(attestation),
-        "valid": valid,
-    })
+    if valid:
+        test_steps.append({"attestation": get_attestation_file_name(attestation)})
+    else:
+        test_steps.append({"attestation": get_attestation_file_name(attestation), "valid": False})
 
 
 def add_attestations(spec, store, attestations, test_steps, is_from_block=False):
