@@ -88,10 +88,10 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        blob_gas_used=uint64(0),
-        excess_blob_gas=uint64(0),
+        blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
+        excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
         deposit_receipts_root=Root(),  # [New in Electra:EIP6110]
-        exits_root=Root(),  # [New in Electra:EIP-7002],
+        exits_root=Root(),  # [New in Electra:EIP7002],
     )
     post = BeaconState(
         # Versioning
