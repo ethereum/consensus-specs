@@ -91,7 +91,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
         excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
         deposit_receipts_root=Root(),  # [New in Electra:EIP6110]
-        exits_root=Root(),  # [New in Electra:EIP-7002],
+        exits_root=Root(),  # [New in Electra:EIP7002],
     )
     post = BeaconState(
         # Versioning
