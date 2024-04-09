@@ -262,26 +262,19 @@ def process_execution_layer_exit(state: BeaconState, execution_layer_exit: Execu
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkey exists
     pubkey_to_exit = execution_layer_exit.validator_pubkey
-    if pubkey_to_exit not in validator_pubkeys:
-        return
+    assert pubkey_to_exit in validator_pubkeys
     validator_index = ValidatorIndex(validator_pubkeys.index(pubkey_to_exit))
     validator = state.validators[validator_index]
-
     # Verify withdrawal credentials
     is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
     is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
-    if not (is_execution_address and is_correct_source_address):
-        return
+    assert is_execution_address and is_correct_source_address
     # Verify the validator is active
-    if not is_active_validator(validator, get_current_epoch(state)):
-        return
+    assert is_active_validator(validator, get_current_epoch(state))
     # Verify exit has not been initiated
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        return
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
     # Verify the validator has been active long enough
-    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
-        return
-
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     # Initiate exit
     initiate_validator_exit(state, validator_index)
 ```
