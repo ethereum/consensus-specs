@@ -1,11 +1,32 @@
 # Minimal preset - Electra
 
+# Gwei values
+# ---------------------------------------------------------------
+# 2**5 * 10**9 (= 32,000,000,000) Gwei
+MIN_ACTIVATION_BALANCE: 32000000000
+# 2**11 * 10**9 (= 2,048,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE_ELECTRA: 2048000000000
+
+# State list lengths
+# ---------------------------------------------------------------
+PENDING_BALANCE_DEPOSITS_LIMIT: 134217728
+# [customized] smaller queue
+PENDING_PARTIAL_WITHDRAWALS_LIMIT: 64
+# [customized] smaller queue
+PENDING_CONSOLIDATIONS_LIMIT: 64
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA: 4096
+WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA: 4096
+
 # # Max operations per block
 # ---------------------------------------------------------------
 # `uint64(2**0)` (= 1)
 MAX_ATTESTER_SLASHINGS_ELECTRA: 1
 # `uint64(2 * 3)` (= 8)
 MAX_ATTESTATIONS_ELECTRA: 8
+MAX_CONSOLIDATIONS: 1
 
 # Execution
 # ---------------------------------------------------------------
@@ -13,3 +34,5 @@ MAX_ATTESTATIONS_ELECTRA: 8
 MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
 # 2**4 (= 16) exits
 MAX_EXECUTION_LAYER_EXITS: 16
+# [customized] 2**1 (= 2)
+MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 2
