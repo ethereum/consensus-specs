@@ -46,7 +46,7 @@ def test_verify_cell_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
-    cells_bytes = [[field_element_bytes(element) for element in cell] for cell in cells]
+    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
     for cell_id in range(spec.CELLS_PER_BLOB):
         assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
 
