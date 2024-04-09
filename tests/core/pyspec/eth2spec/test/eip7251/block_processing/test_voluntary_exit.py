@@ -439,3 +439,29 @@ def test_invalid_validator_not_active_long_enough(spec, state):
     )
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
+
+
+@with_eip7251_and_later
+@spec_state_test
+def test_invalid_validator_has_pending_withdrawal(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
+
+    voluntary_exit = spec.VoluntaryExit(
+        epoch=current_epoch,
+        validator_index=validator_index,
+    )
+    signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
+
+    state.pending_partial_withdrawals.append(spec.PendingPartialWithdrawal(
+        index=validator_index,
+        amount=1,
+        withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
+    ))
+
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
