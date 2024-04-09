@@ -67,21 +67,6 @@ def test_new_deposit_over_max(spec, state):
     yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index)
 
 
-# @with_eip7251_and_later
-# @spec_state_test
-# def test_top_up__max_effective_balance(spec, state):
-#     validator_index = 0
-#     amount = spec.MAX_EFFECTIVE_BALANCE_EIP7251 // 4
-#     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-
-#     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_EIP7251
-#     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_EIP7251
-
-#     yield from run_deposit_processing_eip7251(spec, state, deposit, validator_index)
-
-#     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_EIP7251 + amount
-#     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_EIP7251
-
 @with_eip7251_and_later
 @spec_state_test
 @always_bls
