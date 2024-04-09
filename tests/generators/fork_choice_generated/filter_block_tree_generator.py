@@ -1,12 +1,14 @@
 from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 from typing import Iterable
 from importlib import import_module
 from eth2spec.utils import bls
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from minizinc import Instance, Model, Solver
+from mutation_operators import MutatorsGenerator
 import random
 from ruamel.yaml import YAML
 
@@ -102,13 +104,22 @@ def _create_providers(forks: Iterable[SpecForkName],
         debug: bool,
         initial_seed: int,
         solutions,
-        number_of_variations: int) -> Iterable[TestProvider]:
+        number_of_variations: int,
+        number_of_mutations: int) -> Iterable[TestProvider]:
     def prepare_fn() -> None:
         bls.use_milagro()
         return
 
     def make_cases_fn() -> Iterable[TestCase]:
-        test_fn = _import_test_fn()
+        _test_fn = _import_test_fn()
+        def test_fn(phase: str, preset: str, seed: int, solution):
+            return _test_fn(generator_mode=True,
+                            phase=phase,
+                            preset=preset,
+                            bls_active=BLS_ACTIVE,
+                            debug=debug,
+                            seed=seed,
+                            model_params=solution)
 
         seeds = [initial_seed]
         if number_of_variations > 1:
@@ -120,19 +131,19 @@ def _create_providers(forks: Iterable[SpecForkName],
             for seed in seeds:
                 for fork_name in forks:
                     for preset_name in presets:
-                        yield TestCase(fork_name=fork_name,
-                                       preset_name=preset_name,
-                                       runner_name=GENERATOR_NAME,
-                                       handler_name='filter_block_tree_model',
-                                       suite_name='fork_choice',
-                                       case_name='filter_block_tree_model_' + str(i) + '_' + str(seed),
-                                       case_fn=lambda: test_fn(generator_mode=True,
-                                                               phase=fork_name,
-                                                               preset=preset_name,
-                                                               bls_active=BLS_ACTIVE,
-                                                               debug=debug,
-                                                               seed=seed,
-                                                               model_params=solution))
+                        spec = spec_targets[preset_name][fork_name]
+                        mutation_generator = MutatorsGenerator(
+                            spec, seed, number_of_mutations,
+                            lambda: test_fn(fork_name, preset_name, seed, solution),
+                            debug=debug)
+                        for j in range(1 + number_of_mutations):
+                            yield TestCase(fork_name=fork_name,
+                                        preset_name=preset_name,
+                                        runner_name=GENERATOR_NAME,
+                                        handler_name='filter_block_tree_model',
+                                        suite_name='fork_choice',
+                                        case_name='filter_block_tree_model_' + str(i) + '_' + str(seed) + '_' + str(j),
+                                        case_fn=mutation_generator.next_test_case)
 
     yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
 
@@ -181,6 +192,14 @@ if __name__ == "__main__":
         help='Number of solutions per MiniZinc query'
     )
     arg_parser.add_argument(
+        '--fc-gen-mutations',
+        dest='fc_gen_mutations',
+        default=0,
+        type=int,
+        required=False,
+        help='Number of mutations per base test case'
+    )
+    arg_parser.add_argument(
         '--fc-gen-instances-path',
         dest='fc_gen_instances_path',
         default=None,
@@ -202,5 +221,6 @@ if __name__ == "__main__":
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,
                                                solutions=solutions,
-                                               number_of_variations=args.fc_gen_variations),
+                                               number_of_variations=args.fc_gen_variations,
+                                               number_of_mutations=args.fc_gen_mutations),
                              arg_parser)
