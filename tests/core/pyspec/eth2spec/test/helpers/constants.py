@@ -11,6 +11,7 @@ ALTAIR = SpecForkName('altair')
 BELLATRIX = SpecForkName('bellatrix')
 CAPELLA = SpecForkName('capella')
 DENEB = SpecForkName('deneb')
+ELECTRA = SpecForkName('electra')
 
 # Experimental phases (not included in default "ALL_PHASES"):
 SHARDING = SpecForkName('sharding')
