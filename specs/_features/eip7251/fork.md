@@ -134,7 +134,6 @@ def upgrade_to_eip7251(pre: deneb.BeaconState) -> BeaconState:
         if validator.activation_epoch == FAR_FUTURE_EPOCH
     ], key=lambda index: (
         post.validators[index].activation_eligibility_epoch,
-        post.validators[index].effective_balance < MIN_ACTIVATION_BALANCE,
         index
     ))
     for index in pre_activation:
