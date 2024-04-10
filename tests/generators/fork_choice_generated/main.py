@@ -190,6 +190,22 @@ if __name__ == "__main__":
         help='Number of mutations per base test case'
     )
     arg_parser.add_argument(
+        '--fc-gen-attester-slashings',
+        dest='fc_gen_attester_slashings',
+        default=False,
+        type=bool,
+        required=False,
+        help='Pass with_attester_slashings flag'
+    )
+    arg_parser.add_argument(
+        '--fc-gen-invalid-messages',
+        dest='fc_gen_invalid_messages',
+        default=False,
+        type=bool,
+        required=False,
+        help='Pass with_invalid_messages flag'
+    )
+    arg_parser.add_argument(
         '--fc-gen-instances-path',
         dest='fc_gen_instances_path',
         default=None,
@@ -217,6 +233,6 @@ if __name__ == "__main__":
                                                block_tree_solutions=block_tree_solutions,
                                                number_of_variations=args.fc_gen_variations,
                                                number_of_mutations=args.fc_gen_mutations,
-                                               with_attester_slashings=True,
-                                               with_invalid_messages=True),
+                                               with_attester_slashings=args.fc_gen_attester_slashings,
+                                               with_invalid_messages=args.fc_gen_invalid_messages),
                              arg_parser)
