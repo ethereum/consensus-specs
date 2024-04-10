@@ -52,6 +52,19 @@ def _find_sm_link_solutions(anchor_epoch: int,
         yield [_ for _ in zip(solutions[i, 'sources'], solutions[i, 'targets'])]
 
 
+def _find_block_tree_solutions(number_of_blocks: int,
+                               max_children: int,
+                               number_of_solutions: int) -> Iterable[Iterable[int]]:
+    model = Model('./model/minizinc/Block_tree.mzn')
+    solver = Solver.lookup("gecode")
+    instance = Instance(solver, model)
+    instance['NB'] = number_of_blocks
+    instance['MC'] = max_children
+
+    solutions = instance.solve(nr_solutions=number_of_solutions)
+    return [s.parent for s in solutions]
+
+
 def _load_sm_link_solutions(instance_path: str) -> Iterable[Iterable[tuple]]:
     solutions = yaml.load(open(instance_path, 'r'))
     print('solutions', solutions)
@@ -64,7 +77,8 @@ def _create_providers(test_name: str, /,
         presets: Iterable[PresetBaseName],
         debug: bool,
         initial_seed: int,
-        solutions: Iterable[Iterable[tuple]],
+        sm_link_solutions: Iterable[Iterable[tuple]],
+        block_tree_solutions: [[int]],
         number_of_variations: int,
         number_of_mutations: int,
         with_attester_slashings: bool,
@@ -75,14 +89,16 @@ def _create_providers(test_name: str, /,
 
     def make_cases_fn() -> Iterable[TestCase]:
         _test_fn = _import_test_fn()
-        def test_fn(phase: str, preset: str, seed: int, solution):
+
+        def test_fn(phase: str, preset: str, seed: int, sm_links, block_parents):
             return _test_fn(generator_mode=True,
                             phase=phase,
                             preset=preset,
                             bls_active=BLS_ACTIVE,
                             debug=debug,
                             seed=seed,
-                            sm_links=solution,
+                            sm_links=sm_links,
+                            block_parents=block_parents,
                             with_attester_slashings=with_attester_slashings,
                             with_invalid_messages=with_invalid_messages)
 
@@ -92,14 +108,15 @@ def _create_providers(test_name: str, /,
             seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
             seeds[0] = initial_seed
 
-        for i, solution in enumerate(solutions):
+        for i, sm_links in enumerate(sm_link_solutions):
+            block_parents = block_tree_solutions[i % (len(block_tree_solutions) - 1)]
             for seed in seeds:
                 for fork_name in forks:
                     for preset_name in presets:
                         spec = spec_targets[preset_name][fork_name]
                         mutation_generator = MutatorsGenerator(
                             spec, seed, number_of_mutations,
-                            lambda: test_fn(fork_name, preset_name, seed, solution),
+                            lambda: test_fn(fork_name, preset_name, seed, sm_links, block_parents),
                             debug=debug)
                         for j in range(1 + number_of_mutations):
                             yield TestCase(fork_name=fork_name,
@@ -184,9 +201,11 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     if args.fc_gen_instances_path is not None:
-        solutions = _load_sm_link_solutions(args.fc_gen_instances_path)
+        sm_link_solutions = _load_sm_link_solutions(args.fc_gen_instances_path)
+        block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
     else:
-        solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
+        sm_link_solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
+        block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
 
     gen_runner.run_generator(GENERATOR_NAME,
                              _create_providers('sm_links_tree_model',
@@ -194,7 +213,8 @@ if __name__ == "__main__":
                                                presets=presets,
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,
-                                               solutions=solutions,
+                                               sm_link_solutions=sm_link_solutions,
+                                               block_tree_solutions=block_tree_solutions,
                                                number_of_variations=args.fc_gen_variations,
                                                number_of_mutations=args.fc_gen_mutations,
                                                with_attester_slashings=True,
