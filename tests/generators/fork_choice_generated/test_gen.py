@@ -86,13 +86,17 @@ if __name__ == "__main__":
         if test_type == 'block_tree':
             sm_link_solutions = block_tree_load_solutions(instances_path)
             block_tree_solutions = [[0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]
+            solutions = []
+            for index, sm_links in enumerate(sm_link_solutions):
+                solutions.append({'sm_links': sm_links,
+                                  'block_parents': block_tree_solutions[index % len(block_tree_solutions)]})
+
             providers = block_tree_create_providers(test_name,
                                                     forks=block_tree_forks,
                                                     presets=block_tree_presets,
                                                     debug=args.fc_gen_debug,
                                                     initial_seed=initial_seed,
-                                                    sm_link_solutions=sm_link_solutions,
-                                                    block_tree_solutions=block_tree_solutions,
+                                                    solutions=solutions,
                                                     number_of_variations=nr_variations,
                                                     number_of_mutations=nr_mutations,
                                                     with_attester_slashings=with_attester_slashings,
