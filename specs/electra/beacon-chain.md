@@ -1,4 +1,6 @@
-# EIP-6110 -- The Beacon Chain
+# Electra -- The Beacon Chain
+
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -14,14 +16,25 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`DepositReceipt`](#depositreceipt)
+    - [`ExecutionLayerExit`](#executionlayerexit)
   - [Extended Containers](#extended-containers)
+    - [`Attestation`](#attestation)
+    - [`IndexedAttestation`](#indexedattestation)
+    - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc-1)
+    - [`get_committee_indices`](#get_committee_indices)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_operations`](#modified-process_operations)
+    - [Modified `process_attestation`](#modified-process_attestation)
     - [New `process_deposit_receipt`](#new-process_deposit_receipt)
+    - [New `process_execution_layer_exit`](#new-process_execution_layer_exit)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Testing](#testing)
 
@@ -30,10 +43,12 @@
 
 ## Introduction
 
-This is the beacon chain specification of in-protocol deposits processing mechanism.
-This mechanism relies on the changes proposed by [EIP-6110](http://eips.ethereum.org/EIPS/eip-6110).
+Electra is a consensus-layer upgrade containing a number of features. Including:
+* [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
+* [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
+* [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
 
-*Note:* This specification is built upon [Deneb](../../deneb/beacon-chain.md) and is under active development.
+*Note:* This specification is built upon [Deneb](../../deneb/beacon_chain.md) and is under active development.
 
 ## Constants
 
@@ -41,9 +56,9 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` |
+| Name | Value | Description |
+| - | - | - |
+| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
 
 ## Preset
 
@@ -51,13 +66,18 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |  *[New in Electra:EIP7002]* |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
+| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 
 ## Containers
 
 ### New containers
 
 #### `DepositReceipt`
+
+*Note*: The container is new in EIP6110.
 
 ```python
 class DepositReceipt(Container):
@@ -68,7 +88,57 @@ class DepositReceipt(Container):
     index: uint64
 ```
 
+#### `ExecutionLayerExit`
+
+*Note*: The container is new in EIP7002.
+
+```python
+class ExecutionLayerExit(Container):
+    source_address: ExecutionAddress
+    validator_pubkey: BLSPubkey
+```
+
 ### Extended Containers
+
+#### `Attestation`
+
+```python
+class Attestation(Container):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
+    data: AttestationData
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
+    signature: BLSSignature
+```
+
+#### `IndexedAttestation`
+
+```python
+class IndexedAttestation(Container):
+    # [Modified in Electra:EIP7549]
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    data: AttestationData
+    signature: BLSSignature
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]  # [Modified in Electra:EIP7549]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]  # [Modified in Electra:EIP7549]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
+    # Execution
+    execution_payload: ExecutionPayload  # [Modified in Electra:EIP6110:EIP7002]
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
 
 #### `ExecutionPayload`
 
@@ -93,7 +163,8 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in EIP6110]
+    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    exits: List[ExecutionLayerExit, MAX_EXECUTION_LAYER_EXITS]  # [New in Electra:EIP7002]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -119,7 +190,8 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts_root: Root  # [New in EIP6110]
+    deposit_receipts_root: Root  # [New in Electra:EIP6110]
+    exits_root: Root  # [New in Electra:EIP7002]
 ```
 
 #### `BeaconState`
@@ -161,14 +233,48 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in EIP6110]
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110:EIP7002]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    # [New in EIP6110]
+    # [New in Electra:EIP6110]
     deposit_receipts_start_index: uint64
+```
+
+## Helper functions
+
+### Misc
+
+#### `get_committee_indices`
+
+```python
+def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
+    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
+```
+
+### Beacon state accessors
+
+#### Modified `get_attesting_indices`
+
+```python
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+    """
+    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
+    """
+    output: Set[ValidatorIndex] = set()
+    committee_indices = get_committee_indices(attestation.committee_bits)
+    committee_offset = 0
+    for index in committee_indices:
+        committee = get_beacon_committee(state, attestation.data.slot, index)
+        committee_attesters = set(
+            index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
+        output = output.union(committee_attesters)
+
+        committee_offset += len(committee)
+
+    return output
 ```
 
 ## Beacon chain state transition function
@@ -179,20 +285,20 @@ class BeaconState(Container):
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state, block.body.execution_payload)
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in EIP6110]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in EIP6110]
+    process_operations(state, block.body)  # [Modified in Electra:EIP6110:EIP7002:EIP7549]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
 #### Modified `process_operations`
 
-*Note*: The function `process_operations` is modified to process `DepositReceipt` operations included in the payload.
+*Note*: The function `process_operations` is modified to process `DepositReceipt` and `ExecutionLayerExit` operations included in the payload, along with the new attestation format.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    # [Modified in EIP6110]
+    # [Modified in Electra:EIP6110]
     # Disable former deposit mechanism once all prior deposits are processed
     eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
@@ -206,16 +312,64 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation)
+    for_ops(body.attestations, process_attestation)  # [Modified in Electra:EIP7549]
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.execution_payload.exits, process_execution_layer_exit)  # [New in Electra:EIP7002]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
 
     # [New in EIP6110]
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)
 ```
 
+#### Modified `process_attestation`
+
+```python
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+
+    # [Modified in Electra:EIP7549]
+    assert data.index == 0
+    committee_indices = get_committee_indices(attestation.committee_bits)
+    participants_count = 0
+    for index in committee_indices:
+        assert index < get_committee_count_per_slot(state, data.target.epoch)
+        committee = get_beacon_committee(state, data.slot, index)
+        participants_count += len(committee)
+
+    assert len(attestation.aggregation_bits) == participants_count
+
+    # Participation flag indices
+    participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
+
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
+    # Update epoch participation flags
+    if data.target.epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, attestation):
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+                proposer_reward_numerator += get_base_reward(state, index) * weight
+
+    # Reward proposer
+    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+```
+
 #### New `process_deposit_receipt`
+
+*Note*: This function is new in Electra:EIP6110.
 
 ```python
 def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
@@ -230,6 +384,39 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
         amount=deposit_receipt.amount,
         signature=deposit_receipt.signature,
     )
+```
+
+#### New `process_execution_layer_exit`
+
+*Note*: This function is new in Electra:EIP7002.
+
+```python
+def process_execution_layer_exit(state: BeaconState, execution_layer_exit: ExecutionLayerExit) -> None:
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    # Verify pubkey exists
+    pubkey_to_exit = execution_layer_exit.validator_pubkey
+    if pubkey_to_exit not in validator_pubkeys:
+        return
+    validator_index = ValidatorIndex(validator_pubkeys.index(pubkey_to_exit))
+    validator = state.validators[validator_index]
+
+    # Verify withdrawal credentials
+    is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_exit.source_address
+    if not (is_execution_address and is_correct_source_address):
+        return
+    # Verify the validator is active
+    if not is_active_validator(validator, get_current_epoch(state)):
+        return
+    # Verify exit has not been initiated
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    # Verify the validator has been active long enough
+    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+
+    # Initiate exit
+    initiate_validator_exit(state, validator_index)
 ```
 
 #### Modified `process_execution_payload`
@@ -276,17 +463,18 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in EIP6110]
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
+        exits_root=hash_tree_root(payload.exits),  # [New in Electra:EIP7002]
     )
 ```
 
 ## Testing
 
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-6110 testing only.
+*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Electra testing only.
 Modifications include:
-1. Use `EIP6110_FORK_VERSION` as the previous and current fork version.
-2. Utilize the EIP-6110 `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. Add `deposit_receipts_start_index` variable to the genesis state initialization.
+1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
+2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
+3. *[New in Electra:EIP6110]* Add `deposit_receipts_start_index` variable to the genesis state initialization.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -295,8 +483,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
                                       execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
                                       ) -> BeaconState:
     fork = Fork(
-        previous_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110] for testing only
-        current_version=EIP6110_FORK_VERSION,  # [Modified in EIP6110]
+        previous_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110] for testing only
+        current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
         epoch=GENESIS_EPOCH,
     )
     state = BeaconState(
@@ -305,7 +493,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in EIP6110]
+        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in Electra:EIP6110]
     )
 
     # Process deposits

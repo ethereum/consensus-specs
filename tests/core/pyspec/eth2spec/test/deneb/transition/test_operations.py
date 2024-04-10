@@ -11,6 +11,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
+    DENEB,
 )
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,
@@ -78,7 +79,13 @@ def test_transition_attestation_from_previous_fork_with_new_range(
     next_epoch_via_block(spec, state)
 
     # Generate an attestation for slot 0 of this epoch
-    attestation = get_valid_attestation(spec, state, signed=True)
+    if spec.fork == DENEB:
+        # NOTE: attestation format changes from Deneb to Electra
+        # so the attestation must be made with the `post_spec`
+        target_spec = post_spec
+    else:
+        target_spec = spec
+    attestation = get_valid_attestation(target_spec, state, signed=True)
 
     yield 'pre', state
 

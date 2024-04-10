@@ -26,10 +26,10 @@ Features are researched and developed in parallel, and then consolidated into se
 ### In-development Specifications
 | Code Name or Topic | Specs | Notes |
 | - | - | - |
+| Electra | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[EIP-6110 fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/electra/validator.md)</li></ul></ul> |
 | Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/_features/sharding/p2p-interface.md)</li></ul></ul> |
 | Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
 | Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/_features/das/das-core.md)</li><li>[Fork choice changes](specs/_features/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/_features/das/p2p-interface.md)</li><li>[Sampling process](specs/_features/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
-| EIP-6110 | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/eip6110//beacon-chain.md)</li><li>[EIP-6110 fork](specs/_features/eip6110/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/eip6110/validator.md)</li></ul></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
