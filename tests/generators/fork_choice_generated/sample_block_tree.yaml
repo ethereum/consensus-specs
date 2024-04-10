@@ -1,72 +1,191 @@
-- block_parents: [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  sm_links:
+- block_parents: &id002 [0, 0, 1, 2, 3, 4, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0]
+  sm_links: &id001
   - [0, 1]
-- block_parents: &id001 [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  sm_links:
+  - [0, 2]
+- block_parents: &id003 [0, 0, 1, 2, 3, 4, 5, 4, 3, 3, 2, 2, 1, 1, 0, 0]
+  sm_links: *id001
+- block_parents: &id005 [0, 0, 1, 2, 3, 4, 4, 5, 3, 3, 2, 2, 1, 1, 0, 0]
+  sm_links: *id001
+- block_parents: &id006 [0, 0, 1, 2, 3, 4, 5, 5, 3, 3, 2, 2, 1, 1, 0, 0]
+  sm_links: *id001
+- block_parents: *id002
+  sm_links: &id004
+  - [0, 1]
+  - [0, 3]
+- block_parents: *id003
+  sm_links: *id004
+- block_parents: *id005
+  sm_links: *id004
+- block_parents: *id006
+  sm_links: *id004
+- block_parents: *id002
+  sm_links: &id007
+  - [0, 2]
+  - [0, 3]
+- block_parents: *id003
+  sm_links: *id007
+- block_parents: *id005
+  sm_links: *id007
+- block_parents: *id006
+  sm_links: *id007
+- block_parents: *id002
+  sm_links: &id008
+  - [0, 1]
+  - [1, 3]
+- block_parents: *id003
+  sm_links: *id008
+- block_parents: *id005
+  sm_links: *id008
+- block_parents: *id006
+  sm_links: *id008
+- block_parents: *id002
+  sm_links: &id009
+  - [0, 2]
+  - [2, 3]
+- block_parents: *id003
+  sm_links: *id009
+- block_parents: *id005
+  sm_links: *id009
+- block_parents: *id006
+  sm_links: *id009
+- block_parents: &id011 [0, 0, 0, 0]
+  sm_links: &id010
   - [0, 1]
   - [0, 2]
   - [0, 3]
-- block_parents: *id001
-  sm_links:
+- block_parents: &id012 [0, 0, 1, 0]
+  sm_links: *id010
+- block_parents: &id014 [0, 0, 0, 1]
+  sm_links: *id010
+- block_parents: &id015 [0, 0, 1, 1]
+  sm_links: *id010
+- block_parents: *id011
+  sm_links: &id013
   - [0, 1]
   - [0, 2]
   - [1, 3]
-- block_parents: *id001
-  sm_links:
+- block_parents: *id012
+  sm_links: *id013
+- block_parents: *id014
+  sm_links: *id013
+- block_parents: *id015
+  sm_links: *id013
+- block_parents: *id011
+  sm_links: &id016
   - [0, 1]
   - [0, 2]
   - [2, 3]
-- block_parents: &id002 [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  sm_links:
+- block_parents: *id012
+  sm_links: *id016
+- block_parents: *id014
+  sm_links: *id016
+- block_parents: *id015
+  sm_links: *id016
+- block_parents: &id018 [0, 0, 0, 0]
+  sm_links: &id017
   - [0, 1]
   - [0, 2]
   - [0, 3]
   - [0, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: &id019 [0, 0, 1, 0]
+  sm_links: *id017
+- block_parents: &id021 [0, 0, 0, 1]
+  sm_links: *id017
+- block_parents: &id022 [0, 0, 1, 1]
+  sm_links: *id017
+- block_parents: *id018
+  sm_links: &id020
   - [0, 1]
   - [0, 2]
   - [0, 3]
   - [1, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id020
+- block_parents: *id021
+  sm_links: *id020
+- block_parents: *id022
+  sm_links: *id020
+- block_parents: *id018
+  sm_links: &id023
   - [0, 1]
   - [0, 2]
   - [0, 3]
   - [2, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id023
+- block_parents: *id021
+  sm_links: *id023
+- block_parents: *id022
+  sm_links: *id023
+- block_parents: *id018
+  sm_links: &id024
   - [0, 1]
   - [0, 2]
   - [0, 3]
   - [3, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id024
+- block_parents: *id021
+  sm_links: *id024
+- block_parents: *id022
+  sm_links: *id024
+- block_parents: *id018
+  sm_links: &id025
   - [0, 1]
   - [0, 2]
   - [1, 3]
   - [1, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id025
+- block_parents: *id021
+  sm_links: *id025
+- block_parents: *id022
+  sm_links: *id025
+- block_parents: *id018
+  sm_links: &id026
   - [0, 1]
   - [0, 2]
   - [1, 3]
   - [2, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id026
+- block_parents: *id021
+  sm_links: *id026
+- block_parents: *id022
+  sm_links: *id026
+- block_parents: *id018
+  sm_links: &id027
   - [0, 1]
   - [0, 2]
   - [1, 3]
   - [3, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id027
+- block_parents: *id021
+  sm_links: *id027
+- block_parents: *id022
+  sm_links: *id027
+- block_parents: *id018
+  sm_links: &id028
   - [0, 1]
   - [0, 2]
   - [2, 3]
   - [2, 4]
-- block_parents: *id002
-  sm_links:
+- block_parents: *id019
+  sm_links: *id028
+- block_parents: *id021
+  sm_links: *id028
+- block_parents: *id022
+  sm_links: *id028
+- block_parents: *id018
+  sm_links: &id029
   - [0, 1]
   - [0, 2]
   - [2, 3]
   - [3, 4]
+- block_parents: *id019
+  sm_links: *id029
+- block_parents: *id021
+  sm_links: *id029
+- block_parents: *id022
+  sm_links: *id029
