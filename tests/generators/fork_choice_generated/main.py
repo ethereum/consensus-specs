@@ -54,7 +54,7 @@ def _find_sm_link_solutions(anchor_epoch: int,
 
 def _find_block_tree_solutions(number_of_blocks: int,
                                max_children: int,
-                               number_of_solutions: int) -> Iterable[Iterable[int]]:
+                               number_of_solutions: int) -> []:
     model = Model('./model/minizinc/Block_tree.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
@@ -77,8 +77,7 @@ def _create_providers(test_name: str, /,
         presets: Iterable[PresetBaseName],
         debug: bool,
         initial_seed: int,
-        sm_link_solutions: Iterable[Iterable[tuple]],
-        block_tree_solutions: [[int]],
+        solutions: Iterable,
         number_of_variations: int,
         number_of_mutations: int,
         with_attester_slashings: bool,
@@ -108,15 +107,15 @@ def _create_providers(test_name: str, /,
             seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
             seeds[0] = initial_seed
 
-        for i, sm_links in enumerate(sm_link_solutions):
-            block_parents = block_tree_solutions[i % (len(block_tree_solutions) - 1)]
+        for i, solution in enumerate(solutions):
             for seed in seeds:
                 for fork_name in forks:
                     for preset_name in presets:
                         spec = spec_targets[preset_name][fork_name]
                         mutation_generator = MutatorsGenerator(
                             spec, seed, number_of_mutations,
-                            lambda: test_fn(fork_name, preset_name, seed, sm_links, block_parents),
+                            lambda: test_fn(fork_name, preset_name, seed,
+                                            sm_links=solution['sm_links'], block_parents=solution['block_parents']),
                             debug=debug)
                         for j in range(1 + number_of_mutations):
                             yield TestCase(fork_name=fork_name,
@@ -223,14 +222,18 @@ if __name__ == "__main__":
         sm_link_solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
         block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
 
+    solutions = []
+    for index, sm_links in enumerate(sm_link_solutions):
+        solutions.append({'sm_links': sm_links,
+                          'block_parents': block_tree_solutions[index % len(block_tree_solutions)]})
+
     gen_runner.run_generator(GENERATOR_NAME,
                              _create_providers('sm_links_tree_model',
                                                forks=forks,
                                                presets=presets,
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,
-                                               sm_link_solutions=sm_link_solutions,
-                                               block_tree_solutions=block_tree_solutions,
+                                               solutions=solutions,
                                                number_of_variations=args.fc_gen_variations,
                                                number_of_mutations=args.fc_gen_mutations,
                                                with_attester_slashings=args.fc_gen_attester_slashings,
