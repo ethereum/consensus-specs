@@ -39,9 +39,11 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 #### Attester slashings
 
-Changed the max attestations size to `MAX_ATTESTER_SLASHINGS_ELECTRA`.
+Changed the max attester slashings size to `MAX_ATTESTER_SLASHINGS_ELECTRA`.
 
 #### Attestations
+
+Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
 The network attestation aggregates contain only the assigned committee attestations.
 Attestation aggregates received by the block proposer from the committee aggregators with disjoint `committee_bits` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
