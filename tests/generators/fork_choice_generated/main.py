@@ -3,6 +3,8 @@ from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
+from itertools import product
+from toolz.dicttoolz import merge
 from typing import Iterable
 from importlib import import_module
 from eth2spec.utils import bls
@@ -49,12 +51,12 @@ def _find_sm_link_solutions(anchor_epoch: int,
 
     solutions = instance.solve(all_solutions=True)
     for i in range(len(solutions)):
-        yield [_ for _ in zip(solutions[i, 'sources'], solutions[i, 'targets'])]
+        yield {'sm_links': list(zip(solutions[i, 'sources'], solutions[i, 'targets']))}
 
 
 def _find_block_tree_solutions(number_of_blocks: int,
                                max_children: int,
-                               number_of_solutions: int) -> []:
+                               number_of_solutions: int) -> Iterable[dict]:
     model = Model('./model/minizinc/Block_tree.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
@@ -62,14 +64,12 @@ def _find_block_tree_solutions(number_of_blocks: int,
     instance['MC'] = max_children
 
     solutions = instance.solve(nr_solutions=number_of_solutions)
-    return [s.parent for s in solutions]
+    return [{'block_parents': s.parent} for s in solutions]
 
 
-def _load_sm_link_solutions(instance_path: str) -> Iterable[Iterable[tuple]]:
+def _load_block_tree_instances(instance_path: str) -> Iterable[dict]:
     solutions = yaml.load(open(instance_path, 'r'))
-    print('solutions', solutions)
-    for solution in solutions:
-        yield list(zip(solution['sources'], solution['targets']))
+    return solutions
 
 
 def _create_providers(test_name: str, /,
@@ -216,17 +216,12 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     if args.fc_gen_instances_path is not None:
-        sm_link_solutions = _load_sm_link_solutions(args.fc_gen_instances_path)
-        block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
+        solutions = _load_block_tree_instances(args.fc_gen_instances_path)
     else:
         sm_link_solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
         block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
-
-    solutions = []
-    for index, sm_links in enumerate(sm_link_solutions):
-        solutions.append({'sm_links': sm_links,
-                          'block_parents': block_tree_solutions[index % len(block_tree_solutions)]})
-
+        solutions = [merge(*sols) for sols in product(sm_link_solutions, block_tree_solutions)]
+    
     gen_runner.run_generator(GENERATOR_NAME,
                              _create_providers('sm_links_tree_model',
                                                forks=forks,
