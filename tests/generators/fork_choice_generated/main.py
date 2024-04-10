@@ -59,7 +59,8 @@ def _load_sm_link_solutions(instance_path: str) -> Iterable[Iterable[tuple]]:
         yield list(zip(solution['sources'], solution['targets']))
 
 
-def _create_providers(forks: Iterable[SpecForkName],
+def _create_providers(test_name: str, /,
+        forks: Iterable[SpecForkName],
         presets: Iterable[PresetBaseName],
         debug: bool,
         initial_seed: int,
@@ -104,9 +105,9 @@ def _create_providers(forks: Iterable[SpecForkName],
                             yield TestCase(fork_name=fork_name,
                                         preset_name=preset_name,
                                         runner_name=GENERATOR_NAME,
-                                        handler_name='sm_links_tree_model',
+                                        handler_name=test_name,
                                         suite_name='fork_choice',
-                                        case_name='sm_links_tree_model_' + str(i) + '_' + str(seed) + '_' + str(j),
+                                        case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
                                         case_fn=mutation_generator.next_test_case)
 
     yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
@@ -188,7 +189,8 @@ if __name__ == "__main__":
         solutions = _find_sm_link_solutions(args.fc_gen_anchor_epoch, args.fc_gen_epochs, args.fc_gen_links)
 
     gen_runner.run_generator(GENERATOR_NAME,
-                             _create_providers(forks=forks,
+                             _create_providers('sm_links_tree_model',
+                                               forks=forks,
                                                presets=presets,
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,

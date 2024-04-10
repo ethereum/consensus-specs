@@ -22,13 +22,31 @@ test_gen_config = {
         'test_type': 'block_tree',
         'instances': 'block_tree.yaml',
         'seed': 123,
-        'nr_variations': 3,
+        'nr_variations': 1,
+        'nr_mutations': 0,
+    },
+    'invalid_message_test': {
+        'test_type': 'block_tree',
+        'with_invalid_messages': True,
+        'instances': 'block_tree.yaml',
+        'seed': 123,
+        'nr_variations': 1,
+        'nr_mutations': 1,
+    },
+    'attester_slashing_test': {
+        'test_type': 'block_tree',
+        'with_attester_slashings': True,
+        'instances': 'block_tree.yaml',
+        'seed': 123,
+        'nr_variations': 1,
+        'nr_mutations': 1,
     },
     'block_cover_test': {
         'test_type': 'block_cover',
         'instances': 'block_cover.yaml',
         'seed': 456,
-        'nr_variations': 3,
+        'nr_variations': 1,
+        'nr_mutations': 0,
     }
 }
 
@@ -61,25 +79,32 @@ if __name__ == "__main__":
         instances_path = params['instances']
         initial_seed = params['seed']
         nr_variations = params['nr_variations']
+        nr_mutations = params['nr_mutations']
+        with_attester_slashings = params.get('with_attester_slashings', False)
+        with_invalid_messages = params.get('with_invalid_messages', False)
 
         if test_type == 'block_tree':
             solutions = block_tree_load_solutions(instances_path)
-            providers = block_tree_create_providers(forks=block_tree_forks,
+            providers = block_tree_create_providers(test_name,
+                                                    forks=block_tree_forks,
                                                     presets=block_tree_presets,
                                                     debug=args.fc_gen_debug,
                                                     initial_seed=initial_seed,
                                                     solutions=solutions,
                                                     number_of_variations=nr_variations,
-                                                    with_attester_slashings=False,
-                                                    with_invalid_messages=False)
+                                                    number_of_mutations=nr_mutations,
+                                                    with_attester_slashings=with_attester_slashings,
+                                                    with_invalid_messages=with_invalid_messages)
         elif test_type == 'block_cover':
             solutions = block_cover_load_solutions(instances_path)
-            providers = block_cover_create_providers(forks=block_cover_forks,
+            providers = block_cover_create_providers(test_name,
+                                                     forks=block_cover_forks,
                                                      presets=block_cover_presets,
                                                      debug=args.fc_gen_debug,
                                                      initial_seed=initial_seed,
                                                      solutions=solutions,
-                                                     number_of_variations=nr_variations)
+                                                     number_of_variations=nr_variations,
+                                                     number_of_mutations=nr_mutations)
         else:
             raise ValueError(f'Unsupported test type: {test_type}')
         

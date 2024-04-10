@@ -99,7 +99,8 @@ def _generate_model_solutions(anchor_epoch: int, nr_solutions: int=5):
     return solutions
 
 
-def _create_providers(forks: Iterable[SpecForkName],
+def _create_providers(test_name: str, /,
+        forks: Iterable[SpecForkName],
         presets: Iterable[PresetBaseName],
         debug: bool,
         initial_seed: int,
@@ -140,9 +141,9 @@ def _create_providers(forks: Iterable[SpecForkName],
                             yield TestCase(fork_name=fork_name,
                                         preset_name=preset_name,
                                         runner_name=GENERATOR_NAME,
-                                        handler_name='filter_block_tree_model',
+                                        handler_name=test_name,
                                         suite_name='fork_choice',
-                                        case_name='filter_block_tree_model_' + str(i) + '_' + str(seed) + '_' + str(j),
+                                        case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
                                         case_fn=mutation_generator.next_test_case)
 
     yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
@@ -216,7 +217,8 @@ if __name__ == "__main__":
         solutions = _generate_model_solutions(args.fc_gen_anchor_epoch, args.fc_gen_nr_solutions)
 
     gen_runner.run_generator(GENERATOR_NAME,
-                             _create_providers(forks=forks,
+                             _create_providers('filter_block_tree_model',
+                                               forks=forks,
                                                presets=presets,
                                                debug=args.fc_gen_debug,
                                                initial_seed=args.fc_gen_seed,
