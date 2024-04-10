@@ -84,13 +84,15 @@ if __name__ == "__main__":
         with_invalid_messages = params.get('with_invalid_messages', False)
 
         if test_type == 'block_tree':
-            solutions = block_tree_load_solutions(instances_path)
+            sm_link_solutions = block_tree_load_solutions(instances_path)
+            block_tree_solutions = [[0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]
             providers = block_tree_create_providers(test_name,
                                                     forks=block_tree_forks,
                                                     presets=block_tree_presets,
                                                     debug=args.fc_gen_debug,
                                                     initial_seed=initial_seed,
-                                                    solutions=solutions,
+                                                    sm_link_solutions=sm_link_solutions,
+                                                    block_tree_solutions=block_tree_solutions,
                                                     number_of_variations=nr_variations,
                                                     number_of_mutations=nr_mutations,
                                                     with_attester_slashings=with_attester_slashings,

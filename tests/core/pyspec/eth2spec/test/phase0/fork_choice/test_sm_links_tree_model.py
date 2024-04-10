@@ -781,14 +781,13 @@ def test_sm_links_tree_model(spec,
                              debug=False,
                              seed=1,
                              sm_links=None,
+                             block_parents=None,
                              with_attester_slashings=False,
                              with_invalid_messages=False):
-    block_parents = [0, 0, 0, 2, 2, 1, 1, 6, 6, 5, 5, 4, 7, 4, 3, 3]
-
     # This test is mainly used for the test generation purposes
-    # Thus seed and sm_links are provided by the generator
-    # Define sm_links and seed explicitly to execute a certain run of this test
-    if sm_links is None:
+    # Thus seed, sm_links and block_parents are provided by the generator
+    # Define sm_links, seed and block_parents explicitly to execute a certain run of this test
+    if sm_links is None or block_parents is None:
         return
 
     assert (1, 2) not in sm_links, '(1, 2) sm link is not supported due to unsatisfiability'
@@ -802,7 +801,8 @@ def test_sm_links_tree_model(spec,
     while True:
         if debug:
             print('\nseed:', seed)
-            print('\nsm_links:', sm_links)
+            print('sm_links:', sm_links)
+            print('block_parents:', block_parents)
 
         rnd = random.Random(seed)
         signed_block_messages, highest_tip = _generate_sm_link_tree(spec, state, sm_links, rnd, debug)
@@ -828,6 +828,7 @@ def test_sm_links_tree_model(spec,
     # Yield run parameters
     yield 'seed', 'meta', seed
     yield 'sm_links', 'meta', str(sm_links)
+    yield 'block_parents', 'meta', str(block_parents)
 
     test_steps = []
     # Store initialization
