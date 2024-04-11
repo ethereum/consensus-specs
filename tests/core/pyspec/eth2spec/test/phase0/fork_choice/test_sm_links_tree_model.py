@@ -682,9 +682,8 @@ def _generate_block_tree(spec,
                post_states.append(post_state)
 
                # Update tips
-               if block_is_valid:
-                   block_tree_tips.discard(parent_index)
-                   block_tree_tips.add(block_index)
+               block_tree_tips.discard(parent_index)
+               block_tree_tips.add(block_index)
 
                # Next block
             block_index += 1
