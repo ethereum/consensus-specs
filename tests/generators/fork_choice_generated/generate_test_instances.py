@@ -124,7 +124,7 @@ gen_params = {
         'out_path': 'attester_slashings.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
-            ([{'sources': [0, 0, 2, 3], 'targets': [1, 2, 3, 4]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
             ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
             ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
         ]
@@ -133,7 +133,7 @@ gen_params = {
         'out_path': 'invalid_messages.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
-            ([{'sources': [0, 0, 2, 3], 'targets': [1, 2, 3, 4]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
             ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
             ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
         ]
