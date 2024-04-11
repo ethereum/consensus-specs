@@ -9,7 +9,7 @@ from filter_block_tree_generator import (
 from main import (
     forks as block_tree_forks,
     presets as block_tree_presets,
-    _load_sm_link_solutions as block_tree_load_solutions,
+    _load_block_tree_instances as block_tree_load_solutions,
     _create_providers as block_tree_create_providers
 )
 
@@ -84,13 +84,7 @@ if __name__ == "__main__":
         with_invalid_messages = params.get('with_invalid_messages', False)
 
         if test_type == 'block_tree':
-            sm_link_solutions = block_tree_load_solutions(instances_path)
-            block_tree_solutions = [[0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]
-            solutions = []
-            for index, sm_links in enumerate(sm_link_solutions):
-                solutions.append({'sm_links': sm_links,
-                                  'block_parents': block_tree_solutions[index % len(block_tree_solutions)]})
-
+            solutions = block_tree_load_solutions(instances_path)
             providers = block_tree_create_providers(test_name,
                                                     forks=block_tree_forks,
                                                     presets=block_tree_presets,
