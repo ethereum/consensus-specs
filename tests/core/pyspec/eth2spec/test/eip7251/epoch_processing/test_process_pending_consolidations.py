@@ -45,8 +45,8 @@ def test_consolidation_not_yet_withdrawable_validator(spec, state):
     # Initiate exit of source validator
     spec.initiate_validator_exit(state, source_index)
 
-    pre_pending_consolidations = state.pending_consolidations
-    pre_balances = state.balances
+    pre_pending_consolidations = state.pending_consolidations.copy()
+    pre_balances = state.balances.copy()
     pre_target_withdrawal_credential = state.validators[target_index].withdrawal_credentials[:1]
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
@@ -105,7 +105,6 @@ def test_skip_consolidation_when_source_slashed(spec, state):
 def test_all_consolidation_cases_together(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_index = [spec.get_active_validator_indices(state, current_epoch)[i] for i in range(4)]
-    print(spec.get_active_validator_indices(state, current_epoch))
     target_index = [spec.get_active_validator_indices(state, current_epoch)[4+i] for i in range(4)]
     state.pending_consolidations = [spec.PendingConsolidation(source_index=source_index[i],
                                                               target_index=target_index[i]) for i in range(4)]
@@ -122,9 +121,9 @@ def test_all_consolidation_cases_together(spec, state):
     spec.initiate_validator_exit(state, 2)
 
 
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     pre_target_withdrawal_prefixes = [state.validators[target_index[i]].withdrawal_credentials[:1] for i in [0,1,2,3]]
-    pre_pending_consolidations = state.pending_consolidations
+    pre_pending_consolidations = state.pending_consolidations.copy()
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
     # First consolidation is successfully processed
