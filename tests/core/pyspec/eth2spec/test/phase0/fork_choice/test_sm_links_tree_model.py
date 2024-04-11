@@ -664,11 +664,11 @@ def _generate_block_tree(spec,
 
             # Produce block
             proposer = spec.get_beacon_proposer_index(parent_state)
-            if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-                # Intentionally invalid block
-                # Do not update slashings and attestations for them to be included in the future blocks
-                signed_block, _, _, _ = _produce_block(
-                    spec, parent_state, in_block_attestations, in_block_attester_slashings)
+            if parent_state.validators[proposer].slashed or (
+                    with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE):
+                # Do not include attestations and slashings into invalid block
+                # as clients may opt in to process or not process attestations contained by invalid block
+                signed_block, _, _, _ = _produce_block(spec, parent_state, [], [])
                 _spoil_block(spec, rnd, signed_block)
                 signed_block_messages.append(ProtocolMessage(signed_block, False))
                 # Append the parent state as the post state as if the block were not applied
@@ -677,13 +677,8 @@ def _generate_block_tree(spec,
                signed_block, post_state, in_block_attestations, in_block_attester_slashings = _produce_block(
                    spec, parent_state, in_block_attestations, in_block_attester_slashings)
 
-               # A block can be unintentionally invalid, e.g. a proposer was slashed
-               # In this case it is expected that post_state == parent_state,
-               # and beacon operations returned from _produce_block are expected to remain untouched
-               block_is_valid = post_state.latest_block_header.slot == signed_block.message.slot
-
                # Valid block
-               signed_block_messages.append(ProtocolMessage(signed_block, block_is_valid))
+               signed_block_messages.append(ProtocolMessage(signed_block, True))
                post_states.append(post_state)
 
                # Update tips
