@@ -14,7 +14,7 @@ from ruamel.yaml import YAML
 
 
 BLS_ACTIVE = False
-GENERATOR_NAME = 'filter_block_tree'
+GENERATOR_NAME = 'fork_choice_generated'
 
 
 forks = [ALTAIR]
