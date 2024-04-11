@@ -71,7 +71,7 @@ def test_multiple_pending_deposits_below_churn(spec, state):
     amount = 10**9
     state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=0, amount=amount))
     state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=1, amount=amount))
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
     for i in [0, 1]:
         assert state.balances[i] == pre_balances[i] + amount
@@ -87,7 +87,7 @@ def test_multiple_pending_deposits_above_churn(spec, state):
     amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
     for i in [0, 1, 2]:
         state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=i, amount=amount))
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
     # First two deposits are processed, third is not because above churn
     for i in [0, 1]:
@@ -105,7 +105,7 @@ def test_skipped_deposit_exiting_validator(spec, state):
     index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
     state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=index, amount=amount))
-    pre_pending_balance_deposits = state.pending_balance_deposits
+    pre_pending_balance_deposits = state.pending_balance_deposits.copy()
     pre_balance = state.balances[index]
     # Initiate the validator's exit
     spec.initiate_validator_exit(state, index)
@@ -128,8 +128,8 @@ def test_multiple_skipped_deposits_exiting_validators(spec, state):
 
         # Initiate the exit of validator i
         spec.initiate_validator_exit(state, i)
-    pre_pending_balance_deposits = state.pending_balance_deposits
-    pre_balances = state.balances
+    pre_pending_balance_deposits = state.pending_balance_deposits.copy()
+    pre_balances = state.balances.copy()
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
     # All deposits are postponed, no balance changes
     assert state.balances == pre_balances
@@ -145,7 +145,7 @@ def test_multiple_pending_one_skipped(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     for i in [0, 1, 2]:
         state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=i, amount=amount))
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
@@ -168,7 +168,7 @@ def test_mixture_of_skipped_and_above_churn(spec, state):
     for i in [0, 1]:
         state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=i, amount=amount01))
     state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=2, amount=amount2))
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
     yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
@@ -210,7 +210,7 @@ def test_processing_deposit_of_withdrawable_validator_does_not_get_churned(spec,
     amount = spec.MAX_EFFECTIVE_BALANCE_EIP7251
     for i in [0, 1]:
         state.pending_balance_deposits.append(spec.PendingBalanceDeposit(index=i, amount=amount))
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     # Initiate the first validator's exit
     spec.initiate_validator_exit(state, 0)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
