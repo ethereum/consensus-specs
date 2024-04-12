@@ -1044,8 +1044,8 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
 
 ```python
 def is_consolidation_queue_full(state: BeaconState) -> bool:
-    return (state.earliest_consolidation_epoch < get_current_epoch(state) +
-            MIN_VALIDATOR_WITHDRAWABILITY_DELAY + 1 + MAX_SEED_LOOKAHEAD)
+    epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWABILITY_DELAY + 1 + MAX_SEED_LOOKAHEAD
+    return state.earliest_consolidation_epoch < epoch
 ```
 
 ##### Voluntary exits
