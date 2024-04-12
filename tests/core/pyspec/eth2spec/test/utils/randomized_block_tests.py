@@ -99,6 +99,17 @@ def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=
     return scenario_state
 
 
+def randomize_state_electra(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_deneb(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
 # epochs
 
 def epochs_until_leak(spec):
@@ -244,6 +255,12 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
     block.body.execution_payload.transactions.append(opaque_tx)
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     block.body.blob_kzg_commitments = blob_kzg_commitments
+
+    return block
+
+
+def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+    block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block
 
