@@ -234,6 +234,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     """
     pre_validator_count = len(state.validators)
     pre_balance = 0
+    pre_effective_balance = 0
     is_top_up = False
     # is a top-up
     if validator_index < pre_validator_count:
@@ -242,7 +243,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         pre_effective_balance = state.validators[validator_index].effective_balance
 
     if is_post_eip7251(spec):
-        assert len(state.pending_balance_deposits) == 0
+        pre_pending_deposits = len(state.pending_balance_deposits)
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -256,20 +257,6 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
 
     yield 'post', state
 
-    if is_post_eip7251(spec):
-        # balance additions are now routed through "pending balance deposits"
-        # process them here along with any effective balance updates
-        updates_count = len(state.pending_balance_deposits)
-        if updates_count != 0:
-            assert updates_count == 1
-            pending_balance_deposit = state.pending_balance_deposits[0]
-            assert pending_balance_deposit.index == validator_index
-            assert pending_balance_deposit.amount == deposit.data.amount
-            spec.increase_balance(state, validator_index, deposit.data.amount)
-            if not is_top_up:
-                # run effective balance update for new validators
-                spec.process_effective_balance_updates(state)
-
     if not effective or not bls.KeyValidate(deposit.data.pubkey):
         assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
@@ -277,19 +264,30 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             assert get_balance(state, validator_index) == pre_balance
     else:
         if is_top_up:
-            # Top-ups do not change effective balance
-            assert state.validators[validator_index].effective_balance == pre_effective_balance
+            # Top-ups don't add validators
             assert len(state.validators) == pre_validator_count
             assert len(state.balances) == pre_validator_count
         else:
-            # new validator
+            # new validator is added
             assert len(state.validators) == pre_validator_count + 1
             assert len(state.balances) == pre_validator_count + 1
-            effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
-            effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
-            assert state.validators[validator_index].effective_balance == effective_balance
-
-        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+        if not is_post_eip7251(spec):
+            if is_top_up:
+                # Top-ups do not change effective balance
+                assert state.validators[validator_index].effective_balance == pre_effective_balance
+            else:
+                effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
+                effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
+                assert state.validators[validator_index].effective_balance == effective_balance
+            assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+        else:
+            # no balance or effective balance changes on deposit processing post eip7251
+            assert get_balance(state, validator_index) == pre_balance
+            assert state.validators[validator_index].effective_balance == pre_effective_balance
+            # new correct balance deposit queued up
+            assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
+            assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit.data.amount
+            assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
 
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
 

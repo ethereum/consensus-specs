@@ -509,7 +509,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
     if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
+        validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
         queue_excess_active_balance(state, index)
 ```
 

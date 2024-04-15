@@ -30,12 +30,49 @@ from eth2spec.test.helpers.withdrawals import (
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit, threshold_fn=default_activation_threshold)
 @spec_test
 @single_phase
-def test_basic_consolidation(spec, state):
-    print(spec.config.PRESET_BASE)
+def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
+
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    signed_consolidation = sign_consolidation(spec, state,
+                                              spec.Consolidation(
+                                                  epoch=current_epoch,
+                                                  source_index=source_index,
+                                                  target_index=target_index),
+                                              source_privkey, target_privkey)
+    
+    # Set earliest consolidation epoch to the expected exit epoch
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    state.earliest_consolidation_epoch = expected_exit_epoch
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
     # Set the consolidation balance to consume equal to churn limit
     state.consolidation_balance_to_consume = consolidation_churn_limit
+
+    yield from run_consolidation_processing(spec, state, signed_consolidation)
+
+    # Check consolidation churn is decremented correctly
+    assert state.consolidation_balance_to_consume == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
+    # Check exit epoch
+    assert state.validators[0].exit_epoch == expected_exit_epoch
+
+@with_eip7251_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit, threshold_fn=default_activation_threshold)
+@spec_test
+@single_phase
+def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    # Set consolidation balance to consume to some arbitrary nonzero value below the churn limit
+    state.consolidation_balance_to_consume = spec.EFFECTIVE_BALANCE_INCREMENT
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
@@ -56,7 +93,92 @@ def test_basic_consolidation(spec, state):
 
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
     # Check consolidation churn is decremented correctly
+    # consolidation_balance_to_consume is replenished to the churn limit since we move to a new consolidation epoch
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
     assert state.consolidation_balance_to_consume == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
+    # Check exit epochs
+    assert state.validators[0].exit_epoch == expected_exit_epoch
+
+
+@with_eip7251_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit, threshold_fn=default_activation_threshold)
+@spec_test
+@single_phase
+def test_basic_consolidation_with_preexisting_churn(spec, state):
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
+
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    signed_consolidation = sign_consolidation(spec, state,
+                                              spec.Consolidation(
+                                                  epoch=current_epoch,
+                                                  source_index=source_index,
+                                                  target_index=target_index),
+                                              source_privkey, target_privkey)
+    
+    # Set earliest consolidation epoch to the expected exit epoch
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    state.earliest_consolidation_epoch = expected_exit_epoch
+    # Set some nonzero preexisting churn lower than churn limit and sufficient to process the consolidation
+    preexisting_churn = 2*spec.MIN_ACTIVATION_BALANCE
+    state.consolidation_balance_to_consume = preexisting_churn
+
+    yield from run_consolidation_processing(spec, state, signed_consolidation)
+
+    # Check consolidation churn is decremented correctly
+    assert state.consolidation_balance_to_consume == preexisting_churn - spec.MIN_ACTIVATION_BALANCE
+    # Check exit epoch
+    assert state.validators[0].exit_epoch == expected_exit_epoch
+
+
+@with_eip7251_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit, threshold_fn=default_activation_threshold)
+@spec_test
+@single_phase
+def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
+
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    signed_consolidation = sign_consolidation(spec, state,
+                                              spec.Consolidation(
+                                                  epoch=current_epoch,
+                                                  source_index=source_index,
+                                                  target_index=target_index),
+                                              source_privkey, target_privkey)
+    
+    # Set earliest consolidation epoch to the first available epoch
+    state.earliest_consolidation_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    # Set preexisting churn lower than required to process the consolidation
+    preexisting_churn = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.consolidation_balance_to_consume = preexisting_churn
+
+    yield from run_consolidation_processing(spec, state, signed_consolidation)
+
+    # It takes one more epoch to process the consolidation due to insufficient churn
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch) + 1
+    # Check consolidation churn is decremented correctly
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
+    remainder = spec.MIN_ACTIVATION_BALANCE % preexisting_churn
+    assert state.consolidation_balance_to_consume == consolidation_churn_limit - remainder
     # Check exit epoch
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
@@ -111,6 +233,7 @@ def test_consolidation_churn_limit_balance(spec, state):
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     source_validator = state.validators[source_index]
     source_validator.effective_balance = consolidation_churn_limit
+    # Churn limit increases due to higher total balance
     updated_consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
@@ -128,6 +251,7 @@ def test_consolidation_churn_limit_balance(spec, state):
                                               source_privkey, target_privkey)
     yield from run_consolidation_processing(spec, state, signed_consolidation)
 
+    # validator's effective balance fits into the churn, exit as soon as possible
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
     # Check consolidation churn is decremented correctly
     assert state.consolidation_balance_to_consume == updated_consolidation_churn_limit - consolidation_churn_limit
@@ -157,6 +281,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
     set_compounding_withdrawal_credential(spec, state, source_index)
     set_compounding_withdrawal_credential(spec, state, target_index)
 
+    # Consolidation churn limit increases due to higher total balance
     new_churn_limit = spec.get_consolidation_churn_limit(state)
     remainder = state.validators[source_index].effective_balance % new_churn_limit
     expected_balance = new_churn_limit - remainder
@@ -464,6 +589,21 @@ def test_invalid_exceed_pending_consolidations_limit(spec, state):
                                               source_privkey, target_privkey)
     yield from run_consolidation_processing(spec, state, signed_consolidation, valid=False)
 
+@with_eip7251_and_later
+@spec_state_test
+def test_invalid_not_enough_consolidation_churn_available(spec, state):
+    state.validators = state.validators[0:2]
+    state.pending_consolidations = [spec.PendingConsolidation(source_index=0, target_index=1)]
+    current_epoch = spec.get_current_epoch(state)
+    source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[1].pubkey]
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, 0)
+    set_eth1_withdrawal_credential_with_balance(spec, state, 1)
+    signed_consolidation = sign_consolidation(spec, state,
+                                              spec.Consolidation(epoch=current_epoch, source_index=0, target_index=1),
+                                              source_privkey, target_privkey)
+    yield from run_consolidation_processing(spec, state, signed_consolidation, valid=False)
 
 @with_eip7251_and_later
 @spec_state_test
