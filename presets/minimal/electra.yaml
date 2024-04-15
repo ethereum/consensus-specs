@@ -36,7 +36,5 @@ MAX_CONSOLIDATIONS: 1
 # ---------------------------------------------------------------
 # [customized]
 MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
-# 2**4 (= 16) exits
-MAX_EXECUTION_LAYER_EXITS: 16
-# [customized] 2**1 (= 2)
-MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 2
+# [customized] 2**1 (= 2) withdrawal requests
+MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 2

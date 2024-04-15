@@ -36,7 +36,5 @@ MAX_CONSOLIDATIONS: 1
 # ---------------------------------------------------------------
 # 2**13 (= 8192) receipts
 MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 8192
-# 2**4 (= 16) exits
-MAX_EXECUTION_LAYER_EXITS: 16
-# 2**3 (= 8) partial withdrawals
-MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD: 8
+# 2**4 (= 16) withdrawal requests
+MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 16

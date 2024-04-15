@@ -26,7 +26,7 @@
     - [`DepositReceipt`](#depositreceipt)
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
-    - [`ExecutionLayerWithdrawRequest`](#executionlayerwithdrawrequest)
+    - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
     - [`Consolidation`](#consolidation)
     - [`SignedConsolidation`](#signedconsolidation)
     - [`PendingConsolidation`](#pendingconsolidation)
@@ -80,7 +80,7 @@
       - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
       - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
       - [New `process_deposit_receipt`](#new-process_deposit_receipt)
-    - [New `process_execution_layer_withdraw_request`](#new-process_execution_layer_withdraw_request)
+    - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [New `process_consolidation`](#new-process_consolidation)
     - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
@@ -108,7 +108,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* |
 
 ### Withdrawal prefixes
 
@@ -161,8 +161,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
 | `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
 | `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
-| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)|
-| `MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**3)` (= 8) | Maximum amount of partial withdrawals allowed in each payload |
+| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
 
 ## Configuration
 
@@ -206,10 +205,10 @@ class PendingPartialWithdrawal(Container):
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
-#### `ExecutionLayerWithdrawRequest`
+#### `ExecutionLayerWithdrawalRequest`
 
 ```python
-class ExecutionLayerWithdrawRequest(Container):
+class ExecutionLayerWithdrawalRequest(Container):
     source_address: ExecutionAddress
     validator_pubkey: BLSPubkey
     amount: Gwei
@@ -306,7 +305,7 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
-    withdraw_requests: List[ExecutionLayerWithdrawRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -333,7 +332,7 @@ class ExecutionPayloadHeader(Container):
     blob_gas_used: uint64
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
-    withdraw_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
+    withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
 ```
 
 #### `BeaconState`
@@ -536,7 +535,8 @@ def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> G
 ```python
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
-        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index)
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index
+    )
 ```
 
 #### Modified `get_attesting_indices`
@@ -588,7 +588,11 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
     if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials[:1] = COMPOUNDING_WITHDRAWAL_PREFIX
+        validator.withdrawal_credentials = (
+            COMPOUNDING_WITHDRAWAL_PREFIX
+            + b'\x00' * 11
+            + validator.withdrawal_credentials[20:]
+        )
         queue_excess_active_balance(state, index)
 ```
 
@@ -929,7 +933,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.execution_payload.withdraw_requests, process_execution_layer_withdraw_request)
+    for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
     for_ops(body.consolidations, process_consolidation)  # [New in Electra:EIP7251]
 ```
@@ -1080,16 +1084,16 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     )
 ```
 
-#### New `process_execution_layer_withdraw_request`
+#### New `process_execution_layer_withdrawal_request`
 
 *Note*: This function is new in Electra following EIP-7002 and EIP-7251.
 
 ```python
-def process_execution_layer_withdraw_request(
+def process_execution_layer_withdrawal_request(
     state: BeaconState,
-    execution_layer_withdraw_request: ExecutionLayerWithdrawRequest
+    execution_layer_withdrawal_request: ExecutionLayerWithdrawalRequest
 ) -> None:
-    amount = execution_layer_withdraw_request.amount
+    amount = execution_layer_withdrawal_request.amount
     is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
 
     # If partial withdrawal queue is full, only full exits are processed
@@ -1098,7 +1102,7 @@ def process_execution_layer_withdraw_request(
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkey exists
-    request_pubkey = execution_layer_withdraw_request.validator_pubkey
+    request_pubkey = execution_layer_withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
         return
     index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
@@ -1106,7 +1110,7 @@ def process_execution_layer_withdraw_request(
 
     # Verify withdrawal credentials
     is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_withdraw_request.source_address
+    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
     if not (is_execution_address and is_correct_source_address):
         return
     # Verify the validator is active
@@ -1191,7 +1195,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
-        withdraw_requests_root=hash_tree_root(payload.withdraw_requests),  # [New in Electra:EIP7002:EIP7251]
+        withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
     )
 ```
 
@@ -1233,7 +1237,8 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
 
     # Initiate source validator exit and append pending consolidation
     source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
-        state, source_validator.effective_balance)
+        state, source_validator.effective_balance
+    )
     source_validator.withdrawable_epoch = Epoch(
         source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
