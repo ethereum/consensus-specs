@@ -159,10 +159,9 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
-| `MAX_EXECUTION_LAYER_EXITS` | `2**4` (= 16) |  *[New in Electra:EIP7002]* |
 | `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
 | `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
-| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(16)` |
+| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)|
 | `MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**3)` (= 8) | Maximum amount of partial withdrawals allowed in each payload |
 
 ## Configuration
@@ -172,7 +171,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA` | `Gwei(2**7 * 10**9)` (= 128,000,000,000) | # Equivalent to 4 32 ETH validators
-| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT` | `Gwei(2**8 * 10**9)` (256,000,000,000) |
+| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
 
 ## Containers
 
