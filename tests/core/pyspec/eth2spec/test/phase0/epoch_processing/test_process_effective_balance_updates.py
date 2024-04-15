@@ -5,11 +5,11 @@ from eth2spec.test.helpers.withdrawals import (
 )
 from eth2spec.test.helpers.forks import is_post_eip7251
 
+
 @with_all_phases
 @spec_state_test
 def test_effective_balance_hysteresis(spec, state):
     run_test_effective_balance_hysteresis(spec, state)
-
 
 
 def run_test_effective_balance_hysteresis(spec, state, with_compounding_credentials=False):
