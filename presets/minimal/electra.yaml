@@ -1,0 +1,15 @@
+# Minimal preset - Electra
+
+# # Max operations per block
+# ---------------------------------------------------------------
+# `uint64(2**0)` (= 1)
+MAX_ATTESTER_SLASHINGS_ELECTRA: 1
+# `uint64(2 * 3)` (= 8)
+MAX_ATTESTATIONS_ELECTRA: 8
+
+# Execution
+# ---------------------------------------------------------------
+# [customized]
+MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
+# 2**4 (= 16) exits
+MAX_EXECUTION_LAYER_EXITS: 16

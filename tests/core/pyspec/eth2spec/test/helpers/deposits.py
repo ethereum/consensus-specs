@@ -405,5 +405,3 @@ def run_deposit_receipt_processing_with_specific_fork_version(
         valid=valid,
         effective=effective
     )
-
-

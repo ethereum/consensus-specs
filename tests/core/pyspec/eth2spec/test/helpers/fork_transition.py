@@ -17,6 +17,7 @@ from eth2spec.test.helpers.constants import (
     PHASE0,
     POST_FORK_OF,
     PREVIOUS_FORK_OF,
+    DENEB,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -296,8 +297,15 @@ def run_transition_with_operation(state,
             operation_dict = {'proposer_slashings': [proposer_slashing]}
         else:
             # operation_type == OperationType.ATTESTER_SLASHING:
+            if is_at_fork and spec.fork == DENEB:
+                # NOTE: attestation format changes between Deneb and Electra
+                # so attester slashing must be made with the `post_spec`
+                target_spec = post_spec
+            else:
+                target_spec = spec
+
             attester_slashing = get_valid_attester_slashing_by_indices(
-                spec, state,
+                target_spec, state,
                 [selected_validator_index],
                 signed_1=True, signed_2=True,
             )
