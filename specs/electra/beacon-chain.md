@@ -830,7 +830,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD:
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
             break
 
         validator = state.validators[withdrawal.index]
@@ -1110,7 +1110,9 @@ def process_execution_layer_withdrawal_request(
 
     # Verify withdrawal credentials
     is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    is_correct_source_address = validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
+    is_correct_source_address = (
+        validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
+    )
     if not (is_execution_address and is_correct_source_address):
         return
     # Verify the validator is active
@@ -1129,7 +1131,6 @@ def process_execution_layer_withdrawal_request(
         # Only exit validator if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
             initiate_validator_exit(state, index)
-
         return
 
     has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
