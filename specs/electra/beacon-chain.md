@@ -1097,7 +1097,7 @@ def process_execution_layer_withdrawal_request(
     is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
 
     # If partial withdrawal queue is full, only full exits are processed
-    if len(state.pending_partial_withdrawals) >= PENDING_PARTIAL_WITHDRAWALS_LIMIT and not is_full_exit_request:
+    if len(state.pending_partial_withdrawals) == PENDING_PARTIAL_WITHDRAWALS_LIMIT and not is_full_exit_request:
         return
 
     validator_pubkeys = [v.pubkey for v in state.validators]
