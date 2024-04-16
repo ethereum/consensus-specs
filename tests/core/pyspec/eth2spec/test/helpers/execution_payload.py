@@ -4,6 +4,7 @@ from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
 from eth2spec.debug.random_value import get_random_bytes_list
+from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
@@ -223,7 +224,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         transactions=empty_txs,
     )
     if is_post_capella(spec):
-        payload.withdrawals = spec.get_expected_withdrawals(state)
+        payload.withdrawals = get_expected_withdrawals(spec, state)
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
