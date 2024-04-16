@@ -98,6 +98,16 @@ class ExecutionLayerExit(Container):
     validator_pubkey: BLSPubkey
 ```
 
+### Modified Containers
+
+#### `AttesterSlashing`
+
+```python
+class AttesterSlashing(Container):
+    attestation_1: IndexedAttestation  # [Modified in Electra:EIP7549]
+    attestation_2: IndexedAttestation  # [Modified in Electra:EIP7549]
+```
+
 ### Extended Containers
 
 #### `Attestation`
