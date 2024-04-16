@@ -38,8 +38,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-1)
-    - [`get_committee_indices`](#get_committee_indices)
   - [Predicates](#predicates)
     - [Updated `is_eligible_for_activation_queue`](#updated-is_eligible_for_activation_queue)
     - [New `is_compounding_withdrawal_credential`](#new-is_compounding_withdrawal_credential)
@@ -47,8 +45,10 @@
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
     - [Updated `is_partially_withdrawable_validator`](#updated-is_partially_withdrawable_validator)
+  - [Misc](#misc-1)
+    - [`get_committee_indices`](#get_committee_indices)
+    - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_validator_max_effective_balance`](#new-get_validator_max_effective_balance)
     - [New `get_churn_limit`](#new-get_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
@@ -394,15 +394,6 @@ class BeaconState(Container):
 
 ## Helper functions
 
-### Misc
-
-#### `get_committee_indices`
-
-```python
-def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
-    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
-```
-
 ### Predicates
 
 #### Updated `is_eligible_for_activation_queue`
@@ -476,9 +467,16 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     )
 ```
 
-### Beacon state accessors
+### Misc
 
-#### New `get_validator_max_effective_balance`
+#### `get_committee_indices`
+
+```python
+def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
+    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
+```
+
+#### `get_validator_max_effective_balance`
 
 ```python
 def get_validator_max_effective_balance(validator: Validator) -> Gwei:
@@ -490,6 +488,8 @@ def get_validator_max_effective_balance(validator: Validator) -> Gwei:
     else:
         return MIN_ACTIVATION_BALANCE
 ```
+
+### Beacon state accessors
 
 #### New `get_churn_limit`
 
