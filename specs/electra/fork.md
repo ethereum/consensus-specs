@@ -159,6 +159,18 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     )
 
     # [New in Electra:EIP7251]
+    # add validators that are not yet active to pending balance deposits
+    pre_activation = sorted([
+        index for index, validator in enumerate(post.validators)
+        if validator.activation_epoch == FAR_FUTURE_EPOCH
+    ], key=lambda index: (
+        post.validators[index].activation_eligibility_epoch,
+        index
+    ))
+
+    for index in pre_activation:
+        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):
         if has_compounding_withdrawal_credential(validator):
