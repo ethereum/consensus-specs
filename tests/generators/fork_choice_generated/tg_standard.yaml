@@ -1,0 +1,8 @@
+attester_slashing_test: {instances: block_tree.yaml, nr_mutations: 1, nr_variations: 1,
+  seed: 123, test_type: block_tree, with_attester_slashings: true}
+block_cover_test: {instances: block_cover.yaml, nr_mutations: 0, nr_variations: 1,
+  seed: 456, test_type: block_cover}
+block_tree_test: {instances: block_tree.yaml, nr_mutations: 0, nr_variations: 1, seed: 123,
+  test_type: block_tree}
+invalid_message_test: {instances: block_tree.yaml, nr_mutations: 1, nr_variations: 1,
+  seed: 123, test_type: block_tree, with_invalid_messages: true}
