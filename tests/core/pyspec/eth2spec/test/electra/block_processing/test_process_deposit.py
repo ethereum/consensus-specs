@@ -1,4 +1,3 @@
-from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -7,89 +6,83 @@ from eth2spec.test.helpers.deposits import (
     sign_deposit_data,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.forks import is_post_electra
+
+from eth2spec.test.context import (
+    spec_state_test,
+    with_electra_and_later,
+    always_bls,
+)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
-def test_new_deposit_under_max(spec, state):
+def test_new_deposit_under_min_activation_balance(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
-    amount = spec.MAX_EFFECTIVE_BALANCE - 1
+    amount = spec.MIN_ACTIVATION_BALANCE - 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_min(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_between_min_and_max(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA // 2
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_electra_and_later
 @spec_state_test
 def test_new_deposit_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be exactly the same as balance.
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_new_deposit_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    # just 1 over the limit, effective balance should be set MAX_EFFECTIVE_BALANCE during processing
-    amount = spec.MAX_EFFECTIVE_BALANCE + 1
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
-@spec_state_test
-def test_new_deposit_eth1_withdrawal_credentials(spec, state):
-    # fresh deposit = next validator index = validator appended to registry
-    validator_index = len(state.validators)
-    withdrawal_credentials = (
-        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        + b'\x00' * 11  # specified 0s
-        + b'\x59' * 20  # a 20-byte eth1 address
-    )
-    amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(
-        spec, state,
-        validator_index,
-        amount,
-        withdrawal_credentials=withdrawal_credentials,
-        signed=True,
-    )
+# @with_electra_and_later
+# @spec_state_test
+# def test_top_up__max_effective_balance(spec, state):
+#     validator_index = 0
+#     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA // 4
+#     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    yield from run_deposit_processing(spec, state, deposit, validator_index)
+#     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+#     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
+#     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-@with_all_phases
-@spec_state_test
-def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
-    # fresh deposit = next validator index = validator appended to registry
-    validator_index = len(state.validators)
-    withdrawal_credentials = (
-        b'\xFF'  # Non specified withdrawal credentials version
-        + b'\x02' * 31  # Garabage bytes
-    )
-    amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(
-        spec, state,
-        validator_index,
-        amount,
-        withdrawal_credentials=withdrawal_credentials,
-        signed=True,
-    )
+#     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_ELECTRA + amount
+#     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
-    yield from run_deposit_processing(spec, state, deposit, validator_index)
-
-
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 @always_bls
 def test_correct_sig_but_forked_state(spec, state):
@@ -101,18 +94,18 @@ def test_correct_sig_but_forked_state(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 @always_bls
 def test_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = spec.MIN_ACTIVATION_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
     yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_top_up__max_effective_balance(spec, state):
     validator_index = 0
@@ -124,12 +117,10 @@ def test_top_up__max_effective_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_electra(spec):
-        assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
-        assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_top_up__less_effective_balance(spec, state):
     validator_index = 0
@@ -143,13 +134,11 @@ def test_top_up__less_effective_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_electra(spec):
-        assert state.balances[validator_index] == initial_balance + amount
-        # unchanged effective balance
-        assert state.validators[validator_index].effective_balance == initial_effective_balance
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_top_up__zero_balance(spec, state):
     validator_index = 0
@@ -163,13 +152,11 @@ def test_top_up__zero_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_electra(spec):
-        assert state.balances[validator_index] == initial_balance + amount
-        # unchanged effective balance
-        assert state.validators[validator_index].effective_balance == initial_effective_balance
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 @always_bls
 def test_incorrect_sig_top_up(spec, state):
@@ -181,7 +168,7 @@ def test_incorrect_sig_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
@@ -199,7 +186,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
@@ -240,7 +227,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_invalid_bad_merkle_proof(spec, state):
     validator_index = len(state.validators)
@@ -255,7 +242,7 @@ def test_invalid_bad_merkle_proof(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
@@ -269,7 +256,7 @@ def test_key_validate_invalid_subgroup(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 def test_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
@@ -285,7 +272,7 @@ def test_key_validate_invalid_decompression(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_electra_and_later
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_bad_fork_version(spec, state):

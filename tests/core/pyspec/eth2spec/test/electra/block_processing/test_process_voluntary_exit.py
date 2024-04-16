@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip7251_and_later,
+    with_electra_and_later,
     with_presets,
 )
 from eth2spec.test.helpers.keys import pubkey_to_privkey
@@ -15,7 +15,7 @@ from eth2spec.test.helpers.voluntary_exits import (
 #  ********************
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_min_balance_exit(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -51,7 +51,7 @@ def test_min_balance_exit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_min_balance_exits_up_to_churn(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -104,7 +104,7 @@ def test_min_balance_exits_up_to_churn(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_min_balance_exits_above_churn(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -156,7 +156,7 @@ def test_min_balance_exits_above_churn(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch + 1
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -168,7 +168,7 @@ def test_max_balance_exit(spec, state):
     churn_limit = spec.get_activation_exit_churn_limit(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set validator effective balance to 2048 ETH
-    to_exit = spec.MAX_EFFECTIVE_BALANCE_EIP7251
+    to_exit = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     state.validators[validator_index].effective_balance = to_exit
 
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
@@ -200,7 +200,7 @@ def test_max_balance_exit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -241,7 +241,7 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -284,7 +284,7 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -331,7 +331,7 @@ def test_exit_existing_churn_and_churn_limit_balance(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -382,7 +382,7 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_invalid_validator_has_pending_withdrawal(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit

@@ -36,7 +36,7 @@ def get_execution_payload_header(spec, execution_payload):
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
     if is_post_electra(spec):
         payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
-        payload_header.exits_root = spec.hash_tree_root(execution_payload.exits)
+        payload_header.withdrawal_requests_root = spec.hash_tree_root(execution_payload.withdrawal_requests)
     return payload_header
 
 
@@ -59,7 +59,7 @@ def compute_el_header_block_hash(spec,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
                                  deposit_receipts_trie_root=None,
-                                 exits_trie_root=None):
+                                 withdrawal_requests_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
@@ -108,8 +108,8 @@ def compute_el_header_block_hash(spec,
         # deposit_receipts_root
         assert deposit_receipts_trie_root is not None
         execution_payload_header_rlp.append((Binary(32, 32), deposit_receipts_trie_root))
-        # exits_trie_root
-        execution_payload_header_rlp.append((Binary(32, 32), exits_trie_root))
+        # withdrawal requests root
+        execution_payload_header_rlp.append((Binary(32, 32), withdrawal_requests_root))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -137,16 +137,16 @@ def get_withdrawal_rlp(withdrawal):
 
 
 # https://eips.ethereum.org/EIPS/eip-7002
-def get_exit_rlp(exit):
-    exit_rlp = [
+def get_withdrawal_request_rlp(withdrawal_request):
+    withdrawal_request_rlp = [
         # source_address
-        (Binary(20, 20), exit.source_address),
+        (Binary(20, 20), withdrawal_request.source_address),
         # validator_pubkey
-        (Binary(48, 48), exit.validator_pubkey),
+        (Binary(48, 48), withdrawal_request.validator_pubkey),
     ]
 
-    sedes = List([schema for schema, _ in exit_rlp])
-    values = [value for _, value in exit_rlp]
+    sedes = List([schema for schema, _ in withdrawal_request_rlp])
+    values = [value for _, value in withdrawal_request_rlp]
     return encode(values, sedes)
 
 
@@ -174,7 +174,7 @@ def compute_el_block_hash(spec, payload):
 
     withdrawals_trie_root = None
     deposit_receipts_trie_root = None
-    exits_trie_root = None
+    withdrawal_requests_root = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
@@ -182,8 +182,8 @@ def compute_el_block_hash(spec, payload):
     if is_post_electra(spec):
         deposit_receipts_encoded = [get_deposit_receipt_rlp(spec, receipt) for receipt in payload.deposit_receipts]
         deposit_receipts_trie_root = compute_trie_root_from_indexed_data(deposit_receipts_encoded)
-        exits_encoded = [get_exit_rlp(exit) for exit in payload.exits]
-        exits_trie_root = compute_trie_root_from_indexed_data(exits_encoded)
+        withdrawal_requests_encoded = [get_withdrawal_request_rlp(request) for request in payload.withdrawal_requests]
+        withdrawal_requests_root = compute_trie_root_from_indexed_data(withdrawal_requests_encoded)
 
     payload_header = get_execution_payload_header(spec, payload)
 
@@ -193,7 +193,7 @@ def compute_el_block_hash(spec, payload):
         transactions_trie_root,
         withdrawals_trie_root,
         deposit_receipts_trie_root,
-        exits_trie_root,
+        withdrawal_requests_root,
     )
 
 
