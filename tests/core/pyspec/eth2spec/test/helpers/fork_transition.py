@@ -302,11 +302,14 @@ def run_transition_with_operation(state,
                 # NOTE: attestation format changes between Deneb and Electra
                 # so attester slashing must be made with the `post_spec`
                 target_spec = post_spec
+                target_state = post_spec.upgrade_to_electra(state.copy())
+                target_state.fork = state.fork
             else:
                 target_spec = spec
+                target_state = state
 
             attester_slashing = get_valid_attester_slashing_by_indices(
-                target_spec, state,
+                target_spec, target_state,
                 [selected_validator_index],
                 signed_1=True, signed_2=True,
             )
