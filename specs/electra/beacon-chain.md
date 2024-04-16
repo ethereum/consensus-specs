@@ -30,6 +30,8 @@
     - [`Consolidation`](#consolidation)
     - [`SignedConsolidation`](#signedconsolidation)
     - [`PendingConsolidation`](#pendingconsolidation)
+  - [Modified Containers](#modified-containers)
+    - [`AttesterSlashing`](#attesterslashing)
   - [Extended Containers](#extended-containers)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
@@ -257,6 +259,16 @@ class SignedConsolidation(Container):
 class PendingConsolidation(Container):
     source_index: ValidatorIndex
     target_index: ValidatorIndex
+```
+
+### Modified Containers
+
+#### `AttesterSlashing`
+
+```python
+class AttesterSlashing(Container):
+    attestation_1: IndexedAttestation  # [Modified in Electra:EIP7549]
+    attestation_2: IndexedAttestation  # [Modified in Electra:EIP7549]
 ```
 
 ### Extended Containers
