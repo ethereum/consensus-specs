@@ -997,7 +997,7 @@ def process_execution_layer_withdraw_request(
 ```python
 def process_consolidation(state: BeaconState, signed_consolidation: SignedConsolidation) -> None:
     # If the pending consolidations queue is full, no consolidations are allowed in the block
-    assert is_consolidation_queue_full(state)
+    assert not is_consolidation_queue_full(state)
     # If there is too little available consolidation churn limit, no consolidations are allowed in the block
     assert get_consolidation_churn_limit(state) > MIN_ACTIVATION_BALANCE
     consolidation = signed_consolidation.message
@@ -1045,7 +1045,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
 ```python
 def is_consolidation_queue_full(state: BeaconState) -> bool:
     epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWABILITY_DELAY + 1 + MAX_SEED_LOOKAHEAD
-    return state.earliest_consolidation_epoch < epoch
+    return state.earliest_consolidation_epoch > epoch
 ```
 
 ##### Voluntary exits
