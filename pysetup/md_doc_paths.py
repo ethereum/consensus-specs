@@ -6,10 +6,7 @@ from .constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
-    EIP6110,
-    EIP7002,
-    EIP7251,
-    EIP7549,
+    ELECTRA,
     WHISK,
     EIP7594,
 )
@@ -21,11 +18,8 @@ PREVIOUS_FORK_OF = {
     BELLATRIX: ALTAIR,
     CAPELLA: BELLATRIX,
     DENEB: CAPELLA,
-    EIP6110: DENEB,
-    EIP7549: DENEB,
+    ELECTRA: DENEB,
     WHISK: CAPELLA,
-    EIP7002: CAPELLA,
-    EIP7251: DENEB,
     EIP7594: DENEB,
 }
 

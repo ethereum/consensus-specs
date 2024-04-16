@@ -1,4 +1,13 @@
 import random
+from eth2spec.test.helpers.forks import is_post_electra
+
+
+def get_expected_withdrawals(spec, state):
+    if is_post_electra(spec):
+        withdrawals, _ = spec.get_expected_withdrawals(state)
+        return withdrawals
+    else:
+        return spec.get_expected_withdrawals(state)
 
 
 def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None):

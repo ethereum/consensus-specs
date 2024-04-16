@@ -5,7 +5,7 @@ from typing import List
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_eip7549
+from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_electra
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -78,7 +78,7 @@ def build_attestation_data(spec, state, slot, index, beacon_block_root=None, sha
 
     data = spec.AttestationData(
         slot=slot,
-        index=0 if is_post_eip7549(spec) else index,
+        index=0 if is_post_electra(spec) else index,
         beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
@@ -174,7 +174,7 @@ def fill_aggregate_attestation(spec, state, attestation, committee_index, signed
         participants = filter_participant_set(participants)
 
     # initialize `aggregation_bits`
-    if is_post_eip7549(spec):
+    if is_post_electra(spec):
         attestation.committee_bits[committee_index] = True
         attestation.aggregation_bits = get_empty_eip7549_aggregation_bits(
             spec, state, attestation.committee_bits, attestation.data.slot)
@@ -184,7 +184,7 @@ def fill_aggregate_attestation(spec, state, attestation, committee_index, signed
 
     # fill in the `aggregation_bits`
     for i in range(len(beacon_committee)):
-        if is_post_eip7549(spec):
+        if is_post_electra(spec):
             offset = get_eip7549_aggregation_bits_offset(
                 spec, state, attestation.data.slot, attestation.committee_bits, committee_index)
             aggregation_bits_index = offset + i
@@ -272,10 +272,10 @@ def _aggregate_aggregation_bits_and_signatures(spec, state, slot, aggregate, att
 
 def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None):
     """
-    Return the aggregate attestation post EIP-7549.
+    Return the aggregate attestation post Electra.
     Note: this EIP supports dense packing of on-chain aggregates so we can just return a single `Attestation`.
     """
-    assert is_post_eip7549(spec)
+    assert is_post_electra(spec)
     attestations = list(get_valid_attestations_at_slot(
         state, spec, slot_to_attest,
         participation_fn=participation_fn,
@@ -322,7 +322,7 @@ def next_slots_with_attestations(spec,
 
 
 def _add_valid_attestations(spec, state, block, slot_to_attest, participation_fn=None):
-    if is_post_eip7549(spec):
+    if is_post_electra(spec):
         attestation = get_valid_attestation_at_slot(
             state,
             spec,
@@ -482,8 +482,8 @@ def cached_prepare_state_with_attestations(spec, state):
 
 
 def get_max_attestations(spec):
-    if is_post_eip7549(spec):
-        return spec.MAX_ATTESTATIONS_EIP7549
+    if is_post_electra(spec):
+        return spec.MAX_ATTESTATIONS_ELECTRA
     else:
         return spec.MAX_ATTESTATIONS
 
