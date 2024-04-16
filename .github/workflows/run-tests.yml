@@ -10,9 +10,9 @@ env:
 on:
   push:
     branches:
-      - dev 
+      - dev
       - master
-  pull_request:    
+  pull_request:
   workflow_dispatch:
     inputs:
       test_preset_type:
@@ -71,22 +71,22 @@ jobs:
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "eip6110", "eip7002", "eip7549", "whisk", "eip7594"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "eip7251", "whisk", "eip7594"]
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
       - name: set TEST_PRESET_TYPE
-        if: github.event.inputs.test_preset_type != ''        
+        if: github.event.inputs.test_preset_type != ''
         run: |
           echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
-          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV    
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
-          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV    
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: github.event.schedule=='0 0 * * *'
         run: |

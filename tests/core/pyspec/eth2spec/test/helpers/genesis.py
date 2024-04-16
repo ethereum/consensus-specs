@@ -6,7 +6,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_eip6110, is_post_eip7002, is_post_whisk, is_post_eip7251
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_electra, is_post_whisk, is_post_eip7251,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
@@ -55,9 +55,8 @@ def get_sample_genesis_execution_payload_header(spec,
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    if is_post_eip6110(spec):
+    if is_post_electra(spec):
         deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    if is_post_eip7002(spec):
         exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
@@ -134,7 +133,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             eth1_block_hash=eth1_block_hash,
         )
 
-    if is_post_eip6110(spec):
+    if is_post_electra(spec):
         state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
 
     if is_post_whisk(spec):
@@ -153,7 +152,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.deposit_balance_to_consume = 0
         state.exit_balance_to_consume = 0
         state.earliest_exit_epoch = spec.GENESIS_EPOCH
+        state.consolidation_balance_to_consume = 0
+        state.earliest_consolidation_epoch = 0
         state.pending_balance_deposits = []
         state.pending_partial_withdrawals = []
+        state.pending_consolidations = []
 
     return state

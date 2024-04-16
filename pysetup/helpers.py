@@ -208,8 +208,7 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
-
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -231,7 +230,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
     ssz_dep_constants = combine_dicts(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
     func_dep_presets = combine_dicts(spec0.func_dep_presets, spec1.func_dep_presets)
-    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects, custom_types)
+    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects)
     dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
     return SpecObject(
         functions=functions,

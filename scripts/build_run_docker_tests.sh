@@ -10,7 +10,7 @@
 
 
 # Set variables
-ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "eip6110" "whisk")
+ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "electra" "whisk")
 TEST_PRESET_TYPE=minimal
 FORK_TO_TEST=phase0
 NUMBER_OF_CORES=4

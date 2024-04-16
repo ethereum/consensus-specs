@@ -1,15 +1,24 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
+from eth2spec.test.helpers.withdrawals import (
+    set_compounding_withdrawal_credential,
+)
+from eth2spec.test.helpers.forks import is_post_eip7251
 
 
 @with_all_phases
 @spec_state_test
 def test_effective_balance_hysteresis(spec, state):
+    run_test_effective_balance_hysteresis(spec, state)
+
+
+def run_test_effective_balance_hysteresis(spec, state, with_compounding_credentials=False):
+    assert is_post_eip7251(spec) or not with_compounding_credentials
     # Prepare state up to the final-updates.
     # Then overwrite the balances, we only want to focus to be on the hysteresis based changes.
     run_epoch_processing_to(spec, state, 'process_effective_balance_updates')
     # Set some edge cases for balances
-    max = spec.MAX_EFFECTIVE_BALANCE
+    max = spec.MAX_EFFECTIVE_BALANCE_EIP_7251 if with_compounding_credentials else spec.MIN_ACTIVATION_BALANCE
     min = spec.config.EJECTION_BALANCE
     inc = spec.EFFECTIVE_BALANCE_INCREMENT
     div = spec.HYSTERESIS_QUOTIENT
@@ -35,6 +44,8 @@ def test_effective_balance_hysteresis(spec, state):
     current_epoch = spec.get_current_epoch(state)
     for i, (pre_eff, bal, _, _) in enumerate(cases):
         assert spec.is_active_validator(state.validators[i], current_epoch)
+        if with_compounding_credentials:
+            set_compounding_withdrawal_credential(spec, state, i)
         state.validators[i].effective_balance = pre_eff
         state.balances[i] = bal
 

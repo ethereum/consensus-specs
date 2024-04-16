@@ -1,9 +1,9 @@
 from .base import BaseSpecBuilder
-from ..constants import EIP6110
+from ..constants import ELECTRA
 
 
-class EIP6110SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP6110
+class ElectraSpecBuilder(BaseSpecBuilder):
+    fork: str = ELECTRA
 
     @classmethod
     def imports(cls, preset_name: str):

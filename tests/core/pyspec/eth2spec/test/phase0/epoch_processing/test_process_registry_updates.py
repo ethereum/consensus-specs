@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
+from eth2spec.test.helpers.forks import is_post_eip7251
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     spec_test, spec_state_test,
@@ -105,17 +106,23 @@ def test_activation_queue_sorting(spec, state):
 
     yield from run_process_registry_updates(spec, state)
 
-    # the first got in as second
-    assert state.validators[0].activation_epoch != spec.FAR_FUTURE_EPOCH
-    # the prioritized got in as first
-    assert state.validators[mock_activations - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
-    # the second last is at the end of the queue, and did not make the churn,
-    #  hence is not assigned an activation_epoch yet.
-    assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
-    # the one at churn_limit did not make it, it was out-prioritized
-    assert state.validators[churn_limit].activation_epoch == spec.FAR_FUTURE_EPOCH
-    # but the the one in front of the above did
-    assert state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
+    if is_post_eip7251(spec):
+        # NOTE: EIP-7521 changed how activations are gated
+        # given the prefix setup here, all validators should be activated
+        activation_epochs = [state.validators[i].activation_epoch for i in range(mock_activations)]
+        assert all([epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs])
+    else:
+        # the first got in as second
+        assert state.validators[0].activation_epoch != spec.FAR_FUTURE_EPOCH
+        # the prioritized got in as first
+        assert state.validators[mock_activations - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
+        # the second last is at the end of the queue, and did not make the churn,
+        #  hence is not assigned an activation_epoch yet.
+        assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
+        # the one at churn_limit did not make it, it was out-prioritized
+        assert state.validators[churn_limit].activation_epoch == spec.FAR_FUTURE_EPOCH
+        # but the one in front of the above did
+        assert state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
 
 
 def run_test_activation_queue_efficiency(spec, state):
@@ -141,7 +148,9 @@ def run_test_activation_queue_efficiency(spec, state):
 
     # Half should churn in first run of registry update
     for i in range(mock_activations):
-        if i < churn_limit_0:
+        # NOTE: EIP-7251 changes how activations are gated
+        # given the prefix setup here, all validators are eligible for activation
+        if i < churn_limit_0 or is_post_eip7251(spec):
             assert state.validators[i].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:
             assert state.validators[i].activation_epoch == spec.FAR_FUTURE_EPOCH
@@ -205,16 +214,30 @@ def run_test_ejection_past_churn_limit(spec, state):
 
     yield from run_process_registry_updates(spec, state)
 
+    if is_post_eip7251(spec):
+        per_epoch_churn = spec.get_activation_exit_churn_limit(state)
+
+        def map_index_to_exit_epoch(i):
+            balance_so_far = i * spec.config.EJECTION_BALANCE
+            offset_epoch = balance_so_far // per_epoch_churn
+            if spec.config.EJECTION_BALANCE > per_epoch_churn - (balance_so_far % per_epoch_churn):
+                offset_epoch += 1
+            return expected_ejection_epoch + offset_epoch
+    else:
+        def map_index_to_exit_epoch(i):
+            # first third ejected in normal speed
+            if i < mock_ejections // 3:
+                return expected_ejection_epoch
+            # second third gets delayed by 1 epoch
+            elif mock_ejections // 3 <= i < mock_ejections * 2 // 3:
+                return expected_ejection_epoch + 1
+            # final third gets delayed by 2 epochs
+            else:
+                return expected_ejection_epoch + 2
+
     for i in range(mock_ejections):
-        # first third ejected in normal speed
-        if i < mock_ejections // 3:
-            assert state.validators[i].exit_epoch == expected_ejection_epoch
-        # second third gets delayed by 1 epoch
-        elif mock_ejections // 3 <= i < mock_ejections * 2 // 3:
-            assert state.validators[i].exit_epoch == expected_ejection_epoch + 1
-        # final third gets delayed by 2 epochs
-        else:
-            assert state.validators[i].exit_epoch == expected_ejection_epoch + 2
+        target_exit_epoch = map_index_to_exit_epoch(i)
+        assert state.validators[i].exit_epoch == target_exit_epoch
 
 
 @with_all_phases
@@ -286,7 +309,10 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
     for validator_index in activation_indices[churn_limit:]:
         validator = state.validators[validator_index]
         assert validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
-        assert validator.activation_epoch == spec.FAR_FUTURE_EPOCH
+        # NOTE: activations are gated differently after EIP-7251
+        # all eligible validators were activated, regardless of churn limit
+        if not is_post_eip7251(spec):
+            assert validator.activation_epoch == spec.FAR_FUTURE_EPOCH
 
     # all ejection balance validators ejected for a future epoch
     for i, validator_index in enumerate(ejection_indices):
@@ -364,8 +390,12 @@ def test_invalid_large_withdrawable_epoch(spec, state):
     assert spec.is_active_validator(state.validators[0], spec.get_current_epoch(state))
     assert spec.is_active_validator(state.validators[1], spec.get_current_epoch(state))
 
-    state.validators[0].exit_epoch = spec.FAR_FUTURE_EPOCH - 1
+    exit_epoch = spec.FAR_FUTURE_EPOCH - 1
+    state.validators[0].exit_epoch = exit_epoch
     state.validators[1].effective_balance = spec.config.EJECTION_BALANCE
+
+    if is_post_eip7251(spec):
+        state.earliest_exit_epoch = exit_epoch
 
     try:
         yield from run_process_registry_updates(spec, state)

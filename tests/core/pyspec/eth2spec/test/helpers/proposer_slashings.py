@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.block_header import sign_block_header
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_eip7251
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.sync_committee import (
@@ -9,12 +9,21 @@ from eth2spec.test.helpers.sync_committee import (
 
 
 def get_min_slashing_penalty_quotient(spec):
-    if is_post_bellatrix(spec):
+    if is_post_eip7251(spec):
+        return spec.MIN_SLASHING_PENALTY_QUOTIENT_EIP7251
+    elif is_post_bellatrix(spec):
         return spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
     elif is_post_altair(spec):
         return spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR
     else:
         return spec.MIN_SLASHING_PENALTY_QUOTIENT
+
+
+def get_whistleblower_reward_quotient(spec):
+    if is_post_eip7251(spec):
+        return spec.WHISTLEBLOWER_REWARD_QUOTIENT_EIP7251
+    else:
+        return spec.WHISTLEBLOWER_REWARD_QUOTIENT
 
 
 def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=None):
@@ -25,7 +34,7 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=
 
     proposer_index = spec.get_beacon_proposer_index(state)
     slash_penalty = state.validators[slashed_index].effective_balance // get_min_slashing_penalty_quotient(spec)
-    whistleblower_reward = state.validators[slashed_index].effective_balance // spec.WHISTLEBLOWER_REWARD_QUOTIENT
+    whistleblower_reward = state.validators[slashed_index].effective_balance // get_whistleblower_reward_quotient(spec)
 
     # Altair introduces sync committee (SC) reward and penalty
     sc_reward_for_slashed = sc_penalty_for_slashed = sc_reward_for_proposer = sc_penalty_for_proposer = 0
