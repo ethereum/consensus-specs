@@ -49,7 +49,7 @@
     - [`get_committee_indices`](#get_committee_indices)
     - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_churn_limit`](#new-get_churn_limit)
+    - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_active_balance`](#new-get_active_balance)
@@ -513,10 +513,10 @@ def get_validator_max_effective_balance(validator: Validator) -> Gwei:
 
 ### Beacon state accessors
 
-#### New `get_churn_limit`
+#### New `get_balance_churn_limit`
 
 ```python
-def get_churn_limit(state: BeaconState) -> Gwei:
+def get_balance_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the churn limit for the current epoch.
     """
@@ -534,14 +534,14 @@ def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the churn limit for the current epoch dedicated to activations and exits.
     """
-    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT, get_churn_limit(state))
+    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT, get_balance_churn_limit(state))
 ```
 
 #### New `get_consolidation_churn_limit`
 
 ```python
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
-    return get_churn_limit(state) - get_activation_exit_churn_limit(state)
+    return get_balance_churn_limit(state) - get_activation_exit_churn_limit(state)
 ```
 
 #### New `get_active_balance`
