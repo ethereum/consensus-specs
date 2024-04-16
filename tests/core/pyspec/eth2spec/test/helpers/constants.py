@@ -19,7 +19,6 @@ CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 ELECTRA = SpecForkName('electra')
 WHISK = SpecForkName('whisk')
-EIP7251 = SpecForkName('eip7251')
 EIP7594 = SpecForkName('eip7594')
 
 #
@@ -38,7 +37,6 @@ ALL_PHASES = (
     DENEB,
     ELECTRA,
     # Experimental patches
-    EIP7251,
     EIP7594,
 )
 # The forks that have light client specs
@@ -59,7 +57,6 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7251: DENEB,
     EIP7594: DENEB,
 }
 

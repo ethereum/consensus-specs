@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
@@ -359,7 +359,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    # ensure we go through an epoch transition, to account for post-EIP-7251 behavior
+    # ensure we go through an epoch transition, to account for post-electra behavior
     block_in_next_epoch = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
     signed_block_in_next_epoch = state_transition_and_sign_block(spec, state, block_in_next_epoch)
 
@@ -402,7 +402,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
     signed_block_1 = state_transition_and_sign_block(spec, state, block)
 
     balance = state.balances[validator_index]
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         balance += state.pending_balance_deposits[0].amount
 
     assert spec.is_fully_withdrawable_validator(

@@ -222,8 +222,12 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     block.body.execution_payload.deposit_receipts[0].pubkey = top_up_keys[0]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
+    pre_pending_deposits = len(state.pending_balance_deposits)
+
     yield from run_deposit_transition_block(spec, state, block, top_up_keys=top_up_keys)
 
     # Check the top up
-    expected_balance = block.body.deposits[0].data.amount + block.body.execution_payload.deposit_receipts[0].amount
-    assert state.balances[len(state.balances) - 1] == expected_balance
+    assert len(state.pending_balance_deposits) == pre_pending_deposits + 2
+    assert state.pending_balance_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
+    amount_from_deposit = block.body.execution_payload.deposit_receipts[0].amount
+    assert state.pending_balance_deposits[pre_pending_deposits + 1].amount == amount_from_deposit

@@ -83,9 +83,12 @@ def test_transition_attestation_from_previous_fork_with_new_range(
         # NOTE: attestation format changes from Deneb to Electra
         # so the attestation must be made with the `post_spec`
         target_spec = post_spec
+        target_state = post_spec.upgrade_to_electra(state.copy())
+        target_state.fork = state.fork
     else:
         target_spec = spec
-    attestation = get_valid_attestation(target_spec, state, signed=True)
+        target_state = state
+    attestation = get_valid_attestation(target_spec, target_state, signed=True)
 
     yield 'pre', state
 

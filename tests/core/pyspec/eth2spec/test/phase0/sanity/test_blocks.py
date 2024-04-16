@@ -34,7 +34,7 @@ from eth2spec.test.helpers.constants import PHASE0, MINIMAL
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
-    is_post_eip7251,
+    is_post_electra,
     is_post_capella,
 )
 from eth2spec.test.context import (
@@ -744,7 +744,7 @@ def test_deposit_in_block(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         balance = state.pending_balance_deposits[0].amount
     else:
         balance = get_balance(state, validator_index)
@@ -815,7 +815,7 @@ def test_deposit_top_up(spec, state):
         )
 
     balance = get_balance(state, validator_index)
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         balance += state.pending_balance_deposits[0].amount
 
     assert balance == (

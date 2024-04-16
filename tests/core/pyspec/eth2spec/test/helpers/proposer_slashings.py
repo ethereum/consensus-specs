@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.block_header import sign_block_header
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_electra
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.sync_committee import (
@@ -9,8 +9,8 @@ from eth2spec.test.helpers.sync_committee import (
 
 
 def get_min_slashing_penalty_quotient(spec):
-    if is_post_eip7251(spec):
-        return spec.MIN_SLASHING_PENALTY_QUOTIENT_EIP7251
+    if is_post_electra(spec):
+        return spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA
     elif is_post_bellatrix(spec):
         return spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
     elif is_post_altair(spec):
@@ -20,8 +20,8 @@ def get_min_slashing_penalty_quotient(spec):
 
 
 def get_whistleblower_reward_quotient(spec):
-    if is_post_eip7251(spec):
-        return spec.WHISTLEBLOWER_REWARD_QUOTIENT_EIP7251
+    if is_post_electra(spec):
+        return spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
     else:
         return spec.WHISTLEBLOWER_REWARD_QUOTIENT
 

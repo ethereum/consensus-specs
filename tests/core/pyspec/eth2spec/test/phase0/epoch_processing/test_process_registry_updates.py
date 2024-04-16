@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.state import next_epoch, next_slots
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     spec_test, spec_state_test,
@@ -106,7 +106,7 @@ def test_activation_queue_sorting(spec, state):
 
     yield from run_process_registry_updates(spec, state)
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         # NOTE: EIP-7521 changed how activations are gated
         # given the prefix setup here, all validators should be activated
         activation_epochs = [state.validators[i].activation_epoch for i in range(mock_activations)]
@@ -150,7 +150,7 @@ def run_test_activation_queue_efficiency(spec, state):
     for i in range(mock_activations):
         # NOTE: EIP-7251 changes how activations are gated
         # given the prefix setup here, all validators are eligible for activation
-        if i < churn_limit_0 or is_post_eip7251(spec):
+        if i < churn_limit_0 or is_post_electra(spec):
             assert state.validators[i].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:
             assert state.validators[i].activation_epoch == spec.FAR_FUTURE_EPOCH
@@ -214,7 +214,7 @@ def run_test_ejection_past_churn_limit(spec, state):
 
     yield from run_process_registry_updates(spec, state)
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         per_epoch_churn = spec.get_activation_exit_churn_limit(state)
 
         def map_index_to_exit_epoch(i):
@@ -311,7 +311,7 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
         assert validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
         # NOTE: activations are gated differently after EIP-7251
         # all eligible validators were activated, regardless of churn limit
-        if not is_post_eip7251(spec):
+        if not is_post_electra(spec):
             assert validator.activation_epoch == spec.FAR_FUTURE_EPOCH
 
     # all ejection balance validators ejected for a future epoch
@@ -394,7 +394,7 @@ def test_invalid_large_withdrawable_epoch(spec, state):
     state.validators[0].exit_epoch = exit_epoch
     state.validators[1].effective_balance = spec.config.EJECTION_BALANCE
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         state.earliest_exit_epoch = exit_epoch
 
     try:
