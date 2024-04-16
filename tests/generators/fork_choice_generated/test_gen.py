@@ -1,4 +1,5 @@
 from eth2spec.gen_helpers.gen_base import gen_runner
+from ruamel.yaml import YAML
 
 from filter_block_tree_generator import (
     forks as block_cover_forks,
@@ -14,41 +15,11 @@ from main import (
 )
 
 
+yaml = YAML(typ='safe')
+
+
 GENERATOR_NAME = 'fork_choice_generated'
 
-
-test_gen_config = {
-    'block_tree_test': {
-        'test_type': 'block_tree',
-        'instances': 'block_tree.yaml',
-        'seed': 123,
-        'nr_variations': 1,
-        'nr_mutations': 0,
-    },
-    'invalid_message_test': {
-        'test_type': 'block_tree',
-        'with_invalid_messages': True,
-        'instances': 'block_tree.yaml',
-        'seed': 123,
-        'nr_variations': 1,
-        'nr_mutations': 1,
-    },
-    'attester_slashing_test': {
-        'test_type': 'block_tree',
-        'with_attester_slashings': True,
-        'instances': 'block_tree.yaml',
-        'seed': 123,
-        'nr_variations': 1,
-        'nr_mutations': 1,
-    },
-    'block_cover_test': {
-        'test_type': 'block_cover',
-        'instances': 'block_cover.yaml',
-        'seed': 456,
-        'nr_variations': 1,
-        'nr_mutations': 0,
-    }
-}
 
 if __name__ == "__main__":
     arg_parser = gen_runner.create_arg_parser(GENERATOR_NAME)
@@ -61,18 +32,19 @@ if __name__ == "__main__":
         required=False,
         help='If set provides debug output and enable additional checks for generated chains',
     )
-    # TODO: load test_gen_config from a yaml file
-    # arg_parser.add_argument(
-    #     '--fc-gen-config',
-    #     dest='fc_gen_config',
-    #     type=str,
-    #     default=None,
-    #     required=False,
-    #     help='Path to a file with test generator configurations'
-    # )
+    arg_parser.add_argument(
+        '--fc-gen-config',
+        dest='fc_gen_config',
+        type=str,
+        required=True,
+        help='Path to a file with test generator configurations'
+    )
 
     args = arg_parser.parse_args()
 
+    with open(args.fc_gen_config, 'r') as f:
+        test_gen_config = yaml.load(f)
+    
     for test_name, params in test_gen_config.items():
         print(test_name)
         test_type = params['test_type']
