@@ -70,20 +70,28 @@
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Updated `process_effective_balance_updates`](#updated-process_effective_balance_updates)
   - [Block processing](#block-processing)
-    - [Updated `get_expected_withdrawals`](#updated-get_expected_withdrawals)
-    - [Updated `process_withdrawals`](#updated-process_withdrawals)
-    - [Modified `process_operations`](#modified-process_operations)
-    - [Modified `process_attestation`](#modified-process_attestation)
+    - [Withdrawals](#withdrawals)
+      - [Updated `get_expected_withdrawals`](#updated-get_expected_withdrawals)
+      - [Updated `process_withdrawals`](#updated-process_withdrawals)
+    - [Execution payload](#execution-payload)
+      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
+      - [Attestations](#attestations)
+        - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposits](#deposits)
-      - [Updated  `apply_deposit`](#updated--apply_deposit)
-      - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
-      - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
-      - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
-      - [New `process_deposit_receipt`](#new-process_deposit_receipt)
-    - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
-    - [Modified `process_execution_payload`](#modified-process_execution_payload)
-    - [New `process_consolidation`](#new-process_consolidation)
-    - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
+        - [Updated  `apply_deposit`](#updated--apply_deposit)
+        - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
+        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+        - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
+      - [Voluntary exits](#voluntary-exits)
+        - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
+      - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
+        - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
+      - [Deposit receipts](#deposit-receipts)
+        - [New `process_deposit_receipt`](#new-process_deposit_receipt)
+      - [Consolidations](#consolidations)
+        - [New `process_consolidation`](#new-process_consolidation)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -815,7 +823,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### Updated `get_expected_withdrawals`
+#### Withdrawals
+
+##### Updated `get_expected_withdrawals`
 
 ```python
 def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
@@ -871,7 +881,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     return withdrawals, partial_withdrawals_count
 ```
 
-#### Updated `process_withdrawals`
+##### Updated `process_withdrawals`
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
@@ -903,8 +913,60 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         state.next_withdrawal_validator_index = next_validator_index
 ```
 
+#### Execution payload
 
-#### Modified `process_operations`
+##### Modified `process_execution_payload`
+
+*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+
+```python
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    # Verify prev_randao
+    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    # Verify timestamp
+    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    # Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    # Verify the execution payload is valid
+    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+        )
+    )
+    # Cache execution payload header
+    state.latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_hash=payload.parent_hash,
+        fee_recipient=payload.fee_recipient,
+        state_root=payload.state_root,
+        receipts_root=payload.receipts_root,
+        logs_bloom=payload.logs_bloom,
+        prev_randao=payload.prev_randao,
+        block_number=payload.block_number,
+        gas_limit=payload.gas_limit,
+        gas_used=payload.gas_used,
+        timestamp=payload.timestamp,
+        extra_data=payload.extra_data,
+        base_fee_per_gas=payload.base_fee_per_gas,
+        block_hash=payload.block_hash,
+        transactions_root=hash_tree_root(payload.transactions),
+        withdrawals_root=hash_tree_root(payload.withdrawals),
+        blob_gas_used=payload.blob_gas_used,
+        excess_blob_gas=payload.excess_blob_gas,
+        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
+        withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
+    )
+```
+
+#### Operations
+
+##### Modified `process_operations`
 
 *Note*: The function `process_operations` is modified to support all of the new functionality in Electra.
 
@@ -934,7 +996,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.consolidations, process_consolidation)  # [New in Electra:EIP7251]
 ```
 
-#### Modified `process_attestation`
+##### Attestations
+
+###### Modified `process_attestation`
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -981,7 +1045,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
-##### Updated  `apply_deposit`
+###### Updated  `apply_deposit`
 
 *NOTE*: `process_deposit` is updated with a new definition of `apply_deposit`.
 
@@ -1012,7 +1076,7 @@ def apply_deposit(state: BeaconState,
 
 ```
 
-##### New `is_valid_deposit_signature`
+###### New `is_valid_deposit_signature`
 
 ```python
 def is_valid_deposit_signature(pubkey: BLSPubkey,
@@ -1029,7 +1093,7 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
     return bls.Verify(pubkey, signing_root, signature)
 ```
 
-##### Modified `add_validator_to_registry`
+###### Modified `add_validator_to_registry`
 
 ```python
 def add_validator_to_registry(state: BeaconState,
@@ -1046,7 +1110,7 @@ def add_validator_to_registry(state: BeaconState,
     state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [New in Electra:EIP7251]
 ```
 
-##### Updated `get_validator_from_deposit`
+###### Updated `get_validator_from_deposit`
 
 ```python
 def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32) -> Validator:
@@ -1061,26 +1125,34 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     )
 ```
 
-##### New `process_deposit_receipt`
-
-*Note*: This function is new in Electra:EIP6110.
+##### Voluntary exits
+###### Updated `process_voluntary_exit`
 
 ```python
-def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
-    # Set deposit receipt start index
-    if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
-        state.deposit_receipts_start_index = deposit_receipt.index
-
-    apply_deposit(
-        state=state,
-        pubkey=deposit_receipt.pubkey,
-        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
-        amount=deposit_receipt.amount,
-        signature=deposit_receipt.signature,
-    )
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
+    # Verify exit has not been initiated
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= voluntary_exit.epoch
+    # Verify the validator has been active long enough
+    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    # Only exit validator if it has no pending withdrawals in the queue
+    assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in Electra:EIP7251]
+    # Verify signature
+    domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
+    # Initiate exit
+    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
-#### New `process_execution_layer_withdrawal_request`
+##### Execution layer withdrawal requests
+
+###### New `process_execution_layer_withdrawal_request`
 
 *Note*: This function is new in Electra following EIP-7002 and EIP-7251.
 
@@ -1147,56 +1219,30 @@ def process_execution_layer_withdrawal_request(
         ))
 ```
 
-#### Modified `process_execution_payload`
+##### Deposit receipts
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+###### New `process_deposit_receipt`
+
+*Note*: This function is new in Electra:EIP6110.
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
-    payload = body.execution_payload
+def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
+    # Set deposit receipt start index
+    if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
+        state.deposit_receipts_start_index = deposit_receipt.index
 
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
-    # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
-    # Verify the execution payload is valid
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-        )
-    )
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipts_root=payload.receipts_root,
-        logs_bloom=payload.logs_bloom,
-        prev_randao=payload.prev_randao,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
-        blob_gas_used=payload.blob_gas_used,
-        excess_blob_gas=payload.excess_blob_gas,
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
-        withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
+    apply_deposit(
+        state=state,
+        pubkey=deposit_receipt.pubkey,
+        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+        amount=deposit_receipt.amount,
+        signature=deposit_receipt.signature,
     )
 ```
 
-#### New `process_consolidation`
+##### Consolidations
+
+###### New `process_consolidation`
 
 ```python
 def process_consolidation(state: BeaconState, signed_consolidation: SignedConsolidation) -> None:
@@ -1243,30 +1289,6 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
         source_index=consolidation.source_index,
         target_index=consolidation.target_index
     ))
-```
-
-#### Updated `process_voluntary_exit`
-
-```python
-def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
-    voluntary_exit = signed_voluntary_exit.message
-    validator = state.validators[voluntary_exit.validator_index]
-    # Verify the validator is active
-    assert is_active_validator(validator, get_current_epoch(state))
-    # Verify exit has not been initiated
-    assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= voluntary_exit.epoch
-    # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
-    # Only exit validator if it has no pending withdrawals in the queue
-    assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in Electra:EIP7251]
-    # Verify signature
-    domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)
-    signing_root = compute_signing_root(voluntary_exit, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
-    # Initiate exit
-    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
 ## Testing
