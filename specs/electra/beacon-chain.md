@@ -199,6 +199,8 @@ class DepositReceipt(Container):
 
 #### `PendingBalanceDeposit`
 
+*Note*: The container is new in EIP7251.
+
 ```python
 class PendingBalanceDeposit(Container):
     index: ValidatorIndex
@@ -207,6 +209,8 @@ class PendingBalanceDeposit(Container):
 
 #### `PendingPartialWithdrawal`
 
+*Note*: The container is new in EIP7251.
+
 ```python
 class PendingPartialWithdrawal(Container):
     index: ValidatorIndex
@@ -214,6 +218,8 @@ class PendingPartialWithdrawal(Container):
     withdrawable_epoch: Epoch
 ```
 #### `ExecutionLayerWithdrawalRequest`
+
+*Note*: The container is new in EIP7251.
 
 ```python
 class ExecutionLayerWithdrawalRequest(Container):
@@ -224,6 +230,8 @@ class ExecutionLayerWithdrawalRequest(Container):
 
 #### `Consolidation`
 
+*Note*: The container is new in EIP7251.
+
 ```python
 class Consolidation(Container):
     source_index: ValidatorIndex
@@ -232,6 +240,9 @@ class Consolidation(Container):
 ```
 
 #### `SignedConsolidation`
+
+*Note*: The container is new in EIP7251.
+
 ```python
 class SignedConsolidation(Container):
     message: Consolidation
@@ -239,6 +250,9 @@ class SignedConsolidation(Container):
 ```
 
 #### `PendingConsolidation`
+
+*Note*: The container is new in EIP7251.
+
 ```python
 class PendingConsolidation(Container):
     source_index: ValidatorIndex
