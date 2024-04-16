@@ -1109,11 +1109,11 @@ def process_execution_layer_withdrawal_request(
     validator = state.validators[index]
 
     # Verify withdrawal credentials
-    is_execution_address = validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    has_correct_credential = has_execution_withdrawal_credential(validator)
     is_correct_source_address = (
         validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
     )
-    if not (is_execution_address and is_correct_source_address):
+    if not (has_correct_credential and is_correct_source_address):
         return
     # Verify the validator is active
     if not is_active_validator(validator, get_current_epoch(state)):
