@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     with_deneb_and_later,
@@ -50,7 +50,7 @@ def run_test_activation_churn_limit(spec, state):
         index = validator_count_0 + i
         # NOTE: activations are gated different after EIP-7251
         # all eligible validators have been activated
-        if index < validator_count_0 + churn_limit_0 or is_post_eip7251(spec):
+        if index < validator_count_0 + churn_limit_0 or is_post_electra(spec):
             # The eligible validators within the activation churn limit should have been activated
             assert state.validators[index].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:

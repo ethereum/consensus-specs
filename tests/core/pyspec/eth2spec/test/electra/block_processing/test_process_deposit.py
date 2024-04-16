@@ -1,8 +1,8 @@
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
-    run_deposit_processing_electra,
-    run_deposit_processing_electra_with_specific_fork_version,
+    run_deposit_processing,
+    run_deposit_processing_with_specific_fork_version,
     sign_deposit_data,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -23,7 +23,7 @@ def test_new_deposit_under_min_activation_balance(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE - 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -33,7 +33,7 @@ def test_new_deposit_min(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_DEPOSIT_AMOUNT
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -43,7 +43,7 @@ def test_new_deposit_between_min_and_max(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE_electra // 2
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -54,7 +54,7 @@ def test_new_deposit_max(spec, state):
     # effective balance will be exactly the same as balance.
     amount = spec.MAX_EFFECTIVE_BALANCE_electra
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -64,7 +64,7 @@ def test_new_deposit_over_max(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE_electra + 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 # @with_electra_and_later
@@ -77,7 +77,7 @@ def test_new_deposit_over_max(spec, state):
 #     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_electra
 #     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_electra
 
-#     yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+#     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 #     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_electra + amount
 #     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_electra
@@ -91,7 +91,7 @@ def test_correct_sig_but_forked_state(spec, state):
     # deposits will always be valid, regardless of the current fork
     state.fork.current_version = spec.Version('0x1234abcd')
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -102,7 +102,7 @@ def test_incorrect_sig_new_deposit(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index, effective=False)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
 
 
 @with_electra_and_later
@@ -115,7 +115,7 @@ def test_top_up__max_effective_balance(spec, state):
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
@@ -132,7 +132,7 @@ def test_top_up__less_effective_balance(spec, state):
     state.balances[validator_index] = initial_balance
     state.validators[validator_index].effective_balance = initial_effective_balance
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     # unchanged effective balance
     assert state.validators[validator_index].effective_balance == initial_effective_balance
@@ -150,7 +150,7 @@ def test_top_up__zero_balance(spec, state):
     state.balances[validator_index] = initial_balance
     state.validators[validator_index].effective_balance = initial_effective_balance
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     # unchanged effective balance
     assert state.validators[validator_index].effective_balance == initial_effective_balance
@@ -165,7 +165,7 @@ def test_incorrect_sig_top_up(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -183,7 +183,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
     )
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -224,7 +224,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     state.eth1_data.deposit_root = root_2
     state.eth1_data.deposit_count = deposit_count_1
 
-    yield from run_deposit_processing_electra(spec, state, deposit_2, index_2, valid=False)
+    yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
 
 
 @with_electra_and_later
@@ -239,7 +239,7 @@ def test_invalid_bad_merkle_proof(spec, state):
 
     sign_deposit_data(spec, deposit.data, privkeys[validator_index])
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index, valid=False)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
 
 @with_electra_and_later
@@ -253,7 +253,7 @@ def test_key_validate_invalid_subgroup(spec, state):
 
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
@@ -269,14 +269,14 @@ def test_key_validate_invalid_decompression(spec, state):
 
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
 
-    yield from run_deposit_processing_electra(spec, state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
 @with_electra_and_later
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_bad_fork_version(spec, state):
-    yield from run_deposit_processing_electra_with_specific_fork_version(
+    yield from run_deposit_processing_with_specific_fork_version(
         spec,
         state,
         fork_version=spec.Version('0xAaBbCcDd'),

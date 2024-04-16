@@ -39,7 +39,7 @@ def test_basic_pending_consolidation(spec, state):
     assert state.pending_consolidations == []
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_consolidation_not_yet_withdrawable_validator(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -128,7 +128,7 @@ def test_skip_consolidation_when_source_slashed(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_all_consolidation_cases_together(spec, state):
     current_epoch = spec.get_current_epoch(state)

@@ -1,9 +1,9 @@
 import random
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 
 
 def get_expected_withdrawals(spec, state):
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         withdrawals, _ = spec.get_expected_withdrawals(state)
         return withdrawals
     else:

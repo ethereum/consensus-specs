@@ -118,7 +118,7 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -166,7 +166,7 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -218,7 +218,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
     assert state.validators[0].exit_epoch == expected_exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -701,7 +701,7 @@ def test_invalid_exceed_pending_consolidations_limit(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_invalid_not_enough_consolidation_churn_available(spec, state):
     state.validators = state.validators[0:2]

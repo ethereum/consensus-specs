@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_capella_and_later,
 )
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -31,7 +31,7 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         pending_balance_deposits_len = len(state.pending_balance_deposits)
         pending_balance_deposit = state.pending_balance_deposits[pending_balance_deposits_len - 1]
         assert pending_balance_deposit.amount == amount
@@ -44,7 +44,7 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
     balance = state.balances[validator_index]
     current_epoch = spec.get_current_epoch(state)
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         has_execution_withdrawal = spec.has_execution_withdrawal_credential(validator)
         is_withdrawable = validator.withdrawable_epoch <= current_epoch
         has_non_zero_balance = pending_balance_deposit.amount > 0

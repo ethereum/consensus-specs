@@ -7,7 +7,7 @@ from eth2spec.test.helpers.deposits import (
     sign_deposit_data,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.forks import is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_electra
 
 
 @with_all_phases
@@ -124,7 +124,7 @@ def test_top_up__max_effective_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_eip7251(spec):
+    if not is_post_electra(spec):
         assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
         assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
@@ -143,7 +143,7 @@ def test_top_up__less_effective_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_eip7251(spec):
+    if not is_post_electra(spec):
         assert state.balances[validator_index] == initial_balance + amount
         # unchanged effective balance
         assert state.validators[validator_index].effective_balance == initial_effective_balance
@@ -163,7 +163,7 @@ def test_top_up__zero_balance(spec, state):
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-    if not is_post_eip7251(spec):
+    if not is_post_electra(spec):
         assert state.balances[validator_index] == initial_balance + amount
         # unchanged effective balance
         assert state.validators[validator_index].effective_balance == initial_effective_balance

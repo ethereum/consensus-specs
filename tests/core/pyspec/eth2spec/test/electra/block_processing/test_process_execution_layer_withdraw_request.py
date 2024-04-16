@@ -44,7 +44,7 @@ def test_basic_exit(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_basic_exit_with_compounding_credentials(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -66,7 +66,7 @@ def test_basic_exit_with_compounding_credentials(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL], "need full partial withdrawal queue")
 def test_basic_exit_with_full_partial_withdrawal_queue(spec, state):
@@ -243,7 +243,7 @@ def test_basic_partial_withdrawal_request(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
@@ -275,7 +275,7 @@ def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state):
@@ -308,7 +308,7 @@ def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state)
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
@@ -347,7 +347,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(
@@ -378,7 +378,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(
     )
 
     # Set balance so that the validator still has excess balance even with the pending withdrawals
-    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_EIP7251
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
     yield from run_execution_layer_withdraw_request_processing(
         spec,
@@ -387,7 +387,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_high_balance(spec, state):
@@ -396,10 +396,10 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
-    amount = spec.MAX_EFFECTIVE_BALANCE_EIP7251
-    state.balances[validator_index] = 3 * spec.MAX_EFFECTIVE_BALANCE_EIP7251
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    state.balances[validator_index] = 3 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     state.validators[validator_index].effective_balance = (
-        spec.MAX_EFFECTIVE_BALANCE_EIP7251
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     )
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
@@ -424,7 +424,7 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     assert state.earliest_exit_epoch == exit_epoch
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_high_amount(spec, state):
@@ -457,7 +457,7 @@ def test_partial_withdrawal_request_with_high_amount(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_low_amount(spec, state):
@@ -492,7 +492,7 @@ def test_partial_withdrawal_request_with_low_amount(spec, state):
 # No-op partial withdrawal tests
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL], "need full partial withdrawal queue")
 def test_partial_withdrawal_queue_full(spec, state):
@@ -523,7 +523,7 @@ def test_partial_withdrawal_queue_full(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_no_compounding_credentials(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -552,7 +552,7 @@ def test_no_compounding_credentials(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_no_excess_balance(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -574,7 +574,7 @@ def test_no_excess_balance(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_pending_withdrawals_consume_all_excess_balance(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -604,7 +604,7 @@ def test_pending_withdrawals_consume_all_excess_balance(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_insufficient_effective_balance(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -633,7 +633,7 @@ def test_insufficient_effective_balance(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_partial_withdrawal_incorrect_source_address(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -659,7 +659,7 @@ def test_partial_withdrawal_incorrect_source_address(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_partial_withdrawal_incorrect_withdrawal_credential_prefix(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -688,7 +688,7 @@ def test_partial_withdrawal_incorrect_withdrawal_credential_prefix(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_partial_withdrawal_on_exit_initiated_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -714,7 +714,7 @@ def test_partial_withdrawal_on_exit_initiated_validator(spec, state):
     )
 
 
-@with_eip7251_and_later
+@with_electra_and_later
 @spec_state_test
 def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
     spec, state

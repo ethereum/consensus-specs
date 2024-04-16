@@ -1,7 +1,7 @@
 from random import Random
 
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7251
+from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
@@ -242,7 +242,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
-    if is_post_eip7251(spec):
+    if is_post_electra(spec):
         pre_pending_deposits = len(state.pending_balance_deposits)
 
     yield 'pre', state
@@ -271,7 +271,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             # new validator is added
             assert len(state.validators) == pre_validator_count + 1
             assert len(state.balances) == pre_validator_count + 1
-        if not is_post_eip7251(spec):
+        if not is_post_electra(spec):
             if is_top_up:
                 # Top-ups do not change effective balance
                 assert state.validators[validator_index].effective_balance == pre_effective_balance
@@ -281,7 +281,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
                 assert state.validators[validator_index].effective_balance == effective_balance
             assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
         else:
-            # no balance or effective balance changes on deposit processing post eip7251
+            # no balance or effective balance changes on deposit processing post electra
             assert get_balance(state, validator_index) == pre_balance
             assert state.validators[validator_index].effective_balance == pre_effective_balance
             # new correct balance deposit queued up
