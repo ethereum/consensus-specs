@@ -337,6 +337,8 @@ def run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
+    pre_pending_deposits = len(state.pending_balance_deposits)
+
     yield 'pre', state
     yield 'deposit_receipt', deposit_receipt
 
@@ -364,11 +366,10 @@ def run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index
             # new validator
             assert len(state.validators) == pre_validator_count + 1
             assert len(state.balances) == pre_validator_count + 1
-            effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit_receipt.amount)
-            effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
-            assert state.validators[validator_index].effective_balance == effective_balance
 
-        assert get_balance(state, validator_index) == pre_balance + deposit_receipt.amount
+        assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
+        assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit_receipt.amount
+        assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
 
 
 def run_deposit_receipt_processing_with_specific_fork_version(

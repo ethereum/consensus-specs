@@ -9,4 +9,4 @@ from eth2spec.test.context import (
 @spec_test
 @single_phase
 def test_withdrawals(spec):
-    assert spec.MAX_PARTIAL_WITHDRAWALS_PER_PAYLOAD < spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    assert spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD < spec.MAX_WITHDRAWALS_PER_PAYLOAD

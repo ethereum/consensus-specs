@@ -41,7 +41,7 @@ def test_new_deposit_min(spec, state):
 def test_new_deposit_between_min_and_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE_electra // 2
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA // 2
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -52,7 +52,7 @@ def test_new_deposit_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be exactly the same as balance.
-    amount = spec.MAX_EFFECTIVE_BALANCE_electra
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -62,7 +62,7 @@ def test_new_deposit_max(spec, state):
 def test_new_deposit_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE_electra + 1
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -71,16 +71,16 @@ def test_new_deposit_over_max(spec, state):
 # @spec_state_test
 # def test_top_up__max_effective_balance(spec, state):
 #     validator_index = 0
-#     amount = spec.MAX_EFFECTIVE_BALANCE_electra // 4
+#     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA // 4
 #     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-#     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_electra
-#     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_electra
+#     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+#     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 #     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
-#     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_electra + amount
-#     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_electra
+#     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_ELECTRA + amount
+#     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 @with_electra_and_later
 @spec_state_test

@@ -122,7 +122,8 @@ def test_top_up__max_effective_balance(spec, state):
 
     yield from run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index)
 
-    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
+    deposits_len = len(state.pending_balance_deposits)
+    assert state.pending_balance_deposits[deposits_len - 1].amount == amount
     assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
 
@@ -140,7 +141,8 @@ def test_top_up__less_effective_balance(spec, state):
 
     yield from run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index)
 
-    assert state.balances[validator_index] == initial_balance + amount
+    deposits_len = len(state.pending_balance_deposits)
+    assert state.pending_balance_deposits[deposits_len - 1].amount == amount
     # unchanged effective balance
     assert state.validators[validator_index].effective_balance == initial_effective_balance
 
@@ -159,7 +161,8 @@ def test_top_up__zero_balance(spec, state):
 
     yield from run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index)
 
-    assert state.balances[validator_index] == initial_balance + amount
+    deposits_len = len(state.pending_balance_deposits)
+    assert state.pending_balance_deposits[deposits_len - 1].amount == amount
     # unchanged effective balance
     assert state.validators[validator_index].effective_balance == initial_effective_balance
 
@@ -273,10 +276,18 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
 
     yield from run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index)
 
-    assert state.balances[validator_index] == amount
+    deposits_len = len(state.pending_balance_deposits)
+    assert state.pending_balance_deposits[deposits_len - 1].amount == amount
     assert state.validators[validator_index].effective_balance == 0
 
     validator = state.validators[validator_index]
-    balance = state.balances[validator_index]
+
+    pending_balance_deposits_len = len(state.pending_balance_deposits)
+    pending_balance_deposit = state.pending_balance_deposits[pending_balance_deposits_len - 1]
     current_epoch = spec.get_current_epoch(state)
-    assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
+    has_execution_withdrawal = spec.has_execution_withdrawal_credential(validator)
+    is_withdrawable = validator.withdrawable_epoch <= current_epoch
+    has_non_zero_balance = pending_balance_deposit.amount > 0
+    # NOTE: directly compute `is_fully_withdrawable_validator` conditions here
+    # to work around how the epoch processing changed balance updates
+    assert has_execution_withdrawal and is_withdrawable and has_non_zero_balance

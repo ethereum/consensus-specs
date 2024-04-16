@@ -24,7 +24,7 @@ from eth2spec.test.helpers.withdrawals import (
 
 @with_electra_and_later
 @spec_state_test
-def test_basic_el_exit(spec, state):
+def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -36,12 +36,12 @@ def test_basic_el_exit(spec, state):
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_exit = spec.ExecutionLayerExit(
+    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.exits = [execution_layer_exit]
+    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
@@ -53,7 +53,7 @@ def test_basic_el_exit(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_basic_btec_and_el_exit_in_same_block(spec, state):
+def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -73,11 +73,11 @@ def test_basic_btec_and_el_exit_in_same_block(spec, state):
     block.body.bls_to_execution_changes = [signed_address_change]
 
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_exit = spec.ExecutionLayerExit(
+    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
-    block.body.execution_payload.exits = [execution_layer_exit]
+    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
 
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -85,10 +85,9 @@ def test_basic_btec_and_el_exit_in_same_block(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # BTEC is executed after EL-Exit, so it doesn't take effect. `initiate_validator_exit` is not called.
     validator = state.validators[validator_index]
-    assert validator.exit_epoch == spec.FAR_FUTURE_EPOCH
-    # Check if BTEC is effect
+    assert validator.exit_epoch == state.earliest_exit_epoch
+    # Check if BTEC was applied
     is_execution_address = validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     is_correct_source_address = validator.withdrawal_credentials[12:] == address
     assert is_execution_address and is_correct_source_address
@@ -96,7 +95,7 @@ def test_basic_btec_and_el_exit_in_same_block(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_basic_btec_before_el_exit(spec, state):
+def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -126,12 +125,12 @@ def test_basic_btec_before_el_exit(spec, state):
 
     # block_2 contains an EL-Exit operation of the given validator
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_exit = spec.ExecutionLayerExit(
+    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block_2 = build_empty_block_for_next_slot(spec, state)
-    block_2.body.execution_payload.exits = [execution_layer_exit]
+    block_2.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
     block_2.body.execution_payload.block_hash = compute_el_block_hash(spec, block_2.body.execution_payload)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
@@ -143,7 +142,7 @@ def test_basic_btec_before_el_exit(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_cl_exit_and_el_exit_in_same_block(spec, state):
+def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
@@ -158,13 +157,13 @@ def test_cl_exit_and_el_exit_in_same_block(spec, state):
     signed_voluntary_exits = prepare_signed_exits(spec, state, indices=[validator_index])
     # EL-Exit
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_exit = spec.ExecutionLayerExit(
+    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block = build_empty_block_for_next_slot(spec, state)
     block.body.voluntary_exits = signed_voluntary_exits
-    block.body.execution_payload.exits = [execution_layer_exit]
+    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
