@@ -133,6 +133,7 @@ def test_multiple_pending_deposits_above_churn(spec, state):
         spec.PendingBalanceDeposit(index=2, amount=amount)
     ]
 
+
 @with_eip7251_and_later
 @spec_state_test
 def test_skipped_deposit_exiting_validator(spec, state):
