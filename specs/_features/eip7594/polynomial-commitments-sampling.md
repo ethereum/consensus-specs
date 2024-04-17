@@ -383,6 +383,8 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
 
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+    
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -407,6 +409,8 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_BLOB]:
 
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+    
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -431,6 +435,10 @@ def verify_cell_proof(commitment_bytes: Bytes48,
 
     Public method.
     """
+    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    assert len(cell_bytes) == BYTES_PER_CELL
+    assert len(proof_bytes) == BYTES_PER_PROOF
+    
     coset = coset_for_cell(cell_id)
 
     return verify_kzg_proof_multi_impl(
@@ -463,6 +471,12 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     Public method.
     """
     assert len(cells_bytes) == len(proofs_bytes) == len(row_indices) == len(column_indices)
+    for commitment_bytes in row_commitments_bytes:
+        assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    for cell_bytes in cells_bytes:
+        assert len(cell_bytes) == BYTES_PER_CELL
+    for proof_bytes in proofs_bytes:
+        assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Get commitments via row IDs
     commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
@@ -608,6 +622,9 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     assert CELLS_PER_BLOB / 2 <= len(cell_ids) <= CELLS_PER_BLOB
     # Check for duplicates
     assert len(cell_ids) == len(set(cell_ids))
+    # Check that each cell is the correct length
+    for cell_bytes in cells_bytes:
+        assert len(cell_bytes) == BYTES_PER_CELL
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
