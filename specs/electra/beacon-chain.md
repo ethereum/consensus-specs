@@ -48,7 +48,6 @@
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
     - [Updated `is_partially_withdrawable_validator`](#updated-is_partially_withdrawable_validator)
   - [Misc](#misc-1)
-    - [`get_committee_indices`](#get_committee_indices)
     - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
@@ -280,7 +279,7 @@ class AttesterSlashing(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
     data: AttestationData
-    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
+    committee_indices: List[CommitteeIndex, MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
     signature: BLSSignature
 ```
 
@@ -504,13 +503,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Misc
 
-#### `get_committee_indices`
-
-```python
-def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
-    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
-```
-
 #### `get_validator_max_effective_balance`
 
 ```python
@@ -579,12 +571,11 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
 ```python
 def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
     """
-    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
+    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_indices``.
     """
     output: Set[ValidatorIndex] = set()
-    committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
-    for index in committee_indices:
+    for index in attestation.committee_indices:
         committee = get_beacon_committee(state, attestation.data.slot, index)
         committee_attesters = set(
             index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
@@ -1049,9 +1040,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # [Modified in Electra:EIP7549]
     assert data.index == 0
-    committee_indices = get_committee_indices(attestation.committee_bits)
     participants_count = 0
-    for index in committee_indices:
+    for index in attestation.committee_indices:
         assert index < get_committee_count_per_slot(state, data.target.epoch)
         committee = get_beacon_committee(state, data.slot, index)
         participants_count += len(committee)

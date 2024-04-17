@@ -43,17 +43,17 @@ The derivation of the `message-id` remains stable.
 ##### `beacon_aggregate_and_proof`
 
 The following convenience variables are re-defined
-- `index = get_committee_indices(aggregate.committee_bits)[0]`
+- `index = aggregate.committee_indices[0]`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
+* [REJECT] `len(attestation.committee_indices) == 1`
 * [REJECT] `aggregate.data.index == 0`
 
 ##### `beacon_attestation_{subnet_id}`
 
 The following convenience variables are re-defined
-- `index = get_committee_indices(attestation.committee_bits)[0]`
+- `index = attestation.committee_indices[0]`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(attestation)`.
+* [REJECT] `len(attestation.committee_indices) == 1`
 * [REJECT] `attestation.data.index == 0`
