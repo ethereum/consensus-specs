@@ -168,8 +168,20 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         index
     ))
 
-    for index in pre_activation:
-        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+   activation_churn_limit = get_validator_activation_churn_limit(post)
+   adjusted_validators = 0
+   adjusted_epoch = get_current_epoch(post) - 1
+   for i, index in enumerate(pre_activation):
+       if i >= activation_churn_limit * 4
+           break
+       if post.validators[index].activation_eligibility_epoch > post.finalized_checkpoint.epoch
+           break
+       post.validators[index].activation_eligibility_epoch =
+           adjusted_epoch + (i // activation_churn_limit)
+       adjusted_validators += 1
+
+   for index in pre_activation[adjusted_validators:]:
+       queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):
