@@ -225,51 +225,6 @@ def get_valid_attestations_at_slot(state, spec, slot_to_attest, participation_fn
         )
 
 
-def _get_aggregate_committee_indices(spec, attestations):
-    """
-    Aggregate all unique committee indices from the given attestations.
-    """
-    all_committee_indices = set()
-    for attestation in attestations:
-        committee_indices = spec.get_committee_indices(attestation.committee_bits)
-        assert len(committee_indices) == 1
-        all_committee_indices.add(committee_indices[0])
-
-    return all_committee_indices
-
-
-def _aggregate_aggregation_bits_and_signatures(spec, state, slot, aggregate, attestations):
-    """
-    Aggregate the aggregation bits and signatures from the attestations,
-    incorporating the calculation of aggregation bits offset directly.
-    """
-    # initialize aggregation bits for the aggregate attestation
-    aggregate.aggregation_bits = get_empty_eip7549_aggregation_bits(
-        spec, state, aggregate.committee_bits, slot)
-
-    signatures = []
-
-    offset = 0
-    attestations = sorted(attestations, key=lambda att: spec.get_committee_indices(att.committee_bits)[0])
-    for attestation in attestations:
-        # retrieve the single committee index for the attestation.
-        committee_index = spec.get_committee_indices(attestation.committee_bits)[0]
-
-        # update the aggregate's aggregation bits based on each attestation.
-        for i, bit in enumerate(attestation.aggregation_bits):
-            aggregate.aggregation_bits[offset + i] = bit
-
-        # collect signatures for aggregation.
-        signatures.append(attestation.signature)
-
-        # update offset
-        committee = spec.get_beacon_committee(state, slot, committee_index)
-        offset += len(committee)
-
-    # aggregate signatures from all attestations.
-    aggregate.signature = bls.Aggregate(signatures)
-
-
 def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None):
     """
     Return the aggregate attestation post Electra.
@@ -282,19 +237,9 @@ def get_valid_attestation_at_slot(state, spec, slot_to_attest, participation_fn=
         beacon_block_root=beacon_block_root,
     ))
     if not attestations:
-        return None
+        raise Exception("No valid attestations found")
 
-    # initialize the aggregate attestation.
-    aggregate = spec.Attestation(data=attestations[0].data)
-
-    # fill in committee_bits
-    all_committee_indices = _get_aggregate_committee_indices(spec, attestations)
-    for committee_index in all_committee_indices:
-        aggregate.committee_bits[committee_index] = True
-
-    _aggregate_aggregation_bits_and_signatures(spec, state, slot_to_attest, aggregate, attestations)
-
-    return aggregate
+    return spec.compute_on_chain_aggregate(attestations)
 
 
 def next_slots_with_attestations(spec,
