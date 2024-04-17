@@ -436,7 +436,9 @@ def verify_cell_proof(commitment_bytes: Bytes48,
     Public method.
     """
     assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert len(cell_bytes) == BYTES_PER_CELL
+    assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
+    for field in cell_bytes:
+        assert len(field) == BYTES_PER_FIELD_ELEMENT
     assert len(proof_bytes) == BYTES_PER_PROOF
     
     coset = coset_for_cell(cell_id)
@@ -474,7 +476,9 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     for commitment_bytes in row_commitments_bytes:
         assert len(commitment_bytes) == BYTES_PER_COMMITMENT
     for cell_bytes in cells_bytes:
-        assert len(cell_bytes) == BYTES_PER_CELL
+        assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
+        for field in cell_bytes:
+            assert len(field) == BYTES_PER_FIELD_ELEMENT
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
@@ -624,7 +628,9 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     assert len(cell_ids) == len(set(cell_ids))
     # Check that each cell is the correct length
     for cell_bytes in cells_bytes:
-        assert len(cell_bytes) == BYTES_PER_CELL
+        assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
+        for field in cell_bytes:
+            assert len(field) == BYTES_PER_FIELD_ELEMENT
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
