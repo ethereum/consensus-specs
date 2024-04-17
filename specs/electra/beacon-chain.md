@@ -24,7 +24,7 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`DepositReceipt`](#depositreceipt)
-    - [`PendingBalanceDeposit`](#pendingbalancedeposit)
+    - [`PendingDeposit`](#pendingdeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
     - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
     - [`Consolidation`](#consolidation)
@@ -69,7 +69,7 @@
   - [Epoch processing](#epoch-processing)
     - [Updated `process_epoch`](#updated-process_epoch)
     - [Updated  `process_registry_updates`](#updated--process_registry_updates)
-    - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
+    - [New `process_pending_deposits`](#new-process_pending_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Updated `process_effective_balance_updates`](#updated-process_effective_balance_updates)
   - [Block processing](#block-processing)
@@ -85,8 +85,6 @@
       - [Deposits](#deposits)
         - [Updated  `apply_deposit`](#updated--apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
-        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
-        - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
       - [Voluntary exits](#voluntary-exits)
         - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
@@ -155,7 +153,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `PENDING_BALANCE_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending balance deposits |
+| `PENDING_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending deposits |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
 | `PENDING_CONSOLIDATIONS_LIMIT` | `uint64(2**18)` (= 262,144) | pending consolidations |
 
@@ -200,14 +198,17 @@ class DepositReceipt(Container):
     index: uint64
 ```
 
-#### `PendingBalanceDeposit`
+#### `PendingDeposit`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class PendingBalanceDeposit(Container):
-    index: ValidatorIndex
-    amount: Gwei
+class PendingDeposit(Container):
+    epoch: Epoch
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: uint64
+    signature: BLSSignature
 ```
 
 #### `PendingPartialWithdrawal`
@@ -421,7 +422,7 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch  # [New in Electra:EIP7251]
     consolidation_balance_to_consume: Gwei  # [New in Electra:EIP7251]
     earliest_consolidation_epoch: Epoch  # [New in Electra:EIP7251]
-    pending_balance_deposits: List[PendingBalanceDeposit, PENDING_BALANCE_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
+    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
     # [New in Electra:EIP7251]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in Electra:EIP7251]
@@ -631,12 +632,19 @@ def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -
 
 ```python
 def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
     balance = state.balances[index]
     if balance > MIN_ACTIVATION_BALANCE:
         excess_balance = balance - MIN_ACTIVATION_BALANCE
         state.balances[index] = MIN_ACTIVATION_BALANCE
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=excess_balance)
+        state.pending_deposits.append(
+            PendingDeposit(
+                epoch=get_current_epoch(state),
+                pubkey=validator.pubkey,
+                withdrawal_credentials=validator.withdrawal_credentials,
+                amount=balance,
+                signature=BLSSignature(),
+            )
         )
 ```
 
@@ -648,8 +656,14 @@ def queue_entire_balance_and_reset_validator(state: BeaconState, index: Validato
     validator = state.validators[index]
     validator.effective_balance = 0
     validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-    state.pending_balance_deposits.append(
-        PendingBalanceDeposit(index=index, amount=balance)
+    state.pending_deposits.append(
+        PendingDeposit(
+            epoch=get_current_epoch(state),
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=balance,
+            signature=BLSSignature(),
+        )
     )
 ```
 
@@ -744,7 +758,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings(state)
     process_eth1_data_reset(state)
-    process_pending_balance_deposits(state)  # [New in Electra:EIP7251]
+    process_pending_deposits(state)  # [New in Electra:EIP7251]
     process_pending_consolidations(state)  # [New in Electra:EIP7251]
     process_effective_balance_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings_reset(state)
@@ -779,24 +793,32 @@ def process_registry_updates(state: BeaconState) -> None:
             validator.activation_epoch = activation_epoch
 ```
 
-#### New `process_pending_balance_deposits`
+#### New `process_pending_deposits`
 
 ```python
-def process_pending_balance_deposits(state: BeaconState) -> None:
+def process_pending_deposits(state: BeaconState) -> None:
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
 
-    for deposit in state.pending_balance_deposits:
+    for deposit in state.pending_deposits:
         if processed_amount + deposit.amount > available_for_processing:
             break
-        increase_balance(state, deposit.index, deposit.amount)
+        if deposit.epoch >= state.finalized_checkpoint.epoch:
+            break
+        apply_deposit(
+            state=state,
+            pubkey=deposit.pubkey,
+            withdrawal_credentials=deposit.withdrawal_credentials,
+            amount=deposit.amount,
+            signature=deposit.signature,
+        )
         processed_amount += deposit.amount
         next_deposit_index += 1
 
-    state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
+    state.pending_deposits = state.pending_deposits[next_deposit_index:]
 
-    if len(state.pending_balance_deposits) == 0:
+    if len(state.pending_deposits) == 0:
         state.deposit_balance_to_consume = Gwei(0)
     else:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
@@ -1103,10 +1125,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=amount)
-        )  # [Modified in Electra:EIP-7251]
-        # Check if valid deposit switch to compounding credentials
+        # Check if valid deposit switch to compounding credentials [New in Electra:EIP-7251]
         if (
             is_compounding_withdrawal_credential(withdrawal_credentials)
             and has_eth1_withdrawal_credential(state.validators[index])
@@ -1131,38 +1150,6 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
     domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
     signing_root = compute_signing_root(deposit_message, domain)
     return bls.Verify(pubkey, signing_root, signature)
-```
-
-###### Modified `add_validator_to_registry`
-
-```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
-    index = get_index_for_new_validator(state)
-    validator = get_validator_from_deposit(pubkey, withdrawal_credentials)
-    set_or_append_list(state.validators, index, validator)
-    set_or_append_list(state.balances, index, 0)  # [Modified in Electra:EIP7251]
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, uint64(0))
-    state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [New in Electra:EIP7251]
-```
-
-###### Updated `get_validator_from_deposit`
-
-```python
-def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32) -> Validator:
-    return Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=0,  # [Modified in Electra:EIP7251]
-    )
 ```
 
 ##### Voluntary exits
@@ -1271,12 +1258,14 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
         state.deposit_receipts_start_index = deposit_receipt.index
 
-    apply_deposit(
-        state=state,
-        pubkey=deposit_receipt.pubkey,
-        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
-        amount=deposit_receipt.amount,
-        signature=deposit_receipt.signature,
+    state.pending_deposits.append(
+        PendingDeposit(
+            epoch=get_current_epoch(state),
+            pubkey=deposit_receipt.pubkey,
+            withdrawal_credentials=deposit_receipt.withdrawal_credentials,
+            amount=deposit_receipt.amount,
+            signature=deposit_receipt.signature,
+        )
     )
 ```
 
@@ -1366,11 +1355,6 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
         process_deposit(state, deposit)
-
-    # Process deposit balance updates
-    for deposit in state.pending_balance_deposits:
-        increase_balance(state, deposit.index, deposit.amount)
-    state.pending_balance_deposits = []
 
     # Process activations
     for index, validator in enumerate(state.validators):
