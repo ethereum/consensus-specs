@@ -44,6 +44,7 @@ if __name__ == "__main__":
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
     _new_electra_mods = {key: 'eth2spec.test.electra.block_processing.test_process_' + key for key in [
+        'attestation',
         'deposit_receipt',
         'execution_layer_exit',
     ]}
