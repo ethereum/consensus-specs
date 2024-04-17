@@ -657,22 +657,24 @@ def queue_entire_balance_and_reset_validator(state: BeaconState, index: Validato
 
 ```python
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
-    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    earliest_exit_epoch = max(state.earliest_exit_epoch, compute_activation_exit_epoch(get_current_epoch(state)))
     per_epoch_churn = get_activation_exit_churn_limit(state)
     # New epoch for exits.
     if state.earliest_exit_epoch < earliest_exit_epoch:
-        state.earliest_exit_epoch = earliest_exit_epoch
-        state.exit_balance_to_consume = per_epoch_churn
-
-    if exit_balance <= state.exit_balance_to_consume:
-        # Exit fits in the current earliest epoch.
-        state.exit_balance_to_consume -= exit_balance
+        exit_balance_to_consume = per_epoch_churn
     else:
-        # Exit doesn't fit in the current earliest epoch.
-        balance_to_process = exit_balance - state.exit_balance_to_consume
-        additional_epochs, remainder = divmod(balance_to_process, per_epoch_churn)
-        state.earliest_exit_epoch += additional_epochs + 1
-        state.exit_balance_to_consume = per_epoch_churn - remainder
+        exit_balance_to_consume = state.exit_balance_to_consume
+
+    # Exit doesn't fit in the current earliest epoch.
+    if exit_balance > exit_balance_to_consume:
+        balance_to_process = exit_balance - exit_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+        earliest_exit_epoch += additional_epochs
+        exit_balance_to_consume += additional_epochs * per_epoch_churn
+
+    # Consume the balance and update state variables.
+    state.exit_balance_to_consume = exit_balance_to_consume - exit_balance
+    state.earliest_exit_epoch = earliest_exit_epoch
 
     return state.earliest_exit_epoch
 ```
@@ -681,22 +683,25 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
 
 ```python
 def compute_consolidation_epoch_and_update_churn(state: BeaconState, consolidation_balance: Gwei) -> Epoch:
-    earliest_consolidation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    earliest_consolidation_epoch = max(
+        state.earliest_consolidation_epoch, compute_activation_exit_epoch(get_current_epoch(state)))
     per_epoch_consolidation_churn = get_consolidation_churn_limit(state)
     # New epoch for consolidations.
     if state.earliest_consolidation_epoch < earliest_consolidation_epoch:
-        state.earliest_consolidation_epoch = earliest_consolidation_epoch
-        state.consolidation_balance_to_consume = per_epoch_consolidation_churn
-
-    if consolidation_balance <= state.consolidation_balance_to_consume:
-        # Consolidation fits in the current earliest consolidation epoch.
-        state.consolidation_balance_to_consume -= consolidation_balance
+        consolidation_balance_to_consume = per_epoch_consolidation_churn
     else:
-        # Consolidation doesn't fit in the current earliest epoch.
-        balance_to_process = consolidation_balance - state.consolidation_balance_to_consume
-        additional_epochs, remainder = divmod(balance_to_process, per_epoch_consolidation_churn)
-        state.earliest_consolidation_epoch += additional_epochs + 1
-        state.consolidation_balance_to_consume = per_epoch_consolidation_churn - remainder
+        consolidation_balance_to_consume = state.consolidation_balance_to_consume
+
+    # Consolidation doesn't fit in the current earliest epoch.
+    if consolidation_balance > consolidation_balance_to_consume:
+        balance_to_process = consolidation_balance - consolidation_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_consolidation_churn + 1
+        earliest_consolidation_epoch += additional_epochs
+        consolidation_balance_to_consume += additional_epochs * per_epoch_consolidation_churn
+
+    # Consume the balance and update state variables.
+    state.consolidation_balance_to_consume = consolidation_balance_to_consume - consolidation_balance
+    state.earliest_consolidation_epoch = earliest_consolidation_epoch
 
     return state.earliest_consolidation_epoch
 ```
