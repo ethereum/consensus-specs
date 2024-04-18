@@ -569,17 +569,17 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
 #### Modified `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> List[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_indices``.
     """
-    output: Set[ValidatorIndex] = set()
+    output: List[ValidatorIndex] = list()
     committee_offset = 0
     for index in attestation.committee_indices:
         committee = get_beacon_committee(state, attestation.data.slot, index)
-        committee_attesters = set(
+        committee_attesters = list(
             index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
-        output = output.union(committee_attesters)
+        output += committee_attesters
 
         committee_offset += len(committee)
 
