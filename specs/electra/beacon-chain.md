@@ -1319,6 +1319,10 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
     if not (has_correct_credential and is_correct_source_address):
         return
 
+    # Verify that target has execution withdrawal credentials
+    if not has_execution_withdrawal_credential(target_validator):
+        return
+
     # Verify the source and the target are active
     current_epoch = get_current_epoch(state)
     if not is_active_validator(source_validator, current_epoch):
