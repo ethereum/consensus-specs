@@ -1315,7 +1315,7 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
-        validator.withdrawal_credentials[12:] == consolidation.source_address
+        source_validator.withdrawal_credentials[12:] == consolidation.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
@@ -1344,8 +1344,8 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
         source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     state.pending_consolidations.append(PendingConsolidation(
-        source_index=consolidation.source_index,
-        target_index=consolidation.target_index
+        source_index=source_index,
+        target_index=target_index
     ))
 ```
 
