@@ -1004,6 +1004,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         excess_blob_gas=payload.excess_blob_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
         withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
+        consolidations_root=hash_tree_root(payload.consolidations),  # [New in Electra:EIP7251]
     )
 ```
 
