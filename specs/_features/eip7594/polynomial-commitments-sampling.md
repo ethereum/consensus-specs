@@ -34,6 +34,7 @@
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
   - [Cell cosets](#cell-cosets)
     - [`coset_for_cell`](#coset_for_cell)
+    - [`compute_coset_factor`](#compute_coset_factor)
   - [Bitwise manipulation](#bitwise-manipulation)
     - [`reverse_bits_limited`](#reverse_bits_limited)
 - [Cells](#cells-1)
@@ -389,6 +390,17 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
+#### `compute_coset_factor`
+
+```python
+def compute_coset_factor(coset_id: uint64, roots_of_unity: Sequence[BLSFieldElement]) -> Cell:
+    """
+    Get the coset shifting factor for ``coset_id``.
+    """
+    assert coset_id < CELLS_PER_BLOB
+    return roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, coset_id)]
+```
+
 ### Bitwise manipulation
 
 #### `reverse_bits_limited`
@@ -475,9 +487,9 @@ def verify_cell_proof(commitment_bytes: Bytes48,
     Public method.
     """
     roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
-    x = roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, cell_id)]
+    h = compute_coset_factor(cell_id, roots_of_unity)
     ys = bit_reversal_permutation(bytes_to_cell(cell_bytes))
-    return verify_kzg_proof_multi_impl(commitment_bytes, x, ys, proof_bytes)
+    return verify_kzg_proof_multi_impl(commitment_bytes, h, ys, proof_bytes)
 ```
 
 #### `verify_cell_proof_batch`
@@ -516,7 +528,7 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     return all(
         verify_kzg_proof_multi_impl(
             commitment,
-            roots_of_unity[reverse_bits_limited(CELLS_PER_BLOB, column_index)],
+            compute_coset_factor(column_index, roots_of_unity),
             bit_reversal_permutation(cell),
             proof)
         for commitment, column_index, cell, proof in zip(commitments, column_indices, cells, proofs)
