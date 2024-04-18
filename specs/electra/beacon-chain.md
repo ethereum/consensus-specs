@@ -337,7 +337,7 @@ class ExecutionPayload(Container):
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    consolidations: List[ExecutionLayerConsolidations, MAX_CONSOLIDATIONS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+    consolidations: List[ExecutionLayerConsolidation, MAX_CONSOLIDATIONS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -1306,7 +1306,7 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
     source_index = ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
     target_index = ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
     source_validator = state.validators[source_index]
-    target_validator = state.validators[target_validator]
+    target_validator = state.validators[target_index]
 
     # Verify that source != target, so a consolidation cannot be used as an exit.
     if source_index == target_index:
