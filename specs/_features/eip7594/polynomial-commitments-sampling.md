@@ -64,7 +64,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | - | - | - |
 | `PolynomialCoeff` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
 | `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
-| `CellBytes` | `Vector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The flattened bytes representation of a cell |
+| `CellBytes` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The flattened bytes representation of a cell |
 | `CellID` | `uint64` | Cell identifier |
 | `RowIndex` | `uint64` | Row identifier |
 | `ColumnIndex` | `uint64` | Column identifier |
