@@ -313,7 +313,7 @@ def compute_kzg_proof_multi_impl(
     This is done by committing to the following quotient polynomial:  
     Q(X) = f(X) - r(X) / Z(X)
     Where:
-        - r(X) is the degree k-1 polynomial that agrees with f(x) at all `k` points
+        - r(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
     """
 
