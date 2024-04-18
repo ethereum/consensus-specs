@@ -317,7 +317,7 @@ def compute_kzg_proof_multi_impl(
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
     """
 
-    # For all points, compute the evaluation of those points.
+    # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
     # Compute r(X)
     interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
