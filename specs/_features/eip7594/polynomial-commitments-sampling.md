@@ -308,18 +308,26 @@ def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
         zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
     """
-    Helper function that computes multi-evaluation KZG proofs.
+    Compute a KZG multi-evaluation proof for a set of `k` points.
+
+    This is done by committing to the following quotient polynomial:  
+    Q(X) = f(X) - r(X) / Z(X)
+    Where:
+        - r(X) is the degree k-1 polynomial that agrees with f(x) at all `k` points
+        - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
     """
 
-    # For all x_i, compute p(x_i) - p(z)
+    # For all points, compute the evaluation of those points.
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
+    # Compute r(X)
     interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
+    # Compute f(X) - r(X)
     polynomial_shifted = add_polynomialcoeff(polynomial_coeff, neg_polynomialcoeff(interpolation_polynomial))
 
-    # For all x_i, compute (x_i - z)
+    # Compute Z(X)
     denominator_poly = vanishing_polynomialcoeff(zs)
 
-    # Compute the quotient polynomial directly in evaluation form
+    # Compute the quotient polynomial directly in monomial form
     quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
