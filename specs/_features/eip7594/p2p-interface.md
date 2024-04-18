@@ -75,11 +75,11 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_proof_batch(
-        row_commitments=sidecar.kzg_commitments,
+        row_commitments_bytes=sidecar.kzg_commitments,
         row_indices=row_ids,  # all rows
         column_indices=[sidecar.index],
-        cells=sidecar.column,
-        proofs=sidecar.kzg_proofs,
+        cells_bytes=sidecar.column,
+        proofs_bytes=sidecar.kzg_proofs,
     )
 ```
 

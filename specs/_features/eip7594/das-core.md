@@ -92,7 +92,7 @@ class DataColumnSidecar(Container):
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
-    subnet_ids = []
+    subnet_ids: List[uint64] = []
     i = 0
     while len(subnet_ids) < custody_subnet_count:
         subnet_id = (
@@ -141,7 +141,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     extended_matrix = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
+        cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
         cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
 
         full_polynomial = recover_polynomial(cell_ids, cells_bytes)

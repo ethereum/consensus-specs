@@ -98,7 +98,7 @@ def bytes_to_cell(cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]) -> Cell:
     """
     Convert untrusted bytes into a Cell.
     """
-    return [bytes_to_bls_field(element) for element in cell_bytes]
+    return Cell([bytes_to_bls_field(element) for element in cell_bytes])
 ```
 
 ### Linear combinations
@@ -165,7 +165,7 @@ def polynomial_eval_to_coeff(polynomial: Polynomial) -> PolynomialCoeff:
     roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB)
     polynomial_coeff = fft_field(bit_reversal_permutation(list(polynomial)), roots_of_unity, inv=True)
 
-    return polynomial_coeff
+    return PolynomialCoeff(polynomial_coeff)
 ```
 
 #### `add_polynomialcoeff`
@@ -178,7 +178,7 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     a, b = (a, b) if len(a) >= len(b) else (b, a)
     length_a = len(a)
     length_b = len(b)
-    return [(a[i] + (b[i] if i < length_b else 0)) % BLS_MODULUS for i in range(length_a)]
+    return PolynomialCoeff([(a[i] + (b[i] if i < length_b else 0)) % BLS_MODULUS for i in range(length_a)])
 ```
 
 #### `neg_polynomialcoeff`
@@ -188,7 +188,7 @@ def neg_polynomialcoeff(a: PolynomialCoeff) -> PolynomialCoeff:
     """
     Negative of coefficient form polynomial ``a``
     """
-    return [(BLS_MODULUS - x) % BLS_MODULUS for x in a]
+    return PolynomialCoeff([(BLS_MODULUS - x) % BLS_MODULUS for x in a])
 ```
 
 #### `multiply_polynomialcoeff`
@@ -200,10 +200,10 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
     """
     assert len(a) + len(b) <= FIELD_ELEMENTS_PER_EXT_BLOB
 
-    r = [0]
+    r = PolynomialCoeff([0])
     for power, coef in enumerate(a):
         summand = [0] * power + [int(coef) * int(x) % BLS_MODULUS for x in b]
-        r = add_polynomialcoeff(r, summand)
+        r = add_polynomialcoeff(r, PolynomialCoeff(summand))
     return r
 ```
 
@@ -214,8 +214,8 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     """
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
-    a = [x for x in a]
-    o = []
+
+    o: List[BLSFieldElement] = []
     apos = len(a) - 1
     bpos = len(b) - 1
     diff = apos - bpos
@@ -226,7 +226,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
             a[diff + i] = (int(a[diff + i]) - int(b[i]) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
-    return [x % BLS_MODULUS for x in o]
+    return PolynomialCoeff([x % BLS_MODULUS for x in o])
 ```
 
 #### `shift_polynomialcoeff`
@@ -243,7 +243,7 @@ def shift_polynomialcoeff(polynomial_coeff: PolynomialCoeff, factor: BLSFieldEle
     for p in polynomial_coeff:
         o.append(int(p) * factor_power % BLS_MODULUS)
         factor_power = factor_power * inv_factor % BLS_MODULUS
-    return o
+    return PolynomialCoeff(o)
 ```
 
 #### `interpolate_polynomialcoeff`
@@ -256,19 +256,20 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
     Outputs a coefficient form polynomial. Leading coefficients may be zero.
     """
     assert len(xs) == len(ys)
-    r = [0]
+    r = PolynomialCoeff([0])
 
     for i in range(len(xs)):
-        summand = [ys[i]]
+        summand = PolynomialCoeff([ys[i]])
         for j in range(len(ys)):
             if j != i:
-                weight_adjustment = bls_modular_inverse(int(xs[i]) - int(xs[j]))
+                weight_adjustment = bls_modular_inverse(BLSFieldElement(int(xs[i]) - int(xs[j])))
                 summand = multiply_polynomialcoeff(
-                    summand, [(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment]
+                    summand, 
+                    PolynomialCoeff([(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment])
                 )
         r = add_polynomialcoeff(r, summand)
 
-    return r
+    return PolynomialCoeff(r)
 ```
 
 #### `vanishing_polynomialcoeff`
@@ -278,9 +279,9 @@ def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
     Compute the vanishing polynomial on ``xs`` (in coefficient form)
     """
-    p = [1]
+    p = PolynomialCoeff([1])
     for x in xs:
-        p = multiply_polynomialcoeff(p, [-int(x), 1])
+        p = multiply_polynomialcoeff(p, PolynomialCoeff([-int(x), 1]))
     return p
 ```
 
@@ -390,7 +391,7 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
     proofs = []
 
     for i in range(CELLS_PER_BLOB):
-        coset = coset_for_cell(i)
+        coset = coset_for_cell(CellID(i))
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(ys)
         proofs.append(proof)
@@ -485,6 +486,7 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ```python
 def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
         Sequence[BLSFieldElement],
+        Sequence[BLSFieldElement],
         Sequence[BLSFieldElement]]:
     """
     Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
@@ -500,7 +502,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
-    zero_poly_coeff = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
+    zero_poly_coeff = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB
     for i, coeff in enumerate(short_zero_poly):
         zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
@@ -549,12 +551,13 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
+    extended_evaluations_fft = PolynomialCoeff(
+        fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True))
 
     # Compute (E*Z)(k*x)
     shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
     # Compute Z(k*x)
-    shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
+    shifted_zero_poly = shift_polynomialcoeff(PolynomialCoeff(zero_poly_coeff), shift_factor)
 
     eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
     eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
@@ -578,7 +581,8 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
         for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
     ]
 
-    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
+    shifted_reconstructed_poly = PolynomialCoeff(
+        fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True))
 
     # Unshift P(k*x) by k^{-1} to get P(x)
     reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
@@ -615,7 +619,7 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
 
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
@@ -638,5 +642,5 @@ def recover_polynomial(cell_ids: Sequence[CellID],
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         assert reconstructed_data[start:end] == cell
 
-    return reconstructed_data
+    return Polynomial(reconstructed_data)
 ```
