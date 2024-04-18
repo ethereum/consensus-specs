@@ -20,7 +20,8 @@ def test_compute_extended_matrix(spec):
     extended_matrix = spec.compute_extended_matrix(input_blobs)
     assert len(extended_matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
 
-    rows = [extended_matrix[i:(i + spec.CELLS_PER_EXT_BLOB)] for i in range(0, len(extended_matrix), spec.CELLS_PER_EXT_BLOB)]
+    rows = [extended_matrix[i:(i + spec.CELLS_PER_EXT_BLOB)]
+            for i in range(0, len(extended_matrix), spec.CELLS_PER_EXT_BLOB)]
     assert len(rows) == blob_count
     assert len(rows[0]) == spec.CELLS_PER_EXT_BLOB
 
