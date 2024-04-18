@@ -123,9 +123,12 @@ INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE, BLOB_INVALID_LENGTH_PLUS_ONE,
 
 # Individual Cells
 
-CELL_RANDOM_VALID1 = [field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS)) for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
-CELL_RANDOM_VALID2 = [field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS)) for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
-CELL_RANDOM_VALID3 = [field_element_bytes(pow(5, n + 256, spec.BLS_MODULUS)) for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
+CELL_RANDOM_VALID1 = [field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS))
+                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
+CELL_RANDOM_VALID2 = [field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS))
+                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
+CELL_RANDOM_VALID3 = [field_element_bytes(pow(5, n + 256, spec.BLS_MODULUS))
+                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
 
 CELL_ALL_MAX_VALUE = [field_element_bytes_unchecked(2 ** 256 - 1) for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
 CELL_ONE_INVALID_FIELD = [field_element_bytes_unchecked(spec.BLS_MODULUS) if n == 7 else field_element_bytes(0) for n in
@@ -418,9 +421,10 @@ def case05_recover_polynomial():
     cells = spec.compute_cells(blob)
     cell_ids = []
     cells_bytes = []
-    for i, cell in enumerate(cells):
-        if i % 2 == 0: continue
-        cell_ids.append(i)
+    for cell_id, cell in enumerate(cells):
+        if cell_id % 2 == 0:
+            continue
+        cell_ids.append(cell_id)
         cells_bytes.append(cell_to_cell_bytes(cell))
     recovered_cells = spec.recover_polynomial(cell_ids, cells_bytes)
     for i in range(spec.FIELD_ELEMENTS_PER_EXT_BLOB):
