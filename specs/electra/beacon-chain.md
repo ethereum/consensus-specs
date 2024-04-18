@@ -164,7 +164,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_CONSOLIDATIONS` | `uint64(1)` |
+| `MAX_CONSOLIDATIONS_PER_PAYLOAD` | `uint64(1)` |
 
 ### Execution
 
@@ -238,25 +238,15 @@ class ExecutionLayerWithdrawalRequest(Container):
     amount: Gwei
 ```
 
-#### `Consolidation`
+#### `ExecutionLayerConsolidation`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class Consolidation(Container):
-    source_index: ValidatorIndex
-    target_index: ValidatorIndex
-    epoch: Epoch
-```
-
-#### `SignedConsolidation`
-
-*Note*: The container is new in EIP7251.
-
-```python
-class SignedConsolidation(Container):
-    message: Consolidation
-    signature: BLSSignature
+class ExecutionLayerConsolidation(Container):
+    source_address: ExecutionAddress
+    source_pubkey: BLSPubkey
+    target_pubkey: BLSPubkey
 ```
 
 #### `PendingConsolidation`
@@ -319,7 +309,6 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload  # [Modified in Electra:EIP6110:EIP7002]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    consolidations: List[SignedConsolidation, MAX_CONSOLIDATIONS]  # [New in Electra:EIP7251]
 ```
 
 #### `ExecutionPayload`
@@ -348,6 +337,7 @@ class ExecutionPayload(Container):
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    consolidations: List[ExecutionLayerConsolidations, MAX_CONSOLIDATIONS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -375,6 +365,7 @@ class ExecutionPayloadHeader(Container):
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
+    consolidations_root: Root # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
@@ -1045,7 +1036,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
-    for_ops(body.consolidations, process_consolidation)  # [New in Electra:EIP7251]
+    for_ops(body.execution_payload.consolidations, process_execution_layer_consolidation)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations
@@ -1297,38 +1288,48 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 ###### New `process_consolidation`
 
 ```python
-def process_consolidation(state: BeaconState, signed_consolidation: SignedConsolidation) -> None:
-    # If the pending consolidations queue is full, no consolidations are allowed in the block
-    assert len(state.pending_consolidations) < PENDING_CONSOLIDATIONS_LIMIT
-    # If there is too little available consolidation churn limit, no consolidations are allowed in the block
-    assert get_consolidation_churn_limit(state) > MIN_ACTIVATION_BALANCE
-    consolidation = signed_consolidation.message
-    # Verify that source != target, so a consolidation cannot be used as an exit.
-    assert consolidation.source_index != consolidation.target_index
+def process_execution_layer_consolidation(state: BeaconState, consolidation: ExecutionLayerConsolidation) -> None:
+    # If the pending consolidations queue is full, consolidation requests are ignored
+    if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
+        return
+    # If there is too little available consolidation churn limit, consolidation requests are ignored
+    if get_consolidation_churn_limit(state) > MIN_ACTIVATION_BALANCE:
+        return
 
-    source_validator = state.validators[consolidation.source_index]
-    target_validator = state.validators[consolidation.target_index]
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    # Verify pubkeys exists
+    if consolidation.source_pubkey not in validator_pubkeys:
+        return
+    if consolidation.target_pubkey not in validator_pubkeys:
+        return
+    source_index = ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
+    target_index = ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
+    source_validator = state.validators[source_index]
+    target_validator = state.validators[target_validator]
+
+    # Verify that source != target, so a consolidation cannot be used as an exit.
+    if source_index == target_index:
+        return
+
+    # Verify source withdrawal credentials
+    has_correct_credential = has_execution_withdrawal_credential(source_validator)
+    is_correct_source_address = (
+        validator.withdrawal_credentials[12:] == consolidation.source_address
+    )
+    if not (has_correct_credential and is_correct_source_address):
+        return
+
     # Verify the source and the target are active
     current_epoch = get_current_epoch(state)
-    assert is_active_validator(source_validator, current_epoch)
-    assert is_active_validator(target_validator, current_epoch)
+    if not is_active_validator(source_validator, current_epoch):
+        return
+    if not is_active_validator(target_validator, current_epoch):
+        return
     # Verify exits for source and target have not been initiated
-    assert source_validator.exit_epoch == FAR_FUTURE_EPOCH
-    assert target_validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Consolidations must specify an epoch when they become valid; they are not valid before then
-    assert current_epoch >= consolidation.epoch
-
-    # Verify the source and the target have Execution layer withdrawal credentials
-    assert has_execution_withdrawal_credential(source_validator)
-    assert has_execution_withdrawal_credential(target_validator)
-    # Verify the same withdrawal address
-    assert source_validator.withdrawal_credentials[12:] == target_validator.withdrawal_credentials[12:]
-
-    # Verify consolidation is signed by the source and the target
-    domain = compute_domain(DOMAIN_CONSOLIDATION, genesis_validators_root=state.genesis_validators_root)
-    signing_root = compute_signing_root(consolidation, domain)
-    pubkeys = [source_validator.pubkey, target_validator.pubkey]
-    assert bls.FastAggregateVerify(pubkeys, signing_root, signed_consolidation.signature)
+    if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    if target_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
 
     # Initiate source validator exit and append pending consolidation
     source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
