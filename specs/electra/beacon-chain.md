@@ -1125,6 +1125,7 @@ def apply_deposit(state: BeaconState,
     else:
         # Increase balance by deposit amount
         index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
         # Check if valid deposit switch to compounding credentials [New in Electra:EIP-7251]
         if (
             is_compounding_withdrawal_credential(withdrawal_credentials)
