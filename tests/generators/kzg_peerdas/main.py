@@ -231,8 +231,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': True
         }
@@ -249,8 +249,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': None
         }
@@ -267,8 +267,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': None
         }
@@ -285,8 +285,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': None
         }
@@ -303,8 +303,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': None
         }
@@ -322,8 +322,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': False
         }
@@ -341,8 +341,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_list(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': False
         }
@@ -360,8 +360,8 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell_bytes': encode_hex_cell_bytes(cell_bytes),
-                'proof_bytes': encode_hex(proof),
+                'cell': encode_hex_cell_bytes(cell_bytes),
+                'proof': encode_hex(proof),
             },
             'output': False
         }
@@ -386,8 +386,8 @@ def case04_verify_cell_proof_batch():
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
                 'column_indices': column_indices,
-                'cells_bytes': encode_hex_cells_bytes(cells_bytes),
-                'proofs_bytes': encode_hex_list(proofs),
+                'cells': encode_hex_cells_bytes(cells_bytes),
+                'proofs': encode_hex_list(proofs),
             },
             'output': True
         }
@@ -411,7 +411,7 @@ def case05_recover_polynomial():
     yield f'recover_polynomial_case_valid_no_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells_bytes': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_cells_bytes(cells_bytes),
         },
         'output': encode_hex_bls_field_list(recovered_cells)
     }
@@ -434,7 +434,7 @@ def case05_recover_polynomial():
     yield f'recover_polynomial_case_valid_half_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells_bytes': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_cells_bytes(cells_bytes),
         },
         'output': encode_hex_bls_field_list(recovered_cells)
     }
