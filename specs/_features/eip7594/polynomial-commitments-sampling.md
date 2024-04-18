@@ -403,7 +403,7 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
 ```python
 def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
     """
-    Compute the cell data for a blob (without computing the proofs).
+    Compute the cell data for an extended blob (without computing the proofs).
 
     Public method.
     """
