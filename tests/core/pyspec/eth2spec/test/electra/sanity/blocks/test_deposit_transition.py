@@ -4,7 +4,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
-    EIP6110,
+    ELECTRA,
 )
 from eth2spec.test.helpers.deposits import (
     build_deposit_data,
@@ -108,7 +108,7 @@ def prepare_state_and_block(spec,
     return state, block
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__start_index_is_set(spec, state):
     # 0 deposits, 2 deposit receipts, unset deposit_receipts_start_index
@@ -123,7 +123,7 @@ def test_deposit_transition__start_index_is_set(spec, state):
     assert state.deposit_receipts_start_index == block.body.execution_payload.deposit_receipts[0].index
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__process_eth1_deposits(spec, state):
     # 3 deposits, 1 deposit receipt, state.eth1_data.deposit_count < state.deposit_receipts_start_index
@@ -136,7 +136,7 @@ def test_deposit_transition__process_eth1_deposits(spec, state):
     yield from run_deposit_transition_block(spec, state, block)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__process_max_eth1_deposits(spec, state):
     # spec.MAX_DEPOSITS deposits, 1 deposit receipt, state.eth1_data.deposit_count > state.deposit_receipts_start_index
@@ -151,7 +151,7 @@ def test_deposit_transition__process_max_eth1_deposits(spec, state):
     yield from run_deposit_transition_block(spec, state, block)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__process_eth1_deposits_up_to_start_index(spec, state):
     # 3 deposits, 1 deposit receipt, state.eth1_data.deposit_count == state.deposit_receipts_start_index
@@ -164,7 +164,7 @@ def test_deposit_transition__process_eth1_deposits_up_to_start_index(spec, state
     yield from run_deposit_transition_block(spec, state, block)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__invalid_not_enough_eth1_deposits(spec, state):
     # 3 deposits, 1 deposit receipt, state.eth1_data.deposit_count < state.deposit_receipts_start_index
@@ -178,7 +178,7 @@ def test_deposit_transition__invalid_not_enough_eth1_deposits(spec, state):
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__invalid_too_many_eth1_deposits(spec, state):
     # 3 deposits, 1 deposit receipt, state.eth1_data.deposit_count < state.eth1_data_index
@@ -192,7 +192,7 @@ def test_deposit_transition__invalid_too_many_eth1_deposits(spec, state):
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__invalid_eth1_deposits_overlap_in_protocol_deposits(spec, state):
     # spec.MAX_DEPOSITS deposits, 1 deposit receipt, state.eth1_data.deposit_count > state.deposit_receipts_start_index
@@ -207,7 +207,7 @@ def test_deposit_transition__invalid_eth1_deposits_overlap_in_protocol_deposits(
     yield from run_deposit_transition_block(spec, state, block, valid=False)
 
 
-@with_phases([EIP6110])
+@with_phases([ELECTRA])
 @spec_state_test
 def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # 1 deposit, 1 deposit receipt that top ups deposited validator
@@ -222,8 +222,12 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     block.body.execution_payload.deposit_receipts[0].pubkey = top_up_keys[0]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
 
+    pre_pending_deposits = len(state.pending_balance_deposits)
+
     yield from run_deposit_transition_block(spec, state, block, top_up_keys=top_up_keys)
 
     # Check the top up
-    expected_balance = block.body.deposits[0].data.amount + block.body.execution_payload.deposit_receipts[0].amount
-    assert state.balances[len(state.balances) - 1] == expected_balance
+    assert len(state.pending_balance_deposits) == pre_pending_deposits + 2
+    assert state.pending_balance_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
+    amount_from_deposit = block.body.execution_payload.deposit_receipts[0].amount
+    assert state.pending_balance_deposits[pre_pending_deposits + 1].amount == amount_from_deposit

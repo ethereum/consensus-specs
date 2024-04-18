@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     with_altair_and_later,
 )
 from eth2spec.test.helpers.attestations import (
-    get_valid_attestation_at_slot,
+    get_valid_attestations_at_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -101,7 +101,7 @@ def test_basic_is_parent_root(spec, state):
     # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
     parent_block_slot = block.slot - 1
-    block.body.attestations = get_valid_attestation_at_slot(
+    block.body.attestations = get_valid_attestations_at_slot(
         state,
         spec,
         parent_block_slot,
@@ -128,7 +128,7 @@ def test_basic_is_parent_root(spec, state):
     slot = state.slot
 
     # Add attestations to the parent block
-    attestations = get_valid_attestation_at_slot(
+    attestations = get_valid_attestations_at_slot(
         state,
         spec,
         slot_to_attest=slot - 1,

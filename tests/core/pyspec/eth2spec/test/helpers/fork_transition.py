@@ -17,6 +17,7 @@ from eth2spec.test.helpers.constants import (
     PHASE0,
     POST_FORK_OF,
     PREVIOUS_FORK_OF,
+    DENEB,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -26,6 +27,7 @@ from eth2spec.test.helpers.proposer_slashings import (
 )
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
+    is_post_electra,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -296,8 +298,18 @@ def run_transition_with_operation(state,
             operation_dict = {'proposer_slashings': [proposer_slashing]}
         else:
             # operation_type == OperationType.ATTESTER_SLASHING:
+            if is_at_fork and spec.fork == DENEB:
+                # NOTE: attestation format changes between Deneb and Electra
+                # so attester slashing must be made with the `post_spec`
+                target_spec = post_spec
+                target_state = post_spec.upgrade_to_electra(state.copy())
+                target_state.fork = state.fork
+            else:
+                target_spec = spec
+                target_state = state
+
             attester_slashing = get_valid_attester_slashing_by_indices(
-                spec, state,
+                target_spec, target_state,
                 [selected_validator_index],
                 signed_1=True, signed_2=True,
             )
@@ -386,11 +398,16 @@ def run_transition_with_operation(state,
 def _transition_until_active(post_spec, state, post_tag, blocks, validator_index):
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    epochs_required_to_activate = 2
+    if is_post_electra(post_spec):
+        # NOTE: an extra epoch is required given the way balance updates
+        # changed with electra
+        epochs_required_to_activate = 3
     # finalize activation_eligibility_epoch
     _, blocks_in_epoch, state = next_slots_with_attestations(
         post_spec,
         state,
-        post_spec.SLOTS_PER_EPOCH * 2,
+        post_spec.SLOTS_PER_EPOCH * epochs_required_to_activate,
         fill_cur_epoch=True,
         fill_prev_epoch=True,
     )

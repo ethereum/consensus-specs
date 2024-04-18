@@ -41,7 +41,7 @@ Warning: this configuration is not definitive.
 
 | Name                 | Value                   |
 | -------------------- | ----------------------- |
-| `WHISK_FORK_VERSION` | `Version('0x05000000')` |
+| `WHISK_FORK_VERSION` | `Version('0x08000000')` |
 | `WHISK_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to Whisk

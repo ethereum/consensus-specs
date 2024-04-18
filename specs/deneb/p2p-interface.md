@@ -118,7 +118,7 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is modified to also support Deneb blocks and new topics are added per table below.
 
-The `voluntary_exit` topic is implicitly modified due to the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
+The `voluntary_exit` topic is implicitly modified despite the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of attestations created in epoch `N` to be gossiped through the entire range of slots in epoch `N+1` rather than only through one epoch of slots for EIP-7045.
 

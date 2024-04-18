@@ -19,6 +19,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.withdrawals import (
+    get_expected_withdrawals,
     prepare_expected_withdrawals,
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
@@ -62,7 +63,7 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    expected_withdrawals = spec.get_expected_withdrawals(state)
+    expected_withdrawals = get_expected_withdrawals(spec, state)
     assert len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD
     if num_expected_withdrawals is not None:
         assert len(expected_withdrawals) == num_expected_withdrawals
@@ -87,7 +88,7 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
         assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(state.validators)
     elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
         bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        assert len(spec.get_expected_withdrawals(state)) <= bound
+        assert len(get_expected_withdrawals(spec, state)) <= bound
     elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
         raise ValueError('len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD')
 
@@ -100,7 +101,7 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
 @with_capella_and_later
 @spec_state_test
 def test_success_zero_expected_withdrawals(spec, state):
-    assert len(spec.get_expected_withdrawals(state)) == 0
+    assert len(get_expected_withdrawals(spec, state)) == 0
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)

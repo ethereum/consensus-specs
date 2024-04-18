@@ -7,7 +7,7 @@ generation and verification of merkle proofs based on static data.
 
 Tests for each individual SSZ type are grouped into a `suite` indicating the SSZ type name.
 
-### `object.yaml`
+### `object.ssz_snappy`
 
 A SSZ-snappy encoded object from which other data is generated. The SSZ type can be determined from the test `suite` name.
 

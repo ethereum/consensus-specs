@@ -9,7 +9,7 @@ from eth2spec.test.helpers.constants import (
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
     get_valid_attestation,
-    get_valid_attestation_at_slot,
+    get_valid_attestations_at_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block,
@@ -218,7 +218,7 @@ def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previo
     # add attestations of y
     temp_state = state.copy()
     next_slot(spec, temp_state)
-    attestations_for_y = list(get_valid_attestation_at_slot(temp_state, spec, signed_block_y.message.slot))
+    attestations_for_y = list(get_valid_attestations_at_slot(temp_state, spec, signed_block_y.message.slot))
     current_time = temp_state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     yield from add_attestations(spec, store, attestations_for_y, test_steps)
@@ -345,10 +345,10 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     # create 2/3 votes for the empty chain
     attestations_for_y = []
     # target_is_current = not is_justifying_previous_epoch
-    attestations = list(get_valid_attestation_at_slot(state, spec, state_a.slot))
+    attestations = list(get_valid_attestations_at_slot(state, spec, state_a.slot))
     attestations_for_y.append(attestations)
     for state in states_of_empty_chain:
-        attestations = list(get_valid_attestation_at_slot(state, spec, state.slot))
+        attestations = list(get_valid_attestations_at_slot(state, spec, state.slot))
         attestations_for_y.append(attestations)
 
     state = state_a.copy()

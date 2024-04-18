@@ -155,7 +155,7 @@ jobs:
           command: make citest fork=deneb
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  test-eip6110:
+  test-electra:
     docker:
       - image: circleci/python:3.9
     working_directory: ~/specs-repo
@@ -165,20 +165,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=eip6110
-      - store_test_results:
-          path: tests/core/pyspec/test-reports
-  test-eip7002:
-    docker:
-      - image: circleci/python:3.9
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_pyspec_cached_venv
-      - run:
-          name: Run py-tests
-          command: make citest fork=eip7002
+          command: make citest fork=electra
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-whisk:
@@ -327,10 +314,7 @@ workflows:
       - test-deneb:
           requires:
             - install_pyspec_test
-      - test-eip6110:
-          requires:
-            - install_pyspec_test
-      - test-eip7002:
+      - test-electra:
           requires:
             - install_pyspec_test
       - test-whisk:
@@ -344,7 +328,7 @@ workflows:
       - lint:
           requires:
             - install_pyspec_test
-      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests. 
+      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests.
       # - install_deposit_contract_web3_tester:
       #     requires:
       #       - checkout_specs
