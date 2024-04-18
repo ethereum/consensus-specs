@@ -19,6 +19,7 @@
   - [State list lengths](#state-list-lengths)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
+  - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
@@ -173,6 +174,12 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
 | `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
+
+### Withdrawals processing
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
 
 ## Configuration
 
@@ -881,7 +888,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:
             break
 
         validator = state.validators[withdrawal.index]

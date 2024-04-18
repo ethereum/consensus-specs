@@ -38,3 +38,8 @@ MAX_CONSOLIDATIONS: 1
 MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 8192
 # 2**4 (= 16) withdrawal requests
 MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 16
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# 2**3 ( = 8) pending withdrawals
+MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 8
