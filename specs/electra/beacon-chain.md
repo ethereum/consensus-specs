@@ -1294,7 +1294,7 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
         return
     # If there is too little available consolidation churn limit, consolidation requests are ignored
-    if get_consolidation_churn_limit(state) > MIN_ACTIVATION_BALANCE:
+    if get_consolidation_churn_limit(state) <= MIN_ACTIVATION_BALANCE:
         return
 
     validator_pubkeys = [v.pubkey for v in state.validators]
