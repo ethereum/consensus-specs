@@ -313,14 +313,12 @@ def compute_kzg_proof_multi_impl(
 
     # For all x_i, compute p(x_i) - p(z)
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
-    interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
-    polynomial_shifted = add_polynomialcoeff(polynomial_coeff, neg_polynomialcoeff(interpolation_polynomial))
 
     # For all x_i, compute (x_i - z)
     denominator_poly = vanishing_polynomialcoeff(zs)
 
     # Compute the quotient polynomial directly in evaluation form
-    quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
+    quotient_polynomial = divide_polynomialcoeff(polynomial_coeff, denominator_poly)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
