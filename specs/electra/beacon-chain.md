@@ -41,7 +41,7 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
-    - [Updated `is_eligible_for_activation_queue`](#updated-is_eligible_for_activation_queue)
+    - [Updated `is_eligible_for_activation`](#updated-is_eligible_for_activation)
     - [New `is_compounding_withdrawal_credential`](#new-is_compounding_withdrawal_credential)
     - [New `has_compounding_withdrawal_credential`](#new-has_compounding_withdrawal_credential)
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
@@ -432,16 +432,18 @@ class BeaconState(Container):
 
 ### Predicates
 
-#### Updated `is_eligible_for_activation_queue`
+#### Updated `is_eligible_for_activation`
 
 ```python
-def is_eligible_for_activation_queue(validator: Validator) -> bool:
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
     """
-    Check if ``validator`` is eligible to be placed into the activation queue.
+    Check if ``validator`` is eligible for activation.
     """
     return (
-        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-        and validator.effective_balance >= MIN_ACTIVATION_BALANCE  # [Modified in Electra:EIP7251]
+        # Has sufficient effective balance
+        validator.effective_balance >= MIN_ACTIVATION_BALANCE  # [Modified in Electra:EIP7251]
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
     )
 ```
 
@@ -777,9 +779,6 @@ and changes how the activation epochs are computed for eligible validators.
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):
-            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
-
         if (
             is_active_validator(validator, get_current_epoch(state))
             and validator.effective_balance <= EJECTION_BALANCE
