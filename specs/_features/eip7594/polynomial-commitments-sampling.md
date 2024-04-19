@@ -322,8 +322,6 @@ def compute_kzg_proof_multi_impl(
 
     # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
-    # Compute r(X)
-    interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
 
     # Compute Z(X)
     denominator_poly = vanishing_polynomialcoeff(zs)
