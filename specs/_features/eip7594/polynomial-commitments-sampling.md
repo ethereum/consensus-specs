@@ -106,7 +106,7 @@ def bytes_to_cell(cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]) -> Cell:
 #### `g2_lincomb`
 
 ```python
-def g2_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> Bytes96:
+def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) -> Bytes96:
     """
     BLS multiscalar multiplication in G2. This function can be optimized using Pippenger's algorithm and variants.
     """
