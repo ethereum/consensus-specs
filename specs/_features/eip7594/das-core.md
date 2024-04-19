@@ -136,7 +136,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     """
     Return the recovered ``ExtendedMatrix``.
 
-    This helper demonstrates how to apply ``recover_polynomial``.
+    This helper demonstrates how to apply ``recover_all_cells``.
     The data structure for storing cells is implementation-dependent.
     """
     extended_matrix = []
@@ -145,12 +145,8 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
         cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
         cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
 
-        full_polynomial = recover_polynomial(cell_ids, cells_bytes)
-        cells_from_full_polynomial = [
-            full_polynomial[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
-            for i in range(CELLS_PER_EXT_BLOB)
-        ]
-        extended_matrix.extend(cells_from_full_polynomial)
+        all_cells_for_row = recover_all_cells(cell_ids, cells_bytes)
+        extended_matrix.extend(all_cells_for_row)
     return ExtendedMatrix(extended_matrix)
 ```
 
