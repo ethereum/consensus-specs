@@ -18,11 +18,12 @@ def test_compute_extended_matrix(spec):
     blob_count = 2
     input_blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
     extended_matrix = spec.compute_extended_matrix(input_blobs)
-    assert len(extended_matrix) == spec.CELLS_PER_BLOB * blob_count
+    assert len(extended_matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
 
-    rows = [extended_matrix[i:(i + spec.CELLS_PER_BLOB)] for i in range(0, len(extended_matrix), spec.CELLS_PER_BLOB)]
+    rows = [extended_matrix[i:(i + spec.CELLS_PER_EXT_BLOB)]
+            for i in range(0, len(extended_matrix), spec.CELLS_PER_EXT_BLOB)]
     assert len(rows) == blob_count
-    assert len(rows[0]) == spec.CELLS_PER_BLOB
+    assert len(rows[0]) == spec.CELLS_PER_EXT_BLOB
 
     for blob_index, row in enumerate(rows):
         extended_blob = []
@@ -40,7 +41,7 @@ def test_recover_matrix(spec):
     rng = random.Random(5566)
 
     # Number of samples we will be recovering from
-    N_SAMPLES = spec.CELLS_PER_BLOB // 2
+    N_SAMPLES = spec.CELLS_PER_EXT_BLOB // 2
 
     blob_count = 2
     cells_dict = {}
@@ -54,9 +55,9 @@ def test_recover_matrix(spec):
         cell_ids = []
         # First figure out just the indices of the cells
         for _ in range(N_SAMPLES):
-            cell_id = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+            cell_id = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
             while cell_id in cell_ids:
-                cell_id = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+                cell_id = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
             cell_ids.append(cell_id)
             cell = cells[cell_id]
             cells_dict[(blob_index, cell_id)] = cell

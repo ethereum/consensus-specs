@@ -19,6 +19,7 @@
   - [State list lengths](#state-list-lengths)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
+  - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
@@ -173,6 +174,12 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
 | `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
+
+### Withdrawals processing
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
 
 ## Configuration
 
@@ -657,22 +664,24 @@ def queue_entire_balance_and_reset_validator(state: BeaconState, index: Validato
 
 ```python
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
-    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    earliest_exit_epoch = max(state.earliest_exit_epoch, compute_activation_exit_epoch(get_current_epoch(state)))
     per_epoch_churn = get_activation_exit_churn_limit(state)
     # New epoch for exits.
     if state.earliest_exit_epoch < earliest_exit_epoch:
-        state.earliest_exit_epoch = earliest_exit_epoch
-        state.exit_balance_to_consume = per_epoch_churn
-
-    if exit_balance <= state.exit_balance_to_consume:
-        # Exit fits in the current earliest epoch.
-        state.exit_balance_to_consume -= exit_balance
+        exit_balance_to_consume = per_epoch_churn
     else:
-        # Exit doesn't fit in the current earliest epoch.
-        balance_to_process = exit_balance - state.exit_balance_to_consume
-        additional_epochs, remainder = divmod(balance_to_process, per_epoch_churn)
-        state.earliest_exit_epoch += additional_epochs + 1
-        state.exit_balance_to_consume = per_epoch_churn - remainder
+        exit_balance_to_consume = state.exit_balance_to_consume
+
+    # Exit doesn't fit in the current earliest epoch.
+    if exit_balance > exit_balance_to_consume:
+        balance_to_process = exit_balance - exit_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+        earliest_exit_epoch += additional_epochs
+        exit_balance_to_consume += additional_epochs * per_epoch_churn
+
+    # Consume the balance and update state variables.
+    state.exit_balance_to_consume = exit_balance_to_consume - exit_balance
+    state.earliest_exit_epoch = earliest_exit_epoch
 
     return state.earliest_exit_epoch
 ```
@@ -681,22 +690,25 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
 
 ```python
 def compute_consolidation_epoch_and_update_churn(state: BeaconState, consolidation_balance: Gwei) -> Epoch:
-    earliest_consolidation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    earliest_consolidation_epoch = max(
+        state.earliest_consolidation_epoch, compute_activation_exit_epoch(get_current_epoch(state)))
     per_epoch_consolidation_churn = get_consolidation_churn_limit(state)
     # New epoch for consolidations.
     if state.earliest_consolidation_epoch < earliest_consolidation_epoch:
-        state.earliest_consolidation_epoch = earliest_consolidation_epoch
-        state.consolidation_balance_to_consume = per_epoch_consolidation_churn
-
-    if consolidation_balance <= state.consolidation_balance_to_consume:
-        # Consolidation fits in the current earliest consolidation epoch.
-        state.consolidation_balance_to_consume -= consolidation_balance
+        consolidation_balance_to_consume = per_epoch_consolidation_churn
     else:
-        # Consolidation doesn't fit in the current earliest epoch.
-        balance_to_process = consolidation_balance - state.consolidation_balance_to_consume
-        additional_epochs, remainder = divmod(balance_to_process, per_epoch_consolidation_churn)
-        state.earliest_consolidation_epoch += additional_epochs + 1
-        state.consolidation_balance_to_consume = per_epoch_consolidation_churn - remainder
+        consolidation_balance_to_consume = state.consolidation_balance_to_consume
+
+    # Consolidation doesn't fit in the current earliest epoch.
+    if consolidation_balance > consolidation_balance_to_consume:
+        balance_to_process = consolidation_balance - consolidation_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_consolidation_churn + 1
+        earliest_consolidation_epoch += additional_epochs
+        consolidation_balance_to_consume += additional_epochs * per_epoch_consolidation_churn
+
+    # Consume the balance and update state variables.
+    state.consolidation_balance_to_consume = consolidation_balance_to_consume - consolidation_balance
+    state.earliest_consolidation_epoch = earliest_consolidation_epoch
 
     return state.earliest_consolidation_epoch
 ```
@@ -876,7 +888,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:
             break
 
         validator = state.validators[withdrawal.index]

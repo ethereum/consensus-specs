@@ -85,7 +85,7 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 | `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB` | Number of field elements in a Reed-Solomon extended blob |
 | `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
 | `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
-| `CELLS_PER_BLOB` | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in a blob |
+| `CELLS_PER_EXT_BLOB` | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
 
 ## Helper functions
@@ -124,7 +124,7 @@ def cell_to_bytes(cell: Cell) -> CellBytes:
 #### `g2_lincomb`
 
 ```python
-def g2_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> Bytes96:
+def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) -> Bytes96:
     """
     BLS multiscalar multiplication in G2. This function can be optimized using Pippenger's algorithm and variants.
     """
@@ -326,18 +326,26 @@ def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
         zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
     """
-    Helper function that computes multi-evaluation KZG proofs.
+    Compute a KZG multi-evaluation proof for a set of `k` points.
+
+    This is done by committing to the following quotient polynomial:  
+    Q(X) = f(X) - r(X) / Z(X)
+    Where:
+        - r(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
+        - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
     """
 
-    # For all x_i, compute p(x_i) - p(z)
+    # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
+    # Compute r(X)
     interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
+    # Compute f(X) - r(X)
     polynomial_shifted = add_polynomialcoeff(polynomial_coeff, neg_polynomialcoeff(interpolation_polynomial))
 
-    # For all x_i, compute (x_i - z)
+    # Compute Z(X)
     denominator_poly = vanishing_polynomialcoeff(zs)
 
-    # Compute the quotient polynomial directly in evaluation form
+    # Compute the quotient polynomial directly in monomial form
     quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
@@ -377,7 +385,7 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     """
     Get the coset for a given ``cell_id``
     """
-    assert cell_id < CELLS_PER_BLOB
+    assert cell_id < CELLS_PER_EXT_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
@@ -392,10 +400,11 @@ def coset_for_cell(cell_id: CellID) -> Cell:
 
 ```python
 def compute_cells_and_proofs(blob: Blob) -> Tuple[
-        Vector[CellBytes, CELLS_PER_BLOB],
-        Vector[KZGProof, CELLS_PER_BLOB]]:
+        Vector[CellBytes, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+
     """
-    Compute all the cell proofs for one blob. This is an inefficient O(n^2) algorithm,
+    Compute all the cell proofs for an extended blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
     used instead.
 
@@ -407,7 +416,7 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
     cells = []
     proofs = []
 
-    for i in range(CELLS_PER_BLOB):
+    for i in range(CELLS_PER_EXT_BLOB):
         coset = coset_for_cell(i)
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(cell_to_bytes(ys))
@@ -419,9 +428,9 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
 #### `compute_cells`
 
 ```python
-def compute_cells(blob: Blob) -> Vector[CellBytes, CELLS_PER_BLOB]:
+def compute_cells(blob: Blob) -> Vector[CellBytes, CELLS_PER_EXTBLOB]:
     """
-    Compute the cell data for a blob (without computing the proofs).
+    Compute the cell data for an extended blob (without computing the proofs).
 
     Public method.
     """
@@ -432,7 +441,7 @@ def compute_cells(blob: Blob) -> Vector[CellBytes, CELLS_PER_BLOB]:
                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     cells = []
-    for cell_id in range(CELLS_PER_BLOB):
+    for cell_id in range(CELLS_PER_EXT_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         cells.append(cell_to_bytes(extended_data_rbo[start:end]))
@@ -513,11 +522,11 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     corresponds to a missing field element.
     """
     # Get the small domain
-    roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_BLOB)
+    roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
     short_zero_poly = vanishing_polynomialcoeff([
-        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_BLOB)]
+        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_EXT_BLOB)]
         for missing_cell_id in missing_cell_ids
     ])
 
@@ -532,7 +541,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
 
     # Sanity check
-    for cell_id in range(CELLS_PER_BLOB):
+    for cell_id in range(CELLS_PER_EXT_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         if cell_id in missing_cell_ids:
@@ -627,7 +636,7 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     """
     assert len(cell_ids) == len(cells_bytes)
     # Check we have enough cells to be able to perform the reconstruction
-    assert CELLS_PER_BLOB / 2 <= len(cell_ids) <= CELLS_PER_BLOB
+    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_ids) == len(set(cell_ids))
 
@@ -637,7 +646,7 @@ def recover_polynomial(cell_ids: Sequence[CellID],
     # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
 
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_BLOB) if cell_id not in cell_ids]
+    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(

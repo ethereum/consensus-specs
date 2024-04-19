@@ -68,7 +68,7 @@ def test_recover_polynomial(spec):
     rng = random.Random(5566)
 
     # Number of samples we will be recovering from
-    N_SAMPLES = spec.CELLS_PER_BLOB // 2
+    N_SAMPLES = spec.CELLS_PER_EXT_BLOB // 2
 
     # Get the data we will be working with
     blob = get_sample_blob(spec)
@@ -82,9 +82,9 @@ def test_recover_polynomial(spec):
     cell_ids = []
     # First figure out just the indices of the cells
     for i in range(N_SAMPLES):
-        j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+        j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         while j in cell_ids:
-            j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+            j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         cell_ids.append(j)
     # Now the cells themselves
     known_cells = [cells[cell_id] for cell_id in cell_ids]
