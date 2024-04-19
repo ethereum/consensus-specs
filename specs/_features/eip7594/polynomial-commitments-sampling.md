@@ -623,8 +623,8 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 ### `recover_all_cells`
 
 ```python
-def recover_polynomial(cell_ids: Sequence[CellID],
-                       cells: Sequence[Cell]) -> Sequence[CosetEvals]:
+def recover_all_cells(cell_ids: Sequence[CellID],
+                      cells: Sequence[Cell]) -> Sequence[CosetEvals]:
     """
     Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
     half of which can be missing.

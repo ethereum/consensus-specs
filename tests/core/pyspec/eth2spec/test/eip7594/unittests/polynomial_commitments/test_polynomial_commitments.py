@@ -91,13 +91,14 @@ def test_recover_all_cells(spec):
 
     # Recover all of the cells
     recovered_cells = spec.recover_all_cells(cell_ids, known_cells)
-    recovered_data = [x for xs in recovered_cells for x in spec.cell_to_coset_evals(xs)]
+    recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
 
     # Check that the recovered cells match the original cells
-    assert cells == recovered_cells
+    recovered_cells_bytes = [spec.coset_evals_to_cell(x) for x in recovered_cells]
+    assert cells == recovered_cells_bytes
 
 
 @with_eip7594_and_later
