@@ -405,7 +405,6 @@ def coset_for_cell(cell_id: CellID) -> Cell:
 def compute_cells_and_proofs(blob: Blob) -> Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
-
     """
     Compute all the cell proofs for an extended blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
