@@ -281,7 +281,7 @@ def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
     p = PolynomialCoeff([1])
     for x in xs:
-        p = multiply_polynomialcoeff(p, PolynomialCoeff([-int(x), 1]))
+        p = multiply_polynomialcoeff(p, PolynomialCoeff([-int(x) + BLS_MODULUS, 1]))
     return p
 ```
 
