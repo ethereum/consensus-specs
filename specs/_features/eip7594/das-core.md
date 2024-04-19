@@ -143,7 +143,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
         cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
 
-        all_cells_for_row = recover_all_cells(cell_ids, cells)
+        all_cells_for_row = [coset_evals_to_cell(cell) for cell in recover_all_cells(cell_ids, cells)]
         extended_matrix.extend(all_cells_for_row)
     return ExtendedMatrix(extended_matrix)
 ```
