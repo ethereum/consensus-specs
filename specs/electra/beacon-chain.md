@@ -229,7 +229,7 @@ class PendingPartialWithdrawal(Container):
 ```
 #### `ExecutionLayerWithdrawalRequest`
 
-*Note*: The container is new in EIP7251.
+*Note*: The container is new in EIP7251:EIP7002.
 
 ```python
 class ExecutionLayerWithdrawalRequest(Container):
