@@ -45,7 +45,7 @@
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
   - [`recover_shifted_data`](#recover_shifted_data)
   - [`recover_original_data`](#recover_original_data)
-  - [`recover_polynomial`](#recover_polynomial)
+  - [`recover_all_cells`](#recover_all_cells)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -596,14 +596,15 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
     return reconstructed_data
 ```
 
-### `recover_polynomial`
+### `recover_all_cells`
 
 ```python
-def recover_polynomial(cell_ids: Sequence[CellID],
-                       cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Polynomial:
+def recover_all_cells(cell_ids: Sequence[CellID],
+                      cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Sequence[Cell]:
     """
-    Recover original polynomial from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, half of which can be missing. This
-    algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
+    Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
+    half of which can be missing.
+    This algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
     https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
 
     A faster version thanks to Qi Zhou can be found here:
@@ -646,5 +647,9 @@ def recover_polynomial(cell_ids: Sequence[CellID],
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         assert reconstructed_data[start:end] == cell
 
-    return reconstructed_data
+    reconstructed_data_as_cells = [
+        reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
+        for i in range(CELLS_PER_EXT_BLOB)]
+
+    return reconstructed_data_as_cells
 ```
