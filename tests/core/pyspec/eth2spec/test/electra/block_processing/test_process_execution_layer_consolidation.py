@@ -64,7 +64,7 @@ def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
         == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
     )
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -109,7 +109,7 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
         == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
     )
     # Check exit epochs
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -156,7 +156,7 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
         == preexisting_churn - spec.MIN_ACTIVATION_BALANCE
     )
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -207,7 +207,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
         state.consolidation_balance_to_consume == consolidation_churn_limit - remainder
     )
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -218,7 +218,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
 )
 @spec_test
 @single_phase
-def test_basic_consolidation_with_compounding_credential(spec, state):
+def test_basic_consolidation_with_compounding_credentials(spec, state):
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -226,7 +226,7 @@ def test_basic_consolidation_with_compounding_credential(spec, state):
 
     # Set source to eth1 credentials
     source_address = b"\x22" * 20
-    set_eth1_withdrawal_credential_with_balance(
+    set_compounding_withdrawal_credential(
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
@@ -237,7 +237,7 @@ def test_basic_consolidation_with_compounding_credential(spec, state):
     )
 
     # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set the consolidation balance to consume equal to churn limit
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
@@ -252,7 +252,8 @@ def test_basic_consolidation_with_compounding_credential(spec, state):
         == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
     )
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
+
 
 
 @with_electra_and_later
@@ -300,7 +301,7 @@ def test_consolidation_churn_limit_balance(spec, state):
         == updated_consolidation_churn_limit - consolidation_churn_limit
     )
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -347,7 +348,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
     # Check consolidation churn is decremented correctly
     assert state.consolidation_balance_to_consume == expected_balance
     # Check exit epoch
-    assert state.validators[0].exit_epoch == expected_exit_epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
 @with_electra_and_later
@@ -667,7 +668,6 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
     )
 
 
-@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -675,7 +675,8 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_different_credentials(spec, state):
+def test_invalid_incorrect_source_address(spec, state):
+    # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
@@ -683,13 +684,72 @@ def test_invalid_different_credentials(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
+    # Make consolidation with different source address
     consolidation = spec.ExecutionLayerConsolidation(
-        source_address=source_address,
+        source_address=b"\x33" * 20,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
     set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
 
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_invalid_unknown_source_pubkey(spec, state):
+    # Set up an otherwise correct consolidation
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, source_index, address=source_address
+    )
+    # Make consolidation with different source pubkey
+    consolidation = spec.ExecutionLayerConsolidation(
+        source_address=source_address,
+        source_pubkey=b"\x00" * 48,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_invalid_unknown_target_pubkey(spec, state):
+    # Set up an otherwise correct consolidation
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, source_index, address=source_address
+    )
+    # Make consolidation with different target pubkey
+    consolidation = spec.ExecutionLayerConsolidation(
+        source_address=b"\x33" * 20,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=b"\x00" * 48,
+    )
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
 
     yield from run_consolidation_processing(
         spec, state, consolidation, success=False
@@ -706,19 +766,21 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    source_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
-    target_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
-    source_validator = state.validators[source_index]
-    target_validator = state.validators[target_index]
+    if success:
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        source_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
+        target_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
+        source_validator = state.validators[source_index]
+        target_validator = state.validators[target_index]
+        pre_exit_epoch_source = source_validator.exit_epoch
+        pre_exit_epoch_target = target_validator.exit_epoch
+        pre_pending_consolidations = state.pending_consolidations.copy()
+    else:
+        pre_state = state.copy()
+
 
     yield 'pre', state
     yield 'consolidation', consolidation
-
-    pre_exit_epoch_source = source_validator.exit_epoch
-    pre_exit_epoch_target = target_validator.exit_epoch
-    pre_pending_consolidations = state.pending_consolidations.copy()
-    pre_state = state.copy()
 
     spec.process_execution_layer_consolidation(state, consolidation)
 
@@ -745,6 +807,6 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
             target_index=target_index,
         )
         assert state.pending_consolidations == pre_pending_consolidations + [expected_new_pending_consolidation]
-    if not success:
+    else:
         assert pre_state == state
 
