@@ -67,7 +67,7 @@ def test_verify_cell_proof_batch(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_recover_polynomial(spec):
+def test_recover_all_cells(spec):
     rng = random.Random(5566)
 
     # Number of samples we will be recovering from
@@ -93,15 +93,15 @@ def test_recover_polynomial(spec):
     # Now the cells themselves
     known_cells_bytes = [cells_bytes[cell_id] for cell_id in cell_ids]
 
-    # Recover the data
-    recovered_data = spec.recover_polynomial(cell_ids, known_cells_bytes)
+    # Recover all of the cells
+    recovered_cells = spec.recover_all_cells(cell_ids, known_cells_bytes)
+    recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
 
-    # Now flatten the cells and check that they match the entirety of the recovered data
-    flattened_cells = [x for xs in cells for x in xs]
-    assert flattened_cells == recovered_data
+    # Check that the recovered cells match the original cells
+    assert cells == recovered_data
 
 
 @with_eip7594_and_later
