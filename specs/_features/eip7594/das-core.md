@@ -147,7 +147,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
         full_polynomial = recover_polynomial(cell_ids, cells_bytes)
         cells_from_full_polynomial = [
             full_polynomial[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
-            for i in range(CELLS_PER_BLOB)
+            for i in range(CELLS_PER_EXT_BLOB)
         ]
         extended_matrix.extend(cells_from_full_polynomial)
     return ExtendedMatrix(extended_matrix)
