@@ -99,13 +99,13 @@ def bytes_to_cell(cell_bytes: CellBytes) -> Cell:
     """
     Convert untrusted bytes into a Cell.
     """
-    cell = Cell()
+    cell = []
     for i in range(FIELD_ELEMENTS_PER_CELL):
         start = i * BYTES_PER_FIELD_ELEMENT
         end = (i + 1) * BYTES_PER_FIELD_ELEMENT
         value = bytes_to_bls_field(cell_bytes[start:end])
-        cell[i] = value
-    return cell
+        cell.append(value)
+    return Cell(cell)
 ```
 
 ```python
