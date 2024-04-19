@@ -139,7 +139,7 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     This helper demonstrates how to apply ``recover_all_cells``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix = []
+    extended_matrix: List[Cell] = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
         cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]

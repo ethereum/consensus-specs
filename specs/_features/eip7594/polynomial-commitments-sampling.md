@@ -223,7 +223,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
         quot = div(a[apos], b[bpos])
         o.insert(0, quot)
         for i in range(bpos, -1, -1):
-            a[diff + i] = (int(a[diff + i]) - int(b[i]) * int(quot)) % BLS_MODULUS
+            a[diff + i] = (int(a[diff + i]) - int(b[i] + BLS_MODULUS) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
     return PolynomialCoeff([x % BLS_MODULUS for x in o])
@@ -265,7 +265,8 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
                 weight_adjustment = bls_modular_inverse(BLSFieldElement(int(xs[i]) - int(xs[j])))
                 summand = multiply_polynomialcoeff(
                     summand, 
-                    PolynomialCoeff([(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment])
+                    PolynomialCoeff([
+                        ((BLS_MODULUS - int(weight_adjustment)) * int(xs[j])) % BLS_MODULUS, weight_adjustment])
                 )
         r = add_polynomialcoeff(r, summand)
 
@@ -651,7 +652,7 @@ def recover_all_cells(cell_ids: Sequence[CellID],
         assert reconstructed_data[start:end] == cell
 
     reconstructed_data_as_cells = [
-        reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
+        Cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
 
     return reconstructed_data_as_cells
