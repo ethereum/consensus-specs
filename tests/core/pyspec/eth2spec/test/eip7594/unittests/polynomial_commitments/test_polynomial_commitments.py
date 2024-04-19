@@ -101,7 +101,7 @@ def test_recover_all_cells(spec):
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
 
     # Check that the recovered cells match the original cells
-    assert cells == recovered_data
+    assert cells == recovered_cells
 
 
 @with_eip7594_and_later
