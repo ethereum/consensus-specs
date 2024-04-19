@@ -45,8 +45,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `DataColumn` | `List[CellBytes, MAX_BLOB_COMMITMENTS_PER_BLOCK]` | The data of each column in EIP-7594 |
-| `ExtendedMatrix` | `List[CellBytes, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
+| `DataColumn` | `List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]` | The data of each column in EIP-7594 |
+| `ExtendedMatrix` | `List[Cell, MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS]` | The full data of one-dimensional erasure coding extended blobs (in row major format) |
 
 ## Configuration
 
@@ -131,7 +131,7 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> ExtendedMatrix:
 #### `recover_matrix`
 
 ```python
-def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], CellBytes], blob_count: uint64) -> ExtendedMatrix:
+def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count: uint64) -> ExtendedMatrix:
     """
     Return the recovered ``ExtendedMatrix``.
 
@@ -141,11 +141,11 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], CellBytes], blob_c
     extended_matrix = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells_bytes = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
+        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
 
-        full_polynomial = recover_polynomial(cell_ids, cells_bytes)
+        full_polynomial = recover_polynomial(cell_ids, cells)
         cells_from_full_polynomial = [
-            cell_to_bytes(full_polynomial[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
+            coset_evals_to_cell(full_polynomial[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
             for i in range(CELLS_PER_EXT_BLOB)
         ]
         extended_matrix.extend(cells_from_full_polynomial)

@@ -56,7 +56,7 @@ def test_verify_cell_proof_batch(spec):
         row_commitments_bytes=[commitment],
         row_indices=[0, 0],
         column_indices=[0, 4],
-        cells_bytes=[cells[0], cells[4]],
+        cells=[cells[0], cells[4]],
         proofs_bytes=[proofs[0], proofs[4]],
     )
 
@@ -95,9 +95,9 @@ def test_recover_polynomial(spec):
     # Check that the original data match the non-extended portion of the recovered data
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
 
-    # Now flatten the cells and check that they match the entirety of the recovered data
-    flattened_cells = [x for xs in cells for x in spec.bytes_to_cell(xs)]
-    assert flattened_cells == recovered_data
+    # Now flatten the coset evals and check that they match the entirety of the recovered data
+    flattened_coset_evals = [x for xs in cells for x in spec.cell_to_coset_evals(xs)]
+    assert flattened_coset_evals == recovered_data
 
 
 @with_eip7594_and_later
