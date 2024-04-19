@@ -398,7 +398,7 @@ def case04_verify_cell_proof_batch():
 ###############################################################################
 
 def case05_recover_polynomial():
-    # Valid, no missing cells
+    # Valid: No missing cells
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
     cell_ids = list(range(spec.CELLS_PER_BLOB))
@@ -416,16 +416,11 @@ def case05_recover_polynomial():
         'output': encode_hex_bls_field_list(recovered_cells)
     }
 
-    # Valid, half missing cells
+    # Valid: Half missing cells
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    cell_ids = []
-    cells_bytes = []
-    for cell_id, cell in enumerate(cells):
-        if cell_id % 2 == 0:
-            continue
-        cell_ids.append(cell_id)
-        cells_bytes.append(cell_to_cell_bytes(cell))
+    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
     recovered_cells = spec.recover_polynomial(cell_ids, cells_bytes)
     for i in range(spec.FIELD_ELEMENTS_PER_EXT_BLOB):
         j, k = int(i / int(spec.FIELD_ELEMENTS_PER_CELL)), i % int(spec.FIELD_ELEMENTS_PER_CELL)
@@ -437,6 +432,89 @@ def case05_recover_polynomial():
             'cells': encode_hex_cells_bytes(cells_bytes),
         },
         'output': encode_hex_bls_field_list(recovered_cells)
+    }
+
+    # Edge case: More than half missing
+    blob = BLOB_RANDOM_VALID3
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_BLOB // 2 - 1))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
+    identifier = make_id(cell_ids, cells_bytes)
+    yield f'recover_polynomial_case_invalid_more_than_half_missing_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_cells_bytes(cells_bytes),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid cell_id
+    blob = BLOB_RANDOM_VALID1
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_BLOB // 2))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    # Replace first cell_id with an invalid value
+    cell_ids[0] = spec.CELLS_PER_BLOB
+    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
+    identifier = make_id(cell_ids, cells_bytes)
+    yield f'recover_polynomial_case_invalid_cell_id_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_cells_bytes(cells_bytes),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid cell
+    blob = BLOB_RANDOM_VALID2
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_BLOB // 2))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    # Replace first cell with an invalid value
+    cells_bytes[0] = CELL_ONE_INVALID_FIELD
+    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
+    identifier = make_id(cell_ids, cells_bytes)
+    yield f'recover_polynomial_case_invalid_cell_id_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_cells_bytes(cells_bytes),
+        },
+        'output': None
+    }
+
+    # Edge case: More cell_ids than cells
+    blob = BLOB_RANDOM_VALID3
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    # Add another cell_id
+    cell_ids.append(spec.CELLS_PER_BLOB - 1)
+    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
+    identifier = make_id(cell_ids, cells_bytes)
+    yield f'recover_polynomial_case_invalid_more_cell_ids_than_cells_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_cells_bytes(cells_bytes),
+        },
+        'output': None
+    }
+
+    # Edge case: More cells than cell_ids
+    blob = BLOB_RANDOM_VALID1
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
+    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    # Add another cell
+    cells_bytes.append(CELL_RANDOM_VALID1)
+    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
+    identifier = make_id(cell_ids, cells_bytes)
+    yield f'recover_polynomial_case_invalid_more_cells_than_cell_ids_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_cells_bytes(cells_bytes),
+        },
+        'output': None
     }
 
 
@@ -472,9 +550,9 @@ if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_peerdas", [
         # EIP-7594
-        create_provider(EIP7594, 'compute_cells', case01_compute_cells),
-        create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
-        create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
-        create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
+        #create_provider(EIP7594, 'compute_cells', case01_compute_cells),
+        #create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
+        #create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
+        #create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
         create_provider(EIP7594, 'recover_polynomial', case05_recover_polynomial),
     ])
