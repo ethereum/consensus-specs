@@ -101,7 +101,9 @@ def bytes_to_cell(cell_bytes: CellBytes) -> Cell:
     """
     cell = Cell()
     for i in range(FIELD_ELEMENTS_PER_CELL):
-        value = bytes_to_bls_field(cell_bytes[i * BYTES_PER_FIELD_ELEMENT: (i + 1) * BYTES_PER_FIELD_ELEMENT])
+        start = i * BYTES_PER_FIELD_ELEMENT
+        end = (i + 1) * BYTES_PER_FIELD_ELEMENT
+        value = bytes_to_bls_field(cell_bytes[start:end])
         cell[i] = value
     return cell
 ```
@@ -111,7 +113,7 @@ def cell_to_bytes(cell: Cell) -> CellBytes:
     """
     Convert a Cell into bytes.
     """
-    cell_bytes = b""
+    cell_bytes = []
     for i in range(FIELD_ELEMENTS_PER_CELL):
         cell_bytes += bls_field_to_bytes(cell[i])
     return CellBytes(cell_bytes)
