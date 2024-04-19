@@ -315,20 +315,19 @@ def compute_kzg_proof_multi_impl(
     Where:
         - r(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
+    
+    We further note that since the degree of r(X) is less than the degree of Z(X),
+    the computation can be simplified in monomial form to Q(X) = f(X) / Z(X)
     """
 
     # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
-    # Compute r(X)
-    interpolation_polynomial = interpolate_polynomialcoeff(zs, ys)
-    # Compute f(X) - r(X)
-    polynomial_shifted = add_polynomialcoeff(polynomial_coeff, neg_polynomialcoeff(interpolation_polynomial))
 
     # Compute Z(X)
     denominator_poly = vanishing_polynomialcoeff(zs)
 
     # Compute the quotient polynomial directly in monomial form
-    quotient_polynomial = divide_polynomialcoeff(polynomial_shifted, denominator_poly)
+    quotient_polynomial = divide_polynomialcoeff(polynomial_coeff, denominator_poly)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
