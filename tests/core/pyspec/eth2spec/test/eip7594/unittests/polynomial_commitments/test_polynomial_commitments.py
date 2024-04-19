@@ -36,12 +36,10 @@ def test_verify_cell_proof(spec):
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
 
-    cells_bytes = [spec.cell_to_bytes(cell) for cell in cells]
-
     cell_id = 0
-    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
+    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
     cell_id = 1
-    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
+    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
 
 
 @with_eip7594_and_later
@@ -51,7 +49,6 @@ def test_verify_cell_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
-    cells_bytes = [spec.cell_to_bytes(cell) for cell in cells]
 
     assert len(cells) == len(proofs)
 
@@ -59,7 +56,7 @@ def test_verify_cell_proof_batch(spec):
         row_commitments_bytes=[commitment],
         row_indices=[0, 0],
         column_indices=[0, 4],
-        cells_bytes=[cells_bytes[0], cells_bytes[4]],
+        cells_bytes=[cells[0], cells[4]],
         proofs_bytes=[proofs[0], proofs[4]],
     )
 
@@ -80,7 +77,6 @@ def test_recover_polynomial(spec):
 
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
-    cells_bytes = [spec.cell_to_bytes(cell) for cell in cells]
 
     # Compute the cells we will be recovering from
     cell_ids = []
@@ -91,16 +87,16 @@ def test_recover_polynomial(spec):
             j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
         cell_ids.append(j)
     # Now the cells themselves
-    known_cells_bytes = [cells_bytes[cell_id] for cell_id in cell_ids]
+    known_cells = [cells[cell_id] for cell_id in cell_ids]
 
     # Recover the data
-    recovered_data = spec.recover_polynomial(cell_ids, known_cells_bytes)
+    recovered_data = spec.recover_polynomial(cell_ids, known_cells)
 
     # Check that the original data match the non-extended portion of the recovered data
     assert original_polynomial == recovered_data[:len(recovered_data) // 2]
 
     # Now flatten the cells and check that they match the entirety of the recovered data
-    flattened_cells = [x for xs in cells for x in xs]
+    flattened_cells = [x for xs in cells for x in spec.bytes_to_cell(xs)]
     assert flattened_cells == recovered_data
 
 

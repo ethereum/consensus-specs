@@ -114,7 +114,7 @@ def cell_to_bytes(cell: Cell) -> CellBytes:
     cell_bytes = b""
     for i in range(FIELD_ELEMENTS_PER_CELL):
         cell_bytes += bls_field_to_bytes(cell[i])
-    return cell_bytes
+    return CellBytes(cell_bytes)
 ```
 
 ### Linear combinations

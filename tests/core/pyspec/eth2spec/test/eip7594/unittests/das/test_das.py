@@ -27,7 +27,7 @@ def test_compute_extended_matrix(spec):
     for blob_index, row in enumerate(rows):
         extended_blob = []
         for cell in row:
-            extended_blob.extend(cell)
+            extended_blob.extend(spec.bytes_to_cell(cell))
         blob_part = extended_blob[0:len(extended_blob) // 2]
         blob = b''.join([spec.bls_field_to_bytes(x) for x in blob_part])
         assert blob == input_blobs[blob_index]
