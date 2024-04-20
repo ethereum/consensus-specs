@@ -525,7 +525,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
         else:  # cell_id in cell_ids
             assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
-    return zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp
+    return zero_poly_coeff, zero_poly_eval
 ```
 
 ### `recover_shifted_data`
@@ -624,7 +624,7 @@ def recover_all_cells(cell_ids: Sequence[CellID],
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
 
     missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-    zero_poly_coeff, zero_poly_eval, zero_poly_eval_brp = construct_vanishing_polynomial(missing_cell_ids)
+    zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
         cell_ids,
