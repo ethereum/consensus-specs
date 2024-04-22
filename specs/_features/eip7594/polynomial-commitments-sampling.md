@@ -210,12 +210,12 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
 #### `divide_polynomialcoeff`
 
 ```python
-def divide_polynomialcoeff(a_: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoeff:
+def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoeff:
     """
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
 
-    a = [x for x in a_]
+    a = [x for x in a]  # type: ignore
     o: List[BLSFieldElement] = []
     apos = len(a) - 1
     bpos = len(b) - 1
