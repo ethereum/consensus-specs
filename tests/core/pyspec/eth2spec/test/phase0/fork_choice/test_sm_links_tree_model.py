@@ -209,7 +209,15 @@ def _compute_validator_partitions(spec, branch_tips, current_links, current_epoc
 
 
 def _get_eligible_attestations(spec, state, attestations) -> []:
-    return [a for a in attestations if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH]
+    def _get_voting_source(target: spec.Checkpoint) -> spec.Checkpoint:
+        if target.epoch == spec.get_current_epoch(state):
+            return state.current_justified_checkpoint
+        else:
+            return state.previous_justified_checkpoint
+
+    return [a for a in attestations if
+            state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
+            and a.data.source == _get_voting_source(a.data.target)]
 
 
 def _produce_block(spec, state, attestations, attester_slashings=[]):
@@ -882,6 +890,7 @@ def test_sm_links_tree_model(spec,
         # on_block for blocks from the current slot
         for signed_block_message in (b for b in signed_block_messages if b.payload.message.slot == slot):
             yield from add_block(spec, store, signed_block_message.payload, test_steps, signed_block_message.valid)
+
             block_root = signed_block_message.payload.message.hash_tree_root()
             if signed_block_message.valid:
                 assert store.blocks[block_root] == signed_block_message.payload.message
