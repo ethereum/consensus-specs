@@ -223,7 +223,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
         quot = div(a[apos], b[bpos])
         o.insert(0, quot)
         for i in range(bpos, -1, -1):
-            a[diff + i] = (int(a[diff + i]) - int(b[i]) * int(quot)) % BLS_MODULUS
+            a[diff + i] = (int(a[diff + i]) - int(b[i] + BLS_MODULUS) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
     return [x % BLS_MODULUS for x in o]
@@ -264,7 +264,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
             if j != i:
                 weight_adjustment = bls_modular_inverse(int(xs[i]) - int(xs[j]))
                 summand = multiply_polynomialcoeff(
-                    summand, [(- int(weight_adjustment) * int(xs[j])) % BLS_MODULUS, weight_adjustment]
+                    summand, [((BLS_MODULUS - int(weight_adjustment)) * int(xs[j])) % BLS_MODULUS, weight_adjustment]
                 )
         r = add_polynomialcoeff(r, summand)
 
@@ -280,7 +280,7 @@ def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
     p = [1]
     for x in xs:
-        p = multiply_polynomialcoeff(p, [-int(x), 1])
+        p = multiply_polynomialcoeff(p, [-int(x) + BLS_MODULUS, 1])
     return p
 ```
 
