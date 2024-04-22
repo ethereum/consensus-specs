@@ -311,12 +311,12 @@ def compute_kzg_proof_multi_impl(
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
     This is done by committing to the following quotient polynomial:  
-    Q(X) = f(X) - r(X) / Z(X)
+        Q(X) = f(X) - I(X) / Z(X)
     Where:
-        - r(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
+        - I(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
     
-    We further note that since the degree of r(X) is less than the degree of Z(X),
+    We further note that since the degree of I(X) is less than the degree of Z(X),
     the computation can be simplified in monomial form to Q(X) = f(X) / Z(X)
     """
 
@@ -340,12 +340,26 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
                                 ys: Sequence[BLSFieldElement],
                                 proof: KZGProof) -> bool:
     """
-    Helper function that verifies a KZG multiproof
+    Verify a KZG multi-evaluation proof for a set of `k` points.
+
+    This is done by checking if the following equation holds:
+        Q(x) Z(x) = f(X) - I(X)
+    Where:
+        f(X) is the polynomial that we want to verify opens at `k` points to `k` values
+        Q(X) is the quotient polynomial computed by the prover
+        I(X) is the degree k-1 polynomial that evaluates to `ys` at all `zs`` points
+        Z(X) is the polynomial that evaluates to zero on all `k` points
+    
+    The verifier receives the commitments to Q(X) and f(X), so they check the equation
+    holds by using the following pairing equation:
+        e([Q(X)]_1, [Z(X)]_2) == e([f(X)]_1 - [I(X)]_1, [1]_2)
     """
 
     assert len(zs) == len(ys)
 
+    # Compute [Z(X)]_2
     zero_poly = g2_lincomb(KZG_SETUP_G2_MONOMIAL[:len(zs) + 1], vanishing_polynomialcoeff(zs))
+    # Compute [I(X)]_1
     interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(zs)], interpolate_polynomialcoeff(zs, ys))
 
     return (bls.pairing_check([
