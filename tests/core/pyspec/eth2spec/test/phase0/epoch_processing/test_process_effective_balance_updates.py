@@ -9,7 +9,7 @@ from eth2spec.test.helpers.forks import is_post_electra
 @with_all_phases
 @spec_state_test
 def test_effective_balance_hysteresis(spec, state):
-    run_test_effective_balance_hysteresis(spec, state)
+    yield from run_test_effective_balance_hysteresis(spec, state)
 
 
 def run_test_effective_balance_hysteresis(spec, state, with_compounding_credentials=False):
@@ -18,7 +18,7 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
     # Then overwrite the balances, we only want to focus to be on the hysteresis based changes.
     run_epoch_processing_to(spec, state, 'process_effective_balance_updates')
     # Set some edge cases for balances
-    max = spec.MAX_EFFECTIVE_BALANCE_ELECTRA if with_compounding_credentials else spec.MIN_ACTIVATION_BALANCE
+    max = spec.MAX_EFFECTIVE_BALANCE_ELECTRA if with_compounding_credentials else spec.MAX_EFFECTIVE_BALANCE
     min = spec.config.EJECTION_BALANCE
     inc = spec.EFFECTIVE_BALANCE_INCREMENT
     div = spec.HYSTERESIS_QUOTIENT
