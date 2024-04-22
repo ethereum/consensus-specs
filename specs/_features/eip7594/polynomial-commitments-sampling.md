@@ -251,6 +251,28 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     return [x % BLS_MODULUS for x in o]
 ```
 
+#### `synthetic_division`
+
+```python
+def synthetic_division(polynomial: PolynomialCoeff, root: BLSFieldElement) -> PolynomialCoeff:
+    """
+    Polynomial division between a polynomial and a linear factor
+    """
+    polynomial = list(reversed(polynomial))
+    quotient = [polynomial[0]]
+    
+    for i in range(1, len(polynomial)):
+        new_coefficient = quotient[-1] * root + polynomial[i]
+        quotient.append(new_coefficient)
+    
+    # Pop off the remainder term
+    _ = quotient.pop()
+    
+    quotient.reverse()
+    
+    return quotient
+```
+
 #### `shift_polynomialcoeff`
 
 ```python
@@ -345,11 +367,9 @@ def compute_kzg_proof_multi_impl(
     # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
 
-    # Compute Z(X)
-    denominator_poly = vanishing_polynomialcoeff(zs)
-
-    # Compute the quotient polynomial directly in monomial form
-    quotient_polynomial = divide_polynomialcoeff(polynomial_coeff, denominator_poly)
+    quotient_polynomial = polynomial_coeff
+    for z in zs:
+        quotient_polynomial = synthetic_division(quotient_polynomial, -z)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
