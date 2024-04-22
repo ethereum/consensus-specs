@@ -483,9 +483,7 @@ def verify_cell_proof(commitment_bytes: Bytes48,
     Public method.
     """
     assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
-    for field_bytes in cell_bytes:
-        assert len(field_bytes) == BYTES_PER_FIELD_ELEMENT
+    assert len(cell) == BYTES_PER_CELL
     assert len(proof_bytes) == BYTES_PER_PROOF
     
     coset = coset_for_cell(cell_id)
@@ -526,10 +524,8 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
         assert row_index < len(row_commitments_bytes)
     for column_index in column_indices:
         assert column_index < CELLS_PER_EXT_BLOB
-    for cell_bytes in cells_bytes:
-        assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
-        for field_bytes in cell_bytes:
-            assert len(field_bytes) == BYTES_PER_FIELD_ELEMENT
+    for cell in cells:
+        assert len(cell) == BYTES_PER_CELL
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
@@ -678,10 +674,8 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     # Check for duplicates
     assert len(cell_ids) == len(set(cell_ids))
     # Check that each cell is the correct length
-    for cell_bytes in cells_bytes:
-        assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
-        for field_bytes in cell_bytes:
-            assert len(field_bytes) == BYTES_PER_FIELD_ELEMENT
+    for cell in cells:
+      assert len(cell) == BYTES_PER_CELL
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
