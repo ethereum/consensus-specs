@@ -58,42 +58,6 @@ def encode_hex_list(a):
     return [encode_hex(x) for x in a]
 
 
-def cell_to_cell_bytes(cell):
-    result = []
-    for field in cell:
-        byte_value = field_element_bytes_unchecked(field)
-        result.append(byte_value)
-    return result
-
-
-def cells_to_cells_bytes(cells):
-    result = []
-    for cell in cells:
-        result.append(cell_to_cell_bytes(cell))
-    return result
-
-
-def encode_hex_cell_bytes(cell_bytes):
-    result = []
-    for field_bytes in cell_bytes:
-        result.append(field_bytes)
-    return "0x" + b"".join(result).hex()
-
-
-def encode_hex_cells_bytes(cells_bytes):
-    result = []
-    for cell_bytes in cells_bytes:
-        result.append(encode_hex_cell_bytes(cell_bytes))
-    return result
-
-
-def encode_hex_bls_field_list(fields):
-    result = []
-    for field in fields:
-        result.append(encode_hex(field_element_bytes_unchecked(field)))
-    return result
-
-
 ###############################################################################
 # Global variables
 ###############################################################################
@@ -123,16 +87,18 @@ INVALID_BLOBS = [BLOB_INVALID, BLOB_INVALID_CLOSE, BLOB_INVALID_LENGTH_PLUS_ONE,
 
 # Individual Cells
 
-CELL_RANDOM_VALID1 = [field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS))
-                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
-CELL_RANDOM_VALID2 = [field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS))
-                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
-CELL_RANDOM_VALID3 = [field_element_bytes(pow(5, n + 256, spec.BLS_MODULUS))
-                      for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
+CELL_RANDOM_VALID1 = b"".join([field_element_bytes(pow(2, n + 256, spec.BLS_MODULUS))
+                               for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
+CELL_RANDOM_VALID2 = b"".join([field_element_bytes(pow(3, n + 256, spec.BLS_MODULUS))
+                               for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
+CELL_RANDOM_VALID3 = b"".join([field_element_bytes(pow(5, n + 256, spec.BLS_MODULUS))
+                               for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
 
-CELL_ALL_MAX_VALUE = [field_element_bytes_unchecked(2 ** 256 - 1) for n in range(spec.FIELD_ELEMENTS_PER_CELL)]
-CELL_ONE_INVALID_FIELD = [field_element_bytes_unchecked(spec.BLS_MODULUS) if n == 7 else field_element_bytes(0) for n in
-                          range(spec.FIELD_ELEMENTS_PER_CELL)]
+CELL_ALL_MAX_VALUE = b"".join([field_element_bytes_unchecked(2 ** 256 - 1)
+                               for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
+CELL_ONE_INVALID_FIELD = b"".join([field_element_bytes_unchecked(spec.BLS_MODULUS)
+                                   if n == 7 else field_element_bytes(0)
+                                   for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
 
 VALID_INDIVIDUAL_RANDOM_CELL_BYTES = [CELL_RANDOM_VALID1, CELL_RANDOM_VALID2, CELL_RANDOM_VALID3]
 INVALID_INDIVIDUAL_CELL_BYTES = [CELL_ALL_MAX_VALUE, CELL_ONE_INVALID_FIELD]
@@ -168,7 +134,7 @@ def case01_compute_cells():
             'input': {
                 'blob': encode_hex(blob),
             },
-            'output': encode_hex_cells_bytes(cells_to_cells_bytes(cells))
+            'output': encode_hex_list(cells)
         }
 
     # Edge case: Invalid blobs
@@ -198,7 +164,7 @@ def case02_compute_cells_and_proofs():
             'input': {
                 'blob': encode_hex(blob),
             },
-            'output': (encode_hex_cells_bytes(cells_to_cells_bytes(cells)), encode_hex_list(proofs))
+            'output': (encode_hex_list(cells), encode_hex_list(proofs))
         }
 
     # Edge case: Invalid blobs
@@ -220,18 +186,18 @@ def case02_compute_cells_and_proofs():
 def case03_verify_cell_proof():
     # Valid cases
     for i in range(len(VALID_BLOBS)):
-        commitment = VALID_COMMITMENTS[i]
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell_id = (2 ** i - 1) % spec.CELLS_PER_BLOB
-        cell_bytes = cell_to_cell_bytes(cells[cell_id])
+        commitment = VALID_COMMITMENTS[i]
+        cell_id = (2 ** i - 1) % spec.CELLS_PER_EXT_BLOB
+        cell = cells[cell_id]
         proof = proofs[cell_id]
-        assert spec.verify_cell_proof(commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        assert spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_valid_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': True
@@ -239,35 +205,35 @@ def case03_verify_cell_proof():
 
     # Edge case: Invalid commitment
     for commitment in INVALID_G1_POINTS:
-        cell_id = 81 % spec.CELLS_PER_BLOB
         cells, proofs = VALID_CELLS_AND_PROOFS[0]
-        cell_bytes = cell_to_cell_bytes(cells[cell_id])
+        cell_id = 81 % spec.CELLS_PER_EXT_BLOB
+        cell = cells[cell_id]
         proof = proofs[cell_id]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_invalid_commitment_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': None
         }
 
     # Edge case: Invalid cell_id
-    for cell_id in [spec.CELLS_PER_BLOB, spec.CELLS_PER_BLOB + 1]:
-        commitment = VALID_COMMITMENTS[1]
+    for cell_id in [spec.CELLS_PER_EXT_BLOB, spec.CELLS_PER_EXT_BLOB + 1]:
         cells, proofs = VALID_CELLS_AND_PROOFS[1]
-        cell_bytes = cell_to_cell_bytes(cells[0])
+        commitment = VALID_COMMITMENTS[1]
+        cell = cells[0]
         proof = proofs[0]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_invalid_cell_id_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': None
@@ -275,7 +241,7 @@ def case03_verify_cell_proof():
 
     # Edge case: Invalid cell_bytes
     for cell_bytes in INVALID_INDIVIDUAL_CELL_BYTES:
-        cell_id = 32 % spec.CELLS_PER_BLOB
+        cell_id = 32 % spec.CELLS_PER_EXT_BLOB
         commitment = VALID_COMMITMENTS[2]
         cells, proofs = VALID_CELLS_AND_PROOFS[2]
         proof = proofs[cell_id]
@@ -285,7 +251,7 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell_bytes),
                 'proof': encode_hex(proof),
             },
             'output': None
@@ -293,17 +259,17 @@ def case03_verify_cell_proof():
 
     # Edge case: Invalid proof
     for proof in INVALID_G1_POINTS:
-        cell_id = 36 % spec.CELLS_PER_BLOB
-        commitment = VALID_COMMITMENTS[3]
         cells, _ = VALID_CELLS_AND_PROOFS[3]
-        cell_bytes = cell_to_cell_bytes(cells[cell_id])
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        commitment = VALID_COMMITMENTS[3]
+        cell_id = 36 % spec.CELLS_PER_EXT_BLOB
+        cell = cells[cell_id]
+        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_invalid_proof_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': None
@@ -311,18 +277,18 @@ def case03_verify_cell_proof():
 
     # Incorrect commitment
     for i in range(len(VALID_BLOBS)):
-        cell_id = 99 % spec.CELLS_PER_BLOB
-        commitment = bls_add_one(VALID_COMMITMENTS[i])
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell_bytes = cell_to_cell_bytes(cells[cell_id])
+        commitment = bls_add_one(VALID_COMMITMENTS[i])
+        cell_id = 99 % spec.CELLS_PER_EXT_BLOB
+        cell = cells[cell_id]
         proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_incorrect_commitment_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': False
@@ -330,7 +296,7 @@ def case03_verify_cell_proof():
 
     # Incorrect cell_bytes
     for i in range(len(VALID_INDIVIDUAL_RANDOM_CELL_BYTES)):
-        cell_id = 16 % spec.CELLS_PER_BLOB
+        cell_id = 16 % spec.CELLS_PER_EXT_BLOB
         commitment = VALID_COMMITMENTS[i]
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         cell_bytes = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
@@ -341,7 +307,7 @@ def case03_verify_cell_proof():
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell_bytes),
                 'proof': encode_hex(proof),
             },
             'output': False
@@ -349,18 +315,18 @@ def case03_verify_cell_proof():
 
     # Incorrect proof
     for i in range(len(VALID_BLOBS)):
-        cell_id = 91 % spec.CELLS_PER_BLOB
+        cell_id = 91 % spec.CELLS_PER_EXT_BLOB
         commitment = VALID_COMMITMENTS[i]
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell_bytes = cell_to_cell_bytes(cells[cell_id])
+        cell = cells[cell_id]
         proof = bls_add_one(proofs[cell_id])
-        assert not spec.verify_cell_proof(commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_incorrect_proof_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex_cell_bytes(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': False
@@ -376,17 +342,16 @@ def case04_verify_cell_proof_batch():
     for i in range(len(VALID_BLOBS)):
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         row_commitments = [VALID_COMMITMENTS[i]]
-        row_indices = [0] * spec.CELLS_PER_BLOB
-        column_indices = list(range(spec.CELLS_PER_BLOB))
-        cells_bytes = cells_to_cells_bytes(cells)
-        assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells_bytes, proofs)
-        identifier = make_id(row_commitments, row_indices, column_indices, cells_bytes, proofs)
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
         yield f'verify_cell_proof_batch_case_valid_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
                 'column_indices': column_indices,
-                'cells': encode_hex_cells_bytes(cells_bytes),
+                'cells': encode_hex_list(cells),
                 'proofs': encode_hex_list(proofs),
             },
             'output': True
@@ -394,57 +359,52 @@ def case04_verify_cell_proof_batch():
 
 
 ###############################################################################
-# Test cases for recover_polynomial
+# Test cases for recover_all_cells
 ###############################################################################
 
-def case05_recover_polynomial():
+def case05_recover_all_cells():
     # Valid: No missing cells
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_BLOB))
-    cells_bytes = cells_to_cells_bytes(cells)
-    recovered_cells = spec.recover_polynomial(cell_ids, cells_bytes)
-    for i in range(spec.FIELD_ELEMENTS_PER_EXT_BLOB):
-        j, k = int(i / int(spec.FIELD_ELEMENTS_PER_CELL)), i % int(spec.FIELD_ELEMENTS_PER_CELL)
-        assert recovered_cells[i] == cells[j][k]
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_valid_no_missing_{identifier}', {
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB))
+    recovered_cells = spec.recover_all_cells(cell_ids, cells)
+    assert recovered_cells == cells
+    identifier = make_id(cell_ids, cells)
+    yield f'recover_all_cells_case_valid_no_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(cells),
         },
-        'output': encode_hex_bls_field_list(recovered_cells)
+        'output': encode_hex_list(recovered_cells)
     }
 
     # Valid: Half missing cells
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
-    recovered_cells = spec.recover_polynomial(cell_ids, cells_bytes)
-    for i in range(spec.FIELD_ELEMENTS_PER_EXT_BLOB):
-        j, k = int(i / int(spec.FIELD_ELEMENTS_PER_CELL)), i % int(spec.FIELD_ELEMENTS_PER_CELL)
-        assert recovered_cells[i] == cells[j][k]
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_valid_half_missing_{identifier}', {
+    cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    assert recovered_cells == cells
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_valid_half_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
-        'output': encode_hex_bls_field_list(recovered_cells)
+        'output': encode_hex_list(recovered_cells)
     }
 
     # Edge case: More than half missing
     blob = BLOB_RANDOM_VALID3
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_BLOB // 2 - 1))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
-    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_invalid_more_than_half_missing_{identifier}', {
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 - 1))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_more_than_half_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
@@ -452,16 +412,16 @@ def case05_recover_polynomial():
     # Edge case: Invalid cell_id
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_BLOB // 2))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Replace first cell_id with an invalid value
-    cell_ids[0] = spec.CELLS_PER_BLOB
-    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_invalid_cell_id_{identifier}', {
+    cell_ids[0] = spec.CELLS_PER_EXT_BLOB
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_cell_id_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
@@ -469,16 +429,16 @@ def case05_recover_polynomial():
     # Edge case: Invalid cell
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_BLOB // 2))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Replace first cell with an invalid value
-    cells_bytes[0] = CELL_ONE_INVALID_FIELD
-    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_invalid_cell_id_{identifier}', {
+    partial_cells[0] = CELL_ONE_INVALID_FIELD
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_cell_id_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
@@ -486,16 +446,16 @@ def case05_recover_polynomial():
     # Edge case: More cell_ids than cells
     blob = BLOB_RANDOM_VALID3
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Add another cell_id
-    cell_ids.append(spec.CELLS_PER_BLOB - 1)
-    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_invalid_more_cell_ids_than_cells_{identifier}', {
+    cell_ids.append(spec.CELLS_PER_EXT_BLOB - 1)
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_more_cell_ids_than_cells_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
@@ -503,16 +463,16 @@ def case05_recover_polynomial():
     # Edge case: More cells than cell_ids
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(0, spec.CELLS_PER_BLOB, 2))
-    cells_bytes = [cell_to_cell_bytes(cells[cell_id]) for cell_id in cell_ids]
+    cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Add another cell
-    cells_bytes.append(CELL_RANDOM_VALID1)
-    expect_exception(spec.recover_polynomial, cell_ids, cells_bytes)
-    identifier = make_id(cell_ids, cells_bytes)
-    yield f'recover_polynomial_case_invalid_more_cells_than_cell_ids_{identifier}', {
+    partial_cells.append(CELL_RANDOM_VALID1)
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_more_cells_than_cell_ids_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
-            'cells': encode_hex_cells_bytes(cells_bytes),
+            'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
@@ -550,9 +510,9 @@ if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_peerdas", [
         # EIP-7594
-        #create_provider(EIP7594, 'compute_cells', case01_compute_cells),
-        #create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
-        #create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
-        #create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
-        create_provider(EIP7594, 'recover_polynomial', case05_recover_polynomial),
+        create_provider(EIP7594, 'compute_cells', case01_compute_cells),
+        create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
+        create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
+        create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
+        create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
     ])
