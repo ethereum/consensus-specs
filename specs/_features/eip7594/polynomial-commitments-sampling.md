@@ -215,7 +215,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
 
-    a = [x for x in a]  # type: ignore
+    a = a.copy()
     o: List[BLSFieldElement] = []
     apos = len(a) - 1
     bpos = len(b) - 1
