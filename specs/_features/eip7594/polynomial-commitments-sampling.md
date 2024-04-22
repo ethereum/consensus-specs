@@ -26,7 +26,7 @@
     - [`neg_polynomialcoeff`](#neg_polynomialcoeff)
     - [`multiply_polynomialcoeff`](#multiply_polynomialcoeff)
     - [`divide_polynomialcoeff`](#divide_polynomialcoeff)
-    - [`synthetic_division`](#synthetic_division)
+    - [`divide_by_linear_factors`](#divide_by_linear_factors)
     - [`shift_polynomialcoeff`](#shift_polynomialcoeff)
     - [`interpolate_polynomialcoeff`](#interpolate_polynomialcoeff)
     - [`vanishing_polynomialcoeff`](#vanishing_polynomialcoeff)
@@ -252,22 +252,26 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     return [x % BLS_MODULUS for x in o]
 ```
 
-#### `synthetic_division`
+#### `divide_by_linear_factors`
 
 ```python
-def synthetic_division(polynomial: PolynomialCoeff, root: BLSFieldElement) -> PolynomialCoeff:
+def divide_by_linear_factors(polynomial: PolynomialCoeff, roots: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
-    Polynomial division between a polynomial and a linear factor
+    Polynomial division between a polynomial and a set of linear factors
     """
+
+    assert len(polynomial) > len(roots)
+
     polynomial = list(reversed(polynomial))
     quotient = [polynomial[0]]
+    for root in roots:
+        neg_root = BLS_MODULUS - root
+        for i in range(1, len(polynomial)):
+            new_coefficient = (quotient[-1] * neg_root + polynomial[i]) % BLS_MODULUS
+            quotient.append(new_coefficient)
     
-    for i in range(1, len(polynomial)):
-        new_coefficient = quotient[-1] * root + polynomial[i]
-        quotient.append(new_coefficient)
-    
-    # Pop off the remainder term
-    _ = quotient.pop()
+        # Pop off the remainder term
+        _ = quotient.pop()
     
     quotient.reverse()
     
@@ -368,9 +372,7 @@ def compute_kzg_proof_multi_impl(
     # For all points, compute the evaluation of those points
     ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
 
-    quotient_polynomial = polynomial_coeff
-    for z in zs:
-        quotient_polynomial = synthetic_division(quotient_polynomial, -z)
+    quotient_polynomial = divide_by_linear_factors(polynomial_coeff, zs)
 
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
