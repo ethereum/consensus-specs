@@ -328,7 +328,7 @@ Extended KZG functions for multiproofs
 ```python
 def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
-        zs: Coset) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
+        zs: Coset) -> Tuple[KZGProof, CosetEvals]:
     """
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
