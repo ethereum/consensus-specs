@@ -475,6 +475,10 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     assert len(cells_bytes) == len(proofs_bytes) == len(row_indices) == len(column_indices)
     for commitment_bytes in row_commitments_bytes:
         assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    for row_index in row_indices:
+        assert row_index < len(row_commitments_bytes)
+    for column_index in column_indices:
+        assert column_index < CELLS_PER_BLOB
     for cell_bytes in cells_bytes:
         assert len(cell_bytes) == FIELD_ELEMENTS_PER_CELL
         for field_bytes in cell_bytes:
