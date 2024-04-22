@@ -19,6 +19,7 @@ from eth2spec.deneb import {preset_name} as deneb
             'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
             'FIELD_ELEMENTS_PER_EXT_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_EXT_BLOB'].value,
             'NUMBER_OF_COLUMNS': spec_object.config_vars['NUMBER_OF_COLUMNS'].value,
+            'MAX_CELLS_IN_EXTENDED_MATRIX': spec_object.config_vars['MAX_CELLS_IN_EXTENDED_MATRIX'].value,
         }
 
     @classmethod
