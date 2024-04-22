@@ -267,7 +267,7 @@ def divide_by_linear_factors(polynomial: PolynomialCoeff, roots: Sequence[BLSFie
     for root in roots:
         neg_root = BLS_MODULUS - root
         for i in range(1, len(polynomial)):
-            new_coefficient = ((quotient[-1] * neg_root) % BLS_MODULUS + polynomial[i]) % BLS_MODULUS
+            new_coefficient = ((int(quotient[-1]) * int(neg_root)) + int(polynomial[i])) % BLS_MODULUS
             quotient.append(new_coefficient)
     
         # Pop off the remainder term
