@@ -236,7 +236,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     """
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
-    a = [x for x in a]
+    a = a.copy()  # Make a copy since `a` is passed by reference
     o = []
     apos = len(a) - 1
     bpos = len(b) - 1
