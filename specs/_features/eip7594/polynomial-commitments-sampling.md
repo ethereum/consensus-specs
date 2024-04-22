@@ -624,8 +624,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 ### `recover_all_cells`
 
 ```python
-def recover_all_cells(cell_ids: Sequence[CellID],
-                      cells: Sequence[Cell]) -> Sequence[Cell]:
+def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequence[Cell]:
     """
     Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
     half of which can be missing.
@@ -675,6 +674,6 @@ def recover_all_cells(cell_ids: Sequence[CellID],
     reconstructed_data_as_cells = [
         coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
-    
+ 
     return reconstructed_data_as_cells
 ```
