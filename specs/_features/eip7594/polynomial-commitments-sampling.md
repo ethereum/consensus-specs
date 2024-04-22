@@ -64,7 +64,8 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `PolynomialCoeff` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
-| `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell |
+| `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
+| `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
 | `CellID` | `uint64` | Cell identifier |
 | `RowIndex` | `uint64` | Row identifier |
@@ -327,7 +328,7 @@ Extended KZG functions for multiproofs
 ```python
 def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
-        zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
+        zs: Coset) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
     """
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
@@ -357,8 +358,8 @@ def compute_kzg_proof_multi_impl(
 
 ```python
 def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
-                                zs: Sequence[BLSFieldElement],
-                                ys: Sequence[BLSFieldElement],
+                                zs: Coset,
+                                ys: CosetEvals,
                                 proof: KZGProof) -> bool:
     """
     Helper function that verifies a KZG multiproof
@@ -383,7 +384,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: CellID) -> Cell:
+def coset_for_cell(cell_id: CellID) -> Coset:
     """
     Get the coset for a given ``cell_id``
     """
@@ -391,7 +392,7 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
-    return CosetEvals(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
 ## Cells
