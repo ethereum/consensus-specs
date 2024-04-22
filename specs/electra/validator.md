@@ -66,7 +66,12 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     committee_flags = [(index in committee_indices) for index in range(0, MAX_COMMITTEES_PER_SLOT)]
     committee_bits = Bitvector[MAX_COMMITTEES_PER_SLOT](committee_flags)
 
-    return Attestation(aggregation_bits, data, committee_bits, signature)
+    return Attestation(
+        aggregation_bits=aggregation_bits,
+        data=data,
+        committee_bits=committee_bits,
+        signature=signature,
+    )
 ```
 
 #### Deposits

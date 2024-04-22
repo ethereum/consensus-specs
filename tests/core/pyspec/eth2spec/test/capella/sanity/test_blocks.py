@@ -359,17 +359,17 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    # ensure we go through an epoch transition, to account for post-electra behavior
-    block_in_next_epoch = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
-    signed_block_in_next_epoch = state_transition_and_sign_block(spec, state, block_in_next_epoch)
-
-    yield 'blocks', [signed_block, signed_block_in_next_epoch]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
-    # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
-    validator = state.validators[validator_index]
-    balance = state.balances[validator_index]
-    assert spec.is_partially_withdrawable_validator(validator, balance)
+    if is_post_electra(spec):
+        assert state.pending_balance_deposits[0].amount == amount
+        assert state.pending_balance_deposits[0].index == validator_index
+    else:
+        # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
+        validator = state.validators[validator_index]
+        balance = state.balances[validator_index]
+        assert spec.is_partially_withdrawable_validator(validator, balance)
 
 
 @with_capella_and_later
