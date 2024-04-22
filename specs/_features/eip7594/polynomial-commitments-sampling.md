@@ -271,7 +271,7 @@ def divide_by_linear_factors(polynomial: PolynomialCoeff, roots: Sequence[BLSFie
             quotient.append(new_coefficient)
         # Pop off the remainder term
         _ = quotient.pop()
-        polynomial = quotient.copy()
+        polynomial = quotient
     
     quotient.reverse()
     
