@@ -509,7 +509,6 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ```python
 def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
         Sequence[BLSFieldElement],
-        Sequence[BLSFieldElement],
         Sequence[BLSFieldElement]]:
     """
     Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
@@ -643,7 +642,7 @@ def recover_all_cells(cell_ids: Sequence[CellID],
     # Convert from bytes to cells
     cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
 
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
+    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
