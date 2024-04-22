@@ -72,9 +72,7 @@ def test_recover_all_cells(spec):
 
     # Get the data we will be working with
     blob = get_sample_blob(spec)
-    # Get the data in evaluation form
-    original_polynomial = spec.blob_to_polynomial(blob)
-
+    
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
 
@@ -94,11 +92,11 @@ def test_recover_all_cells(spec):
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
-    assert original_polynomial == recovered_data[:len(recovered_data) // 2]
+    blob_byte_array = [b for b in blob]
+    assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
 
     # Check that the recovered cells match the original cells
-    recovered_cells_bytes = [spec.coset_evals_to_cell(x) for x in recovered_cells]
-    assert cells == recovered_cells_bytes
+    assert cells == recovered_cells
 
 
 @with_eip7594_and_later
