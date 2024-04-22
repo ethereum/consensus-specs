@@ -143,9 +143,8 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
         cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
-        cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
 
-        all_cells_for_row = recover_all_cells(cell_ids, cells_bytes)
+        all_cells_for_row = recover_all_cells(cell_ids, cells)
         extended_matrix.extend(all_cells_for_row)
     return ExtendedMatrix(extended_matrix)
 ```
