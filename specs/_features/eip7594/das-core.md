@@ -54,7 +54,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `NUMBER_OF_COLUMNS` | `uint64(FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL)` (= 128) | Number of columns in the extended data matrix. |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix. |
 | `MAX_CELLS_IN_EXTENDED_MATRIX` | `uint64(MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS)` (= 768) | The data size of `ExtendedMatrix`. |
 
 ### Networking
