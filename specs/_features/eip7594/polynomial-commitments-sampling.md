@@ -26,6 +26,7 @@
     - [`neg_polynomialcoeff`](#neg_polynomialcoeff)
     - [`multiply_polynomialcoeff`](#multiply_polynomialcoeff)
     - [`divide_polynomialcoeff`](#divide_polynomialcoeff)
+    - [`synthetic_division`](#synthetic_division)
     - [`shift_polynomialcoeff`](#shift_polynomialcoeff)
     - [`interpolate_polynomialcoeff`](#interpolate_polynomialcoeff)
     - [`vanishing_polynomialcoeff`](#vanishing_polynomialcoeff)
