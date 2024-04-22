@@ -479,9 +479,6 @@ def _generate_sm_link_tree(spec, genesis_state, sm_links, rnd: random.Random, de
     :return: Sequence of signed blocks oredered by a slot number.
     """
     assert any(sm_links)
-    # Cases where source == GENESIS_EPOCH + 1 aren't supported,
-    # because the protocol can't justify in epoch GENESIS_EPOCH + 1
-    assert len([sm_link for sm_link in sm_links if sm_link.source == spec.GENESIS_EPOCH + 1]) == 0
 
     # Find anchor epoch
     anchor_epoch = min(sm_links, key=lambda l: l.source).source
@@ -839,7 +836,7 @@ def test_sm_links_tree_model(spec,
     # Block tree model
     attestation_messages = []
     attester_slashing_messages = []
-    if block_parents is not None:
+    if block_parents is not None and any(block_parents):
         block_tree, attestation_messages, attester_slashing_messages = _generate_block_tree(
             spec, highest_tip, rnd, debug, block_parents, with_attester_slashings, with_invalid_messages)
         # Merge block_tree and sm_link_tree blocks
