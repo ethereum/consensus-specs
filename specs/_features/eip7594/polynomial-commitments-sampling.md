@@ -353,7 +353,7 @@ def compute_kzg_proof_multi_impl(
     # Compute the quotient polynomial directly in monomial form
     quotient_polynomial = divide_polynomialcoeff(polynomial_coeff, denominator_poly)
 
-    return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
+    return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), CosetEvals(ys)
 ```
 
 #### `verify_kzg_proof_multi_impl`
@@ -457,7 +457,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
-    extended_data_rbo = bit_reversal_permutation(extended_data)
+    extended_data_rbo = CosetEvals(bit_reversal_permutation(extended_data))
     cells = []
     for cell_id in range(CELLS_PER_EXT_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
@@ -618,7 +618,7 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
 def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldElement],
                           eval_shifted_zero_poly: Sequence[BLSFieldElement],
                           shift_inv: BLSFieldElement,
-                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> CosetEvals:
     """
     Given Q_1, Q_2 and k^{-1}, compute P(x).
     """
@@ -636,7 +636,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
 
-    return reconstructed_data
+    return CosetEvals(reconstructed_data)
 ```
 
 ### `recover_all_cells`
