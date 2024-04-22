@@ -25,7 +25,7 @@ on:
 
 jobs:
   preclear:
-      runs-on: [self-hosted, size-xs-x64]
+      runs-on: [self-hosted, size-xs]
       if: always()
       steps:
         - name: 'Cleanup build folder'
@@ -36,7 +36,7 @@ jobs:
             ls -la ./
 
   table_of_contents:
-   runs-on: [self-hosted, size-xs-x64]
+   runs-on: [self-hosted, size-xs]
    needs: preclear
    steps:
       - name: Checkout this repo
@@ -45,7 +45,7 @@ jobs:
         run: sudo npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: [self-hosted, size-xs-x64]
+   runs-on: [self-hosted, size-xs]
    needs: preclear
    steps:
       - name: Checkout this repo
@@ -54,7 +54,7 @@ jobs:
         run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
   lint:
-    runs-on: [self-hosted, size-xs-x64]
+    runs-on: [self-hosted, size-xs]
     needs: preclear
     steps:
       - name: Checkout this repo
@@ -67,7 +67,7 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted, size-xs-x64]
+    runs-on: [self-hosted, size-xs]
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
@@ -102,7 +102,7 @@ jobs:
           path: tests/core/pyspec/test-reports
 
   cleanup:
-      runs-on: [self-hosted, size-xs-x64]
+      runs-on: [self-hosted, size-xs]
       needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
       if: always()
       steps:
