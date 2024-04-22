@@ -72,7 +72,7 @@ def test_recover_all_cells(spec):
 
     # Get the data we will be working with
     blob = get_sample_blob(spec)
-    
+
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
 
