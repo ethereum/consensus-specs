@@ -483,6 +483,7 @@ def verify_cell_proof(commitment_bytes: Bytes48,
     Public method.
     """
     assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    assert cell_id < CELLS_PER_EXT_BLOB
     assert len(cell) == BYTES_PER_CELL
     assert len(proof_bytes) == BYTES_PER_PROOF
     
