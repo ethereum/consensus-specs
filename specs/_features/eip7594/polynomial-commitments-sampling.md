@@ -13,7 +13,8 @@
   - [Cells](#cells)
 - [Helper functions](#helper-functions)
   - [BLS12-381 helpers](#bls12-381-helpers)
-    - [`bytes_to_cell`](#bytes_to_cell)
+    - [`cell_to_coset_evals`](#cell_to_coset_evals)
+    - [`coset_evals_to_cell`](#coset_evals_to_cell)
   - [Linear combinations](#linear-combinations)
     - [`g2_lincomb`](#g2_lincomb)
   - [FFTs](#ffts)
@@ -63,7 +64,9 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `PolynomialCoeff` | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
-| `Cell` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with their own KZG proofs |
+| `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
+| `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
+| `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
 | `CellID` | `uint64` | Cell identifier |
 | `RowIndex` | `uint64` | Row identifier |
 | `ColumnIndex` | `uint64` | Column identifier |
@@ -91,14 +94,33 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 
 ### BLS12-381 helpers
 
-#### `bytes_to_cell`
+#### `cell_to_coset_evals`
 
 ```python
-def bytes_to_cell(cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]) -> Cell:
+def cell_to_coset_evals(cell: Cell) -> CosetEvals:
     """
-    Convert untrusted bytes into a Cell.
+    Convert an untrusted ``Cell`` into a trusted ``CosetEvals``.
     """
-    return Cell([bytes_to_bls_field(element) for element in cell_bytes])
+    evals = []
+    for i in range(FIELD_ELEMENTS_PER_CELL):
+        start = i * BYTES_PER_FIELD_ELEMENT
+        end = (i + 1) * BYTES_PER_FIELD_ELEMENT
+        value = bytes_to_bls_field(cell[start:end])
+        evals.append(value)
+    return CosetEvals(evals)
+```
+
+#### `coset_evals_to_cell`
+
+```python
+def coset_evals_to_cell(coset_evals: CosetEvals) -> Cell:
+    """
+    Convert a trusted ``CosetEval`` into an untrusted ``Cell``.
+    """
+    cell = []
+    for i in range(FIELD_ELEMENTS_PER_CELL):
+        cell += bls_field_to_bytes(coset_evals[i])
+    return Cell(cell)
 ```
 
 ### Linear combinations
@@ -214,8 +236,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     """
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
-
-    a = a.copy()
+    a = a.copy()  # Make a copy since `a` is passed by reference
     o: List[BLSFieldElement] = []
     apos = len(a) - 1
     bpos = len(b) - 1
@@ -309,7 +330,7 @@ Extended KZG functions for multiproofs
 ```python
 def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
-        zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
+        zs: Coset) -> Tuple[KZGProof, CosetEvals]:
     """
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
@@ -339,8 +360,8 @@ def compute_kzg_proof_multi_impl(
 
 ```python
 def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
-                                zs: Sequence[BLSFieldElement],
-                                ys: Sequence[BLSFieldElement],
+                                zs: Coset,
+                                ys: CosetEvals,
                                 proof: KZGProof) -> bool:
     """
     Verify a KZG multi-evaluation proof for a set of `k` points.
@@ -379,7 +400,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: CellID) -> Cell:
+def coset_for_cell(cell_id: CellID) -> Coset:
     """
     Get the coset for a given ``cell_id``
     """
@@ -387,7 +408,7 @@ def coset_for_cell(cell_id: CellID) -> Cell:
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
-    return Cell(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
 ```
 
 ## Cells
@@ -416,7 +437,7 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
     for i in range(CELLS_PER_EXT_BLOB):
         coset = coset_for_cell(CellID(i))
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-        cells.append(ys)
+        cells.append(coset_evals_to_cell(ys))
         proofs.append(proof)
 
     return cells, proofs
@@ -437,8 +458,12 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
-    return [extended_data_rbo[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL]
-            for i in range(CELLS_PER_EXT_BLOB)]
+    cells = []
+    for cell_id in range(CELLS_PER_EXT_BLOB):
+        start = cell_id * FIELD_ELEMENTS_PER_CELL
+        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+        cells.append(coset_evals_to_cell(extended_data_rbo[start:end]))
+    return cells
 ```
 
 ### Cell verification
@@ -448,7 +473,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 ```python
 def verify_cell_proof(commitment_bytes: Bytes48,
                       cell_id: CellID,
-                      cell_bytes: Vector[Bytes32, FIELD_ELEMENTS_PER_CELL],
+                      cell: Cell,
                       proof_bytes: Bytes48) -> bool:
     """
     Check a cell proof
@@ -460,7 +485,7 @@ def verify_cell_proof(commitment_bytes: Bytes48,
     return verify_kzg_proof_multi_impl(
         bytes_to_kzg_commitment(commitment_bytes),
         coset,
-        bytes_to_cell(cell_bytes),
+        cell_to_coset_evals(cell),
         bytes_to_kzg_proof(proof_bytes))
 ```
 
@@ -470,7 +495,7 @@ def verify_cell_proof(commitment_bytes: Bytes48,
 def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                             row_indices: Sequence[RowIndex],
                             column_indices: Sequence[ColumnIndex],
-                            cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]],
+                            cells: Sequence[Cell],
                             proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
@@ -486,19 +511,19 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 
     Public method.
     """
-    assert len(cells_bytes) == len(proofs_bytes) == len(row_indices) == len(column_indices)
+    assert len(cells) == len(proofs_bytes) == len(row_indices) == len(column_indices)
 
     # Get commitments via row IDs
     commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
 
     # Get objects from bytes
     commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in commitments_bytes]
-    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+    cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
     return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), cell, proof)
-        for commitment, column_index, cell, proof in zip(commitments, column_indices, cells, proofs)
+        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), coset_evals, proof)
+        for commitment, column_index, coset_evals, proof in zip(commitments, column_indices, cosets_evals, proofs)
     )
 ```
 
@@ -617,8 +642,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 ### `recover_all_cells`
 
 ```python
-def recover_all_cells(cell_ids: Sequence[CellID],
-                      cells_bytes: Sequence[Vector[Bytes32, FIELD_ELEMENTS_PER_CELL]]) -> Sequence[Cell]:
+def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequence[Cell]:
     """
     Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
     half of which can be missing.
@@ -630,7 +654,7 @@ def recover_all_cells(cell_ids: Sequence[CellID],
 
     Public method.
     """
-    assert len(cell_ids) == len(cells_bytes)
+    assert len(cell_ids) == len(cells)
     # Check we have enough cells to be able to perform the reconstruction
     assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
@@ -639,15 +663,15 @@ def recover_all_cells(cell_ids: Sequence[CellID],
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
-    # Convert from bytes to cells
-    cells = [bytes_to_cell(cell_bytes) for cell_bytes in cells_bytes]
+    # Convert cells to coset evals
+    cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
     missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
         cell_ids,
-        cells,
+        cosets_evals,
         zero_poly_eval,
         zero_poly_coeff,
         roots_of_unity_extended,
@@ -660,14 +684,14 @@ def recover_all_cells(cell_ids: Sequence[CellID],
         roots_of_unity_extended,
     )
 
-    for cell_id, cell in zip(cell_ids, cells):
+    for cell_id, coset_evals in zip(cell_ids, cosets_evals):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        assert reconstructed_data[start:end] == cell
+        assert reconstructed_data[start:end] == coset_evals
 
     reconstructed_data_as_cells = [
-        Cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
+        coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
-
+ 
     return reconstructed_data_as_cells
 ```

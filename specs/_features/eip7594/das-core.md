@@ -54,7 +54,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `NUMBER_OF_COLUMNS` | `uint64(FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL)` (= 128) | Number of columns in the extended data matrix. |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix. |
 | `MAX_CELLS_IN_EXTENDED_MATRIX` | `uint64(MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS)` (= 768) | The data size of `ExtendedMatrix`. |
 
 ### Networking
@@ -142,10 +142,9 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     extended_matrix: List[Cell] = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
-        cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
+        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
 
-        all_cells_for_row = recover_all_cells(cell_ids, cells_bytes)
+        all_cells_for_row = recover_all_cells(cell_ids, cells)
         extended_matrix.extend(all_cells_for_row)
     return ExtendedMatrix(extended_matrix)
 ```
