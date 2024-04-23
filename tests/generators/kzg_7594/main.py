@@ -140,7 +140,7 @@ def case03_verify_cell_proof():
         proof = proofs[cell_id]
         expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_invalid_cell_bytes_{identifier}', {
+        yield f'verify_cell_proof_case_invalid_cell_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -196,7 +196,7 @@ def case03_verify_cell_proof():
         proof = proofs[cell_id]
         assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_cell_bytes_{identifier}', {
+        yield f'verify_cell_proof_case_incorrect_cell_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
