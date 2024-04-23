@@ -228,7 +228,7 @@ def multiply(point, scalar):
 def multi_exp(points, integers):
     """
     Performs a multi-scalar multiplication between
-    `points` and `scalars`.
+    `points` and `integers`.
     `points` can either be in G1 or G2.
     """
     # Since this method accepts either G1 or G2, we need to know
