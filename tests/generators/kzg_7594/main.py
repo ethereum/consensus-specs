@@ -132,19 +132,19 @@ def case03_verify_cell_proof():
             'output': None
         }
 
-    # Edge case: Invalid cell_bytes
-    for cell_bytes in INVALID_INDIVIDUAL_CELL_BYTES:
+    # Edge case: Invalid cell
+    for cell in INVALID_INDIVIDUAL_CELL_BYTES:
         cell_id = 32 % spec.CELLS_PER_EXT_BLOB
         commitment = VALID_COMMITMENTS[2]
         cells, proofs = VALID_CELLS_AND_PROOFS[2]
         proof = proofs[cell_id]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_invalid_cell_bytes_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': None
@@ -187,20 +187,20 @@ def case03_verify_cell_proof():
             'output': False
         }
 
-    # Incorrect cell_bytes
+    # Incorrect cell
     for i in range(len(VALID_INDIVIDUAL_RANDOM_CELL_BYTES)):
         cell_id = 16 % spec.CELLS_PER_EXT_BLOB
         commitment = VALID_COMMITMENTS[i]
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell_bytes = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
+        cell = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
         proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell_bytes, proof)
-        identifier = make_id(commitment, cell_id, cell_bytes, proof)
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
         yield f'verify_cell_proof_case_incorrect_cell_bytes_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
-                'cell': encode_hex(cell_bytes),
+                'cell': encode_hex(cell),
                 'proof': encode_hex(proof),
             },
             'output': False
