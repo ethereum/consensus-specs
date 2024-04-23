@@ -225,37 +225,27 @@ def multiply(point, scalar):
     return py_ecc_mul(point, scalar)
 
 
-def g1_multi_exp(points, integers):
-    """
-    Performs a multi-scalar multiplication between
-    `points` and `scalars`.
-    `point` should be in G1
-    """
-    if bls == arkworks_bls or bls == fastest_bls:
-        scalars = []
-        for integer in integers:
-            int_as_bytes = integer.to_bytes(32, 'little')
-            scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
-        return arkworks_G1.multiexp_unchecked(points, scalars)
-    result = Z1()
-    for point, scalar in points.zip(integers):
-        result = add(result, multiply(point, scalar))
-    return result
-
-
-# TODO: Duplicated code for now (we can use type-checking to avoid duplication)
-def g2_multi_exp(points, integers):
+def multi_exp(points, integers):
     """
     Performs a multi-scalar multiplication between
     `points` and `scalars`.
     `point` should be in G2
     """
     if bls == arkworks_bls or bls == fastest_bls:
+        # Convert integers into arkworks Scalars
         scalars = []
         for integer in integers:
             int_as_bytes = integer.to_bytes(32, 'little')
             scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
-        return arkworks_G2.multiexp_unchecked(points, scalars)
+
+        # Check if we need to perform a G1 or G2 multiexp
+        if isinstance(points[0], arkworks_G1):
+            return arkworks_G1.multiexp_unchecked(points, scalars)
+        elif isinstance(points[0], arkworks_G2):
+            return arkworks_G2.multiexp_unchecked(points, scalars)
+        else:
+            raise Exception("Invalid point type")
+
     result = Z2()
     for point, scalar in points.zip(integers):
         result = add(result, multiply(point, scalar))
