@@ -10,7 +10,24 @@ from eth2spec.eip7594 import spec
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.test.helpers.constants import EIP7594
 from eth2spec.test.helpers.typing import SpecForkName
-from eth2spec.test.utils.kzg_tests import *
+from eth2spec.test.utils.kzg_tests import (
+    BLOB_RANDOM_VALID1,
+    BLOB_RANDOM_VALID2,
+    BLOB_RANDOM_VALID3,
+    INVALID_BLOBS,
+    INVALID_G1_POINTS,
+    INVALID_INDIVIDUAL_CELL_BYTES,
+    VALID_BLOBS,
+    VALID_CELLS_AND_PROOFS,
+    VALID_CELLS_AND_PROOFS,
+    VALID_COMMITMENTS,
+    VALID_COMMITMENTS,
+    VALID_INDIVIDUAL_RANDOM_CELL_BYTES,
+    bls_add_one,
+    encode_hex_list,
+    expect_exception,
+    make_id,
+)
 from eth2spec.utils import bls
 
 
@@ -250,6 +267,7 @@ def case04_verify_cell_proof_batch():
             'output': True
         }
 
+    # Valid: Verify cells for different blobs
     # Valid: Unused row commitment (strange but should work)
     # Valid: Same cell multiple times (strange but should work)
 
@@ -580,9 +598,9 @@ if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_7594", [
         # EIP-7594
-        #create_provider(EIP7594, 'compute_cells', case01_compute_cells),
+        create_provider(EIP7594, 'compute_cells', case01_compute_cells),
         create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
-        #create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
+        create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
         create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
-        #create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
+        create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
     ])

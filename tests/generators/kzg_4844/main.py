@@ -10,7 +10,22 @@ from eth2spec.deneb import spec
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.test.helpers.constants import DENEB
 from eth2spec.test.helpers.typing import SpecForkName
-from eth2spec.test.utils.kzg_tests import *
+from eth2spec.test.utils.kzg_tests import (
+    BLOB_ALL_TWOS,
+    BLOB_ALL_ZEROS,
+    BLOB_RANDOM_VALID1,
+    G1,
+    INVALID_BLOBS,
+    INVALID_FIELD_ELEMENTS,
+    INVALID_G1_POINTS,
+    VALID_BLOBS,
+    VALID_FIELD_ELEMENTS,
+    bls_add_one,
+    encode_hex_list,
+    expect_exception,
+    field_element_bytes,
+    hash,
+)
 from eth2spec.utils import bls
 
 
