@@ -328,7 +328,7 @@ def case05_recover_all_cells():
     partial_cells[0] = CELL_ONE_INVALID_FIELD
     expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_cell_id_{identifier}', {
+    yield f'recover_all_cells_case_invalid_cell_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
