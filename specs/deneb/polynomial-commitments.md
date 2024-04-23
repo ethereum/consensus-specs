@@ -279,7 +279,7 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
     assert len(points) == len(scalars)
 
     if len(points) == 0:
-        return bls.Z1()
+        return bls.G1_to_bytes48(bls.Z1())
 
     points_g1 = []
     for point in points:

@@ -251,7 +251,7 @@ def multi_exp(points, integers):
         else:
             raise Exception("Invalid point type")
 
-    result = Z1()
+    result = None
     if isinstance(points[0], py_ecc_G1):
         result = Z1()
     elif isinstance(points[0], py_ecc_G2):

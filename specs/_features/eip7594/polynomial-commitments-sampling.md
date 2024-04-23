@@ -135,7 +135,7 @@ def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) ->
     assert len(points) == len(scalars)
 
     if len(points) == 0:
-        return bls.Z2()
+        return bls.G2_to_bytes96(bls.Z2())
 
     points_g2 = []
     for point in points:
