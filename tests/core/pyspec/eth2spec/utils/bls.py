@@ -229,7 +229,7 @@ def multi_exp(points, integers):
     """
     Performs a multi-scalar multiplication between
     `points` and `scalars`.
-    `point` should be in G2
+    `points` can either be in G1 or G2
     """
     if bls == arkworks_bls or bls == fastest_bls:
         # Convert integers into arkworks Scalars
