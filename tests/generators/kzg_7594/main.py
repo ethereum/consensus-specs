@@ -364,6 +364,7 @@ def case05_recover_all_cells():
     }
 
     # Edge case: Invalid cell
+    blob = BLOB_RANDOM_VALID2
     for cell in INVALID_INDIVIDUAL_CELL_BYTES:
         cells = spec.compute_cells(blob)
         cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
@@ -413,6 +414,24 @@ def case05_recover_all_cells():
         },
         'output': None
     }
+
+    # Edge case: Duplicate cell_id
+    blob = BLOB_RANDOM_VALID2
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    # Replace first cell_id with the second cell_id
+    cell_ids[0] = cell_ids[1]
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_duplicate_cell_id_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': None
+    }
+
 
 
 ###############################################################################
