@@ -274,13 +274,13 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
 ```python
 def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication in G1. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
     points_g1 = []
     for point in points:
         points_g1.append(bls.bytes48_to_G1(point))
-    result = bls.g1_multi_exp(points_g1, scalars)
+    result = bls.multi_exp(points_g1, scalars)
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 

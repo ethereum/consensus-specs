@@ -130,13 +130,13 @@ def coset_evals_to_cell(coset_evals: CosetEvals) -> Cell:
 ```python
 def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) -> Bytes96:
     """
-    BLS multiscalar multiplication in G2. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication in G2. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
     points_g2 = []
     for point in points:
         points_g2.append(bls.bytes96_to_G2(point))
-    result = bls.g2_multi_exp(points_g2, scalars)
+    result = bls.multi_exp(points_g2, scalars)
     return Bytes96(bls.G2_to_bytes96(result))
 ```
 
