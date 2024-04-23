@@ -18,6 +18,7 @@
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`multi_exp`](#multi_exp)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`bls_field_to_bytes`](#bls_field_to_bytes)
@@ -145,6 +146,18 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 ```
 
 ### BLS12-381 helpers
+
+
+#### `multi_exp`
+
+This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
+
+```python
+def multi_exp(points: PyUnion[Sequence[G1Point], Sequence[G2Point]],
+              integers: Sequence[uint64]) -> PyUnion[Sequence[G1Point], Sequence[G2Point]]:
+    # pylint: disable=unused-argument
+    ...
+```
 
 #### `hash_to_bls_field`
 
