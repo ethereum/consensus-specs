@@ -28,6 +28,8 @@
 - [Column gossip](#column-gossip)
   - [Parameters](#parameters)
 - [Peer sampling](#peer-sampling)
+  - [Passive sampling](#passive-sampling)
+  - [Active sampling](#active-sampling)
 - [Peer scoring](#peer-scoring)
 - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
 - [DAS providers](#das-providers)
@@ -223,7 +225,19 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 ## Peer sampling
 
-A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. At each slot, a node makes `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. After that, there are two kinds of peer sampling a node can do: passive sampling and active sampling. If the node has enough good/honest peers across all columns, this has a high chance of success for both kinds.
+
+### Passive sampling
+
+A few moments before each slot, the node SHOULD be subscribed to `SAMPLES_PER_SLOT` column subnets to receive the samples from their peers. A node utilizes `get_custody_columns` helper to determine which column subnets to be subscribed to. This should be easy to do because the node already has a diverse set of peers.
+
+After the node finishes sampling, it SHOULD unsubscribe from the subnets.
+
+### Active sampling
+
+If a node fails to do passive sampling, it MAY choose to do active sampling. In addition, if a node wants to do sampling in the past slots, it MUST do active sampling.
+
+The node can do it by making `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from.
 
 ## Peer scoring
 
