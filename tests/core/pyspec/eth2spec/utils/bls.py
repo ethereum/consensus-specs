@@ -224,13 +224,13 @@ def multiply(point, scalar):
         return point * scalar
     return py_ecc_mul(point, scalar)
 
+
 def g1_multi_exp(points, integers):
     """
     Performs a multi-scalar multiplication between
     `points` and `scalars`.
     `point` should be in G1
     """
-    assert(len(points) == len(integers))
     if bls == arkworks_bls or bls == fastest_bls:
         scalars = []
         for integer in integers:
@@ -238,9 +238,29 @@ def g1_multi_exp(points, integers):
             scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
         return arkworks_G1.multiexp_unchecked(points, scalars)
     result = Z1()
-    for point,scalar in points.zip(scalars):
+    for point, scalar in points.zip(integers):
         result = add(result, multiply(point, scalar))
     return result
+
+
+# TODO: Duplicated code for now
+def g2_multi_exp(points, integers):
+    """
+    Performs a multi-scalar multiplication between
+    `points` and `scalars`.
+    `point` should be in G2
+    """
+    if bls == arkworks_bls or bls == fastest_bls:
+        scalars = []
+        for integer in integers:
+            int_as_bytes = integer.to_bytes(32, 'little')
+            scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
+        return arkworks_G2.multiexp_unchecked(points, scalars)
+    result = Z2()
+    for point, scalar in points.zip(integers):
+        result = add(result, multiply(point, scalar))
+    return result
+
 
 def neg(point):
     """
