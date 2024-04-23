@@ -280,7 +280,7 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
     points_g1 = []
     for point in points:
         points_g1.append(bls.bytes48_to_G1(point))
-    result = bls.g1_multi_exp(points_g1,scalars)
+    result = bls.g1_multi_exp(points_g1, scalars)
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 
