@@ -238,6 +238,8 @@ def multi_exp(points, integers):
             int_as_bytes = integer.to_bytes(32, 'little')
             scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
 
+        if len(points) == 0:
+            return Z1()
         # Check if we need to perform a G1 or G2 multiexp
         if isinstance(points[0], arkworks_G1):
             return arkworks_G1.multiexp_unchecked(points, scalars)
