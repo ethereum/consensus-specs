@@ -230,9 +230,12 @@ def multi_exp(points, integers):
     Performs a multi-scalar multiplication between
     `points` and `scalars`.
     `points` can either be in G1 or G2.
-
-    Note: This method assumes that there is at least one point.
     """
+    # Since this method accepts either G1 or G2, we need to know
+    # the type of the point to return. Hence, we need at least one point.
+    if not points or not integers:
+        raise Exception("Cannot call multi_exp with zero points or zero integers")
+
     if bls == arkworks_bls or bls == fastest_bls:
         # Convert integers into arkworks Scalars
         scalars = []
