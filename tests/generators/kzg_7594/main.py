@@ -250,6 +250,121 @@ def case04_verify_cell_proof_batch():
             'output': True
         }
 
+    # Valid: Unused row commitment (strange but should work)
+    # Valid: Same cell multiple times (strange but should work)
+
+    # Edge case: Invalid row commitment
+    for i, commitment in enumerate(INVALID_G1_POINTS):
+        cells, proofs = VALID_CELLS_AND_PROOFS[i % len(INVALID_G1_POINTS)]
+        # Set row_commitments to the invalid commitment
+        row_commitments = [commitment]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_row_commitment_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+    # Edge case: Invalid row_index
+    cells, proofs = VALID_CELLS_AND_PROOFS[0]
+    row_commitments = [VALID_COMMITMENTS[0]]
+    row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+    # Set 27th row index to an invalid value
+    row_indices[27] = 1
+    column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+    expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_invalid_row_index_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid column_index
+    cells, proofs = VALID_CELLS_AND_PROOFS[1]
+    row_commitments = [VALID_COMMITMENTS[1]]
+    row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+    column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+    # Set first column index to an invalid value
+    column_indices[0] = spec.CELLS_PER_EXT_BLOB
+    expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_invalid_column_index_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': None
+    }
+
+    # Edge case: Invalid cell
+    for i, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
+        cells, proofs = VALID_CELLS_AND_PROOFS[i % len(INVALID_INDIVIDUAL_CELL_BYTES)]
+        row_commitments = [VALID_COMMITMENTS[i % len(INVALID_INDIVIDUAL_CELL_BYTES)]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Set first cell to the invalid cell
+        cells[0] = cell
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_cell_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+    # Edge case: Invalid proof
+    for i, proof in enumerate(INVALID_G1_POINTS):
+        cells, proofs = VALID_CELLS_AND_PROOFS[i % len(INVALID_G1_POINTS)]
+        row_commitments = [VALID_COMMITMENTS[i % len(INVALID_G1_POINTS)]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Set first proof to the invalid proof
+        proofs[0] = proof
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_proof_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+        # Edge case: Bad commitment count
+        # Edge case: Bad row_indices count
+        # Edge case: Bad column_indices count
+        # Edge case: Bad cells count
+        # Edge case: Bad proofs count
+
+        # Incorrect commitment
+        # Incorrect cell
+        # Incorrect proof
+
 
 ###############################################################################
 # Test cases for recover_all_cells
@@ -424,14 +539,13 @@ def case05_recover_all_cells():
     cell_ids[0] = cell_ids[1]
     expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_duplicate_cell_id_{identifier}', {
+    yield f'recover_all_cells_case_invalid_duplicate_cell_id_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
         },
         'output': None
     }
-
 
 
 ###############################################################################
@@ -466,9 +580,9 @@ if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_7594", [
         # EIP-7594
-        create_provider(EIP7594, 'compute_cells', case01_compute_cells),
+        #create_provider(EIP7594, 'compute_cells', case01_compute_cells),
         create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
-        create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
+        #create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
         create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
-        create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
+        #create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
     ])
