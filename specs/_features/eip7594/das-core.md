@@ -105,11 +105,11 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     assert len(subnet_ids) == len(set(subnet_ids))
 
     columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    return [
+    return sorted([
         ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
         for i in range(columns_per_subnet)
         for subnet_id in subnet_ids
-    ]
+    ])
 ```
 
 #### `compute_extended_matrix`
