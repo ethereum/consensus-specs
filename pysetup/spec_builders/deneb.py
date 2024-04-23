@@ -17,6 +17,7 @@ from eth2spec.capella import {preset_name} as capella
     def preparations(cls):
         return '''
 T = TypeVar('T')  # For generic function
+TPoint = TypeVar('TPoint')  # For generic function. G1 or G2 point.
 '''
 
     @classmethod

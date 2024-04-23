@@ -153,8 +153,8 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
 
 ```python
-def multi_exp(points: PyUnion[Sequence[G1Point], Sequence[G2Point]],
-              integers: Sequence[uint64]) -> PyUnion[Sequence[G1Point], Sequence[G2Point]]:
+def multi_exp(points: Sequence[TPoint],
+              integers: Sequence[uint64]) -> Sequence[TPoint]:
     # pylint: disable=unused-argument
     ...
 ```
