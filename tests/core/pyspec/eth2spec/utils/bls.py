@@ -243,7 +243,7 @@ def g1_multi_exp(points, integers):
     return result
 
 
-# TODO: Duplicated code for now
+# TODO: Duplicated code for now (we can use type-checking to avoid duplication)
 def g2_multi_exp(points, integers):
     """
     Performs a multi-scalar multiplication between
