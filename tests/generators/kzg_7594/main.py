@@ -1,5 +1,5 @@
 """
-KZG PeerDAS test vectors generator
+KZG test vectors generator for EIP-7594
 """
 
 from hashlib import sha256
@@ -496,9 +496,9 @@ def create_provider(fork_name: SpecForkName,
             yield gen_typing.TestCase(
                 fork_name=fork_name,
                 preset_name='general',
-                runner_name='kzg_peerdas',
+                runner_name='kzg_7594',
                 handler_name=handler_name,
-                suite_name='kzg_peerdas',
+                suite_name='kzg_7594',
                 case_name=case_name,
                 case_fn=lambda: [('data', 'data', case_content)]
             )
@@ -508,7 +508,7 @@ def create_provider(fork_name: SpecForkName,
 
 if __name__ == "__main__":
     bls.use_arkworks()
-    gen_runner.run_generator("kzg_peerdas", [
+    gen_runner.run_generator("kzg_7594", [
         # EIP-7594
         create_provider(EIP7594, 'compute_cells', case01_compute_cells),
         create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
