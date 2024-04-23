@@ -130,12 +130,18 @@ def coset_evals_to_cell(coset_evals: CosetEvals) -> Cell:
 ```python
 def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) -> Bytes96:
     """
-    BLS multiscalar multiplication in G2. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication in G2. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
-    result = bls.Z2()
-    for x, a in zip(points, scalars):
-        result = bls.add(result, bls.multiply(bls.bytes96_to_G2(x), a))
+
+    if len(points) == 0:
+        return bls.G2_to_bytes96(bls.Z2())
+
+    points_g2 = []
+    for point in points:
+        points_g2.append(bls.bytes96_to_G2(point))
+
+    result = bls.multi_exp(points_g2, scalars)
     return Bytes96(bls.G2_to_bytes96(result))
 ```
 
@@ -428,6 +434,8 @@ def compute_cells_and_proofs(blob: Blob) -> Tuple[
 
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+    
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -452,6 +460,8 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
     Public method.
     """
+    assert len(blob) == BYTES_PER_BLOB
+    
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -480,6 +490,11 @@ def verify_cell_proof(commitment_bytes: Bytes48,
 
     Public method.
     """
+    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    assert cell_id < CELLS_PER_EXT_BLOB
+    assert len(cell) == BYTES_PER_CELL
+    assert len(proof_bytes) == BYTES_PER_PROOF
+    
     coset = coset_for_cell(cell_id)
 
     return verify_kzg_proof_multi_impl(
@@ -512,6 +527,16 @@ def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     Public method.
     """
     assert len(cells) == len(proofs_bytes) == len(row_indices) == len(column_indices)
+    for commitment_bytes in row_commitments_bytes:
+        assert len(commitment_bytes) == BYTES_PER_COMMITMENT
+    for row_index in row_indices:
+        assert row_index < len(row_commitments_bytes)
+    for column_index in column_indices:
+        assert column_index < CELLS_PER_EXT_BLOB
+    for cell in cells:
+        assert len(cell) == BYTES_PER_CELL
+    for proof_bytes in proofs_bytes:
+        assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Get commitments via row IDs
     commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
@@ -659,6 +684,9 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_ids) == len(set(cell_ids))
+    # Check that each cell is the correct length
+    for cell in cells:
+        assert len(cell) == BYTES_PER_CELL
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
