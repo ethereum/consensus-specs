@@ -143,9 +143,12 @@ CELL_ALL_MAX_VALUE = b"".join([field_element_bytes_unchecked(2 ** 256 - 1)
 CELL_ONE_INVALID_FIELD = b"".join([field_element_bytes_unchecked(spec.BLS_MODULUS)
                                    if n == 7 else field_element_bytes(0)
                                    for n in range(spec.FIELD_ELEMENTS_PER_CELL)])
+CELL_INVALID_TOO_FEW_BYTES = CELL_RANDOM_VALID1[:-1]
+CELL_INVALID_TOO_MANY_BYTES = CELL_RANDOM_VALID2 + b"\x00"
 
 VALID_INDIVIDUAL_RANDOM_CELL_BYTES = [CELL_RANDOM_VALID1, CELL_RANDOM_VALID2, CELL_RANDOM_VALID3]
-INVALID_INDIVIDUAL_CELL_BYTES = [CELL_ALL_MAX_VALUE, CELL_ONE_INVALID_FIELD]
+INVALID_INDIVIDUAL_CELL_BYTES = [CELL_ALL_MAX_VALUE, CELL_ONE_INVALID_FIELD, CELL_INVALID_TOO_FEW_BYTES,
+                                 CELL_INVALID_TOO_MANY_BYTES]
 
 # Cells & Proofs
 

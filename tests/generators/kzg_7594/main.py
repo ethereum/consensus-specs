@@ -271,7 +271,7 @@ def case05_recover_all_cells():
         'output': encode_hex_list(recovered_cells)
     }
 
-    # Valid: Half missing cells
+    # Valid: Half missing cells (every other cell)
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
     cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
@@ -279,7 +279,51 @@ def case05_recover_all_cells():
     recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
     assert recovered_cells == cells
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_valid_half_missing_{identifier}', {
+    yield f'recover_all_cells_case_valid_half_missing_every_other_cell_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': encode_hex_list(recovered_cells)
+    }
+
+    # Valid: Half missing cells (first half)
+    blob = BLOB_RANDOM_VALID3
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB // 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    assert recovered_cells == cells
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_valid_half_missing_first_half_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': encode_hex_list(recovered_cells)
+    }
+
+    # Valid: Half missing cells (second half)
+    blob = BLOB_RANDOM_VALID1
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2, spec.CELLS_PER_EXT_BLOB))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    assert recovered_cells == cells
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_valid_half_missing_second_half_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': encode_hex_list(recovered_cells)
+    }
+
+    # Edge case: All cells are missing
+    cell_ids, partial_cells = [], []
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_all_cells_are_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
@@ -288,7 +332,7 @@ def case05_recover_all_cells():
     }
 
     # Edge case: More than half missing
-    blob = BLOB_RANDOM_VALID3
+    blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 - 1))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
@@ -320,21 +364,21 @@ def case05_recover_all_cells():
     }
 
     # Edge case: Invalid cell
-    blob = BLOB_RANDOM_VALID2
-    cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
-    partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    # Replace first cell with an invalid value
-    partial_cells[0] = CELL_ONE_INVALID_FIELD
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_cell_{identifier}', {
-        'input': {
-            'cell_ids': cell_ids,
-            'cells': encode_hex_list(partial_cells),
-        },
-        'output': None
-    }
+    for cell in INVALID_INDIVIDUAL_CELL_BYTES:
+        cells = spec.compute_cells(blob)
+        cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+        partial_cells = [cells[cell_id] for cell_id in cell_ids]
+        # Replace first cell with an invalid value
+        partial_cells[0] = cell
+        expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+        identifier = make_id(cell_ids, partial_cells)
+        yield f'recover_all_cells_case_invalid_cell_{identifier}', {
+            'input': {
+                'cell_ids': cell_ids,
+                'cells': encode_hex_list(partial_cells),
+            },
+            'output': None
+        }
 
     # Edge case: More cell_ids than cells
     blob = BLOB_RANDOM_VALID3
