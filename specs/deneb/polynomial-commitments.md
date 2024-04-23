@@ -277,9 +277,14 @@ def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElemen
     BLS multiscalar multiplication in G1. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
+
+    if len(points) == 0:
+        return bls.Z1()
+
     points_g1 = []
     for point in points:
         points_g1.append(bls.bytes48_to_G1(point))
+
     result = bls.multi_exp(points_g1, scalars)
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```

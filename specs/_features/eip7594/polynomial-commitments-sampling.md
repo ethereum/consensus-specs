@@ -133,9 +133,14 @@ def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[BLSFieldElement]) ->
     BLS multiscalar multiplication in G2. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
+
+    if len(points) == 0:
+        return bls.Z2()
+
     points_g2 = []
     for point in points:
         points_g2.append(bls.bytes96_to_G2(point))
+
     result = bls.multi_exp(points_g2, scalars)
     return Bytes96(bls.G2_to_bytes96(result))
 ```
