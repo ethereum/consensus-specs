@@ -1,17 +1,13 @@
 from eth2spec.gen_helpers.gen_base import gen_runner
 from ruamel.yaml import YAML
 
-from filter_block_tree_generator import (
-    forks as block_cover_forks,
-    presets as block_cover_presets,
-    _load_model_solutions as block_cover_load_solutions,
-    _create_providers as block_cover_create_providers
-)
-from main import (
-    forks as block_tree_forks,
-    presets as block_tree_presets,
-    _load_block_tree_instances as block_tree_load_solutions,
-    _create_providers as block_tree_create_providers
+from instance_generator import (
+    forks,
+    presets,
+    _load_block_tree_instances,
+    _create_block_tree_providers,
+    _load_block_cover_instances,
+    _create_block_cover_providers
 )
 
 
@@ -56,10 +52,10 @@ if __name__ == "__main__":
         with_invalid_messages = params.get('with_invalid_messages', False)
 
         if test_type == 'block_tree':
-            solutions = block_tree_load_solutions(instances_path)
-            providers = block_tree_create_providers(test_name,
-                                                    forks=block_tree_forks,
-                                                    presets=block_tree_presets,
+            solutions = _load_block_tree_instances(instances_path)
+            providers = _create_block_tree_providers(test_name,
+                                                    forks=forks,
+                                                    presets=presets,
                                                     debug=args.fc_gen_debug,
                                                     initial_seed=initial_seed,
                                                     solutions=solutions,
@@ -68,10 +64,10 @@ if __name__ == "__main__":
                                                     with_attester_slashings=with_attester_slashings,
                                                     with_invalid_messages=with_invalid_messages)
         elif test_type == 'block_cover':
-            solutions = block_cover_load_solutions(instances_path)
-            providers = block_cover_create_providers(test_name,
-                                                     forks=block_cover_forks,
-                                                     presets=block_cover_presets,
+            solutions = _load_block_cover_instances(instances_path)
+            providers = _create_block_cover_providers(test_name,
+                                                     forks=forks,
+                                                     presets=presets,
                                                      debug=args.fc_gen_debug,
                                                      initial_seed=initial_seed,
                                                      solutions=solutions,
