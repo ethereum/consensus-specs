@@ -113,7 +113,7 @@ jobs:
         run: make install_test
       - name: test-${{ matrix.version }}
         run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-${{ matrix.version }}
