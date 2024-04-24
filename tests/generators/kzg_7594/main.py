@@ -325,7 +325,7 @@ def case04_verify_cell_proof_batch():
 
     # Valid: Same cell multiple times
     row_commitments = [VALID_COMMITMENTS[3]]
-    row_indices = [3] * 3
+    row_indices = [0] * 3
     column_indices = [0, 0, 0]
     cells = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
     proofs = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
