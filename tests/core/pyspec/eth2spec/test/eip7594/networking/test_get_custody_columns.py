@@ -7,9 +7,12 @@ from eth2spec.test.context import (
 )
 
 
-def _run_get_custody_columns(spec, rng):
-    node_id = rng.randint(0, 2**32 - 1)
-    custody_subnet_count = rng.randint(0, spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None):
+    if node_id is None:
+        node_id = rng.randint(0, 2**256 - 1)
+
+    if custody_subnet_count is None:
+        custody_subnet_count = rng.randint(0, spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 
     result = spec.get_custody_columns(node_id, custody_subnet_count)
     yield 'node_id', 'meta', node_id
@@ -23,6 +26,43 @@ def _run_get_custody_columns(spec, rng):
     python_list_result = [int(i) for i in result]
 
     yield 'result', 'meta', python_list_result
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_custody_columns__min_node_id_min_custody_subnet_count(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(spec, rng, node_id=0, custody_subnet_count=0)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_custody_columns__min_node_id_max_custody_subnet_count(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(
+        spec, rng, node_id=0,
+        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_custody_columns__max_node_id_min_custody_subnet_count(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(spec, rng, node_id=2**256 - 1, custody_subnet_count=0)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_custody_columns__max_node_id_max_custody_subnet_count(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(
+        spec, rng, node_id=2**256 - 1,
+        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT,
+    )
 
 
 @with_eip7594_and_later

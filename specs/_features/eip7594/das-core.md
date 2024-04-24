@@ -8,6 +8,8 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Data size](#data-size)
@@ -38,6 +40,16 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Constants
+
+The following values are (non-configurable) constants used throughout the specification.
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `UINT256_MAX` | `uint256(2**256 - 1)` |
 
 ## Custom types
 
@@ -95,8 +107,11 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     subnet_ids = []
     i = 0
     while len(subnet_ids) < custody_subnet_count:
+        if node_id == UINT256_MAX:
+            node_id = 0
+
         subnet_id = (
-            bytes_to_uint64(hash(uint_to_bytes(uint64(node_id + i)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(uint256(node_id + i)))[0:8])
             % DATA_COLUMN_SIDECAR_SUBNET_COUNT
         )
         if subnet_id not in subnet_ids:
