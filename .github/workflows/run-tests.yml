@@ -24,7 +24,7 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  preclear-and-install:
+  preclear:
       runs-on: [self-hosted, size-xs]
       if: always()
       steps:
@@ -37,7 +37,7 @@ jobs:
 
   table_of_contents:
    runs-on: [self-hosted, size-xs]
-   needs: preclear-and-install
+   needs: preclear
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
@@ -49,19 +49,21 @@ jobs:
 
   codespell:
    runs-on: [self-hosted, size-xs]
-   needs: preclear-and-install
+   needs: preclear
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+      - name: install codespell package
+        run: sudo apt -y install codespell
       - name: Check codespell
         run: pip3 install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
   lint:
     runs-on: [self-hosted, size-xs]
-    needs: preclear-and-install
+    needs: preclear
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
@@ -74,7 +76,7 @@ jobs:
 
   pyspec-tests:
     runs-on: [self-hosted, size-xs]
-    needs: [preclear-and-install,lint,codespell,table_of_contents]
+    needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
@@ -109,7 +111,7 @@ jobs:
 
   cleanup:
       runs-on: [self-hosted, size-xs]
-      needs: [preclear-and-install,pyspec-tests,codespell,lint,table_of_contents]
+      needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
       if: always()
       steps:
         - name: 'Cleanup build folder'
