@@ -692,7 +692,7 @@ def case05_recover_all_cells():
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
         },
-        'output': encode_hex_list(recovered_cells)
+        'output': None
     }
 
     # Edge case: More than half missing
