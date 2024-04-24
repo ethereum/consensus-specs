@@ -149,14 +149,17 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,
         # [New in Electra:EIP7251]
         deposit_balance_to_consume=0,
-        exit_balance_to_consume=get_activation_exit_churn_limit(pre),
+        exit_balance_to_consume=0,
         earliest_exit_epoch=earliest_exit_epoch,
-        consolidation_balance_to_consume=get_consolidation_churn_limit(pre),
+        consolidation_balance_to_consume=0,
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
         pending_balance_deposits=[],
         pending_partial_withdrawals=[],
         pending_consolidations=[],
     )
+
+    post.exit_balance_to_consume = get_activation_exit_churn_limit(post)
+    post.consolidation_balance_to_consume = get_consolidation_churn_limit(post)
 
     # [New in Electra:EIP7251]
     # add validators that are not yet active to pending balance deposits
