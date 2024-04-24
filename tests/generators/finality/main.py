@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
+from eth2spec.test.helpers.constants import DENEB, ELECTRA
 
 
 if __name__ == "__main__":
@@ -11,10 +11,6 @@ if __name__ == "__main__":
     electra_mods = deneb_mods  # No additional Electra specific finality tests
 
     all_mods = {
-        PHASE0: phase_0_mods,
-        ALTAIR: altair_mods,
-        BELLATRIX: bellatrix_mods,
-        CAPELLA: capella_mods,
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }

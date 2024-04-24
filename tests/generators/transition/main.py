@@ -3,7 +3,9 @@ from typing import Iterable
 from eth2spec.test.helpers.constants import (
     MINIMAL,
     MAINNET,
-    ALL_PRE_POST_FORKS,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
 )
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import (
@@ -51,7 +53,11 @@ if __name__ == "__main__":
         test_deneb_transition,
     )
     for transition_test_module in all_tests:
-        for pre_fork, post_fork in ALL_PRE_POST_FORKS:
+        forks = (
+            (CAPELLA, DENEB),
+            (DENEB, ELECTRA),
+        )
+        for pre_fork, post_fork in forks:
             gen_runner.run_generator("transition", [
                 create_provider(transition_test_module, MINIMAL, pre_fork, post_fork),
                 create_provider(transition_test_module, MAINNET, pre_fork, post_fork),
