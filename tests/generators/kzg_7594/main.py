@@ -113,6 +113,63 @@ def case03_verify_cell_proof():
             'output': True
         }
 
+    # Incorrect commitment
+    for i in range(len(VALID_BLOBS)):
+        cells, proofs = VALID_CELLS_AND_PROOFS[i]
+        commitment = bls_add_one(VALID_COMMITMENTS[i])
+        cell_id = 99 % spec.CELLS_PER_EXT_BLOB
+        cell = cells[cell_id]
+        proof = proofs[cell_id]
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
+        yield f'verify_cell_proof_case_incorrect_commitment_{identifier}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'cell_id': cell_id,
+                'cell': encode_hex(cell),
+                'proof': encode_hex(proof),
+            },
+            'output': False
+        }
+
+    # Incorrect cell
+    for i in range(len(VALID_INDIVIDUAL_RANDOM_CELL_BYTES)):
+        cell_id = 16 % spec.CELLS_PER_EXT_BLOB
+        commitment = VALID_COMMITMENTS[i]
+        cells, proofs = VALID_CELLS_AND_PROOFS[i]
+        cell = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
+        proof = proofs[cell_id]
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
+        yield f'verify_cell_proof_case_incorrect_cell_{identifier}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'cell_id': cell_id,
+                'cell': encode_hex(cell),
+                'proof': encode_hex(proof),
+            },
+            'output': False
+        }
+
+    # Incorrect proof
+    for i in range(len(VALID_BLOBS)):
+        cell_id = 91 % spec.CELLS_PER_EXT_BLOB
+        commitment = VALID_COMMITMENTS[i]
+        cells, proofs = VALID_CELLS_AND_PROOFS[i]
+        cell = cells[cell_id]
+        proof = bls_add_one(proofs[cell_id])
+        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        identifier = make_id(commitment, cell_id, cell, proof)
+        yield f'verify_cell_proof_case_incorrect_proof_{identifier}', {
+            'input': {
+                'commitment': encode_hex(commitment),
+                'cell_id': cell_id,
+                'cell': encode_hex(cell),
+                'proof': encode_hex(proof),
+            },
+            'output': False
+        }
+
     # Edge case: Invalid commitment
     for commitment in INVALID_G1_POINTS:
         cells, proofs = VALID_CELLS_AND_PROOFS[0]
@@ -183,63 +240,6 @@ def case03_verify_cell_proof():
                 'proof': encode_hex(proof),
             },
             'output': None
-        }
-
-    # Incorrect commitment
-    for i in range(len(VALID_BLOBS)):
-        cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        commitment = bls_add_one(VALID_COMMITMENTS[i])
-        cell_id = 99 % spec.CELLS_PER_EXT_BLOB
-        cell = cells[cell_id]
-        proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
-        identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_commitment_{identifier}', {
-            'input': {
-                'commitment': encode_hex(commitment),
-                'cell_id': cell_id,
-                'cell': encode_hex(cell),
-                'proof': encode_hex(proof),
-            },
-            'output': False
-        }
-
-    # Incorrect cell
-    for i in range(len(VALID_INDIVIDUAL_RANDOM_CELL_BYTES)):
-        cell_id = 16 % spec.CELLS_PER_EXT_BLOB
-        commitment = VALID_COMMITMENTS[i]
-        cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
-        proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
-        identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_cell_{identifier}', {
-            'input': {
-                'commitment': encode_hex(commitment),
-                'cell_id': cell_id,
-                'cell': encode_hex(cell),
-                'proof': encode_hex(proof),
-            },
-            'output': False
-        }
-
-    # Incorrect proof
-    for i in range(len(VALID_BLOBS)):
-        cell_id = 91 % spec.CELLS_PER_EXT_BLOB
-        commitment = VALID_COMMITMENTS[i]
-        cells, proofs = VALID_CELLS_AND_PROOFS[i]
-        cell = cells[cell_id]
-        proof = bls_add_one(proofs[cell_id])
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
-        identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_proof_{identifier}', {
-            'input': {
-                'commitment': encode_hex(commitment),
-                'cell_id': cell_id,
-                'cell': encode_hex(cell),
-                'proof': encode_hex(proof),
-            },
-            'output': False
         }
 
 
@@ -341,6 +341,68 @@ def case04_verify_cell_proof_batch():
             'proofs': encode_hex_list(proofs),
         },
         'output': True
+    }
+
+    # Incorrect row commitment
+    cells, proofs = VALID_CELLS_AND_PROOFS[5]
+    cells, proofs = cells[:1], proofs[:1]
+    # Change commitment so it's wrong
+    row_commitments = [bls_add_one(VALID_COMMITMENTS[5])]
+    row_indices = [0] * len(cells)
+    column_indices = list(range(len(cells)))
+    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_incorrect_row_commitment_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': False
+    }
+
+    # Incorrect cell
+    cells, proofs = VALID_CELLS_AND_PROOFS[6]
+    cells, proofs = cells[:1], proofs[:1]
+    row_commitments = [VALID_COMMITMENTS[6]]
+    row_indices = [0] * len(cells)
+    column_indices = list(range(len(cells)))
+    # Change last cell so it's wrong
+    cells[-1] = CELL_RANDOM_VALID2
+    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_incorrect_cell_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': False
+    }
+
+    # Incorrect proof
+    cells, proofs = VALID_CELLS_AND_PROOFS[0]
+    cells, proofs = cells[:1], proofs[:1]
+    row_commitments = [VALID_COMMITMENTS[0]]
+    row_indices = [0] * len(cells)
+    column_indices = list(range(len(cells)))
+    # Change last proof so it's wrong
+    proofs[-1] = bls_add_one(proofs[-1])
+    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_incorrect_proof_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': False
     }
 
     # Edge case: Invalid row commitment
@@ -550,68 +612,6 @@ def case04_verify_cell_proof_batch():
                 'proofs': encode_hex_list(proofs),
             },
             'output': None
-        }
-
-        # Incorrect row commitment
-        cells, proofs = VALID_CELLS_AND_PROOFS[5]
-        cells, proofs = cells[:1], proofs[:1]
-        # Change commitment so it's wrong
-        row_commitments = [bls_add_one(VALID_COMMITMENTS[5])]
-        row_indices = [0] * len(cells)
-        column_indices = list(range(len(cells)))
-        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
-        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_valid_incorrect_row_commitment_{identifier}', {
-            'input': {
-                'row_commitments': encode_hex_list(row_commitments),
-                'row_indices': row_indices,
-                'column_indices': column_indices,
-                'cells': encode_hex_list(cells),
-                'proofs': encode_hex_list(proofs),
-            },
-            'output': False
-        }
-
-        # Incorrect cell
-        cells, proofs = VALID_CELLS_AND_PROOFS[6]
-        cells, proofs = cells[:1], proofs[:1]
-        row_commitments = [VALID_COMMITMENTS[6]]
-        row_indices = [0] * len(cells)
-        column_indices = list(range(len(cells)))
-        # Change last cell so it's wrong
-        cells[-1] = CELL_RANDOM_VALID2
-        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
-        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_valid_incorrect_cell_{identifier}', {
-            'input': {
-                'row_commitments': encode_hex_list(row_commitments),
-                'row_indices': row_indices,
-                'column_indices': column_indices,
-                'cells': encode_hex_list(cells),
-                'proofs': encode_hex_list(proofs),
-            },
-            'output': False
-        }
-
-        # Incorrect proof
-        cells, proofs = VALID_CELLS_AND_PROOFS[0]
-        cells, proofs = cells[:1], proofs[:1]
-        row_commitments = [VALID_COMMITMENTS[0]]
-        row_indices = [0] * len(cells)
-        column_indices = list(range(len(cells)))
-        # Change last proof so it's wrong
-        proofs[-1] = bls_add_one(proofs[-1])
-        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
-        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_valid_incorrect_proof_{identifier}', {
-            'input': {
-                'row_commitments': encode_hex_list(row_commitments),
-                'row_indices': row_indices,
-                'column_indices': column_indices,
-                'cells': encode_hex_list(cells),
-                'proofs': encode_hex_list(proofs),
-            },
-            'output': False
         }
 
 
