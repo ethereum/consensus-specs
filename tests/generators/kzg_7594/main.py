@@ -266,9 +266,81 @@ def case04_verify_cell_proof_batch():
             'output': True
         }
 
-    # Valid: Verify cells for different blobs
-    # Valid: Unused row commitment (strange but should work)
-    # Valid: Same cell multiple times (strange but should work)
+    # Valid: zero cells
+    cells, row_commitments, row_indices, column_indices, proofs = [], [], [], [], []
+    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_valid_zero_cells_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': True
+    }
+
+    # Valid: Verify cells from multiple blobs
+    cells = VALID_CELLS_AND_PROOFS[0][0]
+    cells += VALID_CELLS_AND_PROOFS[1][0]
+    proofs = VALID_CELLS_AND_PROOFS[0][1]
+    proofs += VALID_CELLS_AND_PROOFS[1][1]
+    row_commitments = VALID_COMMITMENTS[:2]
+    row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+    row_indices += [1] * spec.CELLS_PER_EXT_BLOB
+    column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+    column_indices += list(range(spec.CELLS_PER_EXT_BLOB))
+    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_valid_multiple_blobs_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': True
+    }
+
+    # Valid: Unused row commitments
+    cells, proofs = VALID_CELLS_AND_PROOFS[2]
+    # Provide list of all commitments
+    row_commitments = VALID_COMMITMENTS
+    row_indices = [2] * spec.CELLS_PER_EXT_BLOB
+    column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_valid_unused_row_commitments_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': True
+    }
+
+    # Valid: Same cell multiple times
+    row_commitments = [VALID_COMMITMENTS[3]]
+    row_indices = [3] * spec.CELLS_PER_EXT_BLOB
+    column_indices = [0, 0, 0]
+    cells = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
+    proofs = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
+    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+    yield f'verify_cell_proof_batch_case_valid_same_cell_multiple_times_{identifier}', {
+        'input': {
+            'row_commitments': encode_hex_list(row_commitments),
+            'row_indices': row_indices,
+            'column_indices': column_indices,
+            'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
+        },
+        'output': True
+    }
 
     # Edge case: Invalid row commitment
     for i, commitment in enumerate(INVALID_G1_POINTS):
@@ -372,15 +444,161 @@ def case04_verify_cell_proof_batch():
             'output': None
         }
 
-        # Edge case: Bad commitment count
-        # Edge case: Bad row_indices count
-        # Edge case: Bad column_indices count
-        # Edge case: Bad cells count
-        # Edge case: Bad proofs count
+        # Edge case: Missing a row commitment
+        cells, proofs = VALID_CELLS_AND_PROOFS[0]
+        # Do not include the row commitment
+        row_commitments = []
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_missing_row_commitment_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
 
-        # Incorrect commitment
+        # Edge case: Missing a row index
+        cells, proofs = VALID_CELLS_AND_PROOFS[1]
+        row_commitments = [VALID_COMMITMENTS[1]]
+        # Leave off one of the row indices
+        row_indices = [0] * (spec.CELLS_PER_EXT_BLOB - 1)
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_missing_row_index_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+        # Edge case: Missing a column index
+        cells, proofs = VALID_CELLS_AND_PROOFS[2]
+        row_commitments = [VALID_COMMITMENTS[2]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        # Leave off one of the column indices
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB - 1))
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_missing_column_index_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+        # Edge case: Missing a cell
+        cells, proofs = VALID_CELLS_AND_PROOFS[3]
+        row_commitments = [VALID_COMMITMENTS[3]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Remove the last proof
+        cells = cells[:-1]
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_missing_cell_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+        # Edge case: Missing a proof
+        cells, proofs = VALID_CELLS_AND_PROOFS[4]
+        row_commitments = [VALID_COMMITMENTS[4]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Remove the last proof
+        proofs = proofs[:-1]
+        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_invalid_missing_proof_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': None
+        }
+
+        # Incorrect row commitment
+        cells, proofs = VALID_CELLS_AND_PROOFS[5]
+        # Change commitment so it's wrong
+        row_commitments = [bls_add_one(VALID_COMMITMENTS[5])]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_valid_incorrect_row_commitment_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': False
+        }
+
         # Incorrect cell
+        cells, proofs = VALID_CELLS_AND_PROOFS[6]
+        row_commitments = [VALID_COMMITMENTS[6]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Change last cell so it's wrong
+        cells[-1] = bls_add_one(cells[-1])
+        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_valid_incorrect_cell_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': False
+        }
+
         # Incorrect proof
+        cells, proofs = VALID_CELLS_AND_PROOFS[0]
+        row_commitments = [VALID_COMMITMENTS[0]]
+        row_indices = [0] * spec.CELLS_PER_EXT_BLOB
+        column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+        # Change last proof so it's wrong
+        proofs[-1] = bls_add_one(proofs[-1])
+        assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+        identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
+        yield f'verify_cell_proof_batch_case_valid_incorrect_proof_{identifier}', {
+            'input': {
+                'row_commitments': encode_hex_list(row_commitments),
+                'row_indices': row_indices,
+                'column_indices': column_indices,
+                'cells': encode_hex_list(cells),
+                'proofs': encode_hex_list(proofs),
+            },
+            'output': False
+        }
 
 
 ###############################################################################
