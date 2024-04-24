@@ -815,9 +815,9 @@ def create_provider(fork_name: SpecForkName,
             yield gen_typing.TestCase(
                 fork_name=fork_name,
                 preset_name='general',
-                runner_name='kzg_7594',
+                runner_name='kzg',
                 handler_name=handler_name,
-                suite_name='kzg_7594',
+                suite_name='kzg-mainnet',
                 case_name=case_name,
                 case_fn=lambda: [('data', 'data', case_content)]
             )
