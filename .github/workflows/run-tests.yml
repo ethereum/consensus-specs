@@ -34,6 +34,8 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
+        - name: install venv
+          run: sudo apt install -y python3-venv
 
   table_of_contents:
    runs-on: [self-hosted, size-xs]
