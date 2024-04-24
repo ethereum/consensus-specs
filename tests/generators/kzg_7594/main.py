@@ -326,9 +326,9 @@ def case04_verify_cell_proof_batch():
     # Valid: Same cell multiple times
     row_commitments = [VALID_COMMITMENTS[3]]
     row_indices = [0] * 3
-    column_indices = [0, 0, 0]
-    cells = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
-    proofs = [VALID_CELLS_AND_PROOFS[3][i] for i in column_indices]
+    column_indices = [0] * 3
+    cells = [VALID_CELLS_AND_PROOFS[3][0]] * 3
+    proofs = [VALID_CELLS_AND_PROOFS[3][1]] * 3
     assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
     yield f'verify_cell_proof_batch_case_valid_same_cell_multiple_times_{identifier}', {
