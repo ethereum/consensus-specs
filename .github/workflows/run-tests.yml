@@ -34,8 +34,6 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-        - name: install build-essentials
-          run: sudo apt-get -y install build-essential
 
   table_of_contents:
    runs-on: [self-hosted, size-xs]
@@ -55,6 +53,9 @@ jobs:
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v3.2.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
       - name: Check codespell
         run: pip3 install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
 
