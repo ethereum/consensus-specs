@@ -900,6 +900,23 @@ def test_sm_links_tree_model(spec,
     yield 'steps', test_steps
 
 
+def _should_be_justified(parents, block_epochs, current_justifications, previous_justifications, epoch) -> bool:
+    blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
+    children = [i for i, p in enumerate(parents) if (p in blocks)]
+
+    # Check if any block justifies the epoch
+    for b in blocks:
+        if current_justifications[b]:
+            return True
+
+    # Check if a child of any block justifies the epoch
+    for c in children:
+        if previous_justifications[c]:
+            return True
+
+    return False
+
+
 def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, previous_justifications,
         current_justifications, rnd: random.Random, debug) -> ([], []):
     anchor_epoch = block_epochs[0]
@@ -917,9 +934,7 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
         if len(current_blocks) == 0:
             continue
 
-        # There should be enough slots to propose all blocks
-        assert (spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT) >= len(
-            current_blocks), "Unsatisfiable constraints: not enough slots to propose all blocks: " + str(current_blocks)
+        assert len(current_blocks) <= spec.SLOTS_PER_EPOCH, 'Number of blocks does not fit into an epoch'
 
         # Case 2. Blocks are from disjoint subtrees -- not supported yet
         assert len(
@@ -931,7 +946,16 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
 
         state = ancestor_tip.beacon_state
         attestations = ancestor_tip.attestations
-        threshold_slot = spec.compute_start_slot_at_epoch(epoch) + JUSTIFYING_SLOT
+        if _should_be_justified(parents, block_epochs, current_justifications, previous_justifications, epoch):
+            common_prefix_len = JUSTIFYING_SLOT
+        else:
+            common_prefix_len = min(JUSTIFYING_SLOT, spec.SLOTS_PER_EPOCH - len(current_blocks))
+
+        threshold_slot = spec.compute_start_slot_at_epoch(epoch) + common_prefix_len
+
+        # There should be enough slots to propose all blocks
+        assert (spec.SLOTS_PER_EPOCH - common_prefix_len) >= len(
+            current_blocks), "Unsatisfiable constraints: not enough slots to propose all blocks: " + str(current_blocks)
 
         # Build the chain up to but excluding a block that will justify current checkpoint
         while (state.slot < threshold_slot):
@@ -956,7 +980,7 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
         # i.e. block capacity is enough to accommodate attestations to justify previus and current epoch checkpoints
         # if that needed. Considering that most of attestations were already included into the common chain prefix,
         # we assume it is possible
-        empty_slot_count = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT - len(current_blocks)
+        empty_slot_count = spec.SLOTS_PER_EPOCH - common_prefix_len - len(current_blocks)
         block_distribution = current_blocks.copy() + [-1 for _ in range(0, empty_slot_count)]
 
         # Randomly distribute blocks across slots
