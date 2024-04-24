@@ -43,7 +43,7 @@ jobs:
             . "$NVM_DIR/nvm.sh"
             nvm install node
         - name: install build-essentials
-          run: sudo apt-get install build-essential
+          run: sudo apt-get -y install build-essential
 
   table_of_contents:
    runs-on: [self-hosted, size-xs]
