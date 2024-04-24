@@ -37,11 +37,13 @@ jobs:
         - name: install nvm
           run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
         - name: setup env
-          run: export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+          run: echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
         - name: install node
-          run: nvm install node
+          run: |
+            . "$NVM_DIR/nvm.sh"
+            nvm install node
         - name: install build-essentials
-          run: sudo apt-get install build-essentials
+          run: sudo apt-get install build-essential
 
   table_of_contents:
    runs-on: [self-hosted, size-xs]
