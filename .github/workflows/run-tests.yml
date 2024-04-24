@@ -38,11 +38,11 @@ jobs:
           run: sudo apt install -y python3-venv
 
   table_of_contents:
-   runs-on: [self-hosted, size-xs]
+   runs-on: [self-hosted, size-l-x64]
    needs: preclear
    steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -50,25 +50,25 @@ jobs:
         run: npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: [self-hosted, size-xs]
+   runs-on: [self-hosted, size-l-x64]
    needs: preclear
    steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       - name: install codespell package
         run: sudo apt -y install codespell
       - name: Check codespell
-        run: pip3 install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
+        run: make codespell
 
   lint:
-    runs-on: [self-hosted, size-xs]
+    runs-on: [self-hosted, size-l-x64]
     needs: preclear
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -82,14 +82,14 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted, size-xs]
+    runs-on: [self-hosted, size-l-x64]
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -120,7 +120,7 @@ jobs:
           path: tests/core/pyspec/test-reports
 
   cleanup:
-      runs-on: [self-hosted, size-xs]
+      runs-on: [self-hosted, size-l-x64]
       needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
       if: always()
       steps:
