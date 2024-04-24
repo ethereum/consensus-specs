@@ -15,6 +15,7 @@ from eth2spec.test.utils.kzg_tests import (
     BLOB_RANDOM_VALID2,
     BLOB_RANDOM_VALID3,
     CELL_RANDOM_VALID1,
+    CELL_RANDOM_VALID2,
     INVALID_BLOBS,
     INVALID_G1_POINTS,
     INVALID_INDIVIDUAL_CELL_BYTES,
@@ -566,7 +567,7 @@ def case04_verify_cell_proof_batch():
         row_indices = [0] * spec.CELLS_PER_EXT_BLOB
         column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
         # Change last cell so it's wrong
-        cells[-1] = bls_add_one(cells[-1])
+        cells[-1] = CELL_RANDOM_VALID2
         assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
         yield f'verify_cell_proof_batch_case_valid_incorrect_cell_{identifier}', {
