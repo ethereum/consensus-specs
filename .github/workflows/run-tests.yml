@@ -25,7 +25,7 @@ on:
 
 jobs:
   preclear:
-      runs-on: [self-hosted, size-xs]
+      runs-on: [self-hosted, size-l]
       if: always()
       steps:
         - name: 'Cleanup build folder'
@@ -38,7 +38,7 @@ jobs:
           run: sudo apt install -y python3-venv
 
   table_of_contents:
-   runs-on: [self-hosted, size-l-x64]
+   runs-on: [self-hosted, size-l]
    needs: preclear
    steps:
       - name: Checkout this repo
@@ -50,7 +50,7 @@ jobs:
         run: npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: [self-hosted, size-l-x64]
+   runs-on: [self-hosted, size-l]
    needs: preclear
    steps:
       - name: Checkout this repo
@@ -64,7 +64,7 @@ jobs:
         run: make codespell
 
   lint:
-    runs-on: [self-hosted, size-l-x64]
+    runs-on: [self-hosted, size-l]
     needs: preclear
     steps:
       - name: Checkout this repo
@@ -82,7 +82,7 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted, size-l-x64]
+    runs-on: [self-hosted, size-l]
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
@@ -120,7 +120,7 @@ jobs:
           path: tests/core/pyspec/test-reports
 
   cleanup:
-      runs-on: [self-hosted, size-l-x64]
+      runs-on: [self-hosted, size-l]
       needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
       if: always()
       steps:
