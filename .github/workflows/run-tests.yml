@@ -34,8 +34,10 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-        - name: install npm
+        - name: install nvm
           run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        - name: setup env
+          run: export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
         - name: install node
           run: nvm install node
         - name: install build-essentials
