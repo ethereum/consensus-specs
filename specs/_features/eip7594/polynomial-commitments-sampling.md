@@ -480,9 +480,9 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
 ```python
 def verify_cell_kzg_proof(commitment_bytes: Bytes48,
-                      cell_id: CellID,
-                      cell: Cell,
-                      proof_bytes: Bytes48) -> bool:
+                          cell_id: CellID,
+                          cell: Cell,
+                          proof_bytes: Bytes48) -> bool:
     """
     Check a cell proof
 
@@ -506,10 +506,10 @@ def verify_cell_kzg_proof(commitment_bytes: Bytes48,
 
 ```python
 def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
-                            row_indices: Sequence[RowIndex],
-                            column_indices: Sequence[ColumnIndex],
-                            cells: Sequence[Cell],
-                            proofs_bytes: Sequence[Bytes48]) -> bool:
+                                row_indices: Sequence[RowIndex],
+                                column_indices: Sequence[ColumnIndex],
+                                cells: Sequence[Cell],
+                                proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
     matrix. The list of all commitments is also provided in row_commitments_bytes.
