@@ -45,7 +45,7 @@ constraint forall(b in BLOCK)(es[b] <= curr_e);
 constraint forall(b in BLOCK)(get_vse(b) <= store_je);
 constraint exists(b in BLOCK)(get_vse(b) == store_je);
 
-predicate is_leaf(var BLOCK: b) = not exists(child in BLOCK where child < max_block)(parents[child] == b);
+predicate is_leaf(var BLOCK: b) = not exists(child in BLOCK where child > b /\ child <= max_block)(parents[child] == b);
 
 var BLOCK: target_block;
 var BLOCK: max_block;
