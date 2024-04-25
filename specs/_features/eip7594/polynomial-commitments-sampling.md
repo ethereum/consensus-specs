@@ -249,11 +249,13 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     diff = apos - bpos
     while diff >= 0:
         quot = div(a[apos], b[bpos])
-        o.insert(0, quot)
+        o.append(quot)
         for i in range(bpos, -1, -1):
             a[diff + i] = (int(a[diff + i]) - int(b[i] + BLS_MODULUS) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
+
+    o.reverse()
     return PolynomialCoeff(o)
 ```
 
