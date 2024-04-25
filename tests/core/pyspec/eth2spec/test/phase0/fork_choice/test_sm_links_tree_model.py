@@ -900,17 +900,12 @@ def test_sm_links_tree_model(spec,
     yield 'steps', test_steps
 
 
-def _should_be_justified(parents, block_epochs, current_justifications, previous_justifications, epoch) -> bool:
-    blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
-    children = [i for i, p in enumerate(parents) if (p in blocks)]
+def _should_justifiy_epoch(parents, block_epochs, current_justifications, previous_justifications, block, epoch) -> bool:
+    if current_justifications[block]:
+        return True
 
-    # Check if any block justifies the epoch
-    for b in blocks:
-        if current_justifications[b]:
-            return True
-
-    # Check if a child of any block justifies the epoch
-    for c in children:
+    # Check if any child of the block justifies the epoch
+    for c in (b for b, p in enumerate(parents) if p == block):
         if previous_justifications[c]:
             return True
 
@@ -919,7 +914,22 @@ def _should_be_justified(parents, block_epochs, current_justifications, previous
 
 def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, previous_justifications,
         current_justifications, rnd: random.Random, debug) -> ([], []):
+    JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
+    JUSTIFYING_SLOT_COUNT = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
+
     anchor_epoch = block_epochs[0]
+
+    # Run constraint checks before starting to generate blocks
+    for epoch in range(anchor_epoch + 1, max(block_epochs) + 1):
+        current_blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
+        assert len(current_blocks) <= spec.SLOTS_PER_EPOCH, 'Number of blocks does not fit into an epoch=' + str(epoch)
+
+        justifying_blocks = [b for b in current_blocks if _should_justifiy_epoch(
+            parents, block_epochs, current_justifications, previous_justifications, b, epoch)]
+
+        # There should be enough slots to propose all blocks that are required to justify the epoch
+        assert len(justifying_blocks) <= JUSTIFYING_SLOT_COUNT, \
+            'Not enough slots to accommodate blocks justifying epoch=' + str(epoch)
 
     signed_blocks, anchor_tip = _advance_state_to_anchor_epoch(spec, genesis_state, anchor_epoch, debug)
 
@@ -927,14 +937,10 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
     # Initialize with the anchor block
     block_tips[0] = anchor_tip
 
-    JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
-
     for epoch in range(anchor_epoch + 1, max(block_epochs) + 1):
         current_blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
         if len(current_blocks) == 0:
             continue
-
-        assert len(current_blocks) <= spec.SLOTS_PER_EPOCH, 'Number of blocks does not fit into an epoch'
 
         # Case 2. Blocks are from disjoint subtrees -- not supported yet
         assert len(
@@ -946,16 +952,12 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
 
         state = ancestor_tip.beacon_state
         attestations = ancestor_tip.attestations
-        if _should_be_justified(parents, block_epochs, current_justifications, previous_justifications, epoch):
-            common_prefix_len = JUSTIFYING_SLOT
-        else:
-            common_prefix_len = min(JUSTIFYING_SLOT, spec.SLOTS_PER_EPOCH - len(current_blocks))
 
+        justifying_blocks = [b for b in current_blocks if _should_justifiy_epoch(
+            parents, block_epochs, current_justifications, previous_justifications, b, epoch)]
+
+        common_prefix_len = min(JUSTIFYING_SLOT, spec.SLOTS_PER_EPOCH - len(current_blocks))
         threshold_slot = spec.compute_start_slot_at_epoch(epoch) + common_prefix_len
-
-        # There should be enough slots to propose all blocks
-        assert (spec.SLOTS_PER_EPOCH - common_prefix_len) >= len(
-            current_blocks), "Unsatisfiable constraints: not enough slots to propose all blocks: " + str(current_blocks)
 
         # Build the chain up to but excluding a block that will justify current checkpoint
         while (state.slot < threshold_slot):
@@ -991,6 +993,10 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
 
         # Randomly distribute blocks across slots
         rnd.shuffle(block_distribution)
+
+        # Move all blocks that require to justify current epoch to the end to increase the chance of justification
+        block_distribution = [b for b in block_distribution if b not in justifying_blocks]
+        block_distribution = block_distribution + justifying_blocks
 
         for index, block in enumerate(block_distribution):
             slot = threshold_slot + index
