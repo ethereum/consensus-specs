@@ -82,7 +82,7 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted-ghr-size-chungus-x64]
+    runs-on: [self-hosted-ghr-size-megachungus-x64]
     needs: [preclear,lint,codespell,table_of_contents]
     strategy:
       matrix:
