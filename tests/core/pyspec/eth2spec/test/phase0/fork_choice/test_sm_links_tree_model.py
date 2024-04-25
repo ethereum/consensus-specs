@@ -964,7 +964,13 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
                 new_block, state, _, _ = _produce_block(spec, state, [])
                 signed_blocks.append(new_block)
             else:
-                new_block, state, attestations, _ = _produce_block(spec, state, attestations)
+                # Prevent previous epoch from being accidentally justified
+                # by filtering out previous epoch attestations
+                curr_epoch_attestations = [a for a in attestations if
+                                           epoch == spec.compute_epoch_at_slot(a.data.slot)]
+                other_attestations = [a for a in attestations if a not in curr_epoch_attestations]
+                new_block, state, curr_epoch_attestations, _ = _produce_block(spec, state, curr_epoch_attestations)
+                attestations = other_attestations + curr_epoch_attestations
                 signed_blocks.append(new_block)
 
             # Attest
