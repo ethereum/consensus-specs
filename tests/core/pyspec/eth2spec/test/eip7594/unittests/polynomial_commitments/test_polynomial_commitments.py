@@ -31,28 +31,28 @@ def test_fft(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_proof(spec):
+def test_verify_cell_kzg_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
 
     cell_id = 0
-    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
     cell_id = 1
-    assert spec.verify_cell_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_proof_batch(spec):
+def test_verify_cell_kzg_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_proofs(blob)
 
     assert len(cells) == len(proofs)
 
-    assert spec.verify_cell_proof_batch(
+    assert spec.verify_cell_kzg_proof_batch(
         row_commitments_bytes=[commitment],
         row_indices=[0, 0],
         column_indices=[0, 4],

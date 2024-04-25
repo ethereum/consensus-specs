@@ -40,8 +40,8 @@
     - [`compute_cells_and_proofs`](#compute_cells_and_proofs)
     - [`compute_cells`](#compute_cells)
   - [Cell verification](#cell-verification)
-    - [`verify_cell_proof`](#verify_cell_proof)
-    - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
+    - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
+    - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
   - [`recover_shifted_data`](#recover_shifted_data)
@@ -476,10 +476,10 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
 ### Cell verification
 
-#### `verify_cell_proof`
+#### `verify_cell_kzg_proof`
 
 ```python
-def verify_cell_proof(commitment_bytes: Bytes48,
+def verify_cell_kzg_proof(commitment_bytes: Bytes48,
                       cell_id: CellID,
                       cell: Cell,
                       proof_bytes: Bytes48) -> bool:
@@ -502,10 +502,10 @@ def verify_cell_proof(commitment_bytes: Bytes48,
         bytes_to_kzg_proof(proof_bytes))
 ```
 
-#### `verify_cell_proof_batch`
+#### `verify_cell_kzg_proof_batch`
 
 ```python
-def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
+def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                             row_indices: Sequence[RowIndex],
                             column_indices: Sequence[ColumnIndex],
                             cells: Sequence[Cell],

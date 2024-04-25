@@ -1,4 +1,4 @@
-# Test format: Verify cell proof batch
+# Test format: Verify cell KZG proof batch
 
 Use the cell KZG `proofs` to verify that the KZG `row_commitments` for the given `cells` are correct.
 
@@ -25,4 +25,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `verify_cell_proof_batch` handler should verify that `row_commitments` are correct KZG commitments to `cells` by using the cell KZG proofs `proofs`, and the result should match the expected `output`. If any of the commitments or proofs are invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve), any cell is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element), or any `cell_id` is invalid (e.g. greater than the number of cells for an extended blob), it should error, i.e. the output should be `null`.
+The `verify_cell_kzg_proof_batch` handler should verify that `row_commitments` are correct KZG commitments to `cells` by using the cell KZG proofs `proofs`, and the result should match the expected `output`. If any of the commitments or proofs are invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve), any cell is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element), or any `cell_id` is invalid (e.g. greater than the number of cells for an extended blob), it should error, i.e. the output should be `null`.
