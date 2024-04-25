@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import DENEB, ELECTRA
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
 if __name__ == "__main__":
@@ -31,6 +31,9 @@ if __name__ == "__main__":
     electra_mods = deneb_mods  # No additional Electra specific fork choice tests
 
     all_mods = {
+        ALTAIR: altair_mods,
+        BELLATRIX: bellatrix_mods,
+        CAPELLA: capella_mods,
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
