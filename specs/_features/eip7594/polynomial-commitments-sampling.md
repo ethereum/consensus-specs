@@ -251,7 +251,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
         quot = div(a[apos], b[bpos])
         o.append(quot)
         for i in range(bpos, -1, -1):
-            a[diff + i] = (int(a[diff + i]) - int(b[i] + BLS_MODULUS) * int(quot)) % BLS_MODULUS
+            a[diff + i] = (int(a[diff + i]) + (BLS_MODULUS - int(b[i])) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
 
