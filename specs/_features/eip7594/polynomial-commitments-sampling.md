@@ -254,7 +254,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
             a[diff + i] = (int(a[diff + i]) - int(b[i] + BLS_MODULUS) * int(quot)) % BLS_MODULUS
         apos -= 1
         diff -= 1
-    return PolynomialCoeff([x % BLS_MODULUS for x in o])
+    return PolynomialCoeff(o)
 ```
 
 #### `shift_polynomialcoeff`
