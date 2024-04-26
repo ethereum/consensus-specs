@@ -37,7 +37,7 @@
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
-    - [`compute_cells_and_proofs`](#compute_cells_and_proofs)
+    - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
     - [`compute_cells`](#compute_cells)
   - [Cell verification](#cell-verification)
     - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
@@ -419,10 +419,10 @@ def coset_for_cell(cell_id: CellID) -> Coset:
 
 ### Cell computation
 
-#### `compute_cells_and_proofs`
+#### `compute_cells_and_kzg_proofs`
 
 ```python
-def compute_cells_and_proofs(blob: Blob) -> Tuple[
+def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """

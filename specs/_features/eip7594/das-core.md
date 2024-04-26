@@ -175,7 +175,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
         block.body,
         get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
     )
-    cells_and_proofs = [compute_cells_and_proofs(blob) for blob in blobs]
+    cells_and_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]
     blob_count = len(blobs)
     cells = [cells_and_proofs[i][0] for i in range(blob_count)]
     proofs = [cells_and_proofs[i][1] for i in range(blob_count)]

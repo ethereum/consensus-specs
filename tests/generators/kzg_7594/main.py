@@ -60,17 +60,17 @@ def case01_compute_cells():
 
 
 ###############################################################################
-# Test cases for compute_cells_and_proofs
+# Test cases for compute_cells_and_kzg_proofs
 ###############################################################################
 
-def case02_compute_cells_and_proofs():
+def case02_compute_cells_and_kzg_proofs():
     # Valid cases
     for blob in VALID_BLOBS:
-        cells, proofs = spec.compute_cells_and_proofs(blob)
+        cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
         # Save cells & proofs here to save on time.
         VALID_CELLS_AND_PROOFS.append((cells, proofs))
         identifier = make_id(blob)
-        yield f'compute_cells_and_proofs_case_valid_{identifier}', {
+        yield f'compute_cells_and_kzg_proofs_case_valid_{identifier}', {
             'input': {
                 'blob': encode_hex(blob),
             },
@@ -79,9 +79,9 @@ def case02_compute_cells_and_proofs():
 
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
-        expect_exception(spec.compute_cells_and_proofs, blob)
+        expect_exception(spec.compute_cells_and_kzg_proofs, blob)
         identifier = make_id(blob)
-        yield f'compute_cells_and_proofs_case_invalid_blob_{identifier}', {
+        yield f'compute_cells_and_kzg_proofs_case_invalid_blob_{identifier}', {
             'input': {
                 'blob': encode_hex(blob)
             },
@@ -830,7 +830,7 @@ if __name__ == "__main__":
     gen_runner.run_generator("kzg_7594", [
         # EIP-7594
         create_provider(EIP7594, 'compute_cells', case01_compute_cells),
-        create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
+        create_provider(EIP7594, 'compute_cells_and_kzg_proofs', case02_compute_cells_and_kzg_proofs),
         create_provider(EIP7594, 'verify_cell_kzg_proof', case03_verify_cell_kzg_proof),
         create_provider(EIP7594, 'verify_cell_kzg_proof_batch', case04_verify_cell_kzg_proof_batch),
         create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),

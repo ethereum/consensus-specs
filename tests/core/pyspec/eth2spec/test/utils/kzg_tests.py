@@ -152,4 +152,4 @@ INVALID_INDIVIDUAL_CELL_BYTES = [CELL_ALL_MAX_VALUE, CELL_ONE_INVALID_FIELD, CEL
 
 # Cells & Proofs
 
-VALID_CELLS_AND_PROOFS = []  # Saved in case02_compute_cells_and_proofs
+VALID_CELLS_AND_PROOFS = []  # Saved in case02_compute_cells_and_kzg_proofs

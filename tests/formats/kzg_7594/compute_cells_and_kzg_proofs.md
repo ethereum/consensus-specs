@@ -1,4 +1,4 @@
-# Test format: Compute cells and proofs
+# Test format: Compute cells and KZG proofs
 
 Compute the cells and cell KZG proofs for a given `blob`.
 
@@ -20,4 +20,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `compute_cells_and_proofs` handler should compute the cells (chunks of an extended blob) and cell KZG proofs for `blob`, and the result should match the expected `output`. If the blob is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element) it should error, i.e. the output should be `null`.
+The `compute_cells_and_kzg_proofs` handler should compute the cells (chunks of an extended blob) and cell KZG proofs for `blob`, and the result should match the expected `output`. If the blob is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element) it should error, i.e. the output should be `null`.
