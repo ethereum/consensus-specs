@@ -60,17 +60,17 @@ def case01_compute_cells():
 
 
 ###############################################################################
-# Test cases for compute_cells_and_proofs
+# Test cases for compute_cells_and_kzg_proofs
 ###############################################################################
 
-def case02_compute_cells_and_proofs():
+def case02_compute_cells_and_kzg_proofs():
     # Valid cases
     for blob in VALID_BLOBS:
-        cells, proofs = spec.compute_cells_and_proofs(blob)
+        cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
         # Save cells & proofs here to save on time.
         VALID_CELLS_AND_PROOFS.append((cells, proofs))
         identifier = make_id(blob)
-        yield f'compute_cells_and_proofs_case_valid_{identifier}', {
+        yield f'compute_cells_and_kzg_proofs_case_valid_{identifier}', {
             'input': {
                 'blob': encode_hex(blob),
             },
@@ -79,9 +79,9 @@ def case02_compute_cells_and_proofs():
 
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
-        expect_exception(spec.compute_cells_and_proofs, blob)
+        expect_exception(spec.compute_cells_and_kzg_proofs, blob)
         identifier = make_id(blob)
-        yield f'compute_cells_and_proofs_case_invalid_blob_{identifier}', {
+        yield f'compute_cells_and_kzg_proofs_case_invalid_blob_{identifier}', {
             'input': {
                 'blob': encode_hex(blob)
             },
@@ -90,10 +90,10 @@ def case02_compute_cells_and_proofs():
 
 
 ###############################################################################
-# Test cases for verify_cell_proof
+# Test cases for verify_cell_kzg_proof
 ###############################################################################
 
-def case03_verify_cell_proof():
+def case03_verify_cell_kzg_proof():
     # Valid cases
     for i in range(len(VALID_BLOBS)):
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
@@ -101,9 +101,9 @@ def case03_verify_cell_proof():
         cell_id = (2 ** i - 1) % spec.CELLS_PER_EXT_BLOB
         cell = cells[cell_id]
         proof = proofs[cell_id]
-        assert spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        assert spec.verify_cell_kzg_proof(commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_valid_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_valid_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -120,9 +120,9 @@ def case03_verify_cell_proof():
         cell_id = 99 % spec.CELLS_PER_EXT_BLOB
         cell = cells[cell_id]
         proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        assert not spec.verify_cell_kzg_proof(commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_commitment_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_incorrect_commitment_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -139,9 +139,9 @@ def case03_verify_cell_proof():
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         cell = VALID_INDIVIDUAL_RANDOM_CELL_BYTES[i]
         proof = proofs[cell_id]
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        assert not spec.verify_cell_kzg_proof(commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_cell_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_incorrect_cell_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -158,9 +158,9 @@ def case03_verify_cell_proof():
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         cell = cells[cell_id]
         proof = bls_add_one(proofs[cell_id])
-        assert not spec.verify_cell_proof(commitment, cell_id, cell, proof)
+        assert not spec.verify_cell_kzg_proof(commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_incorrect_proof_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_incorrect_proof_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -176,9 +176,9 @@ def case03_verify_cell_proof():
         cell_id = 81 % spec.CELLS_PER_EXT_BLOB
         cell = cells[cell_id]
         proof = proofs[cell_id]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        expect_exception(spec.verify_cell_kzg_proof, commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_invalid_commitment_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_invalid_commitment_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -194,9 +194,9 @@ def case03_verify_cell_proof():
         commitment = VALID_COMMITMENTS[1]
         cell = cells[0]
         proof = proofs[0]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        expect_exception(spec.verify_cell_kzg_proof, commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_invalid_cell_id_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_invalid_cell_id_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -212,9 +212,9 @@ def case03_verify_cell_proof():
         commitment = VALID_COMMITMENTS[2]
         cells, proofs = VALID_CELLS_AND_PROOFS[2]
         proof = proofs[cell_id]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        expect_exception(spec.verify_cell_kzg_proof, commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_invalid_cell_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_invalid_cell_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -230,9 +230,9 @@ def case03_verify_cell_proof():
         commitment = VALID_COMMITMENTS[3]
         cell_id = 36 % spec.CELLS_PER_EXT_BLOB
         cell = cells[cell_id]
-        expect_exception(spec.verify_cell_proof, commitment, cell_id, cell, proof)
+        expect_exception(spec.verify_cell_kzg_proof, commitment, cell_id, cell, proof)
         identifier = make_id(commitment, cell_id, cell, proof)
-        yield f'verify_cell_proof_case_invalid_proof_{identifier}', {
+        yield f'verify_cell_kzg_proof_case_invalid_proof_{identifier}', {
             'input': {
                 'commitment': encode_hex(commitment),
                 'cell_id': cell_id,
@@ -244,19 +244,19 @@ def case03_verify_cell_proof():
 
 
 ###############################################################################
-# Test cases for verify_cell_proof_batch
+# Test cases for verify_cell_kzg_proof_batch
 ###############################################################################
 
-def case04_verify_cell_proof_batch():
+def case04_verify_cell_kzg_proof_batch():
     # Valid cases
     for i in range(len(VALID_BLOBS)):
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         row_commitments = [VALID_COMMITMENTS[i]]
         row_indices = [0] * spec.CELLS_PER_EXT_BLOB
         column_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-        assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+        assert spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_valid_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_valid_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -269,9 +269,9 @@ def case04_verify_cell_proof_batch():
 
     # Valid: zero cells
     cells, row_commitments, row_indices, column_indices, proofs = [], [], [], [], []
-    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_valid_zero_cells_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_valid_zero_cells_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -290,9 +290,9 @@ def case04_verify_cell_proof_batch():
     column_indices = [0, 0]
     cells = [cells0[0], cells1[0]]
     proofs = [proofs0[0], proofs1[0]]
-    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_valid_multiple_blobs_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_valid_multiple_blobs_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -310,9 +310,9 @@ def case04_verify_cell_proof_batch():
     row_commitments = VALID_COMMITMENTS
     row_indices = [2] * len(cells)
     column_indices = list(range(len(cells)))
-    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_valid_unused_row_commitments_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_valid_unused_row_commitments_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -330,9 +330,9 @@ def case04_verify_cell_proof_batch():
     column_indices = [0] * num_duplicates
     cells = [VALID_CELLS_AND_PROOFS[3][0][0]] * num_duplicates
     proofs = [VALID_CELLS_AND_PROOFS[3][1][0]] * num_duplicates
-    assert spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_valid_same_cell_multiple_times_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_valid_same_cell_multiple_times_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -350,9 +350,9 @@ def case04_verify_cell_proof_batch():
     row_commitments = [bls_add_one(VALID_COMMITMENTS[5])]
     row_indices = [0] * len(cells)
     column_indices = list(range(len(cells)))
-    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert not spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_incorrect_row_commitment_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_incorrect_row_commitment_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -371,9 +371,9 @@ def case04_verify_cell_proof_batch():
     column_indices = list(range(len(cells)))
     # Change last cell so it's wrong
     cells[-1] = CELL_RANDOM_VALID2
-    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert not spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_incorrect_cell_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_incorrect_cell_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -392,9 +392,9 @@ def case04_verify_cell_proof_batch():
     column_indices = list(range(len(cells)))
     # Change last proof so it's wrong
     proofs[-1] = bls_add_one(proofs[-1])
-    assert not spec.verify_cell_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
+    assert not spec.verify_cell_kzg_proof_batch(row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_incorrect_proof_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_incorrect_proof_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -413,9 +413,9 @@ def case04_verify_cell_proof_batch():
         row_commitments = [commitment]
         row_indices = [0] * len(cells)
         column_indices = list(range(len(cells)))
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_row_commitment_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_row_commitment_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -434,9 +434,9 @@ def case04_verify_cell_proof_batch():
     # Set first row index to an invalid value
     row_indices[0] = 1
     column_indices = list(range(len(cells)))
-    expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+    expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_invalid_row_index_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_invalid_row_index_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -455,9 +455,9 @@ def case04_verify_cell_proof_batch():
     column_indices = list(range(len(cells)))
     # Set first column index to an invalid value
     column_indices[0] = spec.CELLS_PER_EXT_BLOB
-    expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+    expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
     identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-    yield f'verify_cell_proof_batch_case_invalid_column_index_{identifier}', {
+    yield f'verify_cell_kzg_proof_batch_case_invalid_column_index_{identifier}', {
         'input': {
             'row_commitments': encode_hex_list(row_commitments),
             'row_indices': row_indices,
@@ -477,9 +477,9 @@ def case04_verify_cell_proof_batch():
         column_indices = list(range(len(cells)))
         # Set first cell to the invalid cell
         cells[0] = cell
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_cell_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_cell_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -499,9 +499,9 @@ def case04_verify_cell_proof_batch():
         column_indices = list(range(len(cells)))
         # Set first proof to the invalid proof
         proofs[0] = proof
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_proof_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_proof_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -519,9 +519,9 @@ def case04_verify_cell_proof_batch():
         row_commitments = []
         row_indices = [0] * len(cells)
         column_indices = list(range(len(cells)))
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_missing_row_commitment_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_missing_row_commitment_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -539,9 +539,9 @@ def case04_verify_cell_proof_batch():
         # Leave off one of the row indices
         row_indices = [0] * (len(cells) - 1)
         column_indices = list(range(len(cells)))
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_missing_row_index_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_missing_row_index_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -559,9 +559,9 @@ def case04_verify_cell_proof_batch():
         row_indices = [0] * len(cells)
         # Leave off one of the column indices
         column_indices = list(range(len(cells) - 1))
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_missing_column_index_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_missing_column_index_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -580,9 +580,9 @@ def case04_verify_cell_proof_batch():
         column_indices = list(range(len(cells)))
         # Remove the last proof
         cells = cells[:-1]
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_missing_cell_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_missing_cell_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -601,9 +601,9 @@ def case04_verify_cell_proof_batch():
         column_indices = list(range(len(cells)))
         # Remove the last proof
         proofs = proofs[:-1]
-        expect_exception(spec.verify_cell_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
+        expect_exception(spec.verify_cell_kzg_proof_batch, row_commitments, row_indices, column_indices, cells, proofs)
         identifier = make_id(row_commitments, row_indices, column_indices, cells, proofs)
-        yield f'verify_cell_proof_batch_case_invalid_missing_proof_{identifier}', {
+        yield f'verify_cell_kzg_proof_batch_case_invalid_missing_proof_{identifier}', {
             'input': {
                 'row_commitments': encode_hex_list(row_commitments),
                 'row_indices': row_indices,
@@ -830,8 +830,8 @@ if __name__ == "__main__":
     gen_runner.run_generator("kzg_7594", [
         # EIP-7594
         create_provider(EIP7594, 'compute_cells', case01_compute_cells),
-        create_provider(EIP7594, 'compute_cells_and_proofs', case02_compute_cells_and_proofs),
-        create_provider(EIP7594, 'verify_cell_proof', case03_verify_cell_proof),
-        create_provider(EIP7594, 'verify_cell_proof_batch', case04_verify_cell_proof_batch),
+        create_provider(EIP7594, 'compute_cells_and_kzg_proofs', case02_compute_cells_and_kzg_proofs),
+        create_provider(EIP7594, 'verify_cell_kzg_proof', case03_verify_cell_kzg_proof),
+        create_provider(EIP7594, 'verify_cell_kzg_proof_batch', case04_verify_cell_kzg_proof_batch),
         create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
     ])
