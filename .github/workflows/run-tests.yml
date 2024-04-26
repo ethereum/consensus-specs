@@ -32,6 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: ''
       - name: Check table of contents
         run: npm install -g doctoc@2.2.0 && make check_toc
 
@@ -43,6 +44,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: ''
       - name: Check codespell
         run: make codespell
 
@@ -54,6 +56,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: ''
       - name: Install pyspec requirements
         run: make install_test
       - name: Run linter for pyspec
@@ -73,6 +76,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: ''
       - name: set TEST_PRESET_TYPE
         if: github.event.inputs.test_preset_type != ''
         run: |
