@@ -1070,11 +1070,7 @@ def test_filter_block_tree_model(spec, state, model_params=None, debug=False, se
     anchor_epoch = block_epochs[0]
 
     # Ensure that there is no attempt to justify GENESIS_EPOCH + 1 as it is not supported by the protocol
-    for b in range(1, len(block_epochs)):
-        if block_epochs[b] == spec.GENESIS_EPOCH + 1:
-            assert not current_justifications[b], 'Justification of epoch 1 is not supported by the protocol'
-        if block_epochs[b] == spec.GENESIS_EPOCH + 2:
-            assert not previous_justifications[b], 'Justification of epoch 1 is not supported by the protocol'
+    assert store_justified_epoch != spec.GENESIS_EPOCH + 1, 'Justification of epoch 1 is not supported by the protocol'
 
     # Ensure that epoch(block) == epoch(parent) + 1
     for b in range(1, len(block_epochs)):
