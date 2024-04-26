@@ -8,6 +8,8 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Data size](#data-size)
@@ -39,6 +41,16 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
+## Constants
+
+The following values are (non-configurable) constants used throughout the specification.
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `UINT256_MAX` | `uint256(2**256 - 1)` |
+
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
@@ -54,7 +66,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `NUMBER_OF_COLUMNS` | `uint64(FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL)` (= 128) | Number of columns in the extended data matrix. |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix. |
 | `MAX_CELLS_IN_EXTENDED_MATRIX` | `uint64(MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS)` (= 768) | The data size of `ExtendedMatrix`. |
 
 ### Networking
@@ -96,8 +108,11 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     subnet_ids = []
     i = 0
     while len(subnet_ids) < custody_subnet_count:
+        if node_id == UINT256_MAX:
+            node_id = 0
+
         subnet_id = (
-            bytes_to_uint64(hash(uint_to_bytes(uint64(node_id + i)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(uint256(node_id + i)))[0:8])
             % DATA_COLUMN_SIDECAR_SUBNET_COUNT
         )
         if subnet_id not in subnet_ids:
@@ -106,11 +121,11 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     assert len(subnet_ids) == len(set(subnet_ids))
 
     columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    return [
+    return sorted([
         ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
         for i in range(columns_per_subnet)
         for subnet_id in subnet_ids
-    ]
+    ])
 ```
 
 #### `compute_extended_matrix`
@@ -143,9 +158,8 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
         cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
-        cells_bytes = [[bls_field_to_bytes(element) for element in cell] for cell in cells]
 
-        all_cells_for_row = recover_all_cells(cell_ids, cells_bytes)
+        all_cells_for_row = recover_all_cells(cell_ids, cells)
         extended_matrix.extend(all_cells_for_row)
     return ExtendedMatrix(extended_matrix)
 ```
@@ -161,7 +175,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
         block.body,
         get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
     )
-    cells_and_proofs = [compute_cells_and_proofs(blob) for blob in blobs]
+    cells_and_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]
     blob_count = len(blobs)
     cells = [cells_and_proofs[i][0] for i in range(blob_count)]
     proofs = [cells_and_proofs[i][1] for i in range(blob_count)]

@@ -225,6 +225,45 @@ def multiply(point, scalar):
     return py_ecc_mul(point, scalar)
 
 
+def multi_exp(points, integers):
+    """
+    Performs a multi-scalar multiplication between
+    `points` and `integers`.
+    `points` can either be in G1 or G2.
+    """
+    # Since this method accepts either G1 or G2, we need to know
+    # the type of the point to return. Hence, we need at least one point.
+    if not points or not integers:
+        raise Exception("Cannot call multi_exp with zero points or zero integers")
+
+    if bls == arkworks_bls or bls == fastest_bls:
+        # Convert integers into arkworks Scalars
+        scalars = []
+        for integer in integers:
+            int_as_bytes = integer.to_bytes(32, 'little')
+            scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
+
+        # Check if we need to perform a G1 or G2 multiexp
+        if isinstance(points[0], arkworks_G1):
+            return arkworks_G1.multiexp_unchecked(points, scalars)
+        elif isinstance(points[0], arkworks_G2):
+            return arkworks_G2.multiexp_unchecked(points, scalars)
+        else:
+            raise Exception("Invalid point type")
+
+    result = None
+    if isinstance(points[0], py_ecc_G1):
+        result = Z1()
+    elif isinstance(points[0], py_ecc_G2):
+        result = Z2()
+    else:
+        raise Exception("Invalid point type")
+
+    for point, scalar in points.zip(integers):
+        result = add(result, multiply(point, scalar))
+    return result
+
+
 def neg(point):
     """
     Returns the point negation of `point`
