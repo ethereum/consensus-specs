@@ -1,10 +1,13 @@
 from typing import Iterable
 
 from eth2spec.test.helpers.constants import (
-    CAPELLA, DENEB, ELECTRA,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     MINIMAL, MAINNET,
 )
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
+from eth2spec.test.altair.fork import test_altair_fork_basic, test_altair_fork_random
+from eth2spec.test.bellatrix.fork import test_bellatrix_fork_basic, test_bellatrix_fork_random
+from eth2spec.test.capella.fork import test_capella_fork_basic, test_capella_fork_random
 from eth2spec.test.deneb.fork import test_deneb_fork_basic, test_deneb_fork_random
 from eth2spec.test.electra.fork import test_electra_fork_basic, test_electra_fork_random
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
@@ -32,6 +35,12 @@ def create_provider(tests_src, preset_name: PresetBaseName,
 
 def _get_fork_tests_providers():
     for preset in [MINIMAL, MAINNET]:
+        yield create_provider(test_altair_fork_basic, preset, PHASE0, ALTAIR)
+        yield create_provider(test_altair_fork_random, preset, PHASE0, ALTAIR)
+        yield create_provider(test_bellatrix_fork_basic, preset, ALTAIR, BELLATRIX)
+        yield create_provider(test_bellatrix_fork_random, preset, ALTAIR, BELLATRIX)
+        yield create_provider(test_capella_fork_basic, preset, BELLATRIX, CAPELLA)
+        yield create_provider(test_capella_fork_random, preset, BELLATRIX, CAPELLA)
         yield create_provider(test_deneb_fork_basic, preset, CAPELLA, DENEB)
         yield create_provider(test_deneb_fork_random, preset, CAPELLA, DENEB)
         yield create_provider(test_electra_fork_basic, preset, DENEB, ELECTRA)
