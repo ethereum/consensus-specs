@@ -25,7 +25,7 @@ on:
 
 jobs:
   table_of_contents:
-   runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
         run: npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
