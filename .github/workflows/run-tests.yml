@@ -6,7 +6,7 @@ defaults:
 
 env:
   TEST_PRESET_TYPE: "minimal"
-
+  PIP_ROOT_USER_ACTION: "ignore"
 on:
   push:
     branches:
@@ -24,22 +24,8 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  preclear:
-      runs-on: [self-hosted-ghr-size-xl-x64]
-      if: always()
-      steps:
-        - name: 'Cleanup build folder'
-          run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-        - name: install venv
-          run: sudo apt install -y python3-venv
-
   table_of_contents:
-   runs-on: [self-hosted-ghr-size-xl-x64]
-   needs: preclear
+   runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
@@ -50,30 +36,24 @@ jobs:
         run: npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: [self-hosted-ghr-size-xl-x64]
-   needs: preclear
+   runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
    steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: install codespell package
-        run: sudo apt -y install codespell
       - name: Check codespell
         run: make codespell
 
   lint:
-    runs-on: [self-hosted-ghr-size-xl-x64]
-    needs: preclear
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: install venv
-        run: sudo apt install -y python3-venv
       - name: Install pyspec requirements
         run: make install_test
       - name: Run linter for pyspec
@@ -82,8 +62,8 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted-ghr-size-xl-x64]
-    needs: [preclear,lint,codespell,table_of_contents]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    needs: [lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
@@ -118,15 +98,3 @@ jobs:
         with:
           name: test-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
-
-  cleanup:
-      runs-on: [self-hosted-ghr-size-xl-x64]
-      needs: [preclear,pyspec-tests,codespell,lint,table_of_contents]
-      if: always()
-      steps:
-        - name: 'Cleanup build folder'
-          run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
