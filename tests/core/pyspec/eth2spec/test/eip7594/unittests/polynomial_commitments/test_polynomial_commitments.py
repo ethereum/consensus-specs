@@ -31,35 +31,32 @@ def test_fft(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_proof(spec):
+def test_verify_cell_kzg_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    cells, proofs = spec.compute_cells_and_proofs(blob)
-
-    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
+    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
     cell_id = 0
-    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
+    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
     cell_id = 1
-    assert spec.verify_cell_proof(commitment, cell_id, cells_bytes[cell_id], proofs[cell_id])
+    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_proof_batch(spec):
+def test_verify_cell_kzg_proof_batch(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
-    cells, proofs = spec.compute_cells_and_proofs(blob)
-    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
+    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
     assert len(cells) == len(proofs)
 
-    assert spec.verify_cell_proof_batch(
+    assert spec.verify_cell_kzg_proof_batch(
         row_commitments_bytes=[commitment],
         row_indices=[0, 0],
         column_indices=[0, 4],
-        cells_bytes=[cells_bytes[0], cells_bytes[4]],
+        cells=[cells[0], cells[4]],
         proofs_bytes=[proofs[0], proofs[4]],
     )
 
@@ -67,41 +64,39 @@ def test_verify_cell_proof_batch(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_recover_polynomial(spec):
+def test_recover_all_cells(spec):
     rng = random.Random(5566)
 
     # Number of samples we will be recovering from
-    N_SAMPLES = spec.CELLS_PER_BLOB // 2
+    N_SAMPLES = spec.CELLS_PER_EXT_BLOB // 2
 
     # Get the data we will be working with
     blob = get_sample_blob(spec)
-    # Get the data in evaluation form
-    original_polynomial = spec.blob_to_polynomial(blob)
 
     # Extend data with Reed-Solomon and split the extended data in cells
     cells = spec.compute_cells(blob)
-    cells_bytes = [[spec.bls_field_to_bytes(element) for element in cell] for cell in cells]
 
     # Compute the cells we will be recovering from
     cell_ids = []
     # First figure out just the indices of the cells
     for i in range(N_SAMPLES):
-        j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+        j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         while j in cell_ids:
-            j = rng.randint(0, spec.CELLS_PER_BLOB - 1)
+            j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         cell_ids.append(j)
     # Now the cells themselves
-    known_cells_bytes = [cells_bytes[cell_id] for cell_id in cell_ids]
+    known_cells = [cells[cell_id] for cell_id in cell_ids]
 
-    # Recover the data
-    recovered_data = spec.recover_polynomial(cell_ids, known_cells_bytes)
+    # Recover all of the cells
+    recovered_cells = spec.recover_all_cells(cell_ids, known_cells)
+    recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
-    assert original_polynomial == recovered_data[:len(recovered_data) // 2]
+    blob_byte_array = [b for b in blob]
+    assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
 
-    # Now flatten the cells and check that they match the entirety of the recovered data
-    flattened_cells = [x for xs in cells for x in xs]
-    assert flattened_cells == recovered_data
+    # Check that the recovered cells match the original cells
+    assert cells == recovered_cells
 
 
 @with_eip7594_and_later
