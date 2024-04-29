@@ -470,12 +470,13 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
     extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
-    extended_data_rbo = CosetEvals(bit_reversal_permutation(extended_data))
+    extended_data_rbo = bit_reversal_permutation(extended_data)
+
     cells = []
     for cell_id in range(CELLS_PER_EXT_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        cells.append(coset_evals_to_cell(extended_data_rbo[start:end]))
+        cells.append(coset_evals_to_cell(CosetEvals(extended_data_rbo[start:end])))
     return cells
 ```
 
