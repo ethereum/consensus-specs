@@ -37,11 +37,11 @@
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
-    - [`compute_cells_and_proofs`](#compute_cells_and_proofs)
+    - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
     - [`compute_cells`](#compute_cells)
   - [Cell verification](#cell-verification)
-    - [`verify_cell_proof`](#verify_cell_proof)
-    - [`verify_cell_proof_batch`](#verify_cell_proof_batch)
+    - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
+    - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
   - [`recover_shifted_data`](#recover_shifted_data)
@@ -424,10 +424,10 @@ def coset_for_cell(cell_id: CellID) -> Coset:
 
 ### Cell computation
 
-#### `compute_cells_and_proofs`
+#### `compute_cells_and_kzg_proofs`
 
 ```python
-def compute_cells_and_proofs(blob: Blob) -> Tuple[
+def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
@@ -482,13 +482,13 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
 ### Cell verification
 
-#### `verify_cell_proof`
+#### `verify_cell_kzg_proof`
 
 ```python
-def verify_cell_proof(commitment_bytes: Bytes48,
-                      cell_id: CellID,
-                      cell: Cell,
-                      proof_bytes: Bytes48) -> bool:
+def verify_cell_kzg_proof(commitment_bytes: Bytes48,
+                          cell_id: CellID,
+                          cell: Cell,
+                          proof_bytes: Bytes48) -> bool:
     """
     Check a cell proof
 
@@ -508,14 +508,14 @@ def verify_cell_proof(commitment_bytes: Bytes48,
         bytes_to_kzg_proof(proof_bytes))
 ```
 
-#### `verify_cell_proof_batch`
+#### `verify_cell_kzg_proof_batch`
 
 ```python
-def verify_cell_proof_batch(row_commitments_bytes: Sequence[Bytes48],
-                            row_indices: Sequence[RowIndex],
-                            column_indices: Sequence[ColumnIndex],
-                            cells: Sequence[Cell],
-                            proofs_bytes: Sequence[Bytes48]) -> bool:
+def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
+                                row_indices: Sequence[RowIndex],
+                                column_indices: Sequence[ColumnIndex],
+                                cells: Sequence[Cell],
+                                proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
     matrix. The list of all commitments is also provided in row_commitments_bytes.

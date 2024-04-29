@@ -11,6 +11,8 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     pairing as py_ecc_pairing,
     final_exponentiate as py_ecc_final_exponentiate,
     FQ12 as py_ecc_GT,
+    FQ,
+    FQ2,
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
     curve_order as BLS_MODULUS,
@@ -252,14 +254,14 @@ def multi_exp(points, integers):
             raise Exception("Invalid point type")
 
     result = None
-    if isinstance(points[0], py_ecc_G1):
+    if isinstance(points[0][0], FQ):
         result = Z1()
-    elif isinstance(points[0], py_ecc_G2):
+    elif isinstance(points[0][0], FQ2):
         result = Z2()
     else:
         raise Exception("Invalid point type")
 
-    for point, scalar in points.zip(integers):
+    for point, scalar in zip(points, integers):
         result = add(result, multiply(point, scalar))
     return result
 
