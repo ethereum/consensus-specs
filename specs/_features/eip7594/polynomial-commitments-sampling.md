@@ -292,7 +292,8 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
         summand = PolynomialCoeff([ys[i]])
         for j in range(len(ys)):
             if j != i:
-                weight_adjustment = bls_modular_inverse(BLSFieldElement(int(xs[i]) - int(xs[j])))
+                weight_adjustment = bls_modular_inverse(
+                    BLSFieldElement(int(xs[i]) - int(xs[j]) + BLS_MODULUS) % BLS_MODULUS)
                 summand = multiply_polynomialcoeff(
                     summand, 
                     PolynomialCoeff([
