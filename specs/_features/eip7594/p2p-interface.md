@@ -74,7 +74,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     row_ids = [RowIndex(i) for i in range(len(sidecar.column))]
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
-    return verify_cell_proof_batch(
+    return verify_cell_kzg_proof_batch(
         row_commitments_bytes=sidecar.kzg_commitments,
         row_indices=row_ids,  # all rows
         column_indices=[sidecar.index],
