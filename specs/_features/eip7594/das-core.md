@@ -105,11 +105,11 @@ class DataColumnSidecar(Container):
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
-    subnet_ids = []
+    subnet_ids: List[uint64] = []
     i = 0
     while len(subnet_ids) < custody_subnet_count:
         if node_id == UINT256_MAX:
-            node_id = 0
+            node_id = NodeID(0)
 
         subnet_id = (
             bytes_to_uint64(hash(uint_to_bytes(uint256(node_id + i)))[0:8])
@@ -154,10 +154,10 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     This helper demonstrates how to apply ``recover_all_cells``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix = []
+    extended_matrix: List[Cell] = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
+        cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
 
         all_cells_for_row = recover_all_cells(cell_ids, cells)
         extended_matrix.extend(all_cells_for_row)
