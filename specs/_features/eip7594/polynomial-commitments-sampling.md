@@ -640,7 +640,7 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
 def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldElement],
                           eval_shifted_zero_poly: Sequence[BLSFieldElement],
                           shift_inv: BLSFieldElement,
-                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> CosetEvals:
+                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
     Given Q_1, Q_2 and k^{-1}, compute P(x).
     """
@@ -657,7 +657,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
 
-    return CosetEvals(reconstructed_data)
+    return reconstructed_data
 ```
 
 ### `recover_all_cells`
