@@ -191,7 +191,6 @@ This section outlines configurations that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
@@ -202,8 +201,6 @@ This section outlines configurations that are used in this spec.
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
 | `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
-| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
-| `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
 
 ### MetaData
 
@@ -1014,29 +1011,22 @@ these connecting clients will be unable to successfully interact starting at the
 
 Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`beacon_attestation_{subnet_id}`). To provide this stability, each beacon node should:
 
-* Remain subscribed to `SUBNETS_PER_NODE` for `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs.
+* Remain subscribed to `SUBNETS_PER_NODE`.
 * Maintain advertisement of the selected subnets in their node's ENR `attnets` entry by setting the selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets.
-* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id, epoch)` function.
+* Select these subnets based on their node-id as specified by the following `compute_subscribed_subnets(node_id)` function.
 
 ```python
-def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
-    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
-    permutated_prefix = compute_shuffled_index(
-        node_id_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
-        permutation_seed,
-    )
-    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
+def compute_subscribed_subnet(node_id: NodeID, index: int) -> SubnetID:
+    # Select the first few bits that are necessary to encapsulate the size of
+    # ATTESTATION_SUBNET_COUNT
+    node_id_prefix = node_id >> (NODE_ID_BITS - int(ceillog2(ATTESTATION_SUBNET_COUNT)))
+    return SubnetID((node_id_prefix + index) % ATTESTATION_SUBNET_COUNT)
 ```
 
 ```python
-def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
-    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
+def compute_subscribed_subnets(node_id: NodeID) -> Sequence[SubnetID]:
+    return [compute_subscribed_subnet(node_id, index) for index in range(SUBNETS_PER_NODE)]
 ```
-
-*Note*: When preparing for a hard fork, a node must select and subscribe to subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION` epochs in advance of the fork. These new subnets for the fork are maintained in addition to those for the current fork until the fork occurs. After the fork occurs, let the subnets from the previous fork reach the end of life with no replacements.
 
 ## Design decision rationale
 
