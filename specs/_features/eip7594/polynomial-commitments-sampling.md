@@ -232,8 +232,9 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
 
     for i, a_coeff in enumerate(a):
         for j, b_coeff in enumerate(b):
-            r[i + j] += (a_coeff * b_coeff) % BLS_MODULUS
-
+            r[i + j] += a_coeff * b_coeff
+            r[i + j] = r[i + j] % BLS_MODULUS
+ 
     return PolynomialCoeff(r)
 ```
 
