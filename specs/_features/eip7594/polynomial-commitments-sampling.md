@@ -228,11 +228,13 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
     """
     assert len(a) + len(b) <= FIELD_ELEMENTS_PER_EXT_BLOB
 
-    r = [0]
-    for power, coef in enumerate(a):
-        summand = [0] * power + [int(coef) * int(x) % BLS_MODULUS for x in b]
-        r = add_polynomialcoeff(r, summand)
-    return r
+    r = [0] * (len(a) + len(b) - 1)
+
+    for i, a_coeff in enumerate(a):
+        for j, b_coeff in enumerate(b):
+            r[i + j] += (a_coeff * b_coeff) % BLS_MODULUS
+
+    return PolynomialCoeff(r)
 ```
 
 #### `divide_polynomialcoeff`
