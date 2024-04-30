@@ -486,8 +486,7 @@ def test_get_aggregate_and_proof_signature(spec, state):
 
 def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
     node_id = rng.randint(0, 2**256 - 1)
-    epoch = rng.randint(0, 2**64 - 1)
-    subnets = spec.compute_subscribed_subnets(node_id, epoch)
+    subnets = spec.compute_subscribed_subnets(node_id)
     assert len(subnets) == spec.config.SUBNETS_PER_NODE
 
 
