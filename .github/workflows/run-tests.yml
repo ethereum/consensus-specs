@@ -65,7 +65,7 @@ jobs:
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     needs: [lint,codespell,table_of_contents]
     strategy:
       matrix:
