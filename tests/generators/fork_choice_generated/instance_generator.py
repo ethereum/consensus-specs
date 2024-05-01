@@ -87,15 +87,15 @@ def _create_block_tree_providers(test_name: str, /,
     def make_cases_fn() -> Iterable[TestCase]:
         _test_fn = _import_block_tree_test_fn()
 
-        def test_fn(phase: str, preset: str, seed: int, sm_links, block_parents):
+        def test_fn(phase: str, preset: str, seed: int, solution):
             return _test_fn(generator_mode=True,
                             phase=phase,
                             preset=preset,
                             bls_active=BLS_ACTIVE,
                             debug=debug,
                             seed=seed,
-                            sm_links=sm_links,
-                            block_parents=block_parents,
+                            sm_links=solution['sm_links'],
+                            block_parents=solution['block_parents'],
                             with_attester_slashings=with_attester_slashings,
                             with_invalid_messages=with_invalid_messages)
 
@@ -112,8 +112,7 @@ def _create_block_tree_providers(test_name: str, /,
                         spec = spec_targets[preset_name][fork_name]
                         mutation_generator = MutatorsGenerator(
                             spec, seed, number_of_mutations,
-                            lambda: test_fn(fork_name, preset_name, seed,
-                                            sm_links=solution['sm_links'], block_parents=solution['block_parents']),
+                            lambda: test_fn(fork_name, preset_name, seed, solution),
                             debug=debug)
                         for j in range(1 + number_of_mutations):
                             yield TestCase(fork_name=fork_name,
