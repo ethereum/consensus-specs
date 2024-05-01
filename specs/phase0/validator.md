@@ -73,13 +73,13 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum proof-of-stake protocol. This document does not distinguish between a "node" (i.e. the functionality of following and reading the beacon chain) and a "validator client" (i.e. the functionality of actively participating in consensus). The separation of concerns between these (potentially) two pieces of software is left as a design decision that is out of scope.
+This document represents the expected behaviors of an "honest validator" with respect to Phase 0 of the Ethereum proof-of-stake protocol. This document does not distinguish between a "node" (i.e. the functionality of following and reading the beacon chain) and a "validator client" (i.e. the functionality of actively participating in consensus). The separation of concerns between these (potentially) two pieces of software is left as a design decision that is out of scope.
 
 A validator is an entity that participates in the consensus of the Ethereum proof-of-stake protocol. This is an optional role for users in which they can post ETH as collateral and verify and attest to the validity of blocks to seek financial returns in exchange for building and securing the protocol. This is similar to proof-of-work networks in which miners provide collateral in the form of hardware/hash-power to seek returns in exchange for building and securing the protocol.
 
 ## Prerequisites
 
-All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisites for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
 ## Constants
 
