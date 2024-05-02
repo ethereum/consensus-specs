@@ -96,7 +96,7 @@ def is_full_validator_set_for_block_covered(store: Store, block_root: Root) -> b
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
-    
+
     return is_full_validator_set_covered(Slot(parent_block.slot + 1), current_slot)
 ```
 
@@ -121,7 +121,7 @@ def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
     Adjusts the ``estimate`` of the weight of a committee for a sequence of slots not covering a full epoch to
     ensure the safety of the confirmation rule with high probability.
 
-    See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for an explanation of why this is 
+    See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for an explanation of why this is
     required.
     """
     return Gwei(ceil_div(int(estimate * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR)), 1000))
@@ -145,14 +145,14 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
     # If an entire epoch is covered by the range, return the total active balance
     if is_full_validator_set_covered(start_slot, end_slot):
         return total_active_balance
-    
+
     if start_epoch == end_epoch:
         return Gwei(ceil_div((end_slot - start_slot + 1) * int(total_active_balance), SLOTS_PER_EPOCH))
     else:
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation
 
-        # See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 
+        # See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20
         # for an explanation of the formula used below.
 
         # First, calculate the number of committees in the end epoch
@@ -171,7 +171,7 @@ def get_committee_weight_between_slots(state: BeaconState, start_slot: Slot, end
         # Each committee from the end epoch only contributes a pro-rated weight
         return adjust_committee_weight_estimate_to_ensure_safety(
             Gwei(ceil_div(
-                start_epoch_weight_mul_by_slots_per_epoch + end_epoch_weight_mul_by_slots_per_epoch, 
+                start_epoch_weight_mul_by_slots_per_epoch + end_epoch_weight_mul_by_slots_per_epoch,
                 SLOTS_PER_EPOCH
             ))
         )
@@ -187,7 +187,7 @@ def is_one_confirmed(store: Store, block_root: Root) -> bool:
     support = int(get_weight(store, block_root))
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     maximum_support = int(
-        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot - 1)
+        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), Slot(current_slot - 1))
     )
     proposer_score = int(get_proposer_score(store))
 
@@ -196,8 +196,8 @@ def is_one_confirmed(store: Store, block_root: Root) -> bool:
     # 0.5 * (1 + proposer_score / maximum_support) + CONFIRMATION_BYZANTINE_THRESHOLD / 100
 
     return (
-        100 * support > 
-        50 * maximum_support + 50 * proposer_score + CONFIRMATION_BYZANTINE_THRESHOLD * maximum_support 
+        100 * support >
+        50 * maximum_support + 50 * proposer_score + CONFIRMATION_BYZANTINE_THRESHOLD * maximum_support
     )
 ```
 
@@ -233,7 +233,7 @@ def get_total_active_balance_for_block_root(store: Store, block_root: Root) -> G
 
 ```python
 def get_remaining_weight_in_current_epoch(store: Store, checkpoint: Checkpoint) -> Gwei:
-    """ 
+    """
     Returns the total weight of votes for this epoch from future committees after the current slot.
     """
     assert checkpoint in store.checkpoint_states
@@ -269,16 +269,16 @@ def get_leaf_block_roots(store: Store, block_root: Root) -> Set[Root]:
 #### `get_current_epoch_participating_indices`
 
 ```python
-def get_epoch_participating_indices(state: BeaconState, 
+def get_epoch_participating_indices(state: BeaconState,
                                     active_validator_indices: Sequence[ValidatorIndex],
-                                    is_current_epoch: bool) -> Set[ValidatorIndex]: 
+                                    is_current_epoch: bool) -> Set[ValidatorIndex]:
     if is_current_epoch:
         epoch_participation = state.current_epoch_participation
     else:
         epoch_participation = state.previous_epoch_participation
 
     return set([
-        i for i in active_validator_indices 
+        i for i in active_validator_indices
         if has_flag(epoch_participation[i], TIMELY_TARGET_FLAG_INDEX)
     ])
 ```
@@ -301,14 +301,14 @@ def get_ffg_support(store: Store, checkpoint: Root) -> Gwei:
     checkpoint_state = store.checkpoint_states[checkpoint]
 
     leaf_roots = [
-        leaf for leaf in get_leaf_block_roots(store, checkpoint.root) 
+        leaf for leaf in get_leaf_block_roots(store, checkpoint.root)
         if get_checkpoint_block(store, leaf, checkpoint.epoch) == checkpoint.root]
 
     active_checkpoint_indices = get_active_validator_indices(checkpoint_state, checkpoint.epoch)
     participating_indices_from_blocks = set().union(*[
         get_epoch_participating_indices(
-            store.block_states[root], 
-            active_checkpoint_indices, 
+            store.block_states[root],
+            active_checkpoint_indices,
             checkpoint.epoch == current_epoch
         )
         for root in leaf_roots
@@ -386,13 +386,11 @@ def is_confirmed_no_caching(store: Store, block_root: Root) -> bool:
     block_epoch = compute_epoch_at_slot(block.slot)
 
     if current_epoch == block_epoch:
-        a = get_checkpoint_block(store, block_root, current_epoch - 1) == block_state.current_justified_checkpoint.root
-        b = is_lmd_confirmed(store, block_root)
-        c = is_ffg_confirmed(store, block_root, current_epoch)        
         return (
-            a
-            and b
-            and c
+            get_checkpoint_block(store, block_root, Epoch(current_epoch - 1)) == 
+            block_state.current_justified_checkpoint.root
+            and is_lmd_confirmed(store, block_root)
+            and is_ffg_confirmed(store, block_root, current_epoch)
         )
     else:
         return (
@@ -448,14 +446,14 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 #### `immediately_after_on_tick_if_slot_changed`
 
 ```python
-def immediately_after_on_tick_if_slot_changed(store: Store):
+def immediately_after_on_tick_if_slot_changed(store: Store) -> None:
     """
     This method must be executed immediately after `on_tick` whenever the current slot changes.
-    The reason for not calling this method directly from `on_tick` is that, for testing purposes, 
-    when the slot changes, it is required to be able to execute `on_attestation` on attestations 
+    The reason for not calling this method directly from `on_tick` is that, for testing purposes,
+    when the slot changes, it is required to be able to execute `on_attestation` on attestations
     sent in the previous slot before executing the code in this method.
-    Likewise, in the implementations, the expectation is that, when the current slot changes, 
-    any attestations sent during the previous slot, are processed through `on_attestation` 
+    Likewise, in the implementations, the expectation is that, when the current slot changes,
+    any attestations sent during the previous slot, are processed through `on_attestation`
     during the execution of `on_tick` before executing the code from this methods.
     """
     current_slot = get_current_slot(store)
@@ -464,10 +462,10 @@ def immediately_after_on_tick_if_slot_changed(store: Store):
         store.leaves_last_slot_previous_epoch = get_leaf_block_roots(store, store.finalized_checkpoint.root)
 
     highest_confirmed_root = find_confirmed_block(store, get_head(store))
-    if (store.blocks[highest_confirmed_root].slot > store.blocks[store.highest_confirmed_block_current_epoch].slot 
+    if (store.blocks[highest_confirmed_root].slot > store.blocks[store.highest_confirmed_block_current_epoch].slot
        or compute_slots_since_epoch_start(current_slot) == 1):
         store.highest_confirmed_block_current_epoch = highest_confirmed_root
-            
+
     if compute_slots_since_epoch_start(current_slot) == 0:
         store.highest_confirmed_block_previous_epoch = store.highest_confirmed_block_current_epoch
 ```
