@@ -23,20 +23,10 @@
     - [`get_current_epoch_participating_indices`](#get_current_epoch_participating_indices)
     - [`get_ffg_support`](#get_ffg_support)
     - [`is_ffg_confirmed`](#is_ffg_confirmed)
-  - [`get_first_descendants_in_previous_or_current_epoch`](#get_first_descendants_in_previous_or_current_epoch)
+  - [`is_confirmed_no_caching`](#is_confirmed_no_caching)
   - [`is_confirmed`](#is_confirmed)
-- [Safe Block Hash](#safe-block-hash)
-  - [Helper Functions](#helper-functions-1)
     - [`find_confirmed_block`](#find_confirmed_block)
-  - [`get_safe_beacon_block_root`](#get_safe_beacon_block_root)
-  - [`get_safe_execution_payload_hash`](#get_safe_execution_payload_hash)
-- [Confirmation Score](#confirmation-score)
-  - [Helper Functions](#helper-functions-2)
-    - [`compute_one_confirmation_score`](#compute_one_confirmation_score)
-    - [`compute_lmd_confirmation_score`](#compute_lmd_confirmation_score)
-    - [`compute_ffg_confirmation_score_current_epoch`](#compute_ffg_confirmation_score_current_epoch)
-    - [`compute_ffg_confirmation_score`](#compute_ffg_confirmation_score)
-  - [`get_confirmation_score`](#get_confirmation_score)
+    - [`immediately_after_on_tick_if_slot_changed`](#immediately_after_on_tick_if_slot_changed)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -47,16 +37,13 @@ This document specifies a fast block confirmation rule for the Ethereum protocol
 
 *Note*: Confirmation is not a substitute for finality! The safety of confirmations is weaker than that of finality.
 
-The research paper for this rule is attached in this [ethresear.ch post](https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454).
+The research paper for this rule can be found [here](https://arxiv.org/abs/2405.00549).
 
 This rule makes the following network synchrony assumption: starting from the current slot, attestations created by honest validators in any slot are received by the end of that slot.
 Consequently, this rule provides confirmations to users who believe in the above assumption. If this assumption is broken, confirmed blocks can be reorged without any adversarial behavior and without slashing.
 
-There are two algorithms in the document:
-- [**Confirmation Rule**](#confirmation-rule): Given a block and confirmation safety parameters, outputs whether the block is confirmed.
-- [**Confirmation Score**](#confirmation-score): Given a block, outputs the confirmation score for the block, i.e., the maximum possible confirmation safety parameters to deem the block confirmed.
 
-*Note*: These algorithms use unbounded integer arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that results fit into length-limited fields - a property crucial for consensus objects (such as the `BeaconBlockBody`). This document describes a local confirmation rule that does not require storing anything in length-limited fields. Using unbounded integer arithmetic here prevents possible overflowing issues for the spec tests generated using this Python specification (or when executing these specifications directly).
+*Note*: This algorithm uses unbounded integer arithmetic in some places. The rest of `consensus-specs` uses `uint64` arithmetic exclusively to ensure that results fit into length-limited fields - a property crucial for consensus objects (such as the `BeaconBlockBody`). This document describes a local confirmation rule that does not require storing anything in length-limited fields. Using unbounded integer arithmetic here prevents possible overflowing issues for the spec tests generated using this Python specification (or when executing these specifications directly).
 
 ## Confirmation Rule
 
@@ -200,7 +187,7 @@ def is_one_confirmed(store: Store, block_root: Root) -> bool:
     support = int(get_weight(store, block_root))
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     maximum_support = int(
-        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot)
+        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot - 1)
     )
     proposer_score = int(get_proposer_score(store))
 
@@ -245,13 +232,13 @@ def get_total_active_balance_for_block_root(store: Store, block_root: Root) -> G
 #### `get_remaining_weight_in_current_epoch`
 
 ```python
-def get_remaining_weight_in_current_epoch(store: Store, block_root: Root) -> Gwei:
+def get_remaining_weight_in_current_epoch(store: Store, checkpoint: Checkpoint) -> Gwei:
     """ 
     Returns the total weight of votes for this epoch from future committees after the current slot.
     """
-    assert block_root in store.block_states
+    assert checkpoint in store.checkpoint_states
 
-    state = store.block_states[block_root]
+    state = store.checkpoint_states[checkpoint]
 
     current_slot = get_current_slot(store)
     first_slot_next_epoch = compute_start_slot_at_epoch(Epoch(compute_epoch_at_slot(current_slot) + 1))
@@ -299,45 +286,48 @@ def get_epoch_participating_indices(state: BeaconState,
 #### `get_ffg_support`
 
 ```python
-def get_ffg_support(store: Store, block_root: Root) -> Gwei:
+def get_ffg_support(store: Store, checkpoint: Root) -> Gwei:
     """
     Returns the total weight supporting the checkpoint in the block's chain at block's epoch.
     """
-    block = store.blocks[block_root]
-    block_epoch = compute_epoch_at_slot(block.slot)
     current_epoch = get_current_store_epoch(store)
 
     # This function is only applicable to current and previous epoch blocks
-    assert current_epoch in [block_epoch, block_epoch + 1]
-
-    checkpoint_root = get_checkpoint_block(store, block_root, block_epoch)
-    checkpoint = Checkpoint(root=checkpoint_root, epoch=block_epoch)
+    assert current_epoch in [checkpoint.epoch, checkpoint.epoch + 1]
 
     if checkpoint not in store.checkpoint_states:
         return Gwei(0)
 
     checkpoint_state = store.checkpoint_states[checkpoint]
 
-    leaf_roots = get_leaf_block_roots(store, block_root)
+    leaf_roots = [
+        leaf for leaf in get_leaf_block_roots(store, checkpoint.root) 
+        if get_checkpoint_block(store, leaf, checkpoint.epoch) == checkpoint.root]
 
-    active_checkpoint_indices = get_active_validator_indices(checkpoint_state, block_epoch)
-    participating_indices = set().union(*[
+    active_checkpoint_indices = get_active_validator_indices(checkpoint_state, checkpoint.epoch)
+    participating_indices_from_blocks = set().union(*[
         get_epoch_participating_indices(
             store.block_states[root], 
             active_checkpoint_indices, 
-            block_epoch == current_epoch
+            checkpoint.epoch == current_epoch
         )
         for root in leaf_roots
     ])
 
-    return get_total_balance(checkpoint_state, participating_indices)
+    participating_indices_from_lmds = set([
+        i
+        for i in store.latest_messages
+        if get_checkpoint_block(store, store.latest_messages[i].root, store.latest_messages[i].epoch) == checkpoint.root
+    ])
+
+    return get_total_balance(checkpoint_state, participating_indices_from_blocks.union(participating_indices_from_lmds))
 ```
 
 
 #### `is_ffg_confirmed`
 
 ```python
-def is_ffg_confirmed(store: Store, block_root: Root) -> bool:
+def is_ffg_confirmed(store: Store, block_root: Root, epoch: Epoch) -> bool:
     """
     Returns whether the `block_root`'s checkpoint will be justified by the end of this epoch.
     """
@@ -345,16 +335,22 @@ def is_ffg_confirmed(store: Store, block_root: Root) -> bool:
 
     block = store.blocks[block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
+    checkpoint = Checkpoint(
+        epoch=epoch,
+        root=get_checkpoint_block(store, block_root, epoch)
+    )
+
+    store_target_checkpoint_state(store, checkpoint)
 
     # This function is only applicable to current and previous epoch blocks
     assert current_epoch in [block_epoch, block_epoch + 1]
 
-    total_active_balance = int(get_total_active_balance_for_block_root(store, block_root))
+    total_active_balance = int(get_total_active_balance(store.checkpoint_states[checkpoint]))
 
-    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
+    ffg_support_for_checkpoint = int(get_ffg_support(store, checkpoint))
 
-    if block_epoch == current_epoch:
-        remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
+    if epoch == current_epoch:
+        remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, checkpoint))
     else:
         remaining_ffg_weight = 0
 
@@ -379,75 +375,59 @@ def is_ffg_confirmed(store: Store, block_root: Root) -> bool:
     )
 ```
 
-### `get_first_descendants_in_previous_or_current_epoch`
+### `is_confirmed_no_caching`
 
 ```python
-def get_first_descendants_in_previous_or_current_epoch(store: Store, block_root: Root) -> Set[Root]:
-    """
-    Returns the set of first descendants in each possible branch that are from either the current or previous epoch
-    """
+def is_confirmed_no_caching(store: Store, block_root: Root) -> bool:
     current_epoch = get_current_store_epoch(store)
 
     block = store.blocks[block_root]
+    block_state = store.block_states[block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
 
-    if current_epoch in [block_epoch, block_epoch + 1]:
-        return set([block_root])
-
-    children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
-    ]
-
-    leaf_block_roots: Set[Root] = set()
-    for child_leaf_block_roots in [get_first_descendants_in_previous_or_current_epoch(store, child) 
-                                   for child in children]:
-        leaf_block_roots = leaf_block_roots.union(child_leaf_block_roots)
-
-    return leaf_block_roots
+    if current_epoch == block_epoch:
+        a = get_checkpoint_block(store, block_root, current_epoch - 1) == block_state.current_justified_checkpoint.root
+        b = is_lmd_confirmed(store, block_root)
+        c = is_ffg_confirmed(store, block_root, current_epoch)        
+        return (
+            a
+            and b
+            and c
+        )
+    else:
+        return (
+            compute_slots_since_epoch_start(get_current_slot(store)) == 0
+            and is_ffg_confirmed(store, block_root, Epoch(current_epoch - 1))
+            and any(
+                [
+                    get_voting_source(store, leaf).epoch + 2 >= current_epoch
+                    and is_lmd_confirmed(store, leaf)
+                    for leaf in store.leaves_last_slot_previous_epoch
+                ]
+            )
+        )
 ```
 
 ### `is_confirmed`
 
 ```python
 def is_confirmed(store: Store, block_root: Root) -> bool:
-    current_epoch = get_current_store_epoch(store)
+    highest_confirmed_root_since_last_epoch = (
+        store.highest_confirmed_block_current_epoch
+        if store.blocks[store.highest_confirmed_block_current_epoch].slot >
+        store.blocks[store.highest_confirmed_block_previous_epoch].slot
+        else store.highest_confirmed_block_previous_epoch)
 
-    block = store.blocks[block_root]
-    block_state = store.block_states[block_root]
-    block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
-    block_epoch = compute_epoch_at_slot(block.slot)
-
-    if current_epoch in [block_epoch, block_epoch + 1]:
-        if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
-            return False
-
-        if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
-            return False
-
-        return (
-            is_lmd_confirmed(store, block_root)
-            and is_ffg_confirmed(store, block_root)
-        )
-    else:
-        first_descendants_in_previous_or_current_epoch = get_first_descendants_in_previous_or_current_epoch(
-            store, block_root)
-        
-        return any(
-            descendant for descendant in first_descendants_in_previous_or_current_epoch 
-            if is_confirmed(store, descendant))
+    return get_ancestor(store, highest_confirmed_root_since_last_epoch, store.blocks[block_root].slot) == block_root
 ```
-
-## Safe Block Hash
-
-This function is used to compute the value of the `safeBlockHash` field which is passed from CL to EL in the `forkchoiceUpdated` Engine API call.
-
-### Helper Functions
 
 #### `find_confirmed_block`
 
 ```python
 def find_confirmed_block(store: Store, block_root: Root) -> Root:
+
+    if block_root == store.finalized_checkpoint.root:
+        return block_root
 
     block = store.blocks[block_root]
     current_epoch = get_current_store_epoch(store)
@@ -458,194 +438,36 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
     if current_epoch not in [block_epoch, block_epoch + 1]:
         return store.finalized_checkpoint.root
 
-    if is_confirmed(store, block_root):
+    if is_confirmed_no_caching(store, block_root):
         return block_root
     else:
         return find_confirmed_block(store, block.parent_root)
 
 ```
 
-## Confirmation Score
-
-The confirmation score for a block is the maximum adversarial percentage weight that a confirmed block can tolerate.
-This section specifies the algorithm to calculate the confirmation score of a given block.
-This under the assumption that the adversary is willing to get as much stake as possible slashed to
-prevent a block from being confirmed.
-
-### Helper Functions
-
-#### `compute_one_confirmation_score`
+#### `immediately_after_on_tick_if_slot_changed`
 
 ```python
-def compute_one_confirmation_score(store: Store, block_root: Root) -> int:
+def immediately_after_on_tick_if_slot_changed(store: Store):
+    """
+    This method must be executed immediately after `on_tick` whenever the current slot changes.
+    The reason for not calling this method directly from `on_tick` is that, for testing purposes, 
+    when the slot changes, it is required to be able to execute `on_attestation` on attestations 
+    sent in the previous slot before executing the code in this method.
+    Likewise, in the implementations, the expectation is that, when the current slot changes, 
+    any attestations sent during the previous slot, are processed through `on_attestation` 
+    during the execution of `on_tick` before executing the code from this methods.
+    """
     current_slot = get_current_slot(store)
-    block = store.blocks[block_root]
-    parent_block = store.blocks[block.parent_root]
-    support = int(get_weight(store, block_root))
-    justified_state = store.checkpoint_states[store.justified_checkpoint]
-    maximum_support = int(
-        get_committee_weight_between_slots(justified_state, Slot(parent_block.slot + 1), current_slot)
-    )
-    proposer_score = int(get_proposer_score(store))
 
-    # Return the max possible one_confirmation_score such that:
-    # support / maximum_support > \
-    #     0.5 * (1 + proposer_score / maximum_support) + one_confirmation_score / 100
+    if compute_slots_since_epoch_start(Slot(current_slot + 1)) == 0:
+        store.leaves_last_slot_previous_epoch = get_leaf_block_roots(store, store.finalized_checkpoint.root)
 
-    return max((100 * support - 50 * proposer_score - 1) // maximum_support - 50, UNCONFIRMED_SCORE)
-```
-
-#### `compute_lmd_confirmation_score`
-
-```python
-def compute_lmd_confirmation_score(store: Store, block_root: Root) -> int:
-    if block_root == store.finalized_checkpoint.root:
-        return MAX_CONFIRMATION_SCORE
-
-    if is_full_validator_set_for_block_covered(store, block_root):
-        return compute_one_confirmation_score(store, block_root)
-    else:
-        block = store.blocks[block_root]
-        # Check one_confirmed score for this block and LMD_confirmed score for the preceding chain.
-        return min(
-            compute_one_confirmation_score(store, block_root),
-            compute_lmd_confirmation_score(store, block.parent_root)
-        )
-```
-
-#### `compute_ffg_confirmation_score_current_epoch`
-
-```python
-def compute_ffg_confirmation_score_helper(total_active_balance: int,
-                                          ffg_support_for_checkpoint: int,
-                                          min_ffg_support_slash_th: int,
-                                          remaining_ffg_weight: int) -> int:
-    assert min_ffg_support_slash_th <= ffg_support_for_checkpoint
-    
-    """
-    Return the max possible ffg_confirmation_score such that:
-    2 / 3 * total_active_balance <= \
-        ffg_support_for_checkpoint - \
-        min(min_ffg_support_slash_th, total_active_balance * ffg_confirmation_score / 100) + \
-        (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
-    """
-
-    # Case 1: min_ffg_support_slash_th <= total_active_balance * ffg_confirmation_score / 100
-    #
-    # In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
-    #
-    # 2 / 3 * total_active_balance <= \
-    #     ffg_support_for_checkpoint - min_ffg_support_slash_th + (1 - ffg_confirmation_score / 100) * 
-    #     remaining_ffg_weight
-    #
-    # If remaining_ffg_weight > 0, then first we compute ffg_confirmation_score and then check that the condition for
-    # this case is satisfied. If it is, then we return the calculated ffg_confirmation_score. If not, we proceed to the
-    # next case.
-    #
-    # If remaining_ffg_weight == 0, then the problem further reduces to whether the following condition, which is
-    # independent of ffg_confirmation_score, is satisfied:
-    #
-    # 2 / 3 * total_active_balance <= ffg_support_for_checkpoint - min_ffg_support_slash_th
-    #
-    # If it is satisfied, then it means that ffg_support_for_checkpoint can be as high as the maximum fraction of
-    # adversarial stake that the consensus protocol can deal with, i.e., < 1/3.
-    # If it not satisfied, then we proceed to the next case.
-
-    if remaining_ffg_weight > 0:
-        ffg_confirmation_score = (
-            100 * (
-                3 * (ffg_support_for_checkpoint - min_ffg_support_slash_th + remaining_ffg_weight) 
-                - 2 * total_active_balance
-            ) // (3 * remaining_ffg_weight)
-        )
-        if min_ffg_support_slash_th * 100 <= total_active_balance * ffg_confirmation_score:
-            return ffg_confirmation_score
-    else:
-        if 2 * total_active_balance <= (ffg_support_for_checkpoint - min_ffg_support_slash_th) * 3:
-            return MAX_CONFIRMATION_SCORE
-
-    # Case 2: min_ffg_support_slash_th > total_active_balance * ffg_confirmation_score / 100
-    #
-    # In this case the problem reduces to returning the max possible ffg_confirmation_score such that:
-    #
-    # 2 / 3 * total_active_balance <= \
-    #     ffg_support_for_checkpoint - \
-    #     total_active_balance * ffg_confirmation_score / 100 + \
-    #     (1 - ffg_confirmation_score / 100) * remaining_ffg_weight
-
-    ffg_confirmation_score = (
-        100 * (3 * (ffg_support_for_checkpoint + remaining_ffg_weight) - 2 * total_active_balance) //
-        (3 * (remaining_ffg_weight + total_active_balance))
-    )
-    assert ffg_support_for_checkpoint * 100 > total_active_balance * ffg_confirmation_score
-    return max(ffg_confirmation_score, UNCONFIRMED_SCORE)
-```
-
-#### `compute_ffg_confirmation_score`
-
-```python
-def compute_ffg_confirmation_score(store: Store, block_root: Root) -> int:
-
-    current_epoch = get_current_store_epoch(store)
-
-    block = store.blocks[block_root]
-    block_epoch = compute_epoch_at_slot(block.slot)
-
-    # This function is only applicable to current and previous epoch blocks
-    assert current_epoch in [block_epoch, block_epoch + 1]
-
-    total_active_balance = int(get_total_active_balance_for_block_root(store, block_root))
-
-    ffg_support_for_checkpoint = int(get_ffg_support(store, block_root))
-
-    min_ffg_support_slash_th = min(ffg_support_for_checkpoint, CONFIRMATION_SLASHING_THRESHOLD)
-
-    if block_epoch == current_epoch:
-        remaining_ffg_weight = int(get_remaining_weight_in_current_epoch(store, block_root))
-    else:
-        remaining_ffg_weight = 0  
-
-    return compute_ffg_confirmation_score_helper(
-        total_active_balance,
-        ffg_support_for_checkpoint,
-        min_ffg_support_slash_th,
-        remaining_ffg_weight
-    )          
-```
-
-### `get_confirmation_score`
-
-```python
-def get_confirmation_score(store: Store, block_root: Root) -> int:
-    """
-    Return `UNCONFIRMED_SCORE` in the case that `block_root` cannot be confirmed even by assuming no adversary weight,
-    otherwise it returns the maximum percentage of adversary weight that is admissible in order to
-    consider `block_root` confirmed.
-    """
-    current_epoch = get_current_store_epoch(store)
-
-    block = store.blocks[block_root]
-    block_epoch = compute_epoch_at_slot(block.slot)
-
-    if current_epoch in [block_epoch, block_epoch + 1]:
-
-        block_state = store.block_states[block_root]
-        block_justified_checkpoint_epoch = block_state.current_justified_checkpoint.epoch
-
-        if block_epoch == current_epoch and block_justified_checkpoint_epoch + 1 != current_epoch:
-            return UNCONFIRMED_SCORE
-
-        if block_epoch != current_epoch and block_justified_checkpoint_epoch + 2 < current_epoch:
-            return UNCONFIRMED_SCORE
-
-        return min(
-            compute_lmd_confirmation_score(store, block_root),
-            compute_ffg_confirmation_score(store, block_root)
-        ) 
-    else:   
-        first_descendants_in_previous_or_current_epoch = get_first_descendants_in_previous_or_current_epoch(
-            store, block_root)
-        
-        return max(
-            get_confirmation_score(store, descendant) for descendant in first_descendants_in_previous_or_current_epoch)                
+    highest_confirmed_root = find_confirmed_block(store, get_head(store))
+    if (store.blocks[highest_confirmed_root].slot > store.blocks[store.highest_confirmed_block_current_epoch].slot 
+       or compute_slots_since_epoch_start(current_slot) == 1):
+        store.highest_confirmed_block_current_epoch = highest_confirmed_root
+            
+    if compute_slots_since_epoch_start(current_slot) == 0:
+        store.highest_confirmed_block_previous_epoch = store.highest_confirmed_block_current_epoch
 ```

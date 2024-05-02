@@ -89,13 +89,6 @@ The checks to verify the execution of the confirmation rule algorithm
     }
 ```
 
-```yaml
-    check_get_confirmation_score: {
-        result: bool,          -- return value of `get_confirmation_score(store, block_root)`
-        block_root: string     -- block to execute get_confirmation_score on
-    }
-```
-
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to initialize the local store object by with `get_forkchoice_store(anchor_state, anchor_block)` helper.
