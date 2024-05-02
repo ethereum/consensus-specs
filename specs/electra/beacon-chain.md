@@ -514,8 +514,8 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 #### `get_committee_indices`
 
 ```python
-def get_committee_indices(commitee_bits: Bitvector) -> Sequence[CommitteeIndex]:
-    return [CommitteeIndex(index) for index, bit in enumerate(commitee_bits) if bit]
+def get_committee_indices(committee_bits: Bitvector) -> Sequence[CommitteeIndex]:
+    return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
 #### `get_validator_max_effective_balance`
