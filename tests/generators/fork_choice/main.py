@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, EIP6110
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
 if __name__ == "__main__":
@@ -10,12 +10,14 @@ if __name__ == "__main__":
         'ex_ante',
         'reorg',
         'withholding',
+        'get_proposer_head',
     ]}
 
     # For merge `on_merge_block` test kind added with `pow_block_N.ssz` files with several
     # PowBlock's which should be resolved by `get_pow_block(hash: Hash32) -> PowBlock` function
     _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.fork_choice.test_' + key for key in [
         'on_merge_block',
+        'should_override_forkchoice_update',
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
     capella_mods = bellatrix_mods  # No additional Capella specific fork choice tests
@@ -26,14 +28,14 @@ if __name__ == "__main__":
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
-    eip6110_mods = deneb_mods  # No additional EIP6110 specific fork choice tests
+    electra_mods = deneb_mods  # No additional Electra specific fork choice tests
 
     all_mods = {
         ALTAIR: altair_mods,
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
-        EIP6110: eip6110_mods,
+        ELECTRA: electra_mods,
     }
 
     run_state_test_generators(runner_name="fork_choice", all_mods=all_mods)

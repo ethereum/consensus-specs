@@ -1,7 +1,5 @@
 # Capella -- Fork Choice
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
@@ -103,10 +101,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add proposer score boost if the block is timely
+    # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
-    if get_current_slot(store) == block.slot and is_before_attesting_interval:
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely and not conflicting with an existing block
+    is_first_block = store.proposer_boost_root == Root()
+    if is_timely and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

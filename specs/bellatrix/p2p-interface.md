@@ -12,7 +12,6 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Warning](#warning)
   - [Modifications in Bellatrix](#modifications-in-bellatrix)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
@@ -32,11 +31,6 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
-## Warning
-
-This document is currently illustrative for early Bellatrix testnets and some parts are subject to change.
-Refer to the note in the [validator guide](./validator.md) for further details.
 
 ## Modifications in Bellatrix
 
@@ -82,7 +76,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
   then validate the following:
     - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
        -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
-    - If `exection_payload` verification of block's parent by an execution node is *not* complete:
+    - If `execution_payload` verification of block's parent by an execution node is *not* complete:
     	- [REJECT] The block's parent (defined by `block.parent_root`) passes all
     	  validation (excluding execution node verification of the `block.body.execution_payload`).
     - otherwise:
@@ -174,7 +168,7 @@ Similar to the discussion about the maximum gossip size increase, the
 `ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put
 in place during Phase 0.
 
-As with the gossip limit, 10 MiB is selected because this is firmly below any
+As with the gossip limit, 10 MiB is selected because this is firmly above any
 valid block sizes in the range of gas limits expected in the medium term.
 
 As with both gossip and req/rsp maximum values, type-specific limits should

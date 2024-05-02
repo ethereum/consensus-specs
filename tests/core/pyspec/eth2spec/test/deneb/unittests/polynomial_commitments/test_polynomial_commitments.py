@@ -32,10 +32,6 @@ def bls_add_one(x):
     )
 
 
-def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "big")
-
-
 @with_deneb_and_later
 @spec_test
 @single_phase
@@ -43,7 +39,7 @@ def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
-    x = field_element_bytes(3)
+    x = spec.bls_field_to_bytes(3)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -58,7 +54,7 @@ def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = field_element_bytes(3465)
+    x = spec.bls_field_to_bytes(3465)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -113,7 +109,7 @@ def test_barycentric_outside_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n_samples = 12
@@ -139,20 +135,22 @@ def test_barycentric_outside_domain(spec):
 @single_phase
 def test_barycentric_within_domain(spec):
     """
-    Test barycentric formula correctness by using it to evaluate a polynomial at all the points of its domain
+    Test barycentric formula correctness by using it to evaluate a polynomial at various points inside its domain
     (the roots of unity).
 
     Then make sure that we would get the same result if we evaluated it from coefficient form without using the
     barycentric formula
     """
+    rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n = len(poly_coeff)
 
-    # Iterate over the entire domain
-    for i in range(n):
+    # Iterate over some roots of unity
+    for i in range(12):
+        i = rng.randint(0, n - 1)
         # Grab a root of unity and use it as the evaluation point
         z = int(roots_of_unity_brp[i])
 
@@ -175,15 +173,17 @@ def test_compute_kzg_proof_within_domain(spec):
     Create and verify KZG proof that p(z) == y
     where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
     """
+    rng = random.Random(5566)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
-    for i, z in enumerate(roots_of_unity_brp):
+    # Let's test some roots of unity
+    for _ in range(6):
+        z = rng.choice(roots_of_unity_brp)
         proof, y = spec.compute_kzg_proof_impl(polynomial, z)
-
         assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
 
 

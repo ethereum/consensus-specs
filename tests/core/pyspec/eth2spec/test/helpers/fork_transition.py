@@ -3,7 +3,10 @@ from enum import Enum, auto
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
-from eth2spec.test.helpers.attestations import next_slots_with_attestations
+from eth2spec.test.helpers.attestations import (
+    next_slots_with_attestations,
+    state_transition_with_full_block,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     build_empty_block,
@@ -11,18 +14,20 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.constants import (
-    ALTAIR,
-    BELLATRIX,
-    CAPELLA,
+    PHASE0,
+    POST_FORK_OF,
+    PREVIOUS_FORK_OF,
     DENEB,
-    EIP6110,
-    EIP7002,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
+)
+from eth2spec.test.helpers.forks import (
+    get_next_fork_transition,
+    is_post_electra,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -146,45 +151,37 @@ def state_transition_across_slots_with_ignoring_proposers(spec,
             next_slot(spec, state)
 
 
+def get_upgrade_fn(spec, fork):
+    # pylint: disable=unused-argument
+    # NOTE: `spec` is used for the `eval` call
+    assert fork in POST_FORK_OF.values()
+    try:
+        # TODO: make all upgrade_to_* function names consistent?
+        fn = eval(f"spec.upgrade_to_{fork}")
+        return fn
+    except Exception:
+        raise ValueError(f"Unknown fork: {fork}")
+
+
 def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None):
     spec.process_slots(state, state.slot + 1)
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     assert spec.get_current_epoch(state) == fork_epoch
 
-    if post_spec.fork == ALTAIR:
-        state = post_spec.upgrade_to_altair(state)
-    elif post_spec.fork == BELLATRIX:
-        state = post_spec.upgrade_to_bellatrix(state)
-    elif post_spec.fork == CAPELLA:
-        state = post_spec.upgrade_to_capella(state)
-    elif post_spec.fork == DENEB:
-        state = post_spec.upgrade_to_deneb(state)
-    elif post_spec.fork == EIP6110:
-        state = post_spec.upgrade_to_eip6110(state)
-    elif post_spec.fork == EIP7002:
-        state = post_spec.upgrade_to_eip7002(state)
+    state = get_upgrade_fn(post_spec, post_spec.fork)(state)
 
     assert state.fork.epoch == fork_epoch
 
-    if post_spec.fork == ALTAIR:
-        assert state.fork.previous_version == post_spec.config.GENESIS_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.ALTAIR_FORK_VERSION
-    elif post_spec.fork == BELLATRIX:
-        assert state.fork.previous_version == post_spec.config.ALTAIR_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.BELLATRIX_FORK_VERSION
-    elif post_spec.fork == CAPELLA:
-        assert state.fork.previous_version == post_spec.config.BELLATRIX_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.CAPELLA_FORK_VERSION
-    elif post_spec.fork == DENEB:
-        assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.DENEB_FORK_VERSION
-    elif post_spec.fork == EIP6110:
-        assert state.fork.previous_version == post_spec.config.DENEB_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.EIP6110_FORK_VERSION
-    elif post_spec.fork == EIP7002:
-        assert state.fork.previous_version == post_spec.config.CAPELLA_FORK_VERSION
-        assert state.fork.current_version == post_spec.config.EIP7002_FORK_VERSION
+    previous_fork = PREVIOUS_FORK_OF[post_spec.fork]
+    if previous_fork == PHASE0:
+        previous_version = spec.config.GENESIS_FORK_VERSION
+    else:
+        previous_version = getattr(post_spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+    current_version = getattr(post_spec.config, f"{post_spec.fork.upper()}_FORK_VERSION")
+
+    assert state.fork.previous_version == previous_version
+    assert state.fork.current_version == current_version
 
     if with_block:
         return state, _state_transition_and_sign_block_at_slot(
@@ -205,6 +202,34 @@ def transition_until_fork(spec, state, fork_epoch):
 def _transition_until_fork_minus_one(spec, state, fork_epoch):
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 2
     transition_to(spec, state, to_slot)
+
+
+def transition_across_forks(spec, state, to_slot, phases=None, with_block=False, sync_aggregate=None):
+    assert to_slot > state.slot
+    state = state.copy()
+    block = None
+    to_epoch = spec.compute_epoch_at_slot(to_slot)
+    while state.slot < to_slot:
+        assert block is None
+        epoch = spec.compute_epoch_at_slot(state.slot)
+        post_spec, fork_epoch = get_next_fork_transition(spec, epoch, phases)
+        if fork_epoch is None or to_epoch < fork_epoch:
+            if with_block and (to_slot == state.slot + 1):
+                transition_to(spec, state, to_slot - 1)
+                block = state_transition_with_full_block(
+                    spec, state, True, True,
+                    sync_aggregate=sync_aggregate)
+            else:
+                transition_to(spec, state, to_slot)
+        else:
+            transition_until_fork(spec, state, fork_epoch)
+            state, block = do_fork(
+                state, spec, post_spec, fork_epoch,
+                with_block=with_block and (to_slot == state.slot + 1),
+                sync_aggregate=sync_aggregate,
+            )
+            spec = post_spec
+    return spec, state, block
 
 
 def transition_to_next_epoch_and_append_blocks(spec,
@@ -273,8 +298,18 @@ def run_transition_with_operation(state,
             operation_dict = {'proposer_slashings': [proposer_slashing]}
         else:
             # operation_type == OperationType.ATTESTER_SLASHING:
+            if is_at_fork and spec.fork == DENEB:
+                # NOTE: attestation format changes between Deneb and Electra
+                # so attester slashing must be made with the `post_spec`
+                target_spec = post_spec
+                target_state = post_spec.upgrade_to_electra(state.copy())
+                target_state.fork = state.fork
+            else:
+                target_spec = spec
+                target_state = state
+
             attester_slashing = get_valid_attester_slashing_by_indices(
-                spec, state,
+                target_spec, target_state,
                 [selected_validator_index],
                 signed_1=True, signed_2=True,
             )
@@ -363,11 +398,16 @@ def run_transition_with_operation(state,
 def _transition_until_active(post_spec, state, post_tag, blocks, validator_index):
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks)
+    epochs_required_to_activate = 2
+    if is_post_electra(post_spec):
+        # NOTE: an extra epoch is required given the way balance updates
+        # changed with electra
+        epochs_required_to_activate = 3
     # finalize activation_eligibility_epoch
     _, blocks_in_epoch, state = next_slots_with_attestations(
         post_spec,
         state,
-        post_spec.SLOTS_PER_EPOCH * 2,
+        post_spec.SLOTS_PER_EPOCH * epochs_required_to_activate,
         fill_cur_epoch=True,
         fill_prev_epoch=True,
     )

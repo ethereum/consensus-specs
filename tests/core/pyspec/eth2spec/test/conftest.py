@@ -1,6 +1,6 @@
 from eth2spec.test import context
 from eth2spec.test.helpers.constants import (
-    ALL_PHASES,
+    ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
 )
 from eth2spec.utils import bls as bls_utils
 
@@ -44,7 +44,7 @@ def pytest_addoption(parser):
         help="bls-default: make tests that are not dependent on BLS run without BLS"
     )
     parser.addoption(
-        "--bls-type", action="store", type=str, default="py_ecc", choices=["py_ecc", "milagro", "arkworks", "fastest"],
+        "--bls-type", action="store", type=str, default="fastest", choices=["py_ecc", "milagro", "arkworks", "fastest"],
         help=(
             "bls-type: use specified BLS implementation;"
             "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
@@ -54,10 +54,10 @@ def pytest_addoption(parser):
 
 def _validate_fork_name(forks):
     for fork in forks:
-        if fork not in set(ALL_PHASES):
+        if fork not in set(ALLOWED_TEST_RUNNER_FORKS):
             raise ValueError(
                 f'The given --fork argument "{fork}" is not an available fork.'
-                f' The available forks: {ALL_PHASES}'
+                f' The available forks: {ALLOWED_TEST_RUNNER_FORKS}'
             )
 
 

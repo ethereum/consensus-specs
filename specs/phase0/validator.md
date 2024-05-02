@@ -274,15 +274,22 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 A validator is expected to propose a [`SignedBeaconBlock`](./beacon-chain.md#signedbeaconblock) at
 the beginning of any `slot` during which `is_proposer(state, validator_index)` returns `True`.
 
-To propose, the validator selects the `BeaconBlock`, `parent` which:
+To propose, the validator selects a `BeaconBlock`, `parent` using this process:
 
-1. In their view of fork choice is the head of the chain at the start of
-   `slot`, after running `on_tick` and applying any queued attestations from `slot - 1`.
-2. Is from a slot strictly less than the slot of the block about to be proposed,
-   i.e. `parent.slot < slot`.
+1. Compute fork choice's view of the head at the start of `slot`, after running
+   `on_tick` and applying any queued attestations from `slot - 1`.
+   Set `head_root = get_head(store)`.
+2. Compute the _proposer head_, which is the head upon which the proposer SHOULD build in order to
+   incentivise timely block propagation by other validators.
+   Set `parent_root = get_proposer_head(store, head_root, slot)`.
+   A proposer may set `parent_root == head_root` if proposer re-orgs are not implemented or have
+   been disabled.
+3. Let `parent` be the block with `parent_root`.
 
 The validator creates, signs, and broadcasts a `block` that is a child of `parent`
-that satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+and satisfies a valid [beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+Note that the parent's slot must be strictly less than the slot of the block about to be proposed,
+i.e. `parent.slot < slot`.
 
 There is one proposer per slot, so if there are N active validators any individual validator
 will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
@@ -487,7 +494,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 - Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
 
-*Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
+*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Aggregate signature
 
@@ -606,7 +613,7 @@ def get_aggregate_and_proof_signature(state: BeaconState,
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed: [proposer slashing](#proposer-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
 
-*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
+*Note*: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can be slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102, and vice versa.
 
 ### Proposer slashing
 

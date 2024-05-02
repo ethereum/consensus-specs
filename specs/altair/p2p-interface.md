@@ -13,7 +13,6 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Warning](#warning)
 - [Modifications in Altair](#modifications-in-altair)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -34,14 +33,11 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
       - [GetMetaData v2](#getmetadata-v2)
     - [Transitioning from v1 to v2](#transitioning-from-v1-to-v2)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
+    - [ENR structure](#enr-structure)
+      - [Sync committee bitfield](#sync-committee-bitfield)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
-## Warning
-
-This document is currently illustrative for early Altair testnets and some parts are subject to change.
-Refer to the note in the [validator guide](./validator.md) for further details.
 
 ## Modifications in Altair
 
@@ -293,10 +289,16 @@ the responder MUST return the **InvalidRequest** response code.
 
 ### The discovery domain: discv5
 
-The `attnets` key of the ENR is used as defined in the Phase 0 document.
+#### ENR structure
+
+##### Sync committee bitfield
 
 An additional bitfield is added to the ENR under the key `syncnets` to facilitate sync committee subnet discovery.
 The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet.
 The `i`th bit is set in this bitfield if the validator is currently subscribed to the `sync_committee_{i}` topic.
+
+| Key          | Value                                            |
+|:-------------|:-------------------------------------------------|
+| `syncnets`    | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]`        |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for further details on how the new bits are used.

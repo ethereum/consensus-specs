@@ -4,8 +4,8 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
-EIP6110 = 'eip6110'
-EIP7002 = 'eip7002'
+ELECTRA = 'electra'
+EIP7594 = 'eip7594'
 WHISK = 'whisk'
 
 

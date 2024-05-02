@@ -11,7 +11,6 @@
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)
-  - [Crypto](#crypto)
   - [Trusted setup](#trusted-setup)
 - [Helper functions](#helper-functions)
   - [Bit-reversal permutation](#bit-reversal-permutation)
@@ -19,8 +18,10 @@
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`multi_exp`](#multi_exp)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
+    - [`bls_field_to_bytes`](#bls_field_to_bytes)
     - [`validate_kzg_g1`](#validate_kzg_g1)
     - [`bytes_to_kzg_commitment`](#bytes_to_kzg_commitment)
     - [`bytes_to_kzg_proof`](#bytes_to_kzg_proof)
@@ -30,6 +31,7 @@
     - [`div`](#div)
     - [`g1_lincomb`](#g1_lincomb)
     - [`compute_powers`](#compute_powers)
+    - [`compute_roots_of_unity`](#compute_roots_of_unity)
   - [Polynomials](#polynomials)
     - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
   - [KZG](#kzg)
@@ -78,6 +80,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 | `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7` | The primitive root of unity from which all roots of unity should be derived |
 
 
 ## Preset
@@ -90,23 +93,14 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
 
-### Crypto
-
-| Name | Value | Notes |
-| - | - | - |
-| `ROOTS_OF_UNITY` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | Roots of unity of order FIELD_ELEMENTS_PER_BLOB over the BLS12-381 field |
-
 ### Trusted setup
-
-The trusted setup is part of the preset: during testing a `minimal` insecure variant may be used,
-but reusing the `mainnet` settings in public networks is a critical security requirement.
 
 | Name | Value |
 | - | - |
 | `KZG_SETUP_G2_LENGTH` | `65` |
-| `KZG_SETUP_G1` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
-| `KZG_SETUP_G2` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`, contents TBD |
-| `KZG_SETUP_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]`, contents TBD |
+| `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
+| `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
+| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]` |
 
 ## Helper functions
 
@@ -114,7 +108,7 @@ but reusing the `mainnet` settings in public networks is a critical security req
 
 All polynomials (which are always given in Lagrange form) should be interpreted as being in
 bit-reversal permutation. In practice, clients can implement this by storing the lists
-`KZG_SETUP_LAGRANGE` and `ROOTS_OF_UNITY` in bit-reversal permutation, so these functions only
+`KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
 have to be called once at startup.
 
 #### `is_power_of_two`
@@ -153,6 +147,18 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 ### BLS12-381 helpers
 
+
+#### `multi_exp`
+
+This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
+
+```python
+def multi_exp(points: Sequence[TPoint],
+              integers: Sequence[uint64]) -> Sequence[TPoint]:
+    # pylint: disable=unused-argument
+    ...
+```
+
 #### `hash_to_bls_field`
 
 ```python
@@ -178,6 +184,12 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element)
 ```
 
+#### `bls_field_to_bytes`
+
+```python
+def bls_field_to_bytes(x: BLSFieldElement) -> Bytes32:
+    return int.to_bytes(x % BLS_MODULUS, 32, KZG_ENDIANNESS)
+```
 
 #### `validate_kzg_g1`
 
@@ -275,12 +287,18 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
 ```python
 def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication in G1. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
-    result = bls.Z1()
-    for x, a in zip(points, scalars):
-        result = bls.add(result, bls.multiply(bls.bytes48_to_G1(x), a))
+
+    if len(points) == 0:
+        return bls.G1_to_bytes48(bls.Z1())
+
+    points_g1 = []
+    for point in points:
+        points_g1.append(bls.bytes48_to_G1(point))
+
+    result = bls.multi_exp(points_g1, scalars)
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 
@@ -299,6 +317,17 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
     return powers
 ```
 
+#### `compute_roots_of_unity`
+
+```python
+def compute_roots_of_unity(order: uint64) -> Sequence[BLSFieldElement]:
+    """
+    Return roots of unity of ``order``.
+    """
+    assert (BLS_MODULUS - 1) % int(order) == 0
+    root_of_unity = BLSFieldElement(pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // int(order), BLS_MODULUS))
+    return compute_powers(root_of_unity, order)
+```
 
 ### Polynomials
 
@@ -318,7 +347,7 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial,
     assert width == FIELD_ELEMENTS_PER_BLOB
     inverse_width = bls_modular_inverse(BLSFieldElement(width))
 
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
 
     # If we are asked to evaluate within the domain, we already know the answer
     if z in roots_of_unity_brp:
@@ -346,7 +375,7 @@ def blob_to_kzg_commitment(blob: Blob) -> KZGCommitment:
     Public method.
     """
     assert len(blob) == BYTES_PER_BLOB
-    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), blob_to_polynomial(blob))
+    return g1_lincomb(bit_reversal_permutation(KZG_SETUP_G1_LAGRANGE), blob_to_polynomial(blob))
 ```
 
 #### `verify_kzg_proof`
@@ -384,7 +413,10 @@ def verify_kzg_proof_impl(commitment: KZGCommitment,
     Verify KZG proof that ``p(z) == y`` where ``p(z)`` is the polynomial represented by ``polynomial_kzg``.
     """
     # Verify: P - y = Q * (X - z)
-    X_minus_z = bls.add(bls.bytes96_to_G2(KZG_SETUP_G2[1]), bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS))
+    X_minus_z = bls.add(
+        bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1]),
+        bls.multiply(bls.G2(), (BLS_MODULUS - z) % BLS_MODULUS),
+    )
     P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), (BLS_MODULUS - y) % BLS_MODULUS))
     return bls.pairing_check([
         [P_minus_y, bls.neg(bls.G2())],
@@ -434,7 +466,7 @@ def verify_kzg_proof_batch(commitments: Sequence[KZGCommitment],
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
     
     return bls.pairing_check([
-        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2[1]))],
+        [bls.bytes48_to_G1(proof_lincomb), bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1]))],
         [bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)), bls.G2()]
     ])
 ```
@@ -464,12 +496,12 @@ def compute_quotient_eval_within_domain(z: BLSFieldElement,
                                         ) -> BLSFieldElement:
     """
     Given `y == p(z)` for a polynomial `p(x)`, compute `q(z)`: the KZG quotient polynomial evaluated at `z` for the
-    special case where `z` is in `ROOTS_OF_UNITY`.
+    special case where `z` is in roots of unity.
 
     For more details, read https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html section "Dividing
     when one of the points is zero". The code below computes q(x_m) for the roots of unity special case.
     """
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
     result = 0
     for i, omega_i in enumerate(roots_of_unity_brp):
         if omega_i == z:  # skip the evaluation point in the sum
@@ -490,7 +522,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[
     """
     Helper function for `compute_kzg_proof()` and `compute_blob_kzg_proof()`.
     """
-    roots_of_unity_brp = bit_reversal_permutation(ROOTS_OF_UNITY)
+    roots_of_unity_brp = bit_reversal_permutation(compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB))
 
     # For all x_i, compute p(x_i) - p(z)
     y = evaluate_polynomial_in_evaluation_form(polynomial, z)
@@ -510,7 +542,7 @@ def compute_kzg_proof_impl(polynomial: Polynomial, z: BLSFieldElement) -> Tuple[
             # Compute: q(x_i) = (p(x_i) - p(z)) / (x_i - z).
             quotient_polynomial[i] = div(a, b)
 
-    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_LAGRANGE), quotient_polynomial)), y
+    return KZGProof(g1_lincomb(bit_reversal_permutation(KZG_SETUP_G1_LAGRANGE), quotient_polynomial)), y
 ```
 
 #### `compute_blob_kzg_proof`
@@ -572,7 +604,7 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
     """
 
     assert len(blobs) == len(commitments_bytes) == len(proofs_bytes)
-    
+
     commitments, evaluation_challenges, ys, proofs = [], [], [], []
     for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
         assert len(blob) == BYTES_PER_BLOB
@@ -588,4 +620,3 @@ def verify_blob_kzg_proof_batch(blobs: Sequence[Blob],
 
     return verify_kzg_proof_batch(commitments, evaluation_challenges, ys, proofs)
 ```
-
