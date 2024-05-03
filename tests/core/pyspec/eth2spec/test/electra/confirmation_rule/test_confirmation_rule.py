@@ -28,7 +28,7 @@ def tick_to_next_slot(spec, store, test_steps):
     on_tick_and_append_step_no_checks(spec, store, time, test_steps)
 
 
-def apply_next_epoch_with_attestations(spec,
+def conf_rule_apply_next_epoch_with_attestations(spec,
                                        state,
                                        store,
                                        fill_cur_epoch,
@@ -44,7 +44,7 @@ def apply_next_epoch_with_attestations(spec,
         spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps,
+        yield from conf_rule_tick_and_add_block(spec, store, signed_block, test_steps,
                                       is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
@@ -55,7 +55,7 @@ def apply_next_epoch_with_attestations(spec,
     return post_state, store, last_signed_block
 
 
-def apply_next_slots_with_attestations(spec,
+def conf_rule_apply_next_slots_with_attestations(spec,
                                        state,
                                        store,
                                        slots,
@@ -69,7 +69,7 @@ def apply_next_slots_with_attestations(spec,
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps,
+        yield from conf_rule_tick_and_add_block(spec, store, signed_block, test_steps,
                                       is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
@@ -83,7 +83,7 @@ def apply_next_slots_with_attestations(spec,
 def apply_next_epoch_with_attestations_no_checks_and_optimistic(
     spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None
 ):
-    post_state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
+    post_state, store, last_signed_block = yield from conf_rule_apply_next_epoch_with_attestations(
         spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn,
         test_steps=test_steps, is_optimistic=True, store_checks=False)
 
@@ -93,14 +93,14 @@ def apply_next_epoch_with_attestations_no_checks_and_optimistic(
 def apply_next_slots_with_attestations_no_checks_and_optimistic(
     spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=None
 ):
-    post_state, store, last_signed_block = yield from apply_next_slots_with_attestations(
+    post_state, store, last_signed_block = yield from conf_rule_apply_next_slots_with_attestations(
         spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=participation_fn,
         is_optimistic=True, store_checks=False)
 
     return post_state, store, last_signed_block
 
 
-def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
+def conf_rule_tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
                        merge_block=False, block_not_found=False, is_optimistic=False,
                        blob_data=None, store_checks=True):
     pre_state = store.block_states[signed_block.message.parent_root]
@@ -146,7 +146,7 @@ def apply_next_epoch_with_attestations_in_blocks_and_on_attestation_no_checks_an
             participation_fn,
         )
 
-        yield from tick_and_add_block(spec, store, last_signed_block, test_steps,
+        yield from conf_rule_tick_and_add_block(spec, store, last_signed_block, test_steps,
                                       is_optimistic=True, store_checks=False)
 
         yield from add_attestations(spec, store, attestations, test_steps, False)
