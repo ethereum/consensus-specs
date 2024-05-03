@@ -28,15 +28,11 @@ def tick_to_next_slot(spec, store, test_steps):
     on_tick_and_append_step_no_checks(spec, store, time, test_steps)
 
 
-def conf_rule_apply_next_epoch_with_attestations(spec,
-                                       state,
-                                       store,
-                                       fill_cur_epoch,
-                                       fill_prev_epoch,
-                                       participation_fn=None,
-                                       test_steps=None,
-                                       is_optimistic=False,
-                                       store_checks=True):
+def conf_rule_apply_next_epoch_with_attestations(
+    spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None,
+    is_optimistic=False, store_checks=True
+):
+
     if test_steps is None:
         test_steps = []
 
@@ -44,8 +40,8 @@ def conf_rule_apply_next_epoch_with_attestations(spec,
         spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from conf_rule_tick_and_add_block(spec, store, signed_block, test_steps,
-                                      is_optimistic=is_optimistic, store_checks=store_checks)
+        yield from conf_rule_tick_and_add_block(
+            spec, store, signed_block, test_steps, is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -55,22 +51,17 @@ def conf_rule_apply_next_epoch_with_attestations(spec,
     return post_state, store, last_signed_block
 
 
-def conf_rule_apply_next_slots_with_attestations(spec,
-                                       state,
-                                       store,
-                                       slots,
-                                       fill_cur_epoch,
-                                       fill_prev_epoch,
-                                       test_steps,
-                                       participation_fn=None,
-                                       is_optimistic=False,
-                                       store_checks=True):
+def conf_rule_apply_next_slots_with_attestations(
+    spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None,
+    is_optimistic=False, store_checks=True
+):
+
     _, new_signed_blocks, post_state = next_slots_with_attestations(
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from conf_rule_tick_and_add_block(spec, store, signed_block, test_steps,
-                                      is_optimistic=is_optimistic, store_checks=store_checks)
+        yield from conf_rule_tick_and_add_block(
+            spec, store, signed_block, test_steps, is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -100,9 +91,11 @@ def apply_next_slots_with_attestations_no_checks_and_optimistic(
     return post_state, store, last_signed_block
 
 
-def conf_rule_tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
-                       merge_block=False, block_not_found=False, is_optimistic=False,
-                       blob_data=None, store_checks=True):
+def conf_rule_tick_and_add_block(
+    spec, store, signed_block, test_steps, valid=True, merge_block=False, block_not_found=False,
+    is_optimistic=False, blob_data=None, store_checks=True
+):
+
     pre_state = store.block_states[signed_block.message.parent_root]
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
@@ -146,8 +139,8 @@ def apply_next_epoch_with_attestations_in_blocks_and_on_attestation_no_checks_an
             participation_fn,
         )
 
-        yield from conf_rule_tick_and_add_block(spec, store, last_signed_block, test_steps,
-                                      is_optimistic=True, store_checks=False)
+        yield from conf_rule_tick_and_add_block(
+            spec, store, last_signed_block, test_steps, is_optimistic=True, store_checks=False)
 
         yield from add_attestations(spec, store, attestations, test_steps, False)
 
