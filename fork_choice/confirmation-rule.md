@@ -76,7 +76,7 @@ The confirmation rule can be configured to the desired tolerance of Byzantine va
 ```python
 def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     """
-    Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes and entire epoch
+    Returns whether the range from ``start_slot`` to ``end_slot`` (inclusive of both) includes an entire epoch
     """
     start_epoch = compute_epoch_at_slot(start_slot)
     end_epoch = compute_epoch_at_slot(end_slot)
