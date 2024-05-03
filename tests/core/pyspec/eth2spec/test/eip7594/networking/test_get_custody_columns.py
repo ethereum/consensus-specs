@@ -15,7 +15,7 @@ def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None)
         custody_subnet_count = rng.randint(0, spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 
     result = spec.get_custody_columns(node_id, custody_subnet_count)
-    yield 'node_id', 'meta', node_id
+    yield 'node_id', 'meta', hex(node_id)
     yield 'custody_subnet_count', 'meta', custody_subnet_count
 
     assert len(result) == len(set(result))
