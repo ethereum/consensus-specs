@@ -449,12 +449,11 @@ def find_confirmed_block(store: Store, block_root: Root) -> Root:
 def immediately_after_on_tick_if_slot_changed(store: Store) -> None:
     """
     This method must be executed immediately after `on_tick` whenever the current slot changes.
-    The reason for not calling this method directly from `on_tick` is that, for testing purposes,
-    when the slot changes, it is required to be able to execute `on_attestation` on attestations
-    sent in the previous slot before executing the code in this method.
-    Likewise, in the implementations, the expectation is that, when the current slot changes,
-    any attestations sent during the previous slot, are processed through `on_attestation`
-    during the execution of `on_tick` before executing the code from this methods.
+    Importantly, any attestation that could not be fed into `on_attestation` at the previous slot
+    because of ageing reasons, it must be processed through `on_attestation` before executing this method.
+    The reason for not calling this method directly from `on_tick` is that, due to the spec architecture,
+    it is impossible to specify the behaviour described above.
+    Separating the code execution in this way is therefore necessary to be able to test this functionality properly.
     """
     current_slot = get_current_slot(store)
 
