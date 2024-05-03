@@ -105,6 +105,7 @@ class DataColumnSidecar(Container):
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
+    # Overflow prevention
     if node_id == UINT256_MAX:
         node_id = NodeID(0)
 
