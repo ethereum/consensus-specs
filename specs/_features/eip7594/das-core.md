@@ -89,8 +89,8 @@ We define the following Python custom types for type hinting and readability:
 
 ```python
 class DataColumnSidecar(Container):
-    index: ColumnIndex  # Index of column in extended matrix
-    column: DataColumn
+    column_index: ColumnIndex  # Index of column in extended matrix
+    column_cells: DataColumn
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
@@ -181,13 +181,13 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     proofs = [cells_and_proofs[i][1] for i in range(blob_count)]
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
-        column = DataColumn([cells[row_index][column_index]
-                             for row_index in range(blob_count)])
+        column_cells = DataColumn([cells[row_index][column_index]
+                                   for row_index in range(blob_count)])
         kzg_proof_of_column = [proofs[row_index][column_index]
                                for row_index in range(blob_count)]
         sidecars.append(DataColumnSidecar(
-            index=column_index,
-            column=column,
+            column_index=column_index,
+            column_cells=column_cells,
             kzg_commitments=block.body.blob_kzg_commitments,
             kzg_proofs=kzg_proof_of_column,
             signed_block_header=signed_block_header,

@@ -69,18 +69,18 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
     Verify if the proofs are correct
     """
-    assert sidecar.index < NUMBER_OF_COLUMNS
-    assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
+    assert sidecar.column_index < NUMBER_OF_COLUMNS
+    assert len(sidecar.column_cells) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
-    row_indices = [RowIndex(i) for i in range(len(sidecar.column))]
-    column_indices = [sidecar.index] * len(sidecar.column)
+    row_indices = [RowIndex(i) for i in range(len(sidecar.column_cells))]
+    column_indices = [sidecar.column_index] * len(sidecar.column_cells)
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
         row_commitments_bytes=sidecar.kzg_commitments,
         row_indices=row_indices,  # all rows
         column_indices=column_indices,  # specific column
-        cells=sidecar.column,
+        cells=sidecar.column_cells,
         proofs_bytes=sidecar.kzg_proofs,
     )
 ```
@@ -129,8 +129,8 @@ The *type* of the payload of this topic is `DataColumnSidecar`.
 
 The following validations MUST pass before forwarding the `sidecar: DataColumnSidecar` on the network, assuming the alias `block_header = sidecar.signed_block_header.message`:
 
-- _[REJECT]_ The sidecar's index is consistent with `NUMBER_OF_COLUMNS` -- i.e. `sidecar.index < NUMBER_OF_COLUMNS`.
-- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
+- _[REJECT]_ The sidecar's index is consistent with `NUMBER_OF_COLUMNS` -- i.e. `sidecar.column_index < NUMBER_OF_COLUMNS`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_data_column_sidecar(sidecar.column_index) == subnet_id`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
 - _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid with respect to the `block_header.proposer_index` pubkey.
@@ -140,7 +140,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
 - _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
 - _[REJECT]_ The sidecar's column data is valid as verified by `verify_data_column_sidecar_kzg_proofs(sidecar)`.
-- _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, sidecar.index)` with valid header signature, sidecar inclusion proof, and kzg proof.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, sidecar.column_index)` with valid header signature, sidecar inclusion proof, and kzg proof.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
