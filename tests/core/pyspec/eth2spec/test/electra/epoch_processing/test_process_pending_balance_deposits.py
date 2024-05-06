@@ -95,7 +95,7 @@ def test_multiple_pending_deposits_below_churn(spec, state):
     state.pending_balance_deposits.append(
         spec.PendingBalanceDeposit(index=1, amount=amount)
     )
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     yield from run_epoch_processing_with(
         spec, state, "process_pending_balance_deposits"
     )
@@ -115,7 +115,7 @@ def test_multiple_pending_deposits_above_churn(spec, state):
         state.pending_balance_deposits.append(
             spec.PendingBalanceDeposit(index=i, amount=amount)
         )
-    pre_balances = state.balances
+    pre_balances = state.balances.copy()
     yield from run_epoch_processing_with(
         spec, state, "process_pending_balance_deposits"
     )
