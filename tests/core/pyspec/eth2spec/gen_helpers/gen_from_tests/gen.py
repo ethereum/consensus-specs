@@ -77,7 +77,7 @@ def get_provider(create_provider_fn: Callable[[SpecForkName, PresetBaseName, str
 
 def get_create_provider_fn(runner_name: str) -> Callable[[SpecForkName, str, str, PresetBaseName], TestProvider]:
     def prepare_fn() -> None:
-        bls.use_milagro()
+        bls.use_fastest()
         return
 
     def create_provider(fork_name: SpecForkName, preset_name: PresetBaseName,

@@ -774,7 +774,7 @@ def run_execution_layer_withdrawal_request_processing(
     pre_pending_partial_withdrawals = state.pending_partial_withdrawals.copy()
     pre_balance = state.balances[validator_index]
     pre_effective_balance = state.validators[validator_index].effective_balance
-    pre_state = state
+    pre_state = state.copy()
     expected_amount_to_withdraw = compute_amount_to_withdraw(
         spec, state, validator_index, execution_layer_withdrawal_request.amount
     )
