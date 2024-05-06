@@ -324,7 +324,7 @@ def test_zero_length_transaction_regular_payload(spec, state):
     yield from run_zero_length_transaction_test(spec, state)
 
 
-def run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=True, rng=Random(5555)):
+def run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=True):
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
@@ -338,26 +338,30 @@ def run_randomized_non_validated_execution_fields_test(spec, state, execution_va
 @with_bellatrix_and_later
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
+    rng = Random(1111)
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
+    rng = Random(2222)
     state = build_state_with_complete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(spec, state):
+    rng = Random(3333)
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(spec, state):
+    rng = Random(4444)
     state = build_state_with_complete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)

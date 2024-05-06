@@ -243,7 +243,7 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``
     """
     a = a.copy()  # Make a copy since `a` is passed by reference
-    o = []
+    o: List[BLSFieldElement] = []
     apos = len(a) - 1
     bpos = len(b) - 1
     diff = apos - bpos
@@ -441,7 +441,7 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
     proofs = []
 
     for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(i)
+        coset = coset_for_cell(CellID(i))
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(coset_evals_to_cell(ys))
         proofs.append(proof)
@@ -470,7 +470,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
     for cell_id in range(CELLS_PER_EXT_BLOB):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        cells.append(coset_evals_to_cell(extended_data_rbo[start:end]))
+        cells.append(coset_evals_to_cell(CosetEvals(extended_data_rbo[start:end])))
     return cells
 ```
 
@@ -572,7 +572,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
-    zero_poly_coeff = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
+    zero_poly_coeff = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB
     for i, coeff in enumerate(short_zero_poly):
         zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
@@ -690,7 +690,7 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    missing_cell_ids = [cell_id for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
+    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
     zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(

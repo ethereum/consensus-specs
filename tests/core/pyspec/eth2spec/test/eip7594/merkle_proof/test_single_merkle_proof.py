@@ -22,7 +22,7 @@ from eth2spec.debug.random_value import (
 
 
 def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
-    opaque_tx, blobs, blob_kzg_commitments, proofs = get_sample_opaque_tx(spec, blob_count=1)
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1)
     if rng is None:
         block = build_empty_block_for_next_slot(spec, state)
     else:
@@ -56,6 +56,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
         index=spec.get_subtree_index(gindex),
         root=column_sidcar.signed_block_header.message.body_root,
     )
+    assert spec.verify_data_column_sidecar_kzg_proofs(column_sidcar)
     assert spec.verify_data_column_sidecar_inclusion_proof(column_sidcar)
 
 

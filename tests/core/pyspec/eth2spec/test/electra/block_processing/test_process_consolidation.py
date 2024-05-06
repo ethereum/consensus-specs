@@ -1,6 +1,5 @@
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    spec_state_test,
     with_electra_and_later,
     with_presets,
     always_bls,
@@ -407,7 +406,13 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
 # Failing tests
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_source_equals_target(spec, state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -433,7 +438,13 @@ def test_invalid_source_equals_target(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_exceed_pending_consolidations_limit(spec, state):
     state.pending_consolidations = [
         spec.PendingConsolidation(source_index=0, target_index=1)
@@ -457,7 +468,13 @@ def test_invalid_exceed_pending_consolidations_limit(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_not_enough_consolidation_churn_available(spec, state):
     state.validators = state.validators[0:2]
     state.pending_consolidations = [
@@ -482,7 +499,13 @@ def test_invalid_not_enough_consolidation_churn_available(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_exited_source(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -504,7 +527,13 @@ def test_invalid_exited_source(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_exited_target(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -527,7 +556,13 @@ def test_invalid_exited_target(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_inactive_source(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -549,7 +584,13 @@ def test_invalid_inactive_source(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_inactive_target(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -572,7 +613,13 @@ def test_invalid_inactive_target(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_no_execution_withdrawal_credential(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -590,7 +637,13 @@ def test_invalid_no_execution_withdrawal_credential(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_different_credentials(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
@@ -611,9 +664,43 @@ def test_invalid_different_credentials(spec, state):
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 @always_bls
 def test_invalid_source_signature(spec, state):
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
+
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    signed_consolidation = sign_consolidation(
+        spec,
+        state,
+        spec.Consolidation(
+            epoch=current_epoch, source_index=source_index, target_index=target_index
+        ),
+        source_privkey,
+        target_privkey,
+    )
+
+    # Set earliest consolidation epoch to the expected exit epoch
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    state.earliest_consolidation_epoch = expected_exit_epoch
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
+    # Set the consolidation balance to consume equal to churn limit
+    state.consolidation_balance_to_consume = consolidation_churn_limit
+
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
     target_privkey = pubkey_to_privkey[state.validators[1].pubkey]
@@ -627,17 +714,53 @@ def test_invalid_source_signature(spec, state):
         source_privkey,
         target_privkey,
     )
+
     # Change the pubkey of the source validator, invalidating its signature
     state.validators[0].pubkey = state.validators[1].pubkey
+
     yield from run_consolidation_processing(
         spec, state, signed_consolidation, valid=False
     )
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 @always_bls
 def test_invalid_target_signature(spec, state):
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_privkey = pubkey_to_privkey[state.validators[source_index].pubkey]
+    target_privkey = pubkey_to_privkey[state.validators[target_index].pubkey]
+
+    # Set source and target withdrawal credentials to the same eth1 credential
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    signed_consolidation = sign_consolidation(
+        spec,
+        state,
+        spec.Consolidation(
+            epoch=current_epoch, source_index=source_index, target_index=target_index
+        ),
+        source_privkey,
+        target_privkey,
+    )
+
+    # Set earliest consolidation epoch to the expected exit epoch
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    state.earliest_consolidation_epoch = expected_exit_epoch
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
+    # Set the consolidation balance to consume equal to churn limit
+    state.consolidation_balance_to_consume = consolidation_churn_limit
+
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
     target_privkey = pubkey_to_privkey[state.validators[1].pubkey]
@@ -651,15 +774,23 @@ def test_invalid_target_signature(spec, state):
         source_privkey,
         target_privkey,
     )
+
     # Change the pubkey of the target validator, invalidating its signature
     state.validators[1].pubkey = state.validators[2].pubkey
+
     yield from run_consolidation_processing(
         spec, state, signed_consolidation, valid=False
     )
 
 
 @with_electra_and_later
-@spec_state_test
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_invalid_before_specified_epoch(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_privkey = pubkey_to_privkey[state.validators[0].pubkey]
