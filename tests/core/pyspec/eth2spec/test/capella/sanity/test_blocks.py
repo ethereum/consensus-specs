@@ -1,3 +1,4 @@
+import random
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.context import (
@@ -268,7 +269,8 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
 
 def _perform_valid_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
-        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2,
+        spec, state, rng=random.Random(42),
+        num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2,
         num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2)
 
     next_slot(spec, state)
