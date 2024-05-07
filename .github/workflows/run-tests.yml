@@ -27,9 +27,10 @@ jobs:
   table_of_contents:
    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
-      - name: Checkout this repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: ''
@@ -39,9 +40,10 @@ jobs:
   codespell:
    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
-      - name: Checkout this repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: ''
@@ -51,9 +53,10 @@ jobs:
   lint:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
     steps:
-      - name: Checkout this repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: ''
@@ -71,9 +74,10 @@ jobs:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
     steps:
-      - name: Checkout this repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: ''
@@ -100,5 +104,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-${{ matrix.version }}
+          name: test-reports-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
