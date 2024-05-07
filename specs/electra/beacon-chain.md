@@ -24,7 +24,7 @@
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`DepositReceipt`](#depositreceipt)
+    - [`DepositRequest`](#depositrequest)
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
     - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
@@ -92,8 +92,8 @@
         - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
         - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
-      - [Deposit receipts](#deposit-receipts)
-        - [New `process_deposit_receipt`](#new-process_deposit_receipt)
+      - [Deposit requests](#deposit-requests)
+        - [New `process_deposit_request`](#new-process_deposit_request)
       - [Consolidations](#consolidations)
         - [New `process_consolidation`](#new-process_consolidation)
 - [Testing](#testing)
@@ -119,7 +119,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `UNSET_DEPOSIT_RECEIPTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
+| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
 | `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* |
 
 ### Withdrawal prefixes
@@ -170,7 +170,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit requests allowed in each payload |
 | `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
 | `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
@@ -194,12 +194,12 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### New containers
 
-#### `DepositReceipt`
+#### `DepositRequest`
 
 *Note*: The container is new in EIP6110.
 
 ```python
-class DepositReceipt(Container):
+class DepositRequest(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
@@ -345,7 +345,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
 ```
@@ -373,7 +373,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_receipts_root: Root  # [New in Electra:EIP6110]
+    deposit_requests_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
 ```
 
@@ -422,7 +422,7 @@ class BeaconState(Container):
     next_withdrawal_validator_index: ValidatorIndex
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_receipts_start_index: uint64  # [New in Electra:EIP6110]
+    deposit_requests_start_index: uint64  # [New in Electra:EIP6110]
     deposit_balance_to_consume: Gwei  # [New in Electra:EIP7251]
     exit_balance_to_consume: Gwei  # [New in Electra:EIP7251]
     earliest_exit_epoch: Epoch  # [New in Electra:EIP7251]
@@ -1011,7 +1011,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
+        deposit_requests_root=hash_tree_root(payload.deposit_requests),  # [New in Electra:EIP6110]
         withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
     )
 ```
@@ -1026,7 +1026,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [Modified in Electra:EIP6110]
     # Disable former deposit mechanism once all prior deposits are processed
-    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_requests_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         assert len(body.deposits) == min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
@@ -1044,7 +1044,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
-    for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
+    for_ops(body.execution_payload.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110]
     for_ops(body.consolidations, process_consolidation)  # [New in Electra:EIP7251]
 ```
 
@@ -1271,24 +1271,24 @@ def process_execution_layer_withdrawal_request(
         ))
 ```
 
-##### Deposit receipts
+##### Deposit requests
 
-###### New `process_deposit_receipt`
+###### New `process_deposit_request`
 
 *Note*: This function is new in Electra:EIP6110.
 
 ```python
-def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt) -> None:
-    # Set deposit receipt start index
-    if state.deposit_receipts_start_index == UNSET_DEPOSIT_RECEIPTS_START_INDEX:
-        state.deposit_receipts_start_index = deposit_receipt.index
+def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
+    # Set deposit request start index
+    if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
+        state.deposit_requests_start_index = deposit_request.index
 
     apply_deposit(
         state=state,
-        pubkey=deposit_receipt.pubkey,
-        withdrawal_credentials=deposit_receipt.withdrawal_credentials,
-        amount=deposit_receipt.amount,
-        signature=deposit_receipt.signature,
+        pubkey=deposit_request.pubkey,
+        withdrawal_credentials=deposit_request.withdrawal_credentials,
+        amount=deposit_request.amount,
+        signature=deposit_request.signature,
     )
 ```
 
@@ -1349,7 +1349,7 @@ def process_consolidation(state: BeaconState, signed_consolidation: SignedConsol
 Modifications include:
 1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
 2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. *[New in Electra:EIP6110]* Add `deposit_receipts_start_index` variable to the genesis state initialization.
+3. *[New in Electra:EIP6110]* Add `deposit_requests_start_index` variable to the genesis state initialization.
 4. *[New in Electra:EIP7251]* Initialize new fields to support increasing the maximum effective balance.
 
 ```python
@@ -1369,7 +1369,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,  # [New in Electra:EIP6110]
+        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,  # [New in Electra:EIP6110]
     )
 
     # Process deposits

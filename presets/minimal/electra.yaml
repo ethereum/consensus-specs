@@ -35,7 +35,7 @@ MAX_CONSOLIDATIONS: 1
 # Execution
 # ---------------------------------------------------------------
 # [customized]
-MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
+MAX_DEPOSIT_REQUESTS_PER_PAYLOAD: 4
 # [customized] 2**1 (= 2) withdrawal requests
 MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 2
 

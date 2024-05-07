@@ -90,7 +90,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
         blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
         excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
-        deposit_receipts_root=Root(),  # [New in Electra:EIP6110]
+        deposit_requests_root=Root(),  # [New in Electra:EIP6110]
         withdrawal_requests_root=Root(),  # [New in Electra:EIP7002],
     )
 
@@ -146,7 +146,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # [New in Electra:EIP6110]
-        deposit_receipts_start_index=UNSET_DEPOSIT_RECEIPTS_START_INDEX,
+        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,
         # [New in Electra:EIP7251]
         deposit_balance_to_consume=0,
         exit_balance_to_consume=0,

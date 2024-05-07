@@ -80,7 +80,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ```python
 def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
-    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_requests_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
