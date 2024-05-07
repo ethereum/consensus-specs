@@ -782,7 +782,12 @@ def case05_recover_all_cells():
     # Edge case: Duplicate cell_id
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+    # There will be 65 cell, where 64 are unique and 1 is a duplicate.
+    # Depending on the implementation, 63 & 1 might not fail for the right
+    # reason. For example, if the implementation assigns cells in an array
+    # via index, this would result in 63 cells and the test would fail due
+    # to insufficient cell count, not because of a duplicate cell.
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 + 1))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Replace first cell_id with the second cell_id
     cell_ids[0] = cell_ids[1]
