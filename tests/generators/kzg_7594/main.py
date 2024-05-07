@@ -782,7 +782,7 @@ def case05_recover_all_cells():
     # Edge case: Duplicate cell_id
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    # There will be 65 cell, where 64 are unique and 1 is a duplicate.
+    # There will be 65 cells, where 64 are unique and 1 is a duplicate.
     # Depending on the implementation, 63 & 1 might not fail for the right
     # reason. For example, if the implementation assigns cells in an array
     # via index, this would result in 63 cells and the test would fail due
