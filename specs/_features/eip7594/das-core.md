@@ -106,19 +106,18 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
     subnet_ids: List[uint64] = []
-    i = uint256(node_id)
+    current_id = uint256(node_id)
     while len(subnet_ids) < custody_subnet_count:
-        # Overflow prevention
-        if i == UINT256_MAX:
-            i = NodeID(0)
-
         subnet_id = (
-            bytes_to_uint64(hash(uint_to_bytes(uint256(i)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
             % DATA_COLUMN_SIDECAR_SUBNET_COUNT
         )
         if subnet_id not in subnet_ids:
             subnet_ids.append(subnet_id)
-        i += 1
+        if current_id == UINT256_MAX:
+            # Overflow prevention
+            current_id = NodeID(0)
+        current_id += 1
 
     assert len(subnet_ids) == len(set(subnet_ids))
 
