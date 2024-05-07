@@ -262,7 +262,7 @@ Clients MUST respond with at least the data column sidecars of the first blob-ca
 
 Clients MUST include all data column sidecars of each block from which they include data column sidecars.
 
-The following data column sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
+The following data column sidecars, where they exist, MUST be sent in `(slot, column_index)` order.
 
 Slots that do not contain known data columns MUST be skipped, mimicking the behaviour
 of the `BlocksByRange` request. Only response chunks with known data columns should
