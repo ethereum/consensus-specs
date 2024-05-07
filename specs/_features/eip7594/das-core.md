@@ -105,19 +105,20 @@ class DataColumnSidecar(Container):
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
-    subnet_ids = []
-    i = 0
+    subnet_ids: List[uint64] = []
+    current_id = uint256(node_id)
     while len(subnet_ids) < custody_subnet_count:
-        if node_id == UINT256_MAX:
-            node_id = 0
-
         subnet_id = (
-            bytes_to_uint64(hash(uint_to_bytes(uint256(node_id + i)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
             % DATA_COLUMN_SIDECAR_SUBNET_COUNT
         )
         if subnet_id not in subnet_ids:
             subnet_ids.append(subnet_id)
-        i += 1
+        if current_id == UINT256_MAX:
+            # Overflow prevention
+            current_id = NodeID(0)
+        current_id += 1
+
     assert len(subnet_ids) == len(set(subnet_ids))
 
     columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
@@ -154,10 +155,10 @@ def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count:
     This helper demonstrates how to apply ``recover_all_cells``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix = []
+    extended_matrix: List[Cell] = []
     for blob_index in range(blob_count):
         cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells = [cells_dict[(blob_index, cell_id)] for cell_id in cell_ids]
+        cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
 
         all_cells_for_row = recover_all_cells(cell_ids, cells)
         extended_matrix.extend(all_cells_for_row)
