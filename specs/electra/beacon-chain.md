@@ -35,6 +35,8 @@
     - [`AttesterSlashing`](#attesterslashing)
   - [Extended Containers](#extended-containers)
     - [`Attestation`](#attestation)
+    - [`AggregateAndProof`](#aggregateandproof)
+    - [`SignedAggregateAndProof`](#signedaggregateandproof)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayload`](#executionpayload)
