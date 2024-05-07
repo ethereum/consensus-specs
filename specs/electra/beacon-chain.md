@@ -291,6 +291,23 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
+#### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation  # [New in Electra:EIP7549]
+    selection_proof: BLSSignature
+```
+
+#### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof   # [New in Electra:EIP7549]
+    signature: BLSSignature
+```
+
 #### `IndexedAttestation`
 
 ```python
