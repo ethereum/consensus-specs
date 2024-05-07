@@ -298,7 +298,7 @@ class Attestation(Container):
 ```python
 class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
-    aggregate: Attestation  # [New in Electra:EIP7549]
+    aggregate: Attestation  # [Modified in Electra:EIP7549]
     selection_proof: BLSSignature
 ```
 
@@ -306,7 +306,7 @@ class AggregateAndProof(Container):
 
 ```python
 class SignedAggregateAndProof(Container):
-    message: AggregateAndProof   # [New in Electra:EIP7549]
+    message: AggregateAndProof   # [Modified in Electra:EIP7549]
     signature: BLSSignature
 ```
 
