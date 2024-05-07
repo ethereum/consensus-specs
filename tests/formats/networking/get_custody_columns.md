@@ -8,7 +8,7 @@
 
 ```yaml
 description: string            -- optional: description of test case, purely for debugging purposes.
-node_id: int                   -- argument: the NodeId input.
+node_id: int                   -- argument: the NodeID input.
 custody_subnet_count: int      -- argument: the count of custody subnets.
 result: list of int            -- output: the list of resulting column indices.
 ```
