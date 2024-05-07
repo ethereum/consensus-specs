@@ -65,7 +65,14 @@ def get_default_yaml():
     def _represent_none(self, _):
         return self.represent_scalar('tag:yaml.org,2002:null', 'null')
 
+    def _represent_str(self, data):
+        if data.startswith("0x"):
+            # Without this, a zero-byte hex string is represented without quotes.
+            return self.represent_scalar('tag:yaml.org,2002:str', data, style="'")
+        return self.represent_str(data)
+
     yaml.representer.add_representer(type(None), _represent_none)
+    yaml.representer.add_representer(str, _represent_str)
 
     return yaml
 
