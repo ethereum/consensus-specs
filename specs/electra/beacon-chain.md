@@ -33,9 +33,9 @@
     - [`PendingConsolidation`](#pendingconsolidation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
-    - [`IndexedAttestation`](#indexedattestation)
   - [Extended Containers](#extended-containers)
     - [`Attestation`](#attestation)
+    - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -279,16 +279,6 @@ class AttesterSlashing(Container):
     attestation_2: IndexedAttestation  # [Modified in Electra:EIP7549]
 ```
 
-#### `IndexedAttestation`
-
-```python
-class IndexedAttestation(Container):
-    # [Modified in Electra:EIP7549]
-    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
-    data: AttestationData
-    signature: BLSSignature
-```
-
 ### Extended Containers
 
 #### `Attestation`
@@ -298,6 +288,16 @@ class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
     data: AttestationData
     committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
+    signature: BLSSignature
+```
+
+#### `IndexedAttestation`
+
+```python
+class IndexedAttestation(Container):
+    # [Modified in Electra:EIP7549]
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    data: AttestationData
     signature: BLSSignature
 ```
 
