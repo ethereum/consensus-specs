@@ -218,7 +218,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
-  columns: List[ColumnIndex, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
 
