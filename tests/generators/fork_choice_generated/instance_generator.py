@@ -13,6 +13,8 @@ from minizinc import Instance, Model, Solver
 from ruamel.yaml import YAML
 from mutation_operators import mk_mutations, MutatorsGenerator
 import random
+from instantiators.block_tree import yield_block_tree_test_case
+from instantiators.block_cover import yield_block_cover_test_case
 
 
 BLS_ACTIVE = False
@@ -63,12 +65,6 @@ def _create_providers(test_name: str, /,
                                         case_fn=mutation_generator.next_test_case)
 
     yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
-
-
-def _import_block_tree_test_fn():
-    src = import_module('eth2spec.test.phase0.fork_choice.test_sm_links_tree_model')
-    print("generating test vectors from tests source: %s" % src.__name__)
-    return getattr(src, 'test_sm_links_tree_model')
 
 
 def _find_sm_link_solutions(anchor_epoch: int,
@@ -122,28 +118,20 @@ def _create_block_tree_providers(test_name: str, /,
         number_of_mutations: int,
         with_attester_slashings: bool,
         with_invalid_messages: bool) -> Iterable[TestProvider]:
-    _test_fn = _import_block_tree_test_fn()
-
     def test_fn(phase: str, preset: str, seed: int, solution):
-        return _test_fn(generator_mode=True,
-                        phase=phase,
-                        preset=preset,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
-                        seed=seed,
-                        sm_links=solution['sm_links'],
-                        block_parents=solution['block_parents'],
-                        with_attester_slashings=with_attester_slashings,
-                        with_invalid_messages=with_invalid_messages)
+        return yield_block_tree_test_case(generator_mode=True,
+                                          phase=phase,
+                                          preset=preset,
+                                          bls_active=BLS_ACTIVE,
+                                          debug=debug,
+                                          seed=seed,
+                                          sm_links=solution['sm_links'],
+                                          block_parents=solution['block_parents'],
+                                          with_attester_slashings=with_attester_slashings,
+                                          with_invalid_messages=with_invalid_messages)
 
     yield from _create_providers(
         test_name, forks, presets, debug, initial_seed, solutions, number_of_variations, number_of_mutations, test_fn)
-
-
-def _import_block_cover_test_fn():
-    src = import_module('eth2spec.test.phase0.fork_choice.test_sm_links_tree_model')
-    print("generating test vectors from tests source: %s" % src.__name__)
-    return getattr(src, 'test_filter_block_tree_model')
 
 
 def _find_block_cover_model_solutions(anchor_epoch: int,
@@ -229,15 +217,14 @@ def _create_block_cover_providers(test_name: str, /,
         solutions,
         number_of_variations: int,
         number_of_mutations: int) -> Iterable[TestProvider]:
-    _test_fn = _import_block_cover_test_fn()
     def test_fn(phase: str, preset: str, seed: int, solution):
-        return _test_fn(generator_mode=True,
-                        phase=phase,
-                        preset=preset,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
-                        seed=seed,
-                        model_params=solution)
+        return yield_block_cover_test_case(generator_mode=True,
+                                           phase=phase,
+                                           preset=preset,
+                                           bls_active=BLS_ACTIVE,
+                                           debug=debug,
+                                           seed=seed,
+                                           model_params=solution)
 
     yield from _create_providers(
         test_name, forks, presets, debug, initial_seed, solutions, number_of_variations, number_of_mutations, test_fn)
