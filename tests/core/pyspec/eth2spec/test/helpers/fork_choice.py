@@ -351,24 +351,29 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def output_store_checks(spec, store, test_steps):
-    test_steps.append(
-        {
-            "checks": {
-                "time": int(store.time),
-                "head": get_formatted_head_output(spec, store),
-                "justified_checkpoint": {
-                    "epoch": int(store.justified_checkpoint.epoch),
-                    "root": encode_hex(store.justified_checkpoint.root),
-                },
-                "finalized_checkpoint": {
-                    "epoch": int(store.finalized_checkpoint.epoch),
-                    "root": encode_hex(store.finalized_checkpoint.root),
-                },
-                "proposer_boost_root": encode_hex(store.proposer_boost_root),
-            }
+def output_store_checks(spec, store, test_steps, with_filtered_block_weights=False):
+    checks = {
+        "time": int(store.time),
+        "head": get_formatted_head_output(spec, store),
+        "justified_checkpoint": {
+            "epoch": int(store.justified_checkpoint.epoch),
+            "root": encode_hex(store.justified_checkpoint.root),
+        },
+        "finalized_checkpoint": {
+            "epoch": int(store.finalized_checkpoint.epoch),
+            "root": encode_hex(store.finalized_checkpoint.root),
+        },
+        "proposer_boost_root": encode_hex(store.proposer_boost_root),
+    }
+
+    if with_filtered_block_weights:
+        filtered_block_weights = {
+            encode_hex(filtered_block_root): int(spec.get_weight(store, filtered_block_root))
+            for filtered_block_root in spec.get_filtered_block_tree(store).keys()
         }
-    )
+        checks["filtered_block_weights"] = filtered_block_weights
+
+    test_steps.append({"checks": checks})
 
 
 def apply_next_epoch_with_attestations(
