@@ -30,6 +30,7 @@ from eth2spec.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
     add_block,
+    output_store_checks,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -897,6 +898,8 @@ def test_sm_links_tree_model(spec,
     if debug:
         print('               head: ' + _print_head(spec, store))
 
+    output_store_checks(spec, store, test_steps, with_filtered_block_weights=True)
+
     yield 'steps', test_steps
 
 
@@ -1126,7 +1129,6 @@ def test_filter_block_tree_model(spec, state, model_params=None, debug=False, se
     # Ensure the store.justified_checkpoint.epoch is as expected
     assert store.justified_checkpoint.epoch == store_justified_epoch
     # Ensure the target block is in filtered_blocks
-    filtered_block_roots = list(spec.get_filtered_block_tree(store).keys())
     target_block_root = spec.hash_tree_root(post_block_tips[target_block].beacon_state.latest_block_header)
 
     # Check predicates
@@ -1157,8 +1159,8 @@ def test_filter_block_tree_model(spec, state, model_params=None, debug=False, se
             and (predicates['store_je_eq_zero']
                  or predicates['block_vse_eq_store_je']
                  or predicates['block_vse_plus_two_ge_curr_e'])):
-        assert target_block_root in filtered_block_roots
+        assert target_block_root in spec.get_filtered_block_tree(store).keys()
 
-    test_steps.append({'property_checks': {'filtered_block_roots': [str(r) for r in filtered_block_roots]}})
+    output_store_checks(spec, store, test_steps, with_filtered_block_weights=True)
 
     yield 'steps', test_steps
