@@ -6,13 +6,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
-from eth2spec.test.helpers.fork_choice import (
-    on_tick_and_append_step,
-    add_attestation,
-    add_attester_slashing,
-    add_block,
-    output_store_checks,
-)
 from eth2spec.test.helpers.state import (
     transition_to,
     next_slot,
@@ -27,11 +20,11 @@ from .helpers import (
     advance_state_to_anchor_epoch,
     produce_block,
     attest_to_slot,
+    yield_fork_choice_test_case,
 )
 from .debug_helpers import (
     attesters_in_block,
     print_epoch,
-    print_head,
     print_block_tree,
 )
 
@@ -523,12 +516,6 @@ def _generate_block_tree(spec,
             sorted(out_of_block_attester_slashing_messages, key=lambda a: a.payload.attestation_1.data.slot))
 
 
-def _on_tick_and_append_step(spec, store, slot, test_steps):
-    time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
-    assert store.time == time
-
-
 def gen_block_tree_test_data(spec,
                              state,
                              debug,
@@ -602,59 +589,5 @@ def yield_block_tree_test_case(spec,
     test_data = gen_block_tree_test_data(spec, state, debug, seed, sm_links, block_parents,
                                          with_attester_slashings, with_invalid_messages)
 
-    # Yield meta
-    for k, v in test_data.meta.items():
-        yield k, 'meta', v
-
-    # Yield anchor state and block initialization
-    yield 'anchor_state', test_data.anchor_state
-    yield 'anchor_block', test_data.anchor_block
-
-    test_steps = []
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
-    _on_tick_and_append_step(spec, store, test_data.anchor_state.slot, test_steps)
-
-    # Apply generated messages
-    max_block_slot = max(b.payload.message.slot for b in test_data.blocks)
-    max_attestation_slot = max(a.payload.data.slot for a in test_data.atts) if any(test_data.atts) else 0
-    max_slashing_slot = max(
-        s.payload.attestation_1.data.slot for s in test_data.slashings) if any(test_data.slashings) else 0
-
-    start_slot = min(b.payload.message.slot for b in test_data.blocks)
-    end_slot = max(max_block_slot, max_attestation_slot, max_slashing_slot) + 1
-
-    # Advance time to start_slot
-    _on_tick_and_append_step(spec, store, start_slot, test_steps)
-
-    # Apply messages to store
-    for slot in range(start_slot, end_slot + 1):
-        # on_tick
-        _on_tick_and_append_step(spec, store, slot, test_steps)
-
-        # on_attestation for attestations from the previous slot
-        for attestation_message in (a for a in test_data.atts if a.payload.data.slot == slot - 1):
-            yield from add_attestation(spec, store, attestation_message.payload,
-                                       test_steps, valid=attestation_message.valid)
-
-        # on_attester_slashing for slashing from the previous slot
-        for attester_slashing_message in (s for s in test_data.slashings
-                                          if s.payload.attestation_1.data.slot == slot - 1):
-            yield from add_attester_slashing(spec, store, attester_slashing_message.payload,
-                                             test_steps, valid=attester_slashing_message.valid)
-
-        # on_block for blocks from the current slot
-        for signed_block_message in (b for b in test_data.blocks if b.payload.message.slot == slot):
-            yield from add_block(spec, store, signed_block_message.payload, test_steps, signed_block_message.valid)
-
-            block_root = signed_block_message.payload.message.hash_tree_root()
-            if signed_block_message.valid:
-                assert store.blocks[block_root] == signed_block_message.payload.message
-            else:
-                assert block_root not in store.blocks.values()
-
-    if debug:
-        print('               head: ' + print_head(spec, store))
-
-    output_store_checks(spec, store, test_steps, with_filtered_block_weights=True)
-
-    yield 'steps', test_steps
+    yield from yield_fork_choice_test_case(spec, store, test_data, debug)
