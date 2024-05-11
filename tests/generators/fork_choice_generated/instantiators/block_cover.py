@@ -3,11 +3,6 @@ from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
 )
-from eth2spec.test.helpers.fork_choice import (
-    on_tick_and_append_step,
-    tick_and_add_block,
-    output_store_checks,
-)
 from eth2spec.test.helpers.state import (
     transition_to,
     next_slot,
@@ -21,6 +16,7 @@ from .helpers import (
     advance_state_to_anchor_epoch,
     produce_block,
     attest_to_slot,
+    yield_fork_choice_test_case,
 )
 
 def _should_justify_epoch(parents, current_justifications, previous_justifications, block) -> bool:
@@ -222,23 +218,20 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
 
     blocks = [ProtocolMessage(block) for block in signed_blocks]
 
-    test_data = FCTestData(meta, anchor_block, anchor_state, blocks, [], [])
+    current_epoch_slot = spec.compute_start_slot_at_epoch(model_params['current_epoch'])
+    current_epoch_time = state.genesis_time + current_epoch_slot * spec.config.SECONDS_PER_SLOT
+
+    test_data = FCTestData(meta, anchor_block, anchor_state, blocks, store_final_time=current_epoch_time)
     target_block_root = spec.hash_tree_root(post_block_tips[target_block].beacon_state.latest_block_header)
 
     return test_data, target_block_root
 
 
-def apply_final_steps(spec, store, model_params, test_steps):
-    current_epoch_slot = spec.compute_start_slot_at_epoch(model_params['current_epoch'])
-    current_epoch_time = store.genesis_time + current_epoch_slot * spec.config.SECONDS_PER_SLOT
-    if store.time < current_epoch_time:
-        on_tick_and_append_step(spec, store, current_epoch_time, test_steps)
-
-
 def run_sanity_checks(spec, store, model_params, target_block_root):
     current_epoch = spec.get_current_store_epoch(store)
     # Ensure the epoch is correct
-    assert current_epoch == model_params['current_epoch']
+    assert current_epoch == model_params['current_epoch'], str(current_epoch) + ' != ' + str(
+        model_params['current_epoch'])
     # Ensure the store.justified_checkpoint.epoch is as expected
     assert store.justified_checkpoint.epoch == model_params['store_justified_epoch']
 
@@ -277,33 +270,7 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
 @spec_state_test
 def yield_block_cover_test_case(spec, state, model_params=None, debug=False, seed=1):
     test_data, target_block_root = gen_block_cover_test_data(spec, state, model_params, debug, seed)
-
-    # Yield meta
-    for k, v in test_data.meta.items():
-        yield k, 'meta', v
-
-    # Yield anchor state and block initialization
-    yield 'anchor_state', test_data.anchor_state
-    yield 'anchor_block', test_data.anchor_block
-
-    test_steps = []
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
-
-    # Apply generated blocks
-    for block_message in test_data.blocks:
-        block = block_message.payload.message
-        yield from tick_and_add_block(spec, store, block_message.payload, test_steps)
-        block_root = block.hash_tree_root()
-        assert store.blocks[block_root] == block
-
-    # Final steps (advance store to the current epoch)
-    apply_final_steps(spec, store, model_params, test_steps)
+    yield from yield_fork_choice_test_case(spec, store, test_data, debug)
     # Run sanity checks against model params
     run_sanity_checks(spec, store, model_params, target_block_root)
-
-    output_store_checks(spec, store, test_steps, with_filtered_block_weights=True)
-
-    yield 'steps', test_steps
