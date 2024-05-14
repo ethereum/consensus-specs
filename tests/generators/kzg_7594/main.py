@@ -710,6 +710,21 @@ def case05_recover_all_cells():
         'output': None
     }
 
+    # Edge case: More cells provided than CELLS_PER_EXT_BLOB
+    blob = BLOB_RANDOM_VALID2
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB)) + [0]
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_more_cells_than_cells_per_ext_blob_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': None
+    }
+
     # Edge case: Invalid cell_id
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
