@@ -72,6 +72,9 @@ def solve_block_cover(anchor_epoch: int,
     assert number_of_solutions is not None
     result = instance.solve(nr_solutions=number_of_solutions)
 
+    if anchor_epoch == 0 and not store_justified_epoch_equal_zero:
+        return
+
     for s in result.solution:
         max_block = s.max_block
         yield {'block_epochs': s.es[:max_block + 1],
@@ -111,41 +114,151 @@ def generate_block_cover(params):
 # }
 
 gen_params = {
-    'block_tree_test': {
-        'out_path': 'block_tree.yaml',
+    ###################
+    # small instances #
+    ###################
+
+    'block_tree_tree_small': {
+        'out_path': 'block_tree_tree_small.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
-            ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 2}, {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+            ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 8, 'max_children': 2, 'number_of_solutions': 3}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 3}),
         ]
     },
-    'attester_slashings_test': {
-        'out_path': 'attester_slashings.yaml',
+    'block_tree_other_small': {
+        'out_path': 'block_tree_other_small.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
-            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 3}),
         ]
     },
-    'invalid_messages_test': {
-        'out_path': 'invalid_messages.yaml',
+    'block_cover_small': {
+        'out_path': 'block_cover_small.yaml',
+        'models': ['block_cover'],
+        'params': [
+            ({'anchor_epoch': 0, 'number_of_solutions': 1},),
+            ({'anchor_epoch': 2, 'number_of_solutions': 1},),
+        ]
+    },
+
+    ###################
+    # smoke instances #
+    ###################
+
+    'block_tree_tree_smoke': {
+        'out_path': 'block_tree_tree_smoke.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
-            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-            ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+            ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 3}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 2}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 5, 'max_children': 3, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 73}),
+        ]
+    },
+    'block_tree_tree_smoke_2': {
+        'out_path': 'block_tree_tree_smoke_2.yaml',
+        'models': ['sm_link', 'block_tree'],
+        'params': [
+            ({'anchor_epoch': 0, 'number_of_epochs': 6, 'number_of_links': 4}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 2}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 6, 'max_children': 4, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 283}),
+        ]
+    },
+    'block_tree_other_smoke': {
+        'out_path': 'block_tree_other_smoke.yaml',
+        'models': ['sm_link', 'block_tree'],
+        'params': [
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 4}),
+        ]
+    },
+    'block_cover_smoke': {
+        'out_path': 'block_cover_smoke.yaml',
+        'models': ['block_cover'],
+        'params': [
+            ({'anchor_epoch': 0, 'number_of_solutions': 2},),
+            ({'anchor_epoch': 2, 'number_of_solutions': 2},),
+        ]
+    },
+
+    ######################
+    # standard instances #
+    ######################
+
+    'block_tree_tree': {
+        'out_path': 'block_tree_tree.yaml',
+        'models': ['sm_link', 'block_tree'],
+        'params': [
+            ({'anchor_epoch': 0, 'number_of_epochs': 6, 'number_of_links': 4}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 5}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 6, 'max_children': 4, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 7, 'max_children': 2, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 358}),
+        ]
+    },
+    'block_tree_tree_2': {
+        'out_path': 'block_tree_tree_2.yaml',
+        'models': ['sm_link', 'block_tree'],
+        'params': [
+            ({'anchor_epoch': 0, 'number_of_epochs': 6, 'number_of_links': 4}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 5}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 6, 'max_children': 4, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 7, 'max_children': 3, 'number_of_solutions': None}),
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 3101}),
+        ]
+    },
+    'block_tree_other': {
+        'out_path': 'block_tree_other.yaml',
+        'models': ['sm_link', 'block_tree'],
+        'params': [
+            ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 8}),
         ]
     },
     'block_cover': {
         'out_path': 'block_cover.yaml',
         'models': ['block_cover'],
         'params': [
-            ({'anchor_epoch': 0, 'number_of_solutions': 1},),
-            ({'anchor_epoch': 2, 'number_of_solutions': 1},),
+            ({'anchor_epoch': 0, 'number_of_solutions': 2},),
+            ({'anchor_epoch': 2, 'number_of_solutions': 5},),
         ]
-    }
+    },
+
+
+    #############
+    # old stuff #
+    #############
+
+    # 'attester_slashings_test': {
+    #     'out_path': 'attester_slashings.yaml',
+    #     'models': ['sm_link', 'block_tree'],
+    #     'params': [
+    #         ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
+    #         ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+    #         ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+    #     ]
+    # },
+    # 'invalid_messages_test': {
+    #     'out_path': 'invalid_messages.yaml',
+    #     'models': ['sm_link', 'block_tree'],
+    #     'params': [
+    #         ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
+    #         ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+    #         ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
+    #     ]
+    # },
+    # 'block_cover_1': {
+    #     'out_path': 'block_cover_1.yaml',
+    #     'models': ['block_cover'],
+    #     'params': [
+    #         ({'anchor_epoch': 0, 'number_of_solutions': 1},),
+    #         ({'anchor_epoch': 2, 'number_of_solutions': 1},),
+    #     ]
+    # },
+    # 'block_cover_100': {
+    #     'out_path': 'block_cover_100.yaml',
+    #     'models': ['block_cover'],
+    #     'params': [
+    #         ({'anchor_epoch': 0, 'number_of_solutions': 100},),
+    #         ({'anchor_epoch': 2, 'number_of_solutions': 100},),
+    #     ]
+    # }
 }
 
 
