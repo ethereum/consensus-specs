@@ -68,6 +68,15 @@ def test_invalid_too_many_committe_bits(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_correct_attestation_with_two_attestation_committees(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True, index=[0, 1])
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    yield from run_attestation_processing(spec, state, attestation)
+
+
+@with_electra_and_later
+@spec_state_test
 def test_invalid_nonset_committe_bits(spec, state):
     """
     EIP-7549 test

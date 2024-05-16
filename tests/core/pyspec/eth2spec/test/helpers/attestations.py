@@ -105,13 +105,24 @@ def get_valid_attestation(spec,
     if index is None:
         index = 0
 
-    attestation_data = build_attestation_data(spec, state, slot=slot, index=index, beacon_block_root=beacon_block_root)
+    if isinstance(index, (list, tuple)):
+        if not is_post_electra(spec): 
+            raise Exception("Attestation from multiple committees can be generated only after electra fork")
+        
+        attestation_data = build_attestation_data(spec, state, slot=slot, index=0, beacon_block_root=beacon_block_root)
+    else:
+        attestation_data = build_attestation_data(spec, state, slot=slot, index=index, beacon_block_root=beacon_block_root)
 
     attestation = spec.Attestation(data=attestation_data)
 
-    # fill the attestation with (optionally filtered) participants, and optionally sign it
-    fill_aggregate_attestation(spec, state, attestation, signed=signed,
-                               filter_participant_set=filter_participant_set, committee_index=index)
+    if isinstance(index, (list, tuple)):
+        for i in index:
+            fill_aggregate_attestation(spec, state, attestation, signed=signed,
+                            filter_participant_set=filter_participant_set, committee_index=i)
+    else:
+        # fill the attestation with (optionally filtered) participants, and optionally sign it
+        fill_aggregate_attestation(spec, state, attestation, signed=signed,
+                                filter_participant_set=filter_participant_set, committee_index=index)
 
     return attestation
 
