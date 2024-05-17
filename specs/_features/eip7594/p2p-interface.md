@@ -284,10 +284,10 @@ After the initial data column sidecar, clients MAY stop in the process of respon
 
 #### ENR structure
 
-##### `custody_subnet_count`
+##### Custody subnet count
 
-A new field is added to the ENR under the key `custody_subnet_count` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key                    | Value        |
-|:-----------------------|:-------------|
-| `custody_subnet_count` | SSZ `uint64` |
+| Key   | Value                                    |
+|:------|:-----------------------------------------|
+| `csc` | Custody subnet count, big endian integer |
