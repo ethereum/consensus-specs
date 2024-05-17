@@ -28,7 +28,7 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [`custody_subnet_count`](#custody_subnet_count)
+      - [Custody subnet count](#custody-subnet-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
