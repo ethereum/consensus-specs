@@ -1286,10 +1286,10 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 
 ##### Execution layer consolidation requests
 
-###### New `process_execution_layer_consolidation_requests`
+###### New `process_execution_layer_consolidation_request`
 
 ```python
-def process_execution_layer_consolidation_requests(
+def process_execution_layer_consolidation_request(
     state: BeaconState,
     execution_layer_consolidation_request: ExecutionLayerConsolidationRequest) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored
