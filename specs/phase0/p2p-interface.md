@@ -94,6 +94,7 @@ It consists of four main sections:
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
@@ -1464,7 +1465,7 @@ Broadly, the requesting side does not know the capacity / limit of each server b
 
 Because the server withholds the response until capacity is available, a client can optimistically send requests without risking running into negative scoring situations or sub-optimal rate polling.
 
-A typical approach for the requesting side is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response perforance to reward fast peers when implementing peer scoring.
+A typical approach for the requesting side is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
 
 A typical approach for the responding side is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
 
