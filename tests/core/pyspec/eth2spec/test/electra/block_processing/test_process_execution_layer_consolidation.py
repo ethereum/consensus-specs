@@ -662,12 +662,11 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
     yield from run_consolidation_processing(
         spec, state, consolidation, success=False
     )
 
-
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -698,6 +697,7 @@ def test_invalid_incorrect_source_address(spec, state):
     )
 
 
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -727,6 +727,7 @@ def test_invalid_unknown_source_pubkey(spec, state):
     )
 
 
+@with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
