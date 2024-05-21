@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Rewards tests](#rewards-tests)
+  - [Test case format](#test-case-format)
+    - [`meta.yaml`](#metayaml)
+    - [`pre.ssz_snappy`](#pressz_snappy)
+    - [`source_deltas.ssz_snappy`](#source_deltasssz_snappy)
+    - [`target_deltas.ssz_snappy`](#target_deltasssz_snappy)
+    - [`head_deltas.ssz_snappy`](#head_deltasssz_snappy)
+    - [`inclusion_delay_deltas.ssz_snappy`](#inclusion_delay_deltasssz_snappy)
+    - [`inactivity_penalty_deltas.ssz_snappy`](#inactivity_penalty_deltasssz_snappy)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Rewards tests
 
 All rewards deltas sub-functions are tested for each test case.

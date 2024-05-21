@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Transition testing](#transition-testing)
+  - [Test case format](#test-case-format)
+    - [`meta.yaml`](#metayaml)
+    - [`pre.ssz_snappy`](#pressz_snappy)
+    - [`blocks_<index>.ssz_snappy`](#blocks_indexssz_snappy)
+    - [`post.ssz_snappy`](#postssz_snappy)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Transition testing
 
 Transition tests to cover processing the chain across a fork boundary.

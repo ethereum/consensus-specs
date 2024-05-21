@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Sanity slots testing](#sanity-slots-testing)
+  - [Test case format](#test-case-format)
+    - [`meta.yaml`](#metayaml)
+    - [`pre.ssz_snappy`](#pressz_snappy)
+    - [`slots.yaml`](#slotsyaml)
+    - [`post.ssz_snappy`](#postssz_snappy)
+    - [Processing](#processing)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Sanity slots testing
 
 Sanity tests to cover a series of one or more empty-slot transitions being processed, aiming to cover common changes.

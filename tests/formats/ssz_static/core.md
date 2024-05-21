@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Test format: SSZ static types](#test-format-ssz-static-types)
+  - [Test case format](#test-case-format)
+    - [`roots.yaml`](#rootsyaml)
+    - [`serialized.ssz_snappy`](#serializedssz_snappy)
+    - [`value.yaml`](#valueyaml)
+  - [Condition](#condition)
+  - [References](#references)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test format: SSZ static types
 
 The goal of this type is to provide clients with a solid reference for how the known SSZ objects should be encoded.

@@ -7,6 +7,24 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
+- [Notation](#notation)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+  - [[CATEGORY OF CONSTANTS]](#category-of-constants)
+- [Preset](#preset)
+  - [[CATEGORY OF PRESETS]](#category-of-presets)
+- [Configuration](#configuration)
+  - [[CATEGORY OF CONFIGURATIONS]](#category-of-configurations)
+- [Containers](#containers)
+  - [[CATEGORY OF CONTAINERS]](#category-of-containers)
+    - [`CONTAINER_NAME`](#container_name)
+- [Helper functions](#helper-functions)
+  - [[CATEGORY OF HELPERS]](#category-of-helpers)
+  - [Epoch processing](#epoch-processing)
+  - [Block processing](#block-processing)
+- [Testing](#testing)
+
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 

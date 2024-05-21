@@ -1,3 +1,15 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Deposit Contract](#deposit-contract)
+  - [History](#history)
+  - [Compiling solidity deposit contract](#compiling-solidity-deposit-contract)
+  - [Running web3 tests](#running-web3-tests)
+  - [Running randomized `dapp` tests:](#running-randomized-dapp-tests)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Deposit Contract
 
 ## History

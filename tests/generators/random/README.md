@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Randomized tests](#randomized-tests)
+- [To generate test sources](#to-generate-test-sources)
+- [To run tests](#to-run-tests)
+- [To generate spec tests (from the generated files)](#to-generate-spec-tests-from-the-generated-files)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Randomized tests
 
 Randomized tests in the format of `sanity` blocks tests, with randomized operations.

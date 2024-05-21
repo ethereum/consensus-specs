@@ -14,7 +14,6 @@ An automated nightly tests release system, with a config filter applied, is bein
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
   - [Running all test generators](#running-all-test-generators)

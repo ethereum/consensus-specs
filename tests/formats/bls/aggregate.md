@@ -1,3 +1,13 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Test format: BLS signature aggregation](#test-format-bls-signature-aggregation)
+  - [Test case format](#test-case-format)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test format: BLS signature aggregation
 
 A BLS signature aggregation combines a series of signatures into a single signature.

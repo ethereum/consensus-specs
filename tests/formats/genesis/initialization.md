@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Genesis creation testing](#genesis-creation-testing)
+  - [Test case format](#test-case-format)
+    - [`eth1.yaml`](#eth1yaml)
+    - [`meta.yaml`](#metayaml)
+    - [`deposits_<index>.ssz_snappy`](#deposits_indexssz_snappy)
+    - [`execution_payload_header.ssz_snappy`](#execution_payload_headerssz_snappy)
+    - [`state.ssz_snappy`](#statessz_snappy)
+  - [Processing](#processing)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Genesis creation testing
 
 Tests the initialization of a genesis state based on Eth1 data.

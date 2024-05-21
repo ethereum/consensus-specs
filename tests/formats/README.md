@@ -1,3 +1,32 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [General test format](#general-test-format)
+  - [Table of contents](#table-of-contents)
+  - [About](#about)
+    - [Test-case formats](#test-case-formats)
+  - [Glossary](#glossary)
+  - [Test format philosophy](#test-format-philosophy)
+    - [Config design](#config-design)
+    - [Test completeness](#test-completeness)
+  - [Test structure](#test-structure)
+    - [`<config name>/`](#config-name)
+    - [`<fork or phase name>/`](#fork-or-phase-name)
+    - [`<test runner name>/`](#test-runner-name)
+    - [`<test handler name>/`](#test-handler-name)
+    - [`<test suite name>/`](#test-suite-name)
+    - [`<test case>/`](#test-case)
+    - [`<output part>`](#output-part)
+      - [Common output formats](#common-output-formats)
+      - [Special output parts](#special-output-parts)
+        - [`meta.yaml`](#metayaml)
+        - [`config.yaml`](#configyaml)
+  - [Config sourcing](#config-sourcing)
+  - [Note for implementers](#note-for-implementers)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # General test format
 
 This document defines the YAML format and structure used for consensus spec testing.

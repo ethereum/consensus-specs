@@ -28,8 +28,7 @@
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
     - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
-    - [`Consolidation`](#consolidation)
-    - [`SignedConsolidation`](#signedconsolidation)
+    - [`ExecutionLayerConsolidationRequest`](#executionlayerconsolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -94,8 +93,8 @@
         - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
       - [Deposit receipts](#deposit-receipts)
         - [New `process_deposit_receipt`](#new-process_deposit_receipt)
-      - [Consolidations](#consolidations)
-        - [New `process_consolidation`](#new-process_consolidation)
+      - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
+        - [New `process_execution_layer_consolidation_request`](#new-process_execution_layer_consolidation_request)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -1286,10 +1285,10 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 
 ##### Execution layer consolidation requests
 
-###### New `process_execution_layer_consolidation_requests`
+###### New `process_execution_layer_consolidation_request`
 
 ```python
-def process_execution_layer_consolidation_requests(
+def process_execution_layer_consolidation_request(
     state: BeaconState,
     execution_layer_consolidation_request: ExecutionLayerConsolidationRequest) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored

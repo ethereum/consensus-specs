@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [SSZ, generic tests](#ssz-generic-tests)
+  - [Format](#format)
+    - [`valid`](#valid)
+    - [`meta.yaml`](#metayaml)
+    - [`serialized.ssz_snappy`](#serializedssz_snappy)
+    - [`value.yaml`](#valueyaml)
+    - [Conditions](#conditions)
+  - [`invalid`](#invalid)
+      - [Condition](#condition)
+  - [Type declarations](#type-declarations)
+    - [`basic_vector`](#basic_vector)
+    - [`bitlist`](#bitlist)
+    - [`bitvector`](#bitvector)
+    - [`boolean`](#boolean)
+    - [`uints`](#uints)
+    - [`containers`](#containers)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SSZ, generic tests
 
 This set of test-suites provides general testing for SSZ:

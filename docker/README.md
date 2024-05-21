@@ -1,3 +1,11 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Docker related information](#docker-related-information)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Docker related information
 
 This dockerfile sets up the dependencies required to run consensus-spec tests. The docker image can be locally built with:

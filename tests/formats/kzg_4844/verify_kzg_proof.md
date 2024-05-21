@@ -1,3 +1,13 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Test format: Verify KZG proof](#test-format-verify-kzg-proof)
+  - [Test case format](#test-case-format)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test format: Verify KZG proof
 
 Verify the KZG proof for a given `blob` and an evaluation point `z` that claims to result in a value of `y`.

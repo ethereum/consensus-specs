@@ -1,3 +1,13 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Test format: Verify blob KZG proof](#test-format-verify-blob-kzg-proof)
+  - [Test case format](#test-case-format)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test format: Verify blob KZG proof
 
 Use the blob KZG proof to verify that the KZG commitment for a given `blob` is correct

@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Forks](#forks)
+  - [Test case format](#test-case-format)
+    - [`meta.yaml`](#metayaml)
+      - [Fork strings](#fork-strings)
+    - [`pre.ssz_snappy`](#pressz_snappy)
+    - [`post.ssz_snappy`](#postssz_snappy)
+  - [Processing](#processing)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Forks
 
 The aim of the fork tests is to ensure that a pre-fork state can be transformed

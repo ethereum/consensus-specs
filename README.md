@@ -1,3 +1,21 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Ethereum Proof-of-Stake Consensus Specifications](#ethereum-proof-of-stake-consensus-specifications)
+  - [Specs](#specs)
+    - [Stable Specifications](#stable-specifications)
+    - [In-development Specifications](#in-development-specifications)
+    - [Accompanying documents can be found in specs and include:](#accompanying-documents-can-be-found-in-specs-and-include)
+  - [Additional specifications for client implementers](#additional-specifications-for-client-implementers)
+  - [Design goals](#design-goals)
+  - [Useful external resources](#useful-external-resources)
+  - [For spec contributors](#for-spec-contributors)
+  - [Online viewer of the latest release (latest `master` branch)](#online-viewer-of-the-latest-release-latest-master-branch)
+  - [Consensus spec tests](#consensus-spec-tests)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)

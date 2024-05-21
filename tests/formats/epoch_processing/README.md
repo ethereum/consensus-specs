@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Epoch processing tests](#epoch-processing-tests)
+  - [Test case format](#test-case-format)
+    - [`meta.yaml`](#metayaml)
+    - [`pre.ssz_snappy`](#pressz_snappy)
+    - [`post.ssz_snappy`](#postssz_snappy)
+  - [Condition](#condition)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Epoch processing tests
 
 The different epoch sub-transitions are tested individually with test handlers.

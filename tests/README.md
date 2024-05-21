@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Getting Started with Consensus Spec Tests](#getting-started-with-consensus-spec-tests)
+  - [Getting Started](#getting-started)
+    - [Creating the environment](#creating-the-environment)
+    - [Running your first test](#running-your-first-test)
+  - [The "Hello, World" of Consensus Spec Tests](#the-hello-world-of-consensus-spec-tests)
+  - [New Tests](#new-tests)
+  - [Tests Designed to Fail](#tests-designed-to-fail)
+  - [Attestation Tests](#attestation-tests)
+    - [Adding an Attestation Test](#adding-an-attestation-test)
+  - [How are These Tests Used?](#how-are-these-tests-used)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Getting Started with Consensus Spec Tests
 
 ## Getting Started

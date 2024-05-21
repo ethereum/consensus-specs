@@ -1,3 +1,11 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Genesis tests](#genesis-tests)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Genesis tests
 
 The aim of the genesis tests is to provide a baseline to test genesis-state initialization and test
