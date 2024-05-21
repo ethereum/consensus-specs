@@ -336,7 +336,7 @@ class ExecutionPayload(Container):
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    consolidations_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+    consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -364,7 +364,7 @@ class ExecutionPayloadHeader(Container):
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
-    consolidations_requests_root: Root # [New in Electra:EIP7251]
+    consolidation_requests_root: Root # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
@@ -1003,7 +1003,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         excess_blob_gas=payload.excess_blob_gas,
         deposit_receipts_root=hash_tree_root(payload.deposit_receipts),  # [New in Electra:EIP6110]
         withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
-        consolidations_root=hash_tree_root(payload.consolidations),  # [New in Electra:EIP7251]
+        consolidation_requests_root=hash_tree_root(payload.consolidation_requests),  # [New in Electra:EIP7251]
     )
 ```
 
@@ -1036,7 +1036,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
-    for_ops(body.execution_payload.consolidations_requests, process_execution_layer_consolidation_request)  # [New in Electra:EIP7251]
+    for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations
@@ -1318,7 +1318,7 @@ def process_execution_layer_consolidation_request(
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
-        source_validator.withdrawal_credentials[12:] == consolidation.source_address
+        source_validator.withdrawal_credentials[12:] == execution_layer_consolidation_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
