@@ -164,16 +164,16 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_CONSOLIDATIONS_PER_PAYLOAD` | `uint64(1)` |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
+| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 
 ### Execution
 
 | Name | Value | Description |
 | - | - | - |
 | `MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
-| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
-| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(1)` (= 1) | *[New in Electra:EIP7002]* Maximum number of execution layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
@@ -238,12 +238,12 @@ class ExecutionLayerWithdrawalRequest(Container):
     amount: Gwei
 ```
 
-#### `ExecutionLayerConsolidation`
+#### `ExecutionLayerConsolidationRequest`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class ExecutionLayerConsolidation(Container):
+class ExecutionLayerConsolidationRequest(Container):
     source_address: ExecutionAddress
     source_pubkey: BLSPubkey
     target_pubkey: BLSPubkey
@@ -337,7 +337,7 @@ class ExecutionPayload(Container):
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    consolidations: List[ExecutionLayerConsolidation, MAX_CONSOLIDATIONS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+    consolidations_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -365,7 +365,7 @@ class ExecutionPayloadHeader(Container):
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
-    consolidations_root: Root # [New in Electra:EIP7251]
+    consolidations_requests_root: Root # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
@@ -1037,7 +1037,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
-    for_ops(body.execution_payload.consolidations, process_execution_layer_consolidation)  # [New in Electra:EIP7251]
+    for_ops(body.execution_payload.consolidations_requests, process_execution_layer_consolidation_request)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations
@@ -1284,12 +1284,14 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
     )
 ```
 
-##### Consolidations
+##### Execution layer consolidation requests
 
-###### New `process_consolidation`
+###### New `process_execution_layer_consolidation_requests`
 
 ```python
-def process_execution_layer_consolidation(state: BeaconState, consolidation: ExecutionLayerConsolidation) -> None:
+def process_execution_layer_consolidation_requests(
+    state: BeaconState,
+    execution_layer_consolidation_request: ExecutionLayerConsolidationRequest) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
         return
@@ -1299,12 +1301,14 @@ def process_execution_layer_consolidation(state: BeaconState, consolidation: Exe
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkeys exists
-    if consolidation.source_pubkey not in validator_pubkeys:
+    request_source_pubkey = execution_layer_consolidation_request.source_pubkey
+    request_target_pubkey = execution_layer_consolidation_request.target_pubkey
+    if request_source_pubkey not in validator_pubkeys:
         return
-    if consolidation.target_pubkey not in validator_pubkeys:
+    if request_target_pubkey not in validator_pubkeys:
         return
-    source_index = ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
-    target_index = ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
+    source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
+    target_index = ValidatorIndex(validator_pubkeys.index(request_target_pubkey))
     source_validator = state.validators[source_index]
     target_validator = state.validators[target_index]
 
