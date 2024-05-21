@@ -1,12 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Consensus specs config util](#consensus-specs-config-util)
-  - [Config usage:](#config-usage)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Consensus specs config util
 
 For run-time configuration, see [Configs documentation](../../../../../configs/README.md).

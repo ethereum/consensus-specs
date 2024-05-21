@@ -1,13 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Test format: Blob to KZG commitment](#test-format-blob-to-kzg-commitment)
-  - [Test case format](#test-case-format)
-  - [Condition](#condition)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Test format: Blob to KZG commitment
 
 Compute the KZG commitment for a given `blob`.

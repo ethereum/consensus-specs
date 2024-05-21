@@ -1,13 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Test format: Ethereum-customized BLS fast aggregate verify](#test-format-ethereum-customized-bls-fast-aggregate-verify)
-  - [Test case format](#test-case-format)
-  - [Condition](#condition)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Test format: Ethereum-customized BLS fast aggregate verify
 
 Verify the signature against the given pubkeys and one message.

@@ -1,11 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [KZG tests](#kzg-tests)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # KZG tests
 
 A test type for KZG libraries. Tests all the public interfaces that a KZG library required to implement EIP-4844 needs to provide, as defined in `polynomial-commitments.md`.

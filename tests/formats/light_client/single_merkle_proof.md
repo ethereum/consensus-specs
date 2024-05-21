@@ -1,15 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Single leaf merkle proof tests](#single-leaf-merkle-proof-tests)
-  - [Test case format](#test-case-format)
-    - [`object.ssz_snappy`](#objectssz_snappy)
-    - [`proof.yaml`](#proofyaml)
-  - [Condition](#condition)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Single leaf merkle proof tests
 
 This series of tests provides reference test vectors for validating correct

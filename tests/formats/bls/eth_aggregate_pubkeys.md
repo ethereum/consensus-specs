@@ -1,13 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Test format: Ethereum-customized BLS pubkey aggregation](#test-format-ethereum-customized-bls-pubkey-aggregation)
-  - [Test case format](#test-case-format)
-  - [Condition](#condition)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Test format: Ethereum-customized BLS pubkey aggregation
 
 A BLS pubkey aggregation combines a series of pubkeys into a single pubkey.

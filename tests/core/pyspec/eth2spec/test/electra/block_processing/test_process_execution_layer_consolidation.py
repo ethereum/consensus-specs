@@ -40,7 +40,7 @@ def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -89,7 +89,7 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -132,7 +132,7 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -179,7 +179,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -230,7 +230,7 @@ def test_basic_consolidation_with_compounding_credentials(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -276,7 +276,7 @@ def test_consolidation_churn_limit_balance(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -324,7 +324,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -371,7 +371,7 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -417,7 +417,7 @@ def test_invalid_source_equals_target(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation from source to source
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[source_index].pubkey,
@@ -449,7 +449,7 @@ def test_invalid_exceed_pending_consolidations_limit(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -478,7 +478,7 @@ def test_invalid_not_enough_consolidation_churn_available(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -506,7 +506,7 @@ def test_invalid_exited_source(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -538,7 +538,7 @@ def test_invalid_exited_target(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -568,7 +568,7 @@ def test_invalid_inactive_source(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -600,7 +600,7 @@ def test_invalid_inactive_target(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -629,7 +629,7 @@ def test_invalid_no_source_execution_withdrawal_credential(spec, state):
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     source_address = b"\x22" * 20
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -657,7 +657,7 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -684,7 +684,7 @@ def test_invalid_incorrect_source_address(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with different source address
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=b"\x33" * 20,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
@@ -715,7 +715,7 @@ def test_invalid_unknown_source_pubkey(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with different source pubkey
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=source_address,
         source_pubkey=b"\x00" * 48,
         target_pubkey=state.validators[target_index].pubkey,
@@ -745,7 +745,7 @@ def test_invalid_unknown_target_pubkey(spec, state):
         spec, state, source_index, address=source_address
     )
     # Make consolidation with different target pubkey
-    consolidation = spec.ExecutionLayerConsolidationRequest(
+    consolidation = spec.ExecutionLayerConsolidation(
         source_address=b"\x33" * 20,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=b"\x00" * 48,
@@ -783,7 +783,7 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
     yield 'pre', state
     yield 'consolidation', consolidation
 
-    spec.process_execution_layer_consolidation_request(state, consolidation)
+    spec.process_execution_layer_consolidation(state, consolidation)
 
     yield 'post', state
 

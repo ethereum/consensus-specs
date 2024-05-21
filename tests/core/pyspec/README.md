@@ -1,20 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Executable Python Spec (PySpec)](#executable-python-spec-pyspec)
-  - [Dev Install](#dev-install)
-  - [Py-tests](#py-tests)
-    - [How to run tests](#how-to-run-tests)
-      - [Automated](#automated)
-      - [Manual](#manual)
-    - [How to view code coverage report](#how-to-view-code-coverage-report)
-    - [Advanced](#advanced)
-  - [Contributing](#contributing)
-  - [License](#license)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Executable Python Spec (PySpec)
 
 The executable Python spec is built from the consensus specifications,

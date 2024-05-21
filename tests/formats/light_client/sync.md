@@ -1,20 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Light client sync tests](#light-client-sync-tests)
-  - [Test case format](#test-case-format)
-    - [`meta.yaml`](#metayaml)
-    - [`bootstrap.ssz_snappy`](#bootstrapssz_snappy)
-    - [`steps.yaml`](#stepsyaml)
-      - [Checks to run after each step](#checks-to-run-after-each-step)
-      - [`force_update` execution step](#force_update-execution-step)
-      - [`process_update` execution step](#process_update-execution-step)
-      - [`upgrade_store`](#upgrade_store)
-  - [Condition](#condition)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Light client sync tests
 
 This series of tests provides reference test vectors for validating that a light client implementing the sync protocol can sync to the latest block header.
