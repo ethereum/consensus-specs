@@ -5,7 +5,8 @@ from typing import Type
 
 from eth2spec.utils.ssz.ssz_typing import (
     View, BasicView, uint, Container, List, boolean,
-    Vector, ByteVector, ByteList, Bitlist, Bitvector, Union
+    Vector, ByteVector, ByteList, Bitlist, Bitvector, Union,
+    Profile, StableContainer,
 )
 
 # in bytes
@@ -114,6 +115,30 @@ def get_random_ssz_object(rng: Random,
             field_name:
                 get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
             for field_name, field_type in fields.items()
+        })
+    elif issubclass(typ, StableContainer):
+        fields = typ.fields()
+        # StableContainer
+        return typ(**{
+            field_name:
+                rng.choice([
+                    None,
+                    get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
+                ])
+            # this version of remerkleable allows StableContainer non-optional fields
+            # the EIP says otherwise, so ignore _ for now
+            for field_name, [field_type, _] in fields.items()
+        })
+    elif issubclass(typ, Profile):
+        fields = typ.fields()
+        # Profile
+        return typ(**{
+            field_name:
+                rng.choice([
+                    None if is_optional else get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos),
+                    get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
+                ])
+            for field_name, [field_type, is_optional] in fields.items()
         })
     elif issubclass(typ, Union):
         options = typ.options()
