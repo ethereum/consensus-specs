@@ -6,6 +6,8 @@ import ssz_bitvector
 import ssz_boolean
 import ssz_uints
 import ssz_container
+import ssz_stablecontainer
+import ssz_profile
 from eth2spec.test.helpers.constants import PHASE0
 
 
@@ -43,4 +45,6 @@ if __name__ == "__main__":
         create_provider("uints", "invalid", ssz_uints.invalid_cases),
         create_provider("containers", "valid", ssz_container.valid_cases),
         create_provider("containers", "invalid", ssz_container.invalid_cases),
+        create_provider("stablecontainers", "valid", ssz_stablecontainer.valid_cases),
+        create_provider("profiles", "valid", ssz_profile.valid_cases),
     ])

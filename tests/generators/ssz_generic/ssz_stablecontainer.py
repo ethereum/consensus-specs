@@ -7,28 +7,28 @@ from typing import Dict, Tuple, Sequence, Callable, Type, Optional
 from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
 
 
-class SingleFieldTestStableStruct(StableContainer):
+class SingleFieldTestStableStruct(StableContainer[4]):
     A: Optional[byte]
 
 
-class SmallTestStableStruct(StableContainer):
+class SmallTestStableStruct(StableContainer[4]):
     A: Optional[uint16]
     B: Optional[uint16]
 
 
-class FixedTestStableStruct(StableContainer):
+class FixedTestStableStruct(StableContainer[4]):
     A: Optional[uint8]
     B: Optional[uint64]
     C: Optional[uint32]
 
 
-class VarTestStableStruct(StableContainer):
+class VarTestStableStruct(StableContainer[4]):
     A: Optional[uint16]
     B: Optional[List[uint16, 1024]]
     C: Optional[uint8]
 
 
-class ComplexTestStableStruct(StableContainer):
+class ComplexTestStableStruct(StableContainer[8]):
     A: Optional[uint16]
     B: Optional[List[uint16, 128]]
     C: Optional[uint8]
@@ -38,7 +38,7 @@ class ComplexTestStableStruct(StableContainer):
     G: Optional[Vector[VarTestStableStruct, 2]]
 
 
-class BitsStableStruct(StableContainer):
+class BitsStableStruct(StableContainer[8]):
     A: Optional[Bitlist[5]]
     B: Optional[Bitvector[2]]
     C: Optional[Bitvector[1]]
