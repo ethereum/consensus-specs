@@ -337,7 +337,8 @@ class ExecutionPayload(Container):
     deposit_receipts: List[DepositReceipt, MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+    # [New in Electra:EIP7251]
+    consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -365,7 +366,7 @@ class ExecutionPayloadHeader(Container):
     excess_blob_gas: uint64
     deposit_receipts_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
-    consolidation_requests_root: Root # [New in Electra:EIP7251]
+    consolidation_requests_root: Root  # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
@@ -1037,7 +1038,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
     for_ops(body.execution_payload.deposit_receipts, process_deposit_receipt)  # [New in Electra:EIP6110]
-    for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)  # [New in Electra:EIP7251]
+    # [New in Electra:EIP7251]
+    for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)
 ```
 
 ##### Attestations
@@ -1291,7 +1293,8 @@ def process_deposit_receipt(state: BeaconState, deposit_receipt: DepositReceipt)
 ```python
 def process_execution_layer_consolidation_request(
     state: BeaconState,
-    execution_layer_consolidation_request: ExecutionLayerConsolidationRequest) -> None:
+    execution_layer_consolidation_request: ExecutionLayerConsolidationRequest
+) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
         return

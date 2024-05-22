@@ -9,7 +9,6 @@ from eth2spec.test.context import (
     default_activation_threshold,
     spec_state_test,
 )
-from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
@@ -253,7 +252,6 @@ def test_basic_consolidation_with_compounding_credentials(spec, state):
     )
     # Check exit epoch
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
-
 
 
 @with_electra_and_later
@@ -623,7 +621,7 @@ def test_invalid_inactive_target(spec, state):
 @spec_test
 @single_phase
 def test_invalid_no_source_execution_withdrawal_credential(spec, state):
-    # Set up a correct consolidation, but source does not have 
+    # Set up a correct consolidation, but source does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -639,6 +637,7 @@ def test_invalid_no_source_execution_withdrawal_credential(spec, state):
         spec, state, consolidation, success=False
     )
 
+
 @with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
@@ -648,7 +647,7 @@ def test_invalid_no_source_execution_withdrawal_credential(spec, state):
 @spec_test
 @single_phase
 def test_invalid_no_target_execution_withdrawal_credential(spec, state):
-    # Set up a correct consolidation, but target does not have 
+    # Set up a correct consolidation, but target does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -665,6 +664,7 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
     yield from run_consolidation_processing(
         spec, state, consolidation, success=False
     )
+
 
 @with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
@@ -690,7 +690,6 @@ def test_invalid_incorrect_source_address(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
     set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
-
 
     yield from run_consolidation_processing(
         spec, state, consolidation, success=False
@@ -757,7 +756,6 @@ def test_invalid_unknown_target_pubkey(spec, state):
     )
 
 
-
 def run_consolidation_processing(spec, state, consolidation, success=True):
     """
     Run ``process_consolidation``, yielding:
@@ -778,7 +776,6 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         pre_pending_consolidations = state.pending_consolidations.copy()
     else:
         pre_state = state.copy()
-
 
     yield 'pre', state
     yield 'consolidation', consolidation
@@ -802,7 +799,7 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         assert state.validators[source_index].exit_epoch < spec.FAR_FUTURE_EPOCH
         # Check that the exit epoch matches earliest_consolidation_epoch
         assert state.validators[source_index].exit_epoch == state.earliest_consolidation_epoch
-        # Check that the correct consolidation has been appended 
+        # Check that the correct consolidation has been appended
         expected_new_pending_consolidation = spec.PendingConsolidation(
             source_index=source_index,
             target_index=target_index,
@@ -810,4 +807,3 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         assert state.pending_consolidations == pre_pending_consolidations + [expected_new_pending_consolidation]
     else:
         assert pre_state == state
-

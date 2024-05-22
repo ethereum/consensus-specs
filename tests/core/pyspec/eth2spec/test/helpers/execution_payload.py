@@ -112,8 +112,6 @@ def compute_el_header_block_hash(spec,
         execution_payload_header_rlp.append((Binary(32, 32), deposit_receipts_trie_root))
         # withdrawal requests root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawal_requests_root))
-        # consolidation requests root
-        execution_payload_header_rlp.append((Binary(32, 32), consolidation_requests_root))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
