@@ -105,7 +105,8 @@ def compute_el_header_block_hash(spec,
         # excess_blob_gas
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
         # parent_beacon_root
-        execution_payload_header_rlp.append((Binary(32, 32), bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")))
+        empty_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
+        execution_payload_header_rlp.append((Binary(32, 32), empty_root))
     if is_post_electra(spec):
         # requests_root
         execution_payload_header_rlp.append((Binary(32, 32), requests_trie_root))
