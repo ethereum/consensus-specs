@@ -116,6 +116,18 @@ def get_random_ssz_object(rng: Random,
                 get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
             for field_name, field_type in fields.items()
         })
+    elif issubclass(typ, Profile):
+        fields = typ.fields()
+        # Profile
+        return typ(**{
+            field_name:
+                rng.choice([
+                    None if is_optional else get_random_ssz_object(
+                        rng, field_type, max_bytes_length, max_list_length, mode, chaos),
+                    get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
+                ])
+            for field_name, [field_type, is_optional] in fields.items()
+        })
     elif issubclass(typ, StableContainer):
         fields = typ.fields()
         # StableContainer
@@ -128,18 +140,6 @@ def get_random_ssz_object(rng: Random,
             # this version of remerkleable allows StableContainer non-optional fields
             # the EIP says otherwise, so ignore _ for now
             for field_name, [field_type, _] in fields.items()
-        })
-    elif issubclass(typ, Profile):
-        fields = typ.fields()
-        # Profile
-        return typ(**{
-            field_name:
-                rng.choice([
-                    None if is_optional else get_random_ssz_object(
-                        rng, field_type, max_bytes_length, max_list_length, mode, chaos),
-                    get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
-                ])
-            for field_name, [field_type, is_optional] in fields.items()
         })
     elif issubclass(typ, Union):
         options = typ.options()
