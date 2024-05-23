@@ -147,7 +147,7 @@ def get_withdrawal_request_rlp(withdrawal_request):
 
     sedes = List([schema for schema, _ in withdrawal_request_rlp])
     values = [value for _, value in withdrawal_request_rlp]
-    return "\x01" + encode(values, sedes)
+    return b"\x01" + encode(values, sedes)
 
 
 def get_deposit_receipt_rlp(spec, deposit_receipt):
@@ -166,7 +166,7 @@ def get_deposit_receipt_rlp(spec, deposit_receipt):
 
     sedes = List([schema for schema, _ in deposit_receipt_rlp])
     values = [value for _, value in deposit_receipt_rlp]
-    return "\x00" + encode(values, sedes)
+    return b"\x00" + encode(values, sedes)
 
 
 def compute_el_block_hash(spec, payload):
