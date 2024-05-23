@@ -135,7 +135,8 @@ def get_random_ssz_object(rng: Random,
         return typ(**{
             field_name:
                 rng.choice([
-                    None if is_optional else get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos),
+                    None if is_optional else get_random_ssz_object(
+                        rng, field_type, max_bytes_length, max_list_length, mode, chaos),
                     get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
                 ])
             for field_name, [field_type, is_optional] in fields.items()
