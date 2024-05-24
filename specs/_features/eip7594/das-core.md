@@ -81,8 +81,8 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `16` | Number of `DataColumn` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
+| `VALIDATOR_CUSTODY_REQUIREMENT` | `6` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(16 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
 | `TARGET_NUMBER_OF_PEERS` | `100` | Suggested minimum peer count |
 
 
