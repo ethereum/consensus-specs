@@ -82,7 +82,7 @@ We define the following Python custom types for type hinting and readability:
 | `SAMPLES_PER_SLOT` | `16` | Number of `DataColumn` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
 | `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_CUSTODY_SUBNET` | `Gwei(32*10**9)` | Balance increment corresponding to one additional subnet to custody |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
 | `TARGET_NUMBER_OF_PEERS` | `100` | Suggested minimum peer count |
 
 
@@ -209,7 +209,7 @@ Each node *without attached validators* downloads and custodies a minimum of `CU
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: List[ValidatorIndex]) -> uint64:
     total_node_balance = sum(state.balances[index] for index in validator_indices)
-    return VALIDATOR_CUSTODY_REQUIREMENT +  (total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET)
+    return VALIDATOR_CUSTODY_REQUIREMENT + (total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET)
 ```
 
 The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).

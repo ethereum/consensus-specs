@@ -41,16 +41,16 @@ def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False
 ### `is_chain_available`
 
 ```python
-def is_chain_available(beacon_block_root: Root) -> bool: 
+def is_chain_available(store: Store, beacon_block_root: Root) -> bool: 
     block = store.blocks[beacon_block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
     current_epoch = get_current_store_epoch(store)
-    if block_epoch + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS <= current_epoch
+    if block_epoch + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS <= current_epoch:
         return True
     parent_root = block.parent_root
     return (
         is_data_available(beacon_block_root, require_peer_sampling=True) 
-        and is_chain_available(parent_root)
+        and is_chain_available(store, parent_root)
     )
     
 ```
@@ -64,13 +64,15 @@ def get_head(store: Store) -> Root:
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     while True:
-        require_peer_sampling = compute_epoch_at_slot(slot) + 2 <= current_epoch
         # Get available children for the current slot
         children = [
-            root for root in blocks.keys()
+            root for (root, block) in blocks.items()
             if (
-                blocks[root].parent_root == head
-                and is_data_available(root, require_peer_sampling)
+                block.parent_root == head
+                and is_data_available(
+                    root, 
+                    require_peer_sampling=is_peer_sampling_required(store, block.slot)
+                )
             )
         ]
         if len(children) == 0:
@@ -78,6 +80,11 @@ def get_head(store: Store) -> Root:
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda root: (get_weight(store, root), root))
+```
+
+```python
+def is_peer_sampling_required(store, slot):
+    return compute_epoch_at_slot(slot) + 2 <= get_current_epoch(store)
 ```
 
 ## Updated fork-choice handlers
@@ -119,7 +126,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in EIP7594] Do not import the block if its unrealized justified checkpoint is not available
     pulled_up_state = state.copy()
     process_justification_and_finalization(pulled_up_state)
-    assert is_chain_available(pulled_up_state.current_justified_checkpoint.root)
+    assert is_chain_available(store, pulled_up_state.current_justified_checkpoint.root)
 
     # Add new block to the store
     store.blocks[block_root] = block
@@ -154,11 +161,13 @@ The application of `processing_justification_and_finalization` now happens in `o
 ```python
 def compute_pulled_up_tip(store: Store, pulled_up_state: BeaconState, block_root: Root) -> None:
     store.unrealized_justifications[block_root] = pulled_up_state.current_justified_checkpoint
-    update_unrealized_checkpoints(store, pulled_up_state.current_justified_checkpoint, pulled_up_state.finalized_checkpoint)
+    unrealized_justified = pulled_up_state.current_justified_checkpoint
+    unrealized_finalized = pulled_up_state.finalized_checkpoint
+    update_unrealized_checkpoints(store, unrealized_justified, unrealized_finalized)
 
     # If the block is from a prior epoch, apply the realized values
     block_epoch = compute_epoch_at_slot(store.blocks[block_root].slot)
     current_epoch = get_current_store_epoch(store)
     if block_epoch < current_epoch:
-        update_checkpoints(store, pulled_up_state.current_justified_checkpoint, pulled_up_state.finalized_checkpoint)
+        update_checkpoints(store, unrealized_justified, unrealized_finalized)
 ```
