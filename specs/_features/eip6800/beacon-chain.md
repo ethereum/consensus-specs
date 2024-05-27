@@ -121,7 +121,7 @@ class SuffixStateDiff(Container):
     new_value: Optional[Bytes32]
 ```
 
-*Note*: on the Kaustinen testnet, `new_value` is ommitted from the container.
+*Note*: on the Kaustinen testnet, `new_value` is omitted from the container.
 
 #### `StemStateDiff`
 
