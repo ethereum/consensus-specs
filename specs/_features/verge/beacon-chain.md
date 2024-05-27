@@ -148,7 +148,7 @@ class IpaProof(Container):
 ```python
 class VerkleProof(Container):
     other_stems: List[Bytes31, MAX_STEMS]
-    depth_extension_present: List[uint8, MAX_STEMS]
+    depth_extension_present: ByteList[MAX_STEMS]
     commitments_by_path: List[BanderwagonGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM]
     d: BanderwagonGroupElement
     ipa_proof: IpaProof
