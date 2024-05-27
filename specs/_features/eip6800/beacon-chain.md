@@ -1,4 +1,4 @@
-# The Verge -- The Beacon Chain
+# eip6800 -- The Beacon Chain
 
 ## Table of contents
 
@@ -33,7 +33,7 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of the Verge upgrade.
+This upgrade adds transaction execution to the beacon chain as part of the eip6800 upgrade.
 
 ## Custom types
 
@@ -76,10 +76,11 @@ class ExecutionPayload(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
+    # Extra payload fields
     block_hash: Hash32  # Hash of execution block
-    # Extra payload field
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    execution_witness: ExecutionWitness  # [New in Verge]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    execution_witness: ExecutionWitness  # [New in eip6800]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -99,10 +100,12 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
+    # Extra payload fields
     block_hash: Hash32  # Hash of execution block
     transactions_root: Root
-    # Extra payload fields
-    execution_witness_root: Root # [New in Verge]
+    withdrawals_root: Root
+    excess_data_gas: uint256
+    execution_witness_root: Root # [New in eip6800]
 ```
 
 ### New containers
@@ -181,6 +184,7 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.notify_new_payload(payload)
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -197,7 +201,9 @@ def process_execution_payload(state: BeaconState, payload: ExecutionPayload, exe
         base_fee_per_gas=payload.base_fee_per_gas,
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
-        execution_witness=payload.execution_witness,
+        withdrawals_root=hash_tree_root(payload.withdrawals),
+        excess_data_gas=payload.excess_data_gas,
+        execution_witness=payload.execution_witness, # [New in eip6800]
     )
 ```
 

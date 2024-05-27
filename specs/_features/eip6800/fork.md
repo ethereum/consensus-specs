@@ -1,4 +1,4 @@
-# The Verge -- Fork Logic
+# eip6800 -- Fork Logic
 
 ## Table of contents
 
@@ -10,7 +10,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to the Verge](#fork-to-capella)
+- [Fork to eip6800](#fork-to-eip6800)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This document describes the process of the Verge upgrade.
+This document describes the process of the eip6800 upgrade.
 
 ## Configuration
 
@@ -26,8 +26,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `VERGE_FORK_VERSION` | `Version('0x05000000')` |
-| `VERGE_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `EIP6800_FORK_VERSION` | `Version('0x05000000')` |
+| `EIP6800_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 
 ## Helper functions
@@ -41,8 +41,10 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= VERGE_FORK_EPOCH:
-        return VERGE_FORK_VERSION
+    if epoch >= EIP6800_FORK_EPOCH:
+        return EIP6800_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
         return CAPELLA_FORK_VERSION
     if epoch >= BELLATRIX_FORK_EPOCH:
@@ -52,25 +54,25 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to the Verge
+## Fork to eip6800
 
 ### Fork trigger
 
-The fork is triggered at epoch `VERGE_FORK_EPOCH`.
+The fork is triggered at epoch `EIP6800_FORK_EPOCH`.
 
-Note that for the pure verge networks, we don't apply `upgrade_to_verge` since it starts with the Verge version logic.
+Note that for the pure eip6800 networks, we don't apply `upgrade_to_eip6800` since it starts with the eip6800 version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == VERGE_FORK_EPOCH`,
-an irregular state change is made to upgrade to the Verge.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP6800_FORK_EPOCH`,
+an irregular state change is made to upgrade to eip6800.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `VERGE_FORK_EPOCH * SLOTS_PER_EPOCH`.
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP6800_FORK_EPOCH * SLOTS_PER_EPOCH`.
 Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
 In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python
-def upgrade_to_verge(pre: capella.BeaconState) -> BeaconState:
+def upgrade_to_eip6800(pre: capella.BeaconState) -> BeaconState:
     epoch = capella.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
@@ -85,10 +87,11 @@ def upgrade_to_verge(pre: capella.BeaconState) -> BeaconState:
         timestamp=pre.latest_execution_payload_header.timestamp,
         extra_data=pre.latest_execution_payload_header.extra_data,
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
+        excess_data_gas=uint256(0),
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        execution_witness=ExecutionWitness([], []) # New in the Verge
+        execution_witness=ExecutionWitness([], []) # New in eip6800
     )
     post = BeaconState(
         # Versioning
@@ -97,7 +100,7 @@ def upgrade_to_verge(pre: capella.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=VERGE_FORK_VERSION,
+            current_version=EIP6800_FORK_VERSION,  # [Modified in eip6800]
             epoch=epoch,
         ),
         # History
@@ -135,8 +138,7 @@ def upgrade_to_verge(pre: capella.BeaconState) -> BeaconState:
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
-        # FIXME most likely wrong
-        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),
+        historical_summaries=pre.historical_summaries,
     )
 
     return post
