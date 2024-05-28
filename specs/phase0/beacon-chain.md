@@ -59,6 +59,7 @@
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
+    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
@@ -177,6 +178,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `UINT64_MAX` | `uint64(2**64 - 1)` |
+| `UINT64_MAX_SQRT` | `uint64(4294967295)` |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
@@ -269,7 +272,7 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
 
-- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stablizes, this value will be upgraded to `3` to provide the maximal minimum accountable safety margin.
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stabilizes, this value will be upgraded to `3` to provide the maximal minimum accountable safety margin.
 
 ### Max operations per block
 
@@ -598,6 +601,8 @@ def integer_squareroot(n: uint64) -> uint64:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
+    if n == UINT64_MAX:
+        return UINT64_MAX_SQRT
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -628,6 +633,16 @@ def bytes_to_uint64(data: bytes) -> uint64:
     Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
     return uint64(int.from_bytes(data, ENDIANNESS))
+```
+
+#### `saturating_sub`
+
+```python
+def saturating_sub(a: int, b: int) -> int:
+    """
+    Computes a - b, saturating at numeric bounds.
+    """
+    return a - b if a > b else 0
 ```
 
 ### Crypto
@@ -1036,7 +1051,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``.
     ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
-    Math safe up to ~10B ETH, afterwhich this overflows uint64.
+    Math safe up to ~10B ETH, after which this overflows uint64.
     """
     return Gwei(max(EFFECTIVE_BALANCE_INCREMENT, sum([state.validators[index].effective_balance for index in indices])))
 ```
@@ -1071,7 +1086,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     """
     Return the indexed attestation corresponding to ``attestation``.
     """
-    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+    attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
         attesting_indices=sorted(attesting_indices),
@@ -1083,14 +1098,12 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
 #### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState,
-                          data: AttestationData,
-                          bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_beacon_committee(state, data.slot, data.index)
-    return set(index for i, index in enumerate(committee) if bits[i])
+    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
 ```
 
 ### Beacon state mutators
@@ -1328,7 +1341,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
-        output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
+        output = output.union(get_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))
 ```
 
@@ -1501,7 +1514,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min([
             a for a in matching_source_attestations
-            if index in get_attesting_indices(state, a.data, a.aggregation_bits)
+            if index in get_attesting_indices(state, a)
         ], key=lambda a: a.inclusion_delay)
         rewards[attestation.proposer_index] += get_proposer_reward(state, index)
         max_attester_reward = Gwei(get_base_reward(state, index) - get_proposer_reward(state, index))
@@ -1835,19 +1848,51 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def get_validator_from_deposit(deposit: Deposit) -> Validator:
-    amount = deposit.data.amount
+def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
     effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
 
     return Validator(
-        pubkey=deposit.data.pubkey,
-        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
         effective_balance=effective_balance,
     )
+```
+
+```python
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    state.validators.append(get_validator_from_deposit(pubkey, withdrawal_credentials, amount))
+    state.balances.append(amount)
+```
+
+```python
+def apply_deposit(state: BeaconState,
+                  pubkey: BLSPubkey,
+                  withdrawal_credentials: Bytes32,
+                  amount: uint64,
+                  signature: BLSSignature) -> None:
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        deposit_message = DepositMessage(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
+        )
+        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
+        signing_root = compute_signing_root(deposit_message, domain)
+        if bls.Verify(pubkey, signing_root, signature):
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
+    else:
+        # Increase balance by deposit amount
+        index = ValidatorIndex(validator_pubkeys.index(pubkey))
+        increase_balance(state, index, amount)
 ```
 
 ```python
@@ -1864,28 +1909,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Deposits must be processed in order
     state.eth1_deposit_index += 1
 
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        deposit_message = DepositMessage(
-            pubkey=deposit.data.pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            amount=deposit.data.amount,
-        )
-        domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
-        signing_root = compute_signing_root(deposit_message, domain)
-        if not bls.Verify(pubkey, signing_root, deposit.data.signature):
-            return
-
-        # Add validator and balance entries
-        state.validators.append(get_validator_from_deposit(deposit))
-        state.balances.append(amount)
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        increase_balance(state, index, amount)
+    apply_deposit(
+        state=state,
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        amount=deposit.data.amount,
+        signature=deposit.data.signature,
+    )
 ```
 
 ##### Voluntary exits

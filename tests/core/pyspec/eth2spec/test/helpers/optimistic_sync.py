@@ -91,7 +91,7 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
     Add a block with optimistic sync logic
 
     ``valid`` indicates if the given ``signed_block.message.body.execution_payload`` is valid/invalid
-    from ``notify_new_payload`` method response.
+    from ``verify_and_notify_new_payload`` method response.
     """
     block = signed_block.message
     block_root = block.hash_tree_root()
@@ -177,7 +177,7 @@ def get_opt_head_block_root(spec, mega_store):
             return head
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda root: (spec.get_latest_attesting_balance(store, root), root))
+        head = max(children, key=lambda root: (spec.get_weight(store, root), root))
 
 
 def is_invalidated(mega_store, block_root):

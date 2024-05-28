@@ -9,6 +9,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -27,11 +28,17 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
+
 ## Constants
 
 | Name | Value |
 | - | - |
-| `EXECUTION_PAYLOAD_INDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
 
 ## Containers
 
@@ -43,7 +50,7 @@ class LightClientHeader(Container):
     beacon: BeaconBlockHeader
     # Execution payload header corresponding to `beacon.body_root` (from Capella onward)
     execution: ExecutionPayloadHeader
-    execution_branch: Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_INDEX)]
+    execution_branch: ExecutionBranch
 ```
 
 ## Helper functions
@@ -69,14 +76,14 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     if epoch < CAPELLA_FORK_EPOCH:
         return (
             header.execution == ExecutionPayloadHeader()
-            and header.execution_branch == [Bytes32() for _ in range(floorlog2(EXECUTION_PAYLOAD_INDEX))]
+            and header.execution_branch == ExecutionBranch()
         )
 
     return is_valid_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_INDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_INDEX),
+        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
+        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
         root=header.beacon.body_root,
     )
 ```

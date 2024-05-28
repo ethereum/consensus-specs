@@ -8,7 +8,13 @@ from eth2spec.test.helpers.execution_payload import (
     build_state_with_incomplete_transition,
     build_state_with_complete_transition,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_bellatrix_and_later
+from eth2spec.test.context import (
+    BELLATRIX,
+    expect_assertion_error,
+    spec_state_test,
+    with_bellatrix_and_later,
+    with_phases,
+)
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -21,33 +27,35 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+    # Before Deneb, only `body.execution_payload` matters. `BeaconBlockBody` is just a wrapper.
+    body = spec.BeaconBlockBody(execution_payload=execution_payload)
 
     yield 'pre', state
     yield 'execution', {'execution_valid': execution_valid}
-    yield 'execution_payload', execution_payload
+    yield 'body', body
 
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
-        def notify_new_payload(self, payload) -> bool:
+        def verify_and_notify_new_payload(self, new_payload_request) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
-            assert payload == execution_payload
+            assert new_payload_request.execution_payload == body.execution_payload
             return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, execution_payload, TestEngine()))
+        expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, execution_payload, TestEngine())
+    spec.process_execution_payload(state, body, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
 
     yield 'post', state
 
-    assert state.latest_execution_payload_header == get_execution_payload_header(spec, execution_payload)
+    assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
 
 
 def run_success_test(spec, state):
@@ -117,7 +125,7 @@ def test_invalid_bad_execution_regular_payload(spec, state):
     yield from run_bad_execution_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_phases([BELLATRIX])
 @spec_state_test
 def test_bad_parent_hash_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
@@ -316,7 +324,7 @@ def test_zero_length_transaction_regular_payload(spec, state):
     yield from run_zero_length_transaction_test(spec, state)
 
 
-def run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=True, rng=Random(5555)):
+def run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=True):
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
@@ -330,26 +338,30 @@ def run_randomized_non_validated_execution_fields_test(spec, state, execution_va
 @with_bellatrix_and_later
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
+    rng = Random(1111)
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
+    rng = Random(2222)
     state = build_state_with_complete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(spec, state):
+    rng = Random(3333)
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(spec, state):
+    rng = Random(4444)
     state = build_state_with_complete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)

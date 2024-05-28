@@ -10,52 +10,117 @@ The specification of these changes continues in the same format as the network s
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Modifications in Deneb](#modifications-in-deneb)
+  - [Constant](#constant)
+  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`SignedBeaconBlockAndBlobsSidecar`](#signedbeaconblockandblobssidecar)
+    - [`BlobSidecar`](#blobsidecar)
+    - [`BlobIdentifier`](#blobidentifier)
+    - [Helpers](#helpers)
+      - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
-        - [`beacon_block_and_blobs_sidecar`](#beacon_block_and_blobs_sidecar)
+        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+      - [Blob subnets](#blob-subnets)
+        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+      - [Attestation subnets](#attestation-subnets)
+        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BeaconBlockAndBlobsSidecarByRoot v1](#beaconblockandblobssidecarbyroot-v1)
-      - [BlobsSidecarsByRange v1](#blobssidecarsbyrange-v1)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-## Configuration
+## Modifications in Deneb
+
+### Constant
+
+*[New in Deneb:EIP4844]*
+
+### Preset
+
+*[New in Deneb:EIP4844]*
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOBS_SIDECARS`             | `2**7` (= 128)                    | Maximum number of blobs sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blobs sidecars |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
-## Containers
+### Configuration
 
-### `SignedBeaconBlockAndBlobsSidecar`
+*[New in Deneb:EIP4844]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
+| `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request  |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
+| `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
+
+### Containers
+
+#### `BlobSidecar`
+
+*[New in Deneb:EIP4844]*
 
 ```python
-class SignedBeaconBlockAndBlobsSidecar(Container):
-    beacon_block: SignedBeaconBlock
-    blobs_sidecar: BlobsSidecar
+class BlobSidecar(Container):
+    index: BlobIndex  # Index of blob in block
+    blob: Blob
+    kzg_commitment: KZGCommitment
+    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
+    signed_block_header: SignedBeaconBlockHeader
+    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```
 
-## The gossip domain: gossipsub
+#### `BlobIdentifier`
+
+*[New in Deneb:EIP4844]*
+
+```python
+class BlobIdentifier(Container):
+    block_root: Root
+    index: BlobIndex
+```
+
+#### Helpers
+
+##### `verify_blob_sidecar_inclusion_proof`
+
+```python
+def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
+    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index))
+    return is_valid_merkle_branch(
+        leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
+        branch=blob_sidecar.kzg_commitment_inclusion_proof,
+        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
+        index=gindex,
+        root=blob_sidecar.signed_block_header.message.body_root,
+    )
+```
+
+### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
 
-### Topics and messages
+#### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
-The `beacon_block` topic is deprecated and replaced by the `beacon_block_and_blobs_sidecar` topic. All other topics remain stable.
+
+The `beacon_block` topic is modified to also support Deneb blocks and new topics are added per table below.
+
+The `voluntary_exit` topic is implicitly modified despite the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
+
+The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of attestations created in epoch `N` to be gossiped through the entire range of slots in epoch `N+1` rather than only through one epoch of slots for EIP-7045.
 
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
@@ -65,45 +130,92 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name | Message Type |
 | - | - |
-| `beacon_block_and_blobs_sidecar` | `SignedBeaconBlockAndBlobsSidecar` (new) |
+| `blob_sidecar_{subnet_id}` | `BlobSidecar` [New in Deneb:EIP4844] |
 
-#### Global topics
+##### Global topics
 
-Deneb introduces a new global topic for beacon block and blobs-sidecars.
+###### `beacon_block`
 
-##### `beacon_block`
+The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in Deneb.
 
-This topic is deprecated and clients **MUST NOT** expose in their topic set to any peer. Implementers do not need to do
-anything beyond simply skip implementation, and it is explicitly called out as it is a departure from previous versioning
-of this topic.
+*[Modified in Deneb:EIP4844]*
 
-Refer to [the section below](#transitioning-the-gossip) for details on how to transition the gossip.
+New validation:
 
-##### `beacon_block_and_blobs_sidecar`
+- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
+  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
-This topic is used to propagate new signed and coupled beacon blocks and blobs sidecars to all nodes on the networks.
+###### `beacon_aggregate_and_proof`
 
-In addition to the gossip validations for the `beacon_block` topic from prior specifications, the following validations MUST pass before forwarding the `signed_beacon_block_and_blobs_sidecar` on the network.
-Alias `signed_beacon_block = signed_beacon_block_and_blobs_sidecar.beacon_block`, `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
-- _[REJECT]_ The KZG commitments correspond to the versioned hashes in the transactions list
-  -- i.e. `verify_kzg_commitments_against_transactions(block.body.execution_payload.transactions, block.body.blob_kzg_commitments)`
+*[Modified in Deneb:EIP7045]*
 
-Alias `sidecar = signed_beacon_block_and_blobs_sidecar.blobs_sidecar`.
-- _[IGNORE]_ the `sidecar.beacon_block_slot` is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
-  -- i.e. `sidecar.beacon_block_slot == block.slot`.
-- _[REJECT]_ The KZG commitments in the block are valid against the provided blobs sidecar
-  -- i.e. `validate_blobs_sidecar(block.slot, hash_tree_root(block), block.body.blob_kzg_commitments, sidecar)`
+The following validation is removed:
+* _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
 
-### Transitioning the gossip
+The following validations are added in its place:
+* _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `aggregate.data.slot <= current_slot`
+  (a client MAY queue future aggregates for processing at the appropriate slot).
+* _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
+  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `compute_epoch_at_slot(aggregate.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
+
+##### Blob subnets
+
+###### `blob_sidecar_{subnet_id}`
+
+*[New in Deneb:EIP4844]*
+
+This topic is used to propagate blob sidecars, where each blob index maps to some `subnet_id`.
+
+The following validations MUST pass before forwarding the `blob_sidecar` on the network, assuming the alias `block_header = blob_sidecar.signed_block_header.message`:
+
+- _[REJECT]_ The sidecar's index is consistent with `MAX_BLOBS_PER_BLOCK` -- i.e. `blob_sidecar.index < MAX_BLOBS_PER_BLOCK`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_blob_sidecar(blob_sidecar.index) == subnet_id`.
+- _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `blob_sidecar.signed_block_header`, is valid with respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by `block_header.parent_root`) passes validation.
+- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
+- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof(blob_sidecar)`.
+- _[REJECT]_ The sidecar's blob is valid as verified by `verify_blob_kzg_proof(blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof)`.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, blob_sidecar.index)` with valid header signature, sidecar inclusion proof, and kzg proof.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
+  If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+
+##### Attestation subnets
+
+###### `beacon_attestation_{subnet_id}`
+
+*[Modified in Deneb:EIP7045]*
+
+The following validation is removed:
+* _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
+  (a client MAY queue future attestations for processing at the appropriate slot).
+
+The following validations are added in its place:
+* _[IGNORE]_ `attestation.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `attestation.data.slot <= current_slot`
+  (a client MAY queue future attestation for processing at the appropriate slot).
+* _[IGNORE]_ the epoch of `attestation.data.slot` is either the current or previous epoch
+  (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+  i.e. `compute_epoch_at_slot(attestation.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
+
+#### Transitioning the gossip
 
 See gossip transition details found in the [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for this upgrade.
 
-## The Req/Resp domain
+### The Req/Resp domain
 
-### Messages
+#### Messages
 
-#### BeaconBlocksByRange v2
+##### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -121,12 +233,11 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 
-#### BeaconBlocksByRoot v2
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
+
+##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
-
-After `DENEB_FORK_EPOCH`, `BeaconBlocksByRootV2` is replaced by `BeaconBlockAndBlobsSidecarByRootV1`.
-Clients MUST support requesting blocks by root for pre-fork-epoch blocks.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -138,16 +249,33 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 
-#### BeaconBlockAndBlobsSidecarByRoot v1
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_block_and_blobs_sidecar_by_root/1/`
+*[Modified in Deneb:EIP4844]*
+Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
+
+##### BlobSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+
+*[New in Deneb:EIP4844]*
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 
 Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS]
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
@@ -155,29 +283,45 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlockAndBlobsSidecar, MAX_REQUEST_BLOCKS]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
-Requests blocks by block root (= `hash_tree_root(SignedBeaconBlockAndBlobsSidecar.beacon_block.message)`).
-The response is a list of `SignedBeaconBlockAndBlobsSidecar` whose length is less than or equal to the number of requests.
-It may be less in the case that the responding peer is missing blocks and sidecars.
+Requests sidecars by block root and index.
+The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing blocks or sidecars.
 
-No more than `MAX_REQUEST_BLOCKS` may be requested at a time.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
 
-`BeaconBlockAndBlobsSidecarByRoot` is primarily used to recover recent blocks and sidecars (e.g. when receiving a block or attestation whose parent is unknown).
+No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
+
+`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlockAndBlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
-Clients MUST support requesting blocks and sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers SHOULD respond with error code `3: ResourceUnavailable`.
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob sidecar in the response.
 
-Clients MUST respond with at least one block and sidecar, if they have it.
+Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
 
-#### BlobsSidecarsByRange v1
+Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
-**Protocol ID:** `/eth2/beacon_chain/req/blobs_sidecars_by_range/1/`
+##### BlobSidecarsByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
+
+*[New in Deneb:EIP4844]*
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 
 Request Content:
 ```
@@ -190,72 +334,68 @@ Request Content:
 Response Content:
 ```
 (
-  List[BlobsSidecar, MAX_REQUEST_BLOBS_SIDECARS]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
-Requests blobs sidecars in the slot range `[start_slot, start_slot + count)`,
-leading up to the current head block as selected by fork choice.
+Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, leading up to the current head block as selected by fork choice.
 
-The response is unsigned, i.e. `BlobsSidecarsByRange`, as the signature of the beacon block proposer
-may not be available beyond the initial distribution via gossip.
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
 
-Before consuming the next response chunk, the response reader SHOULD verify the blobs sidecar is well-formatted and
-correct w.r.t. the expected KZG commitments through `validate_blobs_sidecar`.
-
-`BlobsSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS` window.
+`BlobSidecarsByRange` is primarily used to sync blobs that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
 
 The request MUST be encoded as an SSZ-container.
 
 The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `BlobsSidecar` payload.
+Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
 
-Clients MUST keep a record of signed blobs sidecars seen on the epoch range
-`[max(current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`
+Let `blob_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH), current_epoch]`.
+Clients MUST keep a record of blob sidecars seen on the epoch range `blob_serve_range`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of blobs on this range.
 
-Peers that are unable to reply to blobs sidecars requests within the `MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-epoch range SHOULD respond with error code `3: ResourceUnavailable`.
+Peers that are unable to reply to blob sidecar requests within the
+range `blob_serve_range` SHOULD respond with error code `3: ResourceUnavailable`.
 Such peers that are unable to successfully reply to this range of requests MAY get descored
 or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
-MUST backfill the local blobs database to at least epoch `current_epoch - MIN_EPOCHS_FOR_BLOBS_SIDECARS_REQUESTS`
-to be fully compliant with `BlobsSidecarsByRange` requests.
+MUST backfill the local blobs database to at least the range `blob_serve_range`
+to be fully compliant with `BlobSidecarsByRange` requests.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the first blobs sidecar that exists in the range, if they have it,
-and no more than `MAX_REQUEST_BLOBS_SIDECARS` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS` sidecars.
 
-The following blobs sidecars, where they exist, MUST be sent in consecutive order.
+Clients MUST include all blob sidecars of each block from which they include blob sidecars.
 
-Clients MAY limit the number of blobs sidecars in the response.
+The following blob sidecars, where they exist, MUST be sent in consecutive `(slot, index)` order.
 
-An empty `BlobSidecar` is one that does not contain any blobs, but contains non-zero `beacon_block_root`, `beacon_block_slot` and a valid `kzg_aggregated_proof`.
-Clients MAY NOT want to consider empty `BlobSidecar`s in rate limiting logic.
+Slots that do not contain known blobs MUST be skipped, mimicking the behaviour
+of the `BlocksByRange` request. Only response chunks with known blobs should
+therefore be sent.
 
-The response MUST contain no more than `count` blobs sidecars.
+Clients MAY limit the number of blob sidecars in the response.
 
-Clients MUST respond with blobs sidecars from their view of the current fork choice
--- that is, blobs sidecars as included by blocks from the single chain defined by the current head.
+The response MUST contain no more than `count * MAX_BLOBS_PER_BLOCK` blob sidecars.
+
+Clients MUST respond with blob sidecars from their view of the current fork choice
+-- that is, blob sidecars as included by blocks from the single chain defined by the current head.
 Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
 
-Clients MUST respond with blobs sidecars that are consistent from a single chain within the context of the request.
+Clients MUST respond with blob sidecars that are consistent from a single chain within the context of the request.
 
-After the initial blobs sidecar, clients MAY stop in the process of responding
-if their fork choice changes the view of the chain in the context of the request.
+After the initial blob sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
-# Design decision rationale
+## Design decision rationale
 
-## Why are blobs relayed as a sidecar, separate from beacon blocks?
+### Why are blobs relayed as a sidecar, separate from beacon blocks?
 
 This "sidecar" design provides forward compatibility for further data increases by black-boxing `is_data_available()`:
 with full sharding `is_data_available()` can be replaced by data-availability-sampling (DAS)
 thus avoiding all blobs being downloaded by all beacon nodes on the network.
 
-Such sharding design may introduce an updated `BlobsSidecar` to identify the shard,
+Such sharding design may introduce an updated `BlobSidecar` to identify the shard,
 but does not affect the `BeaconBlock` structure.

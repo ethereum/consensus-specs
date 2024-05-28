@@ -1,6 +1,12 @@
+import random
+
 from eth2spec.test.context import (
+    single_phase,
     spec_state_test,
-    always_bls, with_phases, with_all_phases,
+    spec_test,
+    always_bls,
+    with_phases,
+    with_all_phases,
 )
 from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
@@ -365,7 +371,7 @@ def test_compute_subnet_for_attestation(spec, state):
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
-            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.ATTESTATION_SUBNET_COUNT
+            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.config.ATTESTATION_SUBNET_COUNT
 
             assert actual_subnet_id == expected_subnet_id
 
@@ -476,3 +482,34 @@ def test_get_aggregate_and_proof_signature(spec, state):
         privkey=privkey,
         pubkey=pubkey,
     )
+
+
+def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
+    node_id = rng.randint(0, 2**256 - 1)
+    epoch = rng.randint(0, 2**64 - 1)
+    subnets = spec.compute_subscribed_subnets(node_id, epoch)
+    assert len(subnets) == spec.config.SUBNETS_PER_NODE
+
+
+@with_all_phases
+@spec_test
+@single_phase
+def test_compute_subscribed_subnets_random_1(spec):
+    rng = random.Random(1111)
+    run_compute_subscribed_subnets_arguments(spec, rng)
+
+
+@with_all_phases
+@spec_test
+@single_phase
+def test_compute_subscribed_subnets_random_2(spec):
+    rng = random.Random(2222)
+    run_compute_subscribed_subnets_arguments(spec, rng)
+
+
+@with_all_phases
+@spec_test
+@single_phase
+def test_compute_subscribed_subnets_random_3(spec):
+    rng = random.Random(3333)
+    run_compute_subscribed_subnets_arguments(spec, rng)

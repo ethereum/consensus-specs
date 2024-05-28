@@ -15,7 +15,7 @@
 ## Introduction
 
 Under honest majority and certain network synchronicity assumptions
-there exist a block that is safe from re-orgs. Normally this block is
+there exists a block that is safe from re-orgs. Normally this block is
 pretty close to the head of canonical chain which makes it valuable
 to expose a safe block to users.
 

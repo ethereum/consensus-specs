@@ -22,8 +22,6 @@ This document describes the process of the first upgrade of the beacon chain: th
 
 ## Configuration
 
-Warning: this configuration is not definitive.
-
 | Name | Value |
 | - | - |
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
@@ -71,7 +69,7 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
 
         # Apply flags to all attesting validators
         epoch_participation = state.previous_epoch_participation
-        for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+        for index in get_attesting_indices(state, attestation):
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 

@@ -9,6 +9,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -56,13 +57,21 @@ Additional documents describe how the light client sync protocol can be used:
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
+| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+
 ## Constants
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_INDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
-| `NEXT_SYNC_COMMITTEE_INDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
+| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
+| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
 
 ## Preset
 
@@ -93,7 +102,7 @@ class LightClientBootstrap(Container):
     header: LightClientHeader
     # Current sync committee corresponding to `header.beacon.state_root`
     current_sync_committee: SyncCommittee
-    current_sync_committee_branch: Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_INDEX)]
+    current_sync_committee_branch: CurrentSyncCommitteeBranch
 ```
 
 ### `LightClientUpdate`
@@ -104,10 +113,10 @@ class LightClientUpdate(Container):
     attested_header: LightClientHeader
     # Next sync committee corresponding to `attested_header.beacon.state_root`
     next_sync_committee: SyncCommittee
-    next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
+    next_sync_committee_branch: NextSyncCommitteeBranch
     # Finalized header corresponding to `attested_header.beacon.state_root`
     finalized_header: LightClientHeader
-    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: FinalityBranch
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
     # Slot at which the aggregate signature was created (untrusted)
@@ -122,7 +131,7 @@ class LightClientFinalityUpdate(Container):
     attested_header: LightClientHeader
     # Finalized header corresponding to `attested_header.beacon.state_root`
     finalized_header: LightClientHeader
-    finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+    finality_branch: FinalityBranch
     # Sync committee aggregate signature
     sync_aggregate: SyncAggregate
     # Slot at which the aggregate signature was created (untrusted)
@@ -174,14 +183,14 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
 ```python
 def is_sync_committee_update(update: LightClientUpdate) -> bool:
-    return update.next_sync_committee_branch != [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
+    return update.next_sync_committee_branch != NextSyncCommitteeBranch()
 ```
 
 ### `is_finality_update`
 
 ```python
 def is_finality_update(update: LightClientUpdate) -> bool:
-    return update.finality_branch != [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+    return update.finality_branch != FinalityBranch()
 ```
 
 ### `is_better_update`
@@ -286,8 +295,8 @@ def initialize_light_client_store(trusted_block_root: Root,
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(bootstrap.current_sync_committee),
         branch=bootstrap.current_sync_committee_branch,
-        depth=floorlog2(CURRENT_SYNC_COMMITTEE_INDEX),
-        index=get_subtree_index(CURRENT_SYNC_COMMITTEE_INDEX),
+        depth=floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX),
+        index=get_subtree_index(CURRENT_SYNC_COMMITTEE_GINDEX),
         root=bootstrap.header.beacon.state_root,
     )
 
@@ -358,8 +367,8 @@ def validate_light_client_update(store: LightClientStore,
         assert is_valid_merkle_branch(
             leaf=finalized_root,
             branch=update.finality_branch,
-            depth=floorlog2(FINALIZED_ROOT_INDEX),
-            index=get_subtree_index(FINALIZED_ROOT_INDEX),
+            depth=floorlog2(FINALIZED_ROOT_GINDEX),
+            index=get_subtree_index(FINALIZED_ROOT_GINDEX),
             root=update.attested_header.beacon.state_root,
         )
 
@@ -373,8 +382,8 @@ def validate_light_client_update(store: LightClientStore,
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=floorlog2(NEXT_SYNC_COMMITTEE_INDEX),
-            index=get_subtree_index(NEXT_SYNC_COMMITTEE_INDEX),
+            depth=floorlog2(NEXT_SYNC_COMMITTEE_GINDEX),
+            index=get_subtree_index(NEXT_SYNC_COMMITTEE_GINDEX),
             root=update.attested_header.beacon.state_root,
         )
 
@@ -387,7 +396,8 @@ def validate_light_client_update(store: LightClientStore,
         pubkey for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
         if bit
     ]
-    fork_version = compute_fork_version(compute_epoch_at_slot(update.signature_slot))
+    fork_version_slot = max(update.signature_slot, Slot(1)) - Slot(1)
+    fork_version = compute_fork_version(compute_epoch_at_slot(fork_version_slot))
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header.beacon, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
@@ -492,7 +502,7 @@ def process_light_client_finality_update(store: LightClientStore,
     update = LightClientUpdate(
         attested_header=finality_update.attested_header,
         next_sync_committee=SyncCommittee(),
-        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=finality_update.finalized_header,
         finality_branch=finality_update.finality_branch,
         sync_aggregate=finality_update.sync_aggregate,
@@ -511,9 +521,9 @@ def process_light_client_optimistic_update(store: LightClientStore,
     update = LightClientUpdate(
         attested_header=optimistic_update.attested_header,
         next_sync_committee=SyncCommittee(),
-        next_sync_committee_branch=[Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))],
+        next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=LightClientHeader(),
-        finality_branch=[Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))],
+        finality_branch=FinalityBranch(),
         sync_aggregate=optimistic_update.sync_aggregate,
         signature_slot=optimistic_update.signature_slot,
     )
