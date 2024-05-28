@@ -239,7 +239,19 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 ## Peer sampling
 
-A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. At each slot, a node makes `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+### Sample selection
+
+At each slot, a node SHOULD select at least `SAMPLES_PER_SLOT` column IDs for sampling. It is recommended to use uniform random selection without replacement based on local randomness. Sampling is considered successful if the node manages to retrieve all selected columns.
+
+### Sample queries
+
+A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries.
+
+A node SHOULD query for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) it could request from. If more candidate peers are found, a node SHOULD randomize it's peer selection to distribute sample query load in the network. Nodes MAY use peer scoring to tune this selection (for example, by using weighted selection or by using a cut-off threshold).
+
+If a node already has a column because of custody, it is not required to send out queries for that column.
+
+If a node has enough good/honest peers across all columns, and the data is being made available, the above procedure has a high chance of success.
 
 ## Peer scoring
 
