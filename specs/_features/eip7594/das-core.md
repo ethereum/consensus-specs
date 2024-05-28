@@ -30,6 +30,8 @@
 - [Column gossip](#column-gossip)
   - [Parameters](#parameters)
 - [Peer sampling](#peer-sampling)
+  - [Sample selection](#sample-selection)
+  - [Sample queries](#sample-queries)
 - [Peer scoring](#peer-scoring)
 - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
 - [DAS providers](#das-providers)
