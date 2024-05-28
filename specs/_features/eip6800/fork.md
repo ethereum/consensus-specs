@@ -1,4 +1,4 @@
-# eip6800 -- Fork Logic
+# EIP-6800 -- Fork Logic
 
 ## Table of contents
 
@@ -72,7 +72,7 @@ Care must be taken when transitioning through the fork boundary as implementatio
 In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python
-def upgrade_to_eip6800(pre: capella.BeaconState) -> BeaconState:
+def upgrade_to_eip6800(pre: deneb.BeaconState) -> BeaconState:
     epoch = capella.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
@@ -91,7 +91,7 @@ def upgrade_to_eip6800(pre: capella.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        execution_witness=ExecutionWitness([], []) # New in eip6800
+        execution_witness=ExecutionWitness([], [])  # New in eip6800
     )
     post = BeaconState(
         # Versioning
