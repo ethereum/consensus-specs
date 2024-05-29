@@ -257,7 +257,9 @@ Sampling is considered successful if any `S - L` columns are retrieved successfu
 
 A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries.
 
-A node SHOULD query for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) it could request from. If more candidate peers are found, a node SHOULD randomize it's peer selection to distribute sample query load in the network. Nodes MAY use peer scoring to tune this selection (for example, by using weighted selection or by using a cut-off threshold).
+A node SHOULD query for samples from selected peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) it could request from, identifying a list of candidate peers for each selected column.
+
+If more than one candidate peer is found for a given column, a node SHOULD randomize its peer selection to distribute sample query load in the network. Nodes MAY use peer scoring to tune this selection (for example, by using weighted selection or by using a cut-off threshold). If possible, it is also recommended to avoid requesting many columns from the same peer in order to avoid relying on and exposing the sample selection to a single peer.
 
 If a node already has a column because of custody, it is not required to send out queries for that column.
 
