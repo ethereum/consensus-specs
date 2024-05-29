@@ -61,11 +61,13 @@ def _get_eligible_attestations(spec, state, attestations) -> []:
             state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
             and a.data.source == _get_voting_source(a.data.target)]
 
+
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
-    pseudo_vrn = spec.uint64((proposer_index + 1) * epoch)
+    pseudo_vrn = spec.uint64((proposer_index + 1) * (epoch + 1))
     pseudo_vrn_bytes = spec.uint_to_bytes(pseudo_vrn)
     randao_reveal_bytes = bytes(96 - len(pseudo_vrn_bytes)) + pseudo_vrn_bytes
     return spec.BLSSignature(randao_reveal_bytes)
+
 
 def produce_block(spec, state, attestations, attester_slashings=[]):
     """
