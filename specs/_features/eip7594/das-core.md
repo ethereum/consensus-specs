@@ -22,6 +22,7 @@
     - [`compute_extended_matrix`](#compute_extended_matrix)
     - [`recover_matrix`](#recover_matrix)
     - [`get_data_column_sidecars`](#get_data_column_sidecars)
+    - [`get_extended_sample_count`](#get_extended_sample_count)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
   - [Public, deterministic selection](#public-deterministic-selection)
@@ -199,6 +200,21 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     return sidecars
 ```
 
+#### `get_extended_sample_count`
+
+```python
+# from scipy.stats import hypergeom
+def get_extended_sample_count(samples_per_slot: uint64, allowed_failures: uint64) -> uint64:
+    assert 0 <= allowed_failures <= NUMBER_OF_COLUMNS // 2
+
+    worst_case_missing = NUMBER_OF_COLUMNS // 2 + 1
+    false_positive_threshold = hypergeom.cdf(0, NUMBER_OF_COLUMNS, worst_case_missing, samples_per_slot)
+    for sample_count in range(samples_per_slot, NUMBER_OF_COLUMNS + 1):
+      if hypergeom.cdf(allowed_failures, NUMBER_OF_COLUMNS, worst_case_missing, sample_count) <= false_positive_threshold:
+        break
+    return sample_count
+```
+
 ## Custody
 
 ### Custody requirement
@@ -245,13 +261,13 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 At each slot, a node SHOULD select at least `SAMPLES_PER_SLOT` column IDs for sampling. It is recommended to use uniform random selection without replacement based on local randomness. Sampling is considered successful if the node manages to retrieve all selected columns.
 
-Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT` columns while allowing some missing, respecting the same target false positive threshold (the probability of successful sampling of an unavailable block) as dictated by `SAMPLES_PER_SLOT`. The table below shows the number of samples and the number of allowed missing columns for this threshold.
+Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT` columns while allowing some missing, respecting the same target false positive threshold (the probability of successful sampling of an unavailable block) as dictated by the `SAMPLES_PER_SLOT` parameter. A node can use the `get_extended_sample_count(samples_per_slot, allowed_failures) -> sample_count` helper function to determine the sample count for any selected number of allowed failures. Sampling is then considered successful if any `sample_count - allowed_failures` columns are retrieved successfully.
 
-| Allowed missing (L)                    | 0| 1| 2| 3| 4| 5| 6| 7| 8|
-|----------------------------------------|--|--|--|--|--|--|--|--|--|
-| Samples (S) for target threshold 5e-6  |16|20|23|26|29|32|34|37|39|
+For reference, the table below shows the number of samples and the number of allowed missing columns assuming `NUMBER_OF_COLUMNS = 128` and `SAMPLES_PER_SLOT = 16`.
 
-Sampling is considered successful if any `S - L` columns are retrieved successfully.
+| Allowed missing | 0| 1| 2| 3| 4| 5| 6| 7| 8|
+|-----------------|--|--|--|--|--|--|--|--|--|
+| Sample count    |16|20|24|27|29|32|35|37|40|
 
 ### Sample queries
 
