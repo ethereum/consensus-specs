@@ -60,7 +60,7 @@ def _create_providers(test_name: str, /,
                                         preset_name=preset_name,
                                         runner_name=GENERATOR_NAME,
                                         handler_name=test_name,
-                                        suite_name='fork_choice',
+                                        suite_name='pyspec_tests',
                                         case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
                                         case_fn=mutation_generator.next_test_case)
 
