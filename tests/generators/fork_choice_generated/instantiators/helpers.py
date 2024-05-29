@@ -295,6 +295,6 @@ def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool)
     if debug:
         print('               head: ' + print_head(spec, store))
 
-    output_store_checks(spec, store, test_steps, with_filtered_block_weights=True)
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield 'steps', test_steps
