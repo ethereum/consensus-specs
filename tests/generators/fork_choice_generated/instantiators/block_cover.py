@@ -18,6 +18,7 @@ from .helpers import (
     attest_to_slot,
     yield_fork_choice_test_case,
 )
+from eth2spec.utils import bls
 
 def _should_justify_epoch(parents, current_justifications, previous_justifications, block) -> bool:
     if current_justifications[block]:
@@ -214,6 +215,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     meta = {
         'seed': seed,
         'model_params': model_params,
+        'bls_setting': 0 if bls.bls_active else 2,
     }
 
     blocks = [ProtocolMessage(block) for block in signed_blocks]

@@ -27,6 +27,7 @@ from .debug_helpers import (
     print_epoch,
     print_block_tree,
 )
+from eth2spec.utils import bls
 
 MAX_JUSTIFICATION_RATE = 99
 MIN_JUSTIFICATION_RATE = 91
@@ -564,6 +565,7 @@ def gen_block_tree_test_data(spec,
         'seed': seed,
         'sm_links': str(sm_links),
         'block_parents': str(block_parents),
+        'bls_setting': 0 if bls.bls_active else 2,
     }
 
     return FCTestData(meta, anchor_block, anchor_state,
