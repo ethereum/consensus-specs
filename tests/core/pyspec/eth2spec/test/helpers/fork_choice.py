@@ -351,7 +351,7 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def output_store_checks(spec, store, test_steps, with_filtered_block_weights=False):
+def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
     checks = {
         "time": int(store.time),
         "head": get_formatted_head_output(spec, store),
@@ -366,12 +366,16 @@ def output_store_checks(spec, store, test_steps, with_filtered_block_weights=Fal
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
 
-    if with_filtered_block_weights:
-        filtered_block_weights = {
-            encode_hex(filtered_block_root): int(spec.get_weight(store, filtered_block_root))
-            for filtered_block_root in spec.get_filtered_block_tree(store).keys()
+    if with_viable_for_head_weights:
+        filtered_block_roots = spec.get_filtered_block_tree(store).keys()
+        leaves_viable_for_head = [root for root in filtered_block_roots
+                                  if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)]
+
+        viable_for_head_roots_and_weights = {
+            encode_hex(viable_for_head_root): int(spec.get_weight(store, viable_for_head_root))
+            for viable_for_head_root in leaves_viable_for_head
         }
-        checks["filtered_block_weights"] = filtered_block_weights
+        checks["viable_for_head_roots_and_weights"] = viable_for_head_roots_and_weights
 
     test_steps.append({"checks": checks})
 
