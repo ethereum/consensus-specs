@@ -247,8 +247,8 @@ At each slot, a node SHOULD select at least `SAMPLES_PER_SLOT` column IDs for sa
 
 Alternatively, a node MAY use LossyDAS selecting more than `SAMPLES_PER_SLOT` columns while allowing some missing, respecting the same target false positive threshold (the probability of successful sampling of an unavailable block) as dictated by `SAMPLES_PER_SLOT`. The table below shows the number of samples and the number of allowed missing columns for this threshold.  
 
-| Allowed missing (L)                   | 0| 1| 2| 3| 4| 5| 6| 7| 8|
-|-------------------------------     |--|--|--|--|--|--|--|--|--|
+| Allowed missing (L)                    | 0| 1| 2| 3| 4| 5| 6| 7| 8|
+|----------------------------------------|--|--|--|--|--|--|--|--|--|
 | Samples (S) for target threshold 5e-6  |16|20|23|26|29|32|34|37|39|
 
 Sampling is considered successful if any `S - L` columns are retrieved successfully.
