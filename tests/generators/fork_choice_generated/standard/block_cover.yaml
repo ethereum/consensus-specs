@@ -16,6 +16,33 @@
   previous_justifications: [false]
   store_justified_epoch: 0
   target_block: 0
+- block_epochs: [0]
+  current_epoch: 1
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0]
+  current_epoch: 1
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0]
+  current_epoch: 1
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
+  store_justified_epoch: 0
+  target_block: 0
 - block_epochs: [0, 1]
   current_epoch: 1
   current_justifications: [false, false]
@@ -32,6 +59,60 @@
   predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
     store_je_eq_zero: true}
   previous_justifications: [false, false, false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1, 1, 1]
+  current_epoch: 1
+  current_justifications: [false, false, false, false]
+  parents: [0, 0, 0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false, false, false, false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1, 1, 1, 1]
+  current_epoch: 1
+  current_justifications: [false, false, false, false, false]
+  parents: [0, 0, 0, 0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false, false, false, false, false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1]
+  current_epoch: 1
+  current_justifications: [false, false]
+  parents: [0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: true,
+    store_je_eq_zero: true}
+  previous_justifications: [false, true]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0]
+  current_epoch: 3
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0]
+  current_epoch: 3
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0]
+  current_epoch: 3
+  current_justifications: [false]
+  parents: [0]
+  predicates: {block_is_leaf: true, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false]
   store_justified_epoch: 0
   target_block: 0
 - block_epochs: [0]
@@ -68,6 +149,33 @@
   predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
     store_je_eq_zero: true}
   previous_justifications: [false, true]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1, 1]
+  current_epoch: 3
+  current_justifications: [false, false, false]
+  parents: [0, 0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false, false, false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1, 1]
+  current_epoch: 3
+  current_justifications: [false, false, false]
+  parents: [0, 0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false, true, false]
+  store_justified_epoch: 0
+  target_block: 0
+- block_epochs: [0, 1, 1, 1]
+  current_epoch: 3
+  current_justifications: [false, false, false, false]
+  parents: [0, 0, 0, 0]
+  predicates: {block_is_leaf: false, block_vse_eq_store_je: true, block_vse_plus_two_ge_curr_e: false,
+    store_je_eq_zero: true}
+  previous_justifications: [false, false, false, false]
   store_justified_epoch: 0
   target_block: 0
 - block_epochs: [2]

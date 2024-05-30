@@ -215,7 +215,7 @@ gen_params = {
         'out_path': 'standard/block_cover.yaml',
         'models': ['block_cover'],
         'params': [
-            ({'anchor_epoch': 0, 'number_of_solutions': 2},),
+            ({'anchor_epoch': 0, 'number_of_solutions': 5},),
             ({'anchor_epoch': 2, 'number_of_solutions': 5},),
         ]
     },
