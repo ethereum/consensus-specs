@@ -25,6 +25,7 @@
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
+      - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [`custody_subnet_count`](#custody_subnet_count)
@@ -199,6 +200,85 @@ Clients MAY limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
+
+##### DataColumnSidecarsByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `EIP7594_FORK_VERSION`   | `eip7594.DataColumnSidecar` |
+
+Request Content:
+```
+(
+  start_slot: Slot
+  count: uint64
+  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+)
+```
+
+Response Content:
+```
+(
+  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+)
+```
+
+Requests data column sidecars in the slot range `[start_slot, start_slot + count)` of the given `columns`, leading up to the current head block as selected by fork choice.
+
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+
+`DataColumnSidecarsByRange` is primarily used to sync data columns that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` window.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
+
+Let `data_column_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, EIP7594_FORK_EPOCH), current_epoch]`.
+Clients MUST keep a record of data column sidecars seen on the epoch range `data_column_serve_range`
+where `current_epoch` is defined by the current wall-clock time,
+and clients MUST support serving requests of data columns on this range.
+
+Peers that are unable to reply to data column sidecar requests within the
+range `data_column_serve_range` SHOULD respond with error code `3: ResourceUnavailable`.
+Such peers that are unable to successfully reply to this range of requests MAY get descored
+or disconnected at any time.
+
+*Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
+MUST backfill the local data columns database to at least the range `data_column_serve_range`
+to be fully compliant with `DataColumnSidecarsByRange` requests.
+
+*Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
+participating in the networking immediately, other peers MAY
+disconnect and/or temporarily ban such an un-synced or semi-synced client.
+
+Clients MUST respond with at least the data column sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` sidecars.
+
+Clients MUST include all data column sidecars of each block from which they include data column sidecars.
+
+The following data column sidecars, where they exist, MUST be sent in `(slot, column_index)` order.
+
+Slots that do not contain known data columns MUST be skipped, mimicking the behaviour
+of the `BlocksByRange` request. Only response chunks with known data columns should
+therefore be sent.
+
+Clients MAY limit the number of data column sidecars in the response.
+
+The response MUST contain no more than `count * NUMBER_OF_COLUMNS` data column sidecars.
+
+Clients MUST respond with data columns sidecars from their view of the current fork choice
+-- that is, data column sidecars as included by blocks from the single chain defined by the current head.
+Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
+
+Clients MUST respond with data column sidecars that are consistent from a single chain within the context of the request.
+
+After the initial data column sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
 ### The discovery domain: discv5
 

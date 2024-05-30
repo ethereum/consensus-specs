@@ -8,6 +8,10 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Containers](#containers)
+  - [Modified Containers](#modified-containers)
+    - [`AggregateAndProof`](#aggregateandproof)
+    - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
@@ -33,6 +37,27 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Containers
+
+### Modified Containers
+
+#### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation  # [Modified in Electra:EIP7549]
+    selection_proof: BLSSignature
+```
+
+#### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof   # [Modified in Electra:EIP7549]
+    signature: BLSSignature
+```
 
 ## Block proposal
 

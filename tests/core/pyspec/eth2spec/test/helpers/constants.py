@@ -34,7 +34,6 @@ LATEST_FORK = MAINNET_FORKS[-1]
 ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
-    DENEB,
     ELECTRA,
     # Experimental patches
     EIP7594,

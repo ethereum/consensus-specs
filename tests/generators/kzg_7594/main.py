@@ -710,6 +710,21 @@ def case05_recover_all_cells():
         'output': None
     }
 
+    # Edge case: More cells provided than CELLS_PER_EXT_BLOB
+    blob = BLOB_RANDOM_VALID2
+    cells = spec.compute_cells(blob)
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB)) + [0]
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    identifier = make_id(cell_ids, partial_cells)
+    yield f'recover_all_cells_case_invalid_more_cells_than_cells_per_ext_blob_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+        },
+        'output': None
+    }
+
     # Edge case: Invalid cell_id
     blob = BLOB_RANDOM_VALID1
     cells = spec.compute_cells(blob)
@@ -782,7 +797,12 @@ def case05_recover_all_cells():
     # Edge case: Duplicate cell_id
     blob = BLOB_RANDOM_VALID2
     cells = spec.compute_cells(blob)
-    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+    # There will be 65 cells, where 64 are unique and 1 is a duplicate.
+    # Depending on the implementation, 63 & 1 might not fail for the right
+    # reason. For example, if the implementation assigns cells in an array
+    # via index, this would result in 63 cells and the test would fail due
+    # to insufficient cell count, not because of a duplicate cell.
+    cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 + 1))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
     # Replace first cell_id with the second cell_id
     cell_ids[0] = cell_ids[1]
