@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.gen_helpers.gen_base import gen_runner
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 from itertools import product
@@ -39,18 +39,19 @@ def _create_providers(test_name: str, /,
         bls.use_milagro()
         return
 
-    def make_cases_fn() -> Iterable[TestCase]:
-        seeds = [initial_seed]
-        if number_of_variations > 1:
-            rnd = random.Random(initial_seed)
-            seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
-            seeds[0] = initial_seed
+    seeds = [initial_seed]
+    if number_of_variations > 1:
+        rnd = random.Random(initial_seed)
+        seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
+        seeds[0] = initial_seed
+    
+    for fork_name in forks:
+        for preset_name in presets:
+            spec = spec_targets[preset_name][fork_name]
 
-        for i, solution in enumerate(solutions):
-            for seed in seeds:
-                for fork_name in forks:
-                    for preset_name in presets:
-                        spec = spec_targets[preset_name][fork_name]
+            for i, solution in enumerate(solutions):
+                def make_cases_fn() -> Iterable[TestCase]:
+                    for seed in seeds:
                         mutation_generator = MutatorsGenerator(
                             spec, seed, number_of_mutations,
                             lambda: test_fn(fork_name, preset_name, seed, solution),
@@ -64,7 +65,7 @@ def _create_providers(test_name: str, /,
                                         case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
                                         case_fn=mutation_generator.next_test_case)
 
-    yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
+                yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
 
 
 def _find_sm_link_solutions(anchor_epoch: int,
