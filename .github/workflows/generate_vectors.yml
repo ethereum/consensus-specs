@@ -1,0 +1,67 @@
+name: Run test vector generation
+
+defaults:
+  run:
+    shell: zsh {0}
+
+env:
+  TEST_PRESET_TYPE: "minimal"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The branch, tag or SHA to checkout and build from
+        default: dev
+        type: string
+        required: true
+
+jobs:
+  generate-tests:
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'ethereum/consensus-specs'
+          path: 'consensus-specs'
+          ref: ${{ inputs.source_ref }}
+      - name: Checkout consensus-spec-tests repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'ethereum/consensus-spec-tests'
+          path: 'consensus-spec-tests'
+          fetch-depth: 1
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: ''
+      - name: Clean up Spec Repository
+        run: |
+          cd consensus-specs
+          make clean
+      - name: Install dependencies and generate pyspec
+        run: |
+          cd consensus-specs
+          make install_test
+          make -B pyspec
+      - name: Generate tests
+        run: |
+          make generate_tests 2>&1 | tee ../consensustestgen.log
+          cp -r presets/ ../consensus-spec-tests/presets
+          cp -r configs/ ../consensus-spec-tests/configs
+          find . -type d -empty -delete
+      - name: Archive configurations
+        run: |
+          tar -czvf general.tar.gz tests/general
+          tar -czvf minimal.tar.gz tests/minimal
+          tar -czvf mainnet.tar.gz tests/mainnet
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test Configurations
+          path: |
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
