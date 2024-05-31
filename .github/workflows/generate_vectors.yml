@@ -55,7 +55,7 @@ jobs:
           find . -type d -empty -delete
       - name: Archive configurations
         run: |
-          cd consensus-specs
+          cd consensus-spec-tests
           tar -czvf general.tar.gz tests/general
           tar -czvf minimal.tar.gz tests/minimal
           tar -czvf mainnet.tar.gz tests/mainnet
@@ -64,6 +64,6 @@ jobs:
         with:
           name: Test Configurations
           path: |
-            consensus-specs/general.tar.gz
-            consensus-specs/minimal.tar.gz
-            consensus-specs/mainnet.tar.gz
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
