@@ -5,6 +5,10 @@ from eth2spec.test.context import (
 )
 
 
+def run_process_pending_balance_deposits(spec, state):
+    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+
 @with_electra_and_later
 @spec_state_test
 def test_pending_deposit_min_activation_balance(spec, state):
@@ -14,9 +18,9 @@ def test_pending_deposit_min_activation_balance(spec, state):
         spec.PendingBalanceDeposit(index=index, amount=amount)
     )
     pre_balance = state.balances[index]
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     assert state.balances[index] == pre_balance + amount
     # No leftover deposit balance to consume when there are no deposits left to process
     assert state.deposit_balance_to_consume == 0
@@ -32,9 +36,9 @@ def test_pending_deposit_balance_equal_churn(spec, state):
         spec.PendingBalanceDeposit(index=index, amount=amount)
     )
     pre_balance = state.balances[index]
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     assert state.balances[index] == pre_balance + amount
     assert state.deposit_balance_to_consume == 0
     assert state.pending_balance_deposits == []
@@ -49,9 +53,9 @@ def test_pending_deposit_balance_above_churn(spec, state):
         spec.PendingBalanceDeposit(index=index, amount=amount)
     )
     pre_balance = state.balances[index]
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # deposit was above churn, balance hasn't changed
     assert state.balances[index] == pre_balance
     # deposit balance to consume is the full churn limit
@@ -74,9 +78,9 @@ def test_pending_deposit_preexisting_churn(spec, state):
         spec.PendingBalanceDeposit(index=index, amount=amount)
     )
     pre_balance = state.balances[index]
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # balance was deposited correctly
     assert state.balances[index] == pre_balance + amount
     # No leftover deposit balance to consume when there are no deposits left to process
@@ -96,9 +100,9 @@ def test_multiple_pending_deposits_below_churn(spec, state):
         spec.PendingBalanceDeposit(index=1, amount=amount)
     )
     pre_balances = state.balances.copy()
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     for i in [0, 1]:
         assert state.balances[i] == pre_balances[i] + amount
     # No leftover deposit balance to consume when there are no deposits left to process
@@ -116,9 +120,9 @@ def test_multiple_pending_deposits_above_churn(spec, state):
             spec.PendingBalanceDeposit(index=i, amount=amount)
         )
     pre_balances = state.balances.copy()
-    yield from run_epoch_processing_with(
-        spec, state, "process_pending_balance_deposits"
-    )
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # First two deposits are processed, third is not because above churn
     for i in [0, 1]:
         assert state.balances[i] == pre_balances[i] + amount
@@ -144,7 +148,9 @@ def test_skipped_deposit_exiting_validator(spec, state):
     pre_balance = state.balances[index]
     # Initiate the validator's exit
     spec.initiate_validator_exit(state, index)
-    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # Deposit is skipped because validator is exiting
     assert state.balances[index] == pre_balance
     # All deposits either processed or postponed, no leftover deposit balance to consume
@@ -165,7 +171,9 @@ def test_multiple_skipped_deposits_exiting_validators(spec, state):
         spec.initiate_validator_exit(state, i)
     pre_pending_balance_deposits = state.pending_balance_deposits.copy()
     pre_balances = state.balances.copy()
-    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # All deposits are postponed, no balance changes
     assert state.balances == pre_balances
     # All deposits are postponed, no leftover deposit balance to consume
@@ -183,7 +191,9 @@ def test_multiple_pending_one_skipped(spec, state):
     pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
-    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # First and last deposit are processed, second is not because of exiting
     for i in [0, 2]:
         assert state.balances[i] == pre_balances[i] + amount
@@ -206,7 +216,9 @@ def test_mixture_of_skipped_and_above_churn(spec, state):
     pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
-    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # First deposit is processed
     assert state.balances[0] == pre_balances[0] + amount01
     # Second deposit is postponed, third is above churn
@@ -231,7 +243,9 @@ def test_processing_deposit_of_withdrawable_validator(spec, state):
     spec.initiate_validator_exit(state, index)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
     state.slot = spec.SLOTS_PER_EPOCH * (state.validators[index].withdrawable_epoch + 1)
-    yield from run_epoch_processing_with(spec, state, 'process_pending_balance_deposits')
+
+    yield from run_process_pending_balance_deposits(spec, state)
+
     # Deposit is correctly processed
     assert state.balances[index] == pre_balance + amount
     # No leftover deposit balance to consume when there are no deposits left to process
