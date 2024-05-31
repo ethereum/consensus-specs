@@ -405,7 +405,7 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_source_equals_target(spec, state):
+def test_incorrect_source_equals_target(spec, state):
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
 
@@ -434,7 +434,7 @@ def test_invalid_source_equals_target(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_exceed_pending_consolidations_limit(spec, state):
+def test_incorrect_exceed_pending_consolidations_limit(spec, state):
     state.pending_consolidations = [
         spec.PendingConsolidation(source_index=0, target_index=1)
     ] * spec.PENDING_CONSOLIDATIONS_LIMIT
@@ -462,7 +462,7 @@ def test_invalid_exceed_pending_consolidations_limit(spec, state):
 @with_electra_and_later
 @spec_state_test
 @single_phase
-def test_invalid_not_enough_consolidation_churn_available(spec, state):
+def test_incorrect_not_enough_consolidation_churn_available(spec, state):
     state.validators = state.validators[0:2]
     state.pending_consolidations = [
         spec.PendingConsolidation(source_index=0, target_index=1)
@@ -495,7 +495,7 @@ def test_invalid_not_enough_consolidation_churn_available(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_exited_source(spec, state):
+def test_incorrect_exited_source(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -527,7 +527,7 @@ def test_invalid_exited_source(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_exited_target(spec, state):
+def test_incorrect_exited_target(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -557,7 +557,7 @@ def test_invalid_exited_target(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_inactive_source(spec, state):
+def test_incorrect_inactive_source(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -589,7 +589,7 @@ def test_invalid_inactive_source(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_inactive_target(spec, state):
+def test_incorrect_inactive_target(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -620,7 +620,7 @@ def test_invalid_inactive_target(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_no_source_execution_withdrawal_credential(spec, state):
+def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
     # Set up a correct consolidation, but source does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
@@ -646,7 +646,7 @@ def test_invalid_no_source_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_no_target_execution_withdrawal_credential(spec, state):
+def test_incorrect_no_target_execution_withdrawal_credential(spec, state):
     # Set up a correct consolidation, but target does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
@@ -674,7 +674,7 @@ def test_invalid_no_target_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_incorrect_source_address(spec, state):
+def test_incorrect_incorrect_source_address(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -704,7 +704,7 @@ def test_invalid_incorrect_source_address(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_unknown_source_pubkey(spec, state):
+def test_incorrect_unknown_source_pubkey(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -734,7 +734,7 @@ def test_invalid_unknown_source_pubkey(spec, state):
 )
 @spec_test
 @single_phase
-def test_invalid_unknown_target_pubkey(spec, state):
+def test_incorrect_unknown_target_pubkey(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -760,7 +760,7 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
     """
     Run ``process_consolidation``, yielding:
       - pre-state ('pre')
-      - consolidation ('consolidation')
+      - execution_layer_consolidation_request ('execution_layer_consolidation_request')
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
@@ -778,7 +778,7 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         pre_state = state.copy()
 
     yield 'pre', state
-    yield 'consolidation', consolidation
+    yield 'execution_layer_consolidation_request', consolidation
 
     spec.process_execution_layer_consolidation_request(state, consolidation)
 
