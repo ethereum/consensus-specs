@@ -49,7 +49,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j 16 generate_tests 2>&1 | tee ../consensustestgen.log
+          make -j 48 generate_tests 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
