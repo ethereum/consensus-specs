@@ -15,8 +15,23 @@ from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, co
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
     withdrawal_pubkey = pubkeys[-1 - i]
-    # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+    if is_post_electra(spec):
+        if balance > spec.MIN_ACTIVATION_BALANCE:
+            # use compounding withdrawal credentials if the balance is higher than MIN_ACTIVATION_BALANCE
+            withdrawal_credentials = (
+                spec.COMPOUNDING_WITHDRAWAL_PREFIX
+                + b'\x00' * 11
+                + spec.hash(withdrawal_pubkey)[12:]
+            )
+        else:
+            # insecurely use pubkey as withdrawal key as well
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        # insecurely use pubkey as withdrawal key as well
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE
+
     validator = spec.Validator(
         pubkey=active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -24,7 +39,7 @@ def build_mock_validator(spec, i: int, balance: int):
         activation_epoch=spec.FAR_FUTURE_EPOCH,
         exit_epoch=spec.FAR_FUTURE_EPOCH,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balace)
     )
 
     return validator
