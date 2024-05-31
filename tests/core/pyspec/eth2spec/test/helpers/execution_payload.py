@@ -137,7 +137,7 @@ def get_withdrawal_rlp(withdrawal):
 
 
 # https://eips.ethereum.org/EIPS/eip-7002
-def get_withdrawal_request_rlp(withdrawal_request):
+def get_withdrawal_request_rlp_bytes(withdrawal_request):
     withdrawal_request_rlp = [
         # source_address
         (Binary(20, 20), withdrawal_request.source_address),
@@ -150,7 +150,7 @@ def get_withdrawal_request_rlp(withdrawal_request):
     return b"\x01" + encode(values, sedes)
 
 
-def get_deposit_receipt_rlp(spec, deposit_receipt):
+def get_deposit_receipt_rlp_bytes(deposit_receipt):
     deposit_receipt_rlp = [
         # pubkey
         (Binary(48, 48), deposit_receipt.pubkey),
@@ -180,8 +180,8 @@ def compute_el_block_hash(spec, payload):
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if is_post_electra(spec):
         requests_encoded = []
-        requests_encoded += [get_deposit_receipt_rlp(spec, receipt) for receipt in payload.deposit_receipts]
-        requests_encoded += [get_withdrawal_request_rlp(request) for request in payload.withdrawal_requests]
+        requests_encoded += [get_deposit_receipt_rlp_bytes(receipt) for receipt in payload.deposit_receipts]
+        requests_encoded += [get_withdrawal_request_rlp_bytes(request) for request in payload.withdrawal_requests]
         requests_trie_root = compute_trie_root_from_indexed_data(requests_encoded)
 
     payload_header = get_execution_payload_header(spec, payload)
