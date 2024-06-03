@@ -1524,6 +1524,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     # Process activations
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
+        # [Modified in Electra:EIP7251]
         validator.effective_balance = min(
             balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE_ELECTRA)
         if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
