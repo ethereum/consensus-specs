@@ -683,6 +683,9 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     # Check that each cell is the correct length
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
+    # Check that the cell ids are within bounds
+    for cell_id in cell_ids:
+        assert cell_id < CELLS_PER_EXT_BLOB
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)

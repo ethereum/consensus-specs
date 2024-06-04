@@ -68,6 +68,25 @@ def test_get_custody_columns__max_node_id_max_custody_subnet_count(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
+def test_get_custody_columns__max_node_id_max_custody_subnet_count_minus_1(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(
+        spec, rng, node_id=2**256 - 2,
+        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT,
+    )
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_custody_columns__short_node_id(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_columns(spec, rng, node_id=1048576, custody_subnet_count=1)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
 def test_get_custody_columns__1(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_columns(spec, rng)
