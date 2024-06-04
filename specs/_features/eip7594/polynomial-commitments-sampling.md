@@ -46,7 +46,7 @@
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
   - [`recover_shifted_data`](#recover_shifted_data)
   - [`recover_original_data`](#recover_original_data)
-  - [`recover_all_cells`](#recover_all_cells)
+  - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
