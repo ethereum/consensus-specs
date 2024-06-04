@@ -49,7 +49,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j 16 generate_tests 2>&1 | tee ../consensustestgen.log
+          make -j 48 generate_tests 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
@@ -62,8 +62,15 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Test Configurations
-          path: |
-            consensus-spec-tests/general.tar.gz
-            consensus-spec-tests/minimal.tar.gz
-            consensus-spec-tests/mainnet.tar.gz
+          name: General Test Configuration
+          path: consensus-spec-tests/general.tar.gz
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minimal Test Configuration
+          path: consensus-spec-tests/minimal.tar.gz
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with pad:
+          name: Mainnet Test Configuration
+          path: consensus-spec-tests/mainnet.tar.gz
