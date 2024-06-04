@@ -31,6 +31,7 @@
     - [`Consolidation`](#consolidation)
     - [`SignedConsolidation`](#signedconsolidation)
     - [`PendingConsolidation`](#pendingconsolidation)
+    - [`OnchainAttestation`](#onchainattestation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
   - [Extended Containers](#extended-containers)
@@ -49,6 +50,8 @@
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
     - [Updated `is_partially_withdrawable_validator`](#updated-is_partially_withdrawable_validator)
+    - [New `compute_signing_attestation_data`](#new-compute_signing_attestation_data)
+    - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
   - [Misc](#misc-1)
     - [`get_committee_indices`](#get_committee_indices)
     - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
@@ -58,7 +61,7 @@
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
-    - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [New `get_onchain_attesting_indices`](#new-get_onchain_attesting_indices)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
@@ -83,7 +86,7 @@
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
       - [Attestations](#attestations)
-        - [Modified `process_attestation`](#modified-process_attestation)
+        - [New `process_onchain_attestation`](#new-process_onchain_attestation)
       - [Deposits](#deposits)
         - [Updated  `apply_deposit`](#updated--apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
@@ -270,6 +273,18 @@ class PendingConsolidation(Container):
     target_index: ValidatorIndex
 ```
 
+#### `OnchainAttestation`
+
+*Note*: The container is new in EIP7549.
+
+```python
+class OnchainAttestation(Container):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    data: AttestationData
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]
+    signature: BLSSignature
+```
+
 ### Modified Containers
 
 #### `AttesterSlashing`
@@ -312,7 +327,7 @@ class BeaconBlockBody(Container):
     # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]  # [Modified in Electra:EIP7549]
-    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]  # [Modified in Electra:EIP7549]
+    attestations: List[OnchainAttestation, MAX_ATTESTATIONS_ELECTRA]  # [Modified in Electra:EIP7549]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
@@ -531,6 +546,47 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     )
 ```
 
+#### New `compute_signing_attestation_data`
+
+*Note:* This function constructs attestation data for the signing purpose.
+
+```python
+def compute_signing_attestation_data(data: AttestationData) -> AttestationData:
+    """
+    Returns ``AttestationData`` with ``index`` set to ``0``.
+    """
+    return AttestationData(
+        slot = indexed_attestation.data.slot,
+        index = CommitteeIndex(0),
+        beacon_block_root = indexed_attestation.data.beacon_block_root,
+        source = indexed_attestation.data.source,
+        target = indexed_attestation.data.target,
+    )
+```
+
+#### Modified `is_valid_indexed_attestation`
+
+*Note*: This function is modified to verify signature over signing `AttestationData`.
+
+```python
+def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+    """
+    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
+    """
+    # Verify indices are sorted and unique
+    indices = indexed_attestation.attesting_indices
+    if len(indices) == 0 or not indices == sorted(set(indices)):
+        return False
+    # Verify aggregate signature
+    pubkeys = [state.validators[i].pubkey for i in indices]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
+    # [New in Electra:EIP7549]
+    signing_data = compute_signing_attestation_data(indexed_attestation.data)
+    signing_root = compute_signing_root(signed_data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+```
+
+
 ### Misc
 
 #### `get_committee_indices`
@@ -603,10 +659,10 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
     )
 ```
 
-#### Modified `get_attesting_indices`
+#### New `get_onchain_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_onchain_attesting_indices(state: BeaconState, attestation: OnchainAttestation) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
     """
@@ -1060,7 +1116,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation)  # [Modified in Electra:EIP7549]
+    for_ops(body.attestations, process_onchain_attestation)  # [Modified in Electra:EIP7549]
     for_ops(body.deposits, process_deposit)  # [Modified in Electra:EIP7251]
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
@@ -1072,10 +1128,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ##### Attestations
 
-###### Modified `process_attestation`
+###### New `process_onchain_attestation`
 
 ```python
-def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+def process_onchain_attestation(state: BeaconState, attestation: OnchainAttestation) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
@@ -1096,7 +1152,12 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
 
     # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    indexed_attestation = IndexedAttestation(
+        attesting_indices=sorted(get_onchain_attesting_indices(state, attestation)),
+        data=attestation.data,
+        signature=attestation.signature,
+    )
+    assert is_valid_indexed_attestation(state, indexed_attestation)
 
     # Update epoch participation flags
     if data.target.epoch == get_current_epoch(state):
@@ -1105,7 +1166,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in get_attesting_indices(state, attestation):
+    for index in get_onchain_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
