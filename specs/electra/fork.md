@@ -91,7 +91,8 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
         excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
         deposit_receipts_root=Root(),  # [New in Electra:EIP6110]
-        withdrawal_requests_root=Root(),  # [New in Electra:EIP7002],
+        withdrawal_requests_root=Root(),  # [New in Electra:EIP7002]
+        consolidation_requests_root=Root(),  # [New in Electra:EIP7251]
     )
 
     exit_epochs = [v.exit_epoch for v in pre.validators if v.exit_epoch != FAR_FUTURE_EPOCH]

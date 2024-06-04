@@ -37,6 +37,7 @@ def get_execution_payload_header(spec, execution_payload):
     if is_post_electra(spec):
         payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
         payload_header.withdrawal_requests_root = spec.hash_tree_root(execution_payload.withdrawal_requests)
+        payload_header.consolidation_requests_root = spec.hash_tree_root(execution_payload.consolidation_requests)
     return payload_header
 
 
@@ -59,7 +60,8 @@ def compute_el_header_block_hash(spec,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
                                  deposit_receipts_trie_root=None,
-                                 withdrawal_requests_root=None):
+                                 withdrawal_requests_root=None,
+                                 consolidation_requests_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
