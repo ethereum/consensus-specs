@@ -30,7 +30,7 @@ MAX_ATTESTER_SLASHINGS_ELECTRA: 1
 # `uint64(2**3)` (= 8)
 MAX_ATTESTATIONS_ELECTRA: 8
 # `uint64(2**0)` (= 1)
-MAX_CONSOLIDATIONS: 1
+MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD: 1
 
 # Execution
 # ---------------------------------------------------------------
