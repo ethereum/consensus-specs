@@ -27,7 +27,7 @@
     - [`DepositRequest`](#depositrequest)
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
-    - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
+    - [`WithdrawalRequest`](#executionlayerwithdrawalrequest)
     - [`ExecutionLayerConsolidationRequest`](#executionlayerconsolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
   - [Modified Containers](#modified-containers)
@@ -91,7 +91,7 @@
       - [Voluntary exits](#voluntary-exits)
         - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
-        - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
+        - [New `process_withdrawal_request`](#new-process_withdrawal_request)
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
@@ -227,12 +227,12 @@ class PendingPartialWithdrawal(Container):
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
-#### `ExecutionLayerWithdrawalRequest`
+#### `WithdrawalRequest`
 
 *Note*: The container is new in EIP7251:EIP7002.
 
 ```python
-class ExecutionLayerWithdrawalRequest(Container):
+class WithdrawalRequest(Container):
     source_address: ExecutionAddress
     validator_pubkey: BLSPubkey
     amount: Gwei
@@ -336,7 +336,7 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
-    withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     # [New in Electra:EIP7251]
     consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
 ```
@@ -1075,7 +1075,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.execution_payload.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
+    for_ops(body.execution_payload.withdrawal_requests, process_withdrawal_request)
     # [New in Electra:EIP7251]
     for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)
 ```
@@ -1236,16 +1236,16 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 
 ##### Execution layer withdrawal requests
 
-###### New `process_execution_layer_withdrawal_request`
+###### New `process_withdrawal_request`
 
 *Note*: This function is new in Electra following EIP-7002 and EIP-7251.
 
 ```python
-def process_execution_layer_withdrawal_request(
+def process_withdrawal_request(
     state: BeaconState,
-    execution_layer_withdrawal_request: ExecutionLayerWithdrawalRequest
+    withdrawal_request: WithdrawalRequest
 ) -> None:
-    amount = execution_layer_withdrawal_request.amount
+    amount = withdrawal_request.amount
     is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
 
     # If partial withdrawal queue is full, only full exits are processed
@@ -1254,7 +1254,7 @@ def process_execution_layer_withdrawal_request(
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkey exists
-    request_pubkey = execution_layer_withdrawal_request.validator_pubkey
+    request_pubkey = withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
         return
     index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
@@ -1263,7 +1263,7 @@ def process_execution_layer_withdrawal_request(
     # Verify withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(validator)
     is_correct_source_address = (
-        validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
+        validator.withdrawal_credentials[12:] == withdrawal_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return

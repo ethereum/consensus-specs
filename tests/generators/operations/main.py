@@ -47,7 +47,7 @@ if __name__ == "__main__":
         'attestation',
         'execution_layer_consolidation_request',
         'deposit_request',
-        'execution_layer_withdrawal_request',
+        'withdrawal_request',
         'voluntary_exit'
     ]}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)

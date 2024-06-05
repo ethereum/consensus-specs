@@ -7,9 +7,9 @@ from eth2spec.test.helpers.state import get_validator_index_by_pubkey
 #
 
 
-def run_execution_layer_withdrawal_request_processing(spec, state, withdrawal_request, valid=True, success=True):
+def run_withdrawal_request_processing(spec, state, withdrawal_request, valid=True, success=True):
     """
-    Run ``process_execution_layer_withdrawal_request``, yielding:
+    Run ``process_withdrawal_request``, yielding:
       - pre-state ('pre')
       - withdrawal_request ('withdrawal_request')
       - post-state ('post').
