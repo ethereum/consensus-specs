@@ -730,7 +730,7 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
     polynomial_coeff = polynomial_eval_to_coeff(reconstructed_data[:FIELD_ELEMENTS_PER_BLOB])
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
     for i, cell_id in enumerate(cell_ids):
-        recovered_proofs[cell_id] = proofs_bytes[i]
+        recovered_proofs[cell_id] = bytes_to_kzg_proof(proofs_bytes[i])
     for i in range(CELLS_PER_EXT_BLOB):
         if recovered_proofs[i] is None:
             coset = coset_for_cell(CellID(i))

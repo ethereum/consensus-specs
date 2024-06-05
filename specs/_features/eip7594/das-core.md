@@ -141,14 +141,14 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELL
     The data structure for storing cells is implementation-dependent.
     """
     extended_matrix: List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX] = []
-    for row_index, blob in enumerate(blobs):
+    for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
-        for column_index, (cell, proof) in enumerate(zip(cells, proofs)):
+        for cell_id, (cell, proof) in enumerate(zip(cells, proofs)):
             extended_matrix.append(MatrixEntry(
                 cell=cell,
                 proof=proof,
-                row_index=row_index,
-                column_index=column_index,
+                row_index=blob_index,
+                column_index=cell_id,
             ))
     return extended_matrix
 ```
