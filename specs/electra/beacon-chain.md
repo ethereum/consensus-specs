@@ -28,7 +28,7 @@
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
     - [`WithdrawalRequest`](#executionlayerwithdrawalrequest)
-    - [`ExecutionLayerConsolidationRequest`](#executionlayerconsolidationrequest)
+    - [`ConsolidationRequest`](#executionlayerconsolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -95,7 +95,7 @@
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
-        - [New `process_execution_layer_consolidation_request`](#new-process_execution_layer_consolidation_request)
+        - [New `process_consolidation_request`](#new-process_consolidation_request)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -238,12 +238,12 @@ class WithdrawalRequest(Container):
     amount: Gwei
 ```
 
-#### `ExecutionLayerConsolidationRequest`
+#### `ConsolidationRequest`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class ExecutionLayerConsolidationRequest(Container):
+class ConsolidationRequest(Container):
     source_address: ExecutionAddress
     source_pubkey: BLSPubkey
     target_pubkey: BLSPubkey
@@ -338,7 +338,7 @@ class ExecutionPayload(Container):
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     # [New in Electra:EIP7251]
-    consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+    consolidation_requests: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -1077,7 +1077,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in Electra:EIP7002:EIP7251]
     for_ops(body.execution_payload.withdrawal_requests, process_withdrawal_request)
     # [New in Electra:EIP7251]
-    for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)
+    for_ops(body.execution_payload.consolidation_requests, process_consolidation_request)
 ```
 
 ##### Attestations
@@ -1326,12 +1326,12 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
 
 ##### Execution layer consolidation requests
 
-###### New `process_execution_layer_consolidation_request`
+###### New `process_consolidation_request`
 
 ```python
-def process_execution_layer_consolidation_request(
+def process_consolidation_request(
     state: BeaconState,
-    execution_layer_consolidation_request: ExecutionLayerConsolidationRequest
+    consolidation_request: ConsolidationRequest
 ) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
@@ -1342,8 +1342,8 @@ def process_execution_layer_consolidation_request(
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkeys exists
-    request_source_pubkey = execution_layer_consolidation_request.source_pubkey
-    request_target_pubkey = execution_layer_consolidation_request.target_pubkey
+    request_source_pubkey = consolidation_request.source_pubkey
+    request_target_pubkey = consolidation_request.target_pubkey
     if request_source_pubkey not in validator_pubkeys:
         return
     if request_target_pubkey not in validator_pubkeys:
@@ -1360,7 +1360,7 @@ def process_execution_layer_consolidation_request(
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
-        source_validator.withdrawal_credentials[12:] == execution_layer_consolidation_request.source_address
+        source_validator.withdrawal_credentials[12:] == consolidation_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
