@@ -11,9 +11,6 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.test.helpers.constants import EIP7594
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.kzg_tests import (
-    BLOB_RANDOM_VALID1,
-    BLOB_RANDOM_VALID2,
-    BLOB_RANDOM_VALID3,
     CELL_RANDOM_VALID1,
     CELL_RANDOM_VALID2,
     G1,
