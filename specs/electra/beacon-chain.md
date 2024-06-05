@@ -811,12 +811,27 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
+    deposits_to_postpone = []
 
     for deposit in state.pending_balance_deposits:
-        if processed_amount + deposit.amount > available_for_processing:
-            break
-        increase_balance(state, deposit.index, deposit.amount)
-        processed_amount += deposit.amount
+        validator = state.validators[deposit.index]
+        # Validator is exiting, postpone the deposit until after withdrawable epoch
+        if validator.exit_epoch < FAR_FUTURE_EPOCH:
+            if get_current_epoch(state) <= validator.withdrawable_epoch:
+                deposits_to_postpone.append(deposit)
+            # Deposited balance will never become active. Increase balance but do not consume churn
+            else:
+                increase_balance(state, deposit.index, deposit.amount)
+        # Validator is not exiting, attempt to process deposit
+        else:
+            # Deposit does not fit in the churn, no more deposit processing in this epoch.
+            if processed_amount + deposit.amount > available_for_processing:
+                break
+            # Deposit fits in the churn, process it. Increase balance and consume churn.
+            else: 
+                increase_balance(state, deposit.index, deposit.amount)
+                processed_amount += deposit.amount
+        # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
     state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
@@ -825,6 +840,8 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
         state.deposit_balance_to_consume = Gwei(0)
     else:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
+
+    state.pending_balance_deposits += deposits_to_postpone
 ```
 
 #### New `process_pending_consolidations`
