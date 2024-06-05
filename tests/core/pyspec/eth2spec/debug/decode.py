@@ -28,9 +28,27 @@ def decode(data: Any, typ):
             assert (data["hash_tree_root"][2:] ==
                     hash_tree_root(ret).hex())
         return ret
-    elif issubclass(typ, (StableContainer, Profile)):
+    elif issubclass(typ, StableContainer):
         temp = {}
-        for field_name, [field_type, is_optional] in typ.fields().items():
+        for field_name, field_type in typ.fields().items():
+            if data[field_name] is None:
+                temp[field_name] = None
+                if field_name + "_hash_tree_root" in data:
+                    assert (data[field_name + "_hash_tree_root"][2:] ==
+                            '00' * 32)
+            else:
+                temp[field_name] = decode(data[field_name], field_type)
+                if field_name + "_hash_tree_root" in data:
+                    assert (data[field_name + "_hash_tree_root"][2:] ==
+                            hash_tree_root(temp[field_name]).hex())
+        ret = typ(**temp)
+        if "hash_tree_root" in data:
+            assert (data["hash_tree_root"][2:] ==
+                    hash_tree_root(ret).hex())
+        return ret
+    elif issubclass(typ, Profile):
+        temp = {}
+        for field_name, (field_type, is_optional) in typ.fields().items():
             if data[field_name] is None:
                 assert is_optional
                 temp[field_name] = None
