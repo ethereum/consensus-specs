@@ -11,3 +11,4 @@ from remerkleable.stable_container import Profile, StableContainer
 
 
 Bytes20 = ByteVector[20]  # type: ignore
+Bytes31 = ByteVector[31]  # type: ignore
