@@ -60,7 +60,7 @@
         bar: boolean
     ```
 * **stablecontainer**: ordered heterogeneous collection of optional values, with `N` indicating the potential maximum number of fields to which it can ever grow in the future
-    * notation `StableContainer[N]`, with `Optional[T]` refering to Python's `typing.Optional`, e.g.
+    * notation `StableContainer[N]`, with `Optional[T]` referring to Python's `typing.Optional`, e.g.
     ```python
     class Shape(StableContainer[4]):
         side: Optional[uint16]
