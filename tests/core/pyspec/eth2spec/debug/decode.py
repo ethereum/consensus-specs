@@ -48,7 +48,7 @@ def decode(data: Any, typ):
         return ret
     elif issubclass(typ, Profile):
         temp = {}
-        for field_name, (field_type, is_optional) in typ.fields().items():
+        for field_name, [field_type, is_optional] in typ.fields().items():
             if data[field_name] is None:
                 assert is_optional
                 temp[field_name] = None
