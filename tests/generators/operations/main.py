@@ -46,7 +46,7 @@ if __name__ == "__main__":
     _new_electra_mods = {key: 'eth2spec.test.electra.block_processing.test_process_' + key for key in [
         'attestation',
         'execution_layer_consolidation_request',
-        'deposit_receipt',
+        'deposit_request',
         'execution_layer_withdrawal_request',
         'voluntary_exit'
     ]}

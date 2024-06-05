@@ -171,7 +171,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount,
     return deposit
 
 
-def build_deposit_receipt(spec,
+def build_deposit_request(spec,
                           index,
                           pubkey,
                           privkey,
@@ -179,7 +179,7 @@ def build_deposit_receipt(spec,
                           withdrawal_credentials,
                           signed):
     deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed)
-    return spec.DepositReceipt(
+    return spec.DepositRequest(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount,
@@ -187,14 +187,14 @@ def build_deposit_receipt(spec,
         index=index)
 
 
-def prepare_deposit_receipt(spec, validator_index, amount,
+def prepare_deposit_request(spec, validator_index, amount,
                             index=None,
                             pubkey=None,
                             privkey=None,
                             withdrawal_credentials=None,
                             signed=False):
     """
-    Create a deposit receipt for the given validator, depositing the given amount.
+    Create a deposit request for the given validator, depositing the given amount.
     """
     if index is None:
         index = validator_index
@@ -209,7 +209,7 @@ def prepare_deposit_receipt(spec, validator_index, amount,
     if withdrawal_credentials is None:
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
 
-    return build_deposit_receipt(
+    return build_deposit_request(
         spec,
         index,
         pubkey,
@@ -320,11 +320,11 @@ def run_deposit_processing_with_specific_fork_version(
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=valid, effective=effective)
 
 
-def run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index, valid=True, effective=True):
+def run_deposit_request_processing(spec, state, deposit_request, validator_index, valid=True, effective=True):
     """
-    Run ``process_deposit_receipt``, yielding:
+    Run ``process_deposit_request``, yielding:
       - pre-state ('pre')
-      - deposit_receipt ('deposit_receipt')
+      - deposit_request ('deposit_request')
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
@@ -340,18 +340,18 @@ def run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index
     pre_pending_deposits = len(state.pending_balance_deposits)
 
     yield 'pre', state
-    yield 'deposit_receipt', deposit_receipt
+    yield 'deposit_request', deposit_request
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_deposit_receipt(state, deposit_receipt))
+        expect_assertion_error(lambda: spec.process_deposit_request(state, deposit_request))
         yield 'post', None
         return
 
-    spec.process_deposit_receipt(state, deposit_receipt)
+    spec.process_deposit_request(state, deposit_request)
 
     yield 'post', state
 
-    if not effective or not bls.KeyValidate(deposit_receipt.pubkey):
+    if not effective or not bls.KeyValidate(deposit_request.pubkey):
         assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
         if is_top_up:
@@ -368,11 +368,11 @@ def run_deposit_receipt_processing(spec, state, deposit_receipt, validator_index
             assert len(state.balances) == pre_validator_count + 1
 
         assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
-        assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit_receipt.amount
+        assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit_request.amount
         assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
 
 
-def run_deposit_receipt_processing_with_specific_fork_version(
+def run_deposit_request_processing_with_specific_fork_version(
         spec,
         state,
         fork_version,
@@ -391,17 +391,17 @@ def run_deposit_receipt_processing_with_specific_fork_version(
         pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
         signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
     )
-    deposit_receipt = spec.DepositReceipt(
+    deposit_request = spec.DepositRequest(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount,
         signature=deposit_data.signature,
         index=validator_index)
 
-    yield from run_deposit_receipt_processing(
+    yield from run_deposit_request_processing(
         spec,
         state,
-        deposit_receipt,
+        deposit_request,
         validator_index,
         valid=valid,
         effective=effective
