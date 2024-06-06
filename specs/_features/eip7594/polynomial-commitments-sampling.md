@@ -565,7 +565,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ```python
 def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequence[BLSFieldElement]:
     """
-    Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
+    Given the cells IDs that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
     """
     # Get the small domain
