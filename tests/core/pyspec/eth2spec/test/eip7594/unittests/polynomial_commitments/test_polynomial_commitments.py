@@ -27,6 +27,22 @@ def test_fft(spec):
     assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
     assert poly_coeff_inversed == poly_coeff
 
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_coset_fft(spec):
+    rng = random.Random(5566)
+
+    roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+
+    poly_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+
+    poly_eval = spec.coset_fft_field(poly_coeff, roots_of_unity)
+    poly_coeff_inversed = spec.coset_fft_field(poly_eval, roots_of_unity, inv=True)
+
+    assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
+    assert poly_coeff_inversed == poly_coeff
+
 
 @with_eip7594_and_later
 @spec_test
