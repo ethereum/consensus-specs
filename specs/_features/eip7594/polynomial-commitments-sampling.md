@@ -186,6 +186,7 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
                     roots_of_unity: Sequence[BLSFieldElement], 
                     inv: bool=False) -> Sequence[BLSFieldElement]:
     
+    vals = vals.copy()
     # Multiply each entry in `vals` by succeeding powers of `factor`
     # ie [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]
     def shift_vals(vals: Sequence[BLSFieldElement], factor: BLSFieldElement) -> Sequence[BLSFieldElement]:
