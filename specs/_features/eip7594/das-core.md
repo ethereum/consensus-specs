@@ -10,6 +10,7 @@
 
 - [Constants](#constants)
   - [Misc](#misc)
+- [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Data size](#data-size)
   - [Networking](#networking)
@@ -50,6 +51,13 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `UINT256_MAX` | `uint256(2**256 - 1)` |
+
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `RowIndex` | `uint64` | Row identifier in the matrix of cells |
+| `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
 
 ## Configuration
 

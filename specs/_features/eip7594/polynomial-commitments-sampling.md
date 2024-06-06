@@ -67,9 +67,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
 | `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellID` | `uint64` | Cell identifier |
-| `RowIndex` | `uint64` | Row identifier |
-| `ColumnIndex` | `uint64` | Column identifier |
+| `CellID` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
 
 ## Constants
 
