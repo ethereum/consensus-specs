@@ -1,4 +1,4 @@
-# EIP-7594 -- Polynomial Commitments
+# EIP-7594 -- Polynomial Commitments Sampling
 
 ## Table of contents
 
@@ -727,7 +727,8 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
         coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
     
-    polynomial_coeff = polynomial_eval_to_coeff(reconstructed_data[:FIELD_ELEMENTS_PER_BLOB])
+    polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
+    polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
     for i, cell_id in enumerate(cell_ids):
         recovered_proofs[cell_id] = bytes_to_kzg_proof(proofs_bytes[i])

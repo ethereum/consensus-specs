@@ -140,7 +140,7 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELL
     This helper demonstrates the relationship between blobs and ``ExtendedMatrix``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix: List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX] = []
+    extended_matrix = []
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
         for cell_id, (cell, proof) in enumerate(zip(cells, proofs)):
@@ -164,7 +164,7 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
     This helper demonstrates how to apply ``recover_cells_and_kzg_proofs``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix: List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX] = []
+    extended_matrix = []
     for blob_index in range(blob_count):
         cell_ids = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
