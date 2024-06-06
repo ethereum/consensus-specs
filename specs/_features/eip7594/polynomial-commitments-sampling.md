@@ -593,7 +593,7 @@ def recover_data(cell_ids: Sequence[CellID],
                  zero_poly_coeff: Sequence[BLSFieldElement],
                  roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
-    Recover the missing evaluations for the extended blob, given up to half of the evaluations missing.
+    Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
