@@ -263,14 +263,14 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
 def shift_polynomialcoeff(polynomial_coeff: PolynomialCoeff, factor: BLSFieldElement) -> PolynomialCoeff:
     """
     Shift the evaluation of a polynomial in coefficient form by factor.
-    This results in a new polynomial g(x) = f(factor * x)
+    This returns a new polynomial g in coefficient form such that g(x) = f(factor * x).
+    In other words, each coefficient of f is scaled by a power of factor.
     """
     factor_power = 1
-    inv_factor = pow(int(factor), BLS_MODULUS - 2, BLS_MODULUS)
     o = []
     for p in polynomial_coeff:
         o.append(int(p) * factor_power % BLS_MODULUS)
-        factor_power = factor_power * inv_factor % BLS_MODULUS
+        factor_power = factor_power * int(factor) % BLS_MODULUS
     return o
 ```
 
