@@ -200,7 +200,7 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     if inv:
         vals = fft_field(vals, roots_of_unity, inv)
-        shift_inv = pow(int(shift_factor), BLS_MODULUS - 2, BLS_MODULUS)
+        shift_inv = bls_modular_inverse(shift_factor)
         return shift_vals(vals, shift_inv)
     else:
         vals = shift_vals(vals, shift_factor)
