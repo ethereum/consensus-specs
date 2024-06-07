@@ -610,10 +610,10 @@ def recover_data(cell_ids: Sequence[CellID],
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    extended_evaluations_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
+    extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
     # Compute (E*Z)(x) over a coset of the FFT domain
-    extended_evaluations_over_coset = coset_fft_field(extended_evaluations_coeffs, roots_of_unity_extended)
+    extended_evaluations_over_coset = coset_fft_field(extended_evaluation_times_zero_coeffs, roots_of_unity_extended)
     # Compute Z(x) over a coset of the FFT domain
     zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
