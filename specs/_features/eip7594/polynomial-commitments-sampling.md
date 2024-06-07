@@ -185,7 +185,12 @@ def fft_field(vals: Sequence[BLSFieldElement],
 def coset_fft_field(vals: Sequence[BLSFieldElement], 
                     roots_of_unity: Sequence[BLSFieldElement], 
                     inv: bool=False) -> Sequence[BLSFieldElement]:
-    
+    """
+    Computes an FFT/IFFT over a coset of the roots of unity. 
+    This is useful for when one wants to divide by a polynomial which 
+    vanishes on one or more elements in the domain.
+    """
+
     vals = vals.copy()
     
     # Multiply each entry in `vals` by succeeding powers of `factor`
@@ -197,6 +202,8 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
             shift = (shift * int(factor)) % BLS_MODULUS
         return vals
 
+    # This is the coset generator; it is used to compute a FFT/IFFT over a coset of
+    # the roots of unity.
     shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
     if inv:
         vals = fft_field(vals, roots_of_unity, inv)
