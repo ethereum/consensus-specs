@@ -18,7 +18,7 @@ on:
 
 jobs:
   generate-tests:
-    runs-on: [self-hosted-ghr-custom, size-chungus-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j 48 generate_tests 2>&1 | tee ../consensustestgen.log
+          make -j 16 generate_tests 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
@@ -59,18 +59,23 @@ jobs:
           tar -czvf general.tar.gz tests/general
           tar -czvf minimal.tar.gz tests/minimal
           tar -czvf mainnet.tar.gz tests/mainnet
-      - name: Upload Artifacts
+      - name: Upload general.tar.gz
         uses: actions/upload-artifact@v4
         with:
           name: General Test Configuration
           path: consensus-spec-tests/general.tar.gz
-      - name: Upload Artifacts
+      - name: Upload minimal.tar.gz
         uses: actions/upload-artifact@v4
         with:
           name: Minimal Test Configuration
           path: consensus-spec-tests/minimal.tar.gz
-      - name: Upload Artifacts
+      - name: Upload mainnet.tar.gz
         uses: actions/upload-artifact@v4
         with:
           name: Mainnet Test Configuration
           path: consensus-spec-tests/mainnet.tar.gz
+      - name: Upload consensustestgen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mainnet Test Configuration
+          path: consensustestgen.log
