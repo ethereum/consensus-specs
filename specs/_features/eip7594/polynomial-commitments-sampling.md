@@ -596,7 +596,7 @@ def recover_data(cell_ids: Sequence[CellID],
     Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
 
-    # Get the extended domain
+    # Get the extended domain. This will be referred to as the FFT domain.
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
@@ -605,27 +605,31 @@ def recover_data(cell_ids: Sequence[CellID],
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
-
+    
     zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
 
-    # Compute (E*Z)(x)
+    # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
-
+    # Convert (E*Z)(x) to monomial form 
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    # Compute (E*Z)(x) over a coset of the FFT domain
+    # Convert (E*Z)(x) to evaluation form over a coset of the FFT domain
     extended_evaluations_over_coset = coset_fft_field(extended_evaluation_times_zero_coeffs, roots_of_unity_extended)
-    # Compute Z(x) over a coset of the FFT domain
+
+    # Convert Z(x) to evaluation form over a coset of the FFT domain
     zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
-    # Compute (E*Z)(x) / Z(x) over a coset of the FFT domain
+    # Compute H(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
     reconstructed_poly_over_coset = [
         div(a, b)
         for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)
     ]
+
+    # Convert H(x) to monomial form
     reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
+    # Convert H(x) to evaluation form over the FFT domain and bit reverse the result
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly_coeff, roots_of_unity_extended))
 
     return reconstructed_data
