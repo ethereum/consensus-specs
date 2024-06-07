@@ -72,6 +72,20 @@ def test_construct_vanishing_polynomial(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
+def test_construct_vanishing_polynomial_all_missing_zeros(spec):
+
+    all_cell_ids = range(spec.CELLS_PER_EXT_BLOB)
+
+    zero_poly_coeff = spec.construct_vanishing_polynomial(all_cell_ids)
+    roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_EXT_BLOB)
+    zero_poly_eval = spec.fft_field(zero_poly_coeff, roots_of_unity)
+
+    assert all(a == 0 for a in zero_poly_eval)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
 def test_verify_cell_kzg_proof(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
