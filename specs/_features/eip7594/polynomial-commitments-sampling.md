@@ -591,7 +591,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
 ```python
 def recover_data(cell_ids: Sequence[CellID],
                  cells: Sequence[Cell],
-                 zero_poly_coeff: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+                ) -> Sequence[BLSFieldElement]:
     """
     Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
@@ -599,13 +599,21 @@ def recover_data(cell_ids: Sequence[CellID],
     # Get the extended domain. This will be referred to as the FFT domain.
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
+    # Flatten the cells into evaluations.
+    # If a cell is missing, then its evaluation is zero.
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_id, cell in zip(cell_ids, cells):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
-    
+
+    # Compute Z(x) in monomial form
+    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
+    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
+    zero_poly_coeff = construct_vanishing_polynomial(missing_cell_ids)
+
+    # Convert Z(x) to evaluation form over the FFT domain
     zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
 
     # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
@@ -665,13 +673,9 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-    zero_poly_coeff = construct_vanishing_polynomial(missing_cell_ids)
-
     reconstructed_data = recover_data(
         cell_ids,
-        cosets_evals,
-        zero_poly_coeff,
+        cosets_evals
     )
 
     for cell_id, coset_evals in zip(cell_ids, cosets_evals):
