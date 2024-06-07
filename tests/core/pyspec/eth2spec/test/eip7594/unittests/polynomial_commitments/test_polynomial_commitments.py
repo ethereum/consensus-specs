@@ -48,7 +48,7 @@ def test_coset_fft(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_compute_vanishing_polynomial(spec):
+def test_construct_vanishing_polynomial(spec):
     rng = random.Random(5566)
 
     num_missing_cells = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
