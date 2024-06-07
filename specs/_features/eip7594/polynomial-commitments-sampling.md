@@ -591,11 +591,13 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
 ```python
 def recover_data(cell_ids: Sequence[CellID],
                  cells: Sequence[Cell],
-                 zero_poly_coeff: Sequence[BLSFieldElement],
-                 roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
+                 zero_poly_coeff: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
     """
     Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
+
+    # Get the extended domain
+    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_id, cell in zip(cell_ids, cells):
@@ -656,9 +658,6 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
     for cell_id in cell_ids:
         assert cell_id < CELLS_PER_EXT_BLOB
 
-    # Get the extended domain
-    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
-
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
@@ -669,7 +668,6 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
         cell_ids,
         cosets_evals,
         zero_poly_coeff,
-        roots_of_unity_extended,
     )
 
     for cell_id, coset_evals in zip(cell_ids, cosets_evals):
