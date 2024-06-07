@@ -591,7 +591,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
 ```python
 def recover_data(cell_ids: Sequence[CellID],
                  cells: Sequence[Cell],
-                ) -> Sequence[BLSFieldElement]:
+                 ) -> Sequence[BLSFieldElement]:
     """
     Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
