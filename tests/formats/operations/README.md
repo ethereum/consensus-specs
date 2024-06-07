@@ -45,7 +45,7 @@ Operations:
 | `execution_payload`       | `BeaconBlockBody`            | **`body`**          | `process_execution_payload(state, body)` (new in Bellatrix)         |
 | `withdrawals`             | `ExecutionPayload`           | `execution_payload` | `process_withdrawals(state, execution_payload)` (new in Capella)                 |
 | `bls_to_execution_change` | `SignedBLSToExecutionChange` | `address_change`    | `process_bls_to_execution_change(state, address_change)` (new in Capella) |
-| `deposit_receipt`         | `DepositReceipt`             | `deposit_receipt`   | `process_deposit_receipt(state, deposit_receipt)` (new in Electra)               |
+| `deposit_request`         | `DepositRequest`             | `deposit_request`   | `process_deposit_request(state, deposit_request)` (new in Electra)               |
 | `execution_layer_withdrawal_request`                   | `ExecutionLayerWithdrawalRequest`         | `execution_layer_withdrawal_request` | `process_execution_layer_withdrawal_request(state, execution_layer_withdrawal_request)` (new in Electra) |
 | `execution_layer_consolidation_request`                   | `ExecutionLayerConsolidationRequest`         | `execution_layer_consolidation_request` | `process_execution_layer_consolidation_request(state, execution_layer_consolidation_request)` (new in Electra) |
 

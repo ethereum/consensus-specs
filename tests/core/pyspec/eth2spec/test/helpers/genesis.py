@@ -50,13 +50,13 @@ def get_sample_genesis_execution_payload_header(spec,
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
-    deposit_receipts_trie_root = None
+    deposit_requests_trie_root = None
     exits_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_electra(spec):
-        deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+        deposit_requests_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
         exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
@@ -64,7 +64,7 @@ def get_sample_genesis_execution_payload_header(spec,
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
-        deposit_receipts_trie_root,
+        deposit_requests_trie_root,
         exits_trie_root,
     )
     return payload_header
@@ -134,7 +134,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         )
 
     if is_post_electra(spec):
-        state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+        state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_whisk(spec):
         vc = len(state.validators)
