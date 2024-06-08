@@ -18,7 +18,7 @@ on:
 
 jobs:
   generate-tests:
-    runs-on: [self-hosted-ghr-custom, size-chungus-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-gigachungus-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
