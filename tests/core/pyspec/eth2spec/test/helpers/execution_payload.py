@@ -35,8 +35,9 @@ def get_execution_payload_header(spec, execution_payload):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
     if is_post_electra(spec):
-        payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
+        payload_header.deposit_requests_root = spec.hash_tree_root(execution_payload.deposit_requests)
         payload_header.withdrawal_requests_root = spec.hash_tree_root(execution_payload.withdrawal_requests)
+        payload_header.consolidation_requests_root = spec.hash_tree_root(execution_payload.consolidation_requests)
     return payload_header
 
 
@@ -150,23 +151,39 @@ def get_withdrawal_request_rlp_bytes(withdrawal_request):
     return b"\x01" + encode(values, sedes)
 
 
-def get_deposit_receipt_rlp_bytes(deposit_receipt):
-    deposit_receipt_rlp = [
-        # pubkey
-        (Binary(48, 48), deposit_receipt.pubkey),
-        # withdrawal_credentials
-        (Binary(32, 32), deposit_receipt.withdrawal_credentials),
-        # amount
-        (big_endian_int, deposit_receipt.amount),
-        # pubkey
-        (Binary(96, 96), deposit_receipt.signature),
-        # index
-        (big_endian_int, deposit_receipt.index),
+# https://eips.ethereum.org/EIPS/eip-7251
+def get_consolidation_request_rlp_bytes(consolidation_request):
+    consolidation_request_rlp = [
+        # source_address
+        (Binary(20, 20), consolidation_request.source_address),
+        # source_pubkey
+        (Binary(48, 48), consolidation_request.source_pubkey),
+        # target_pubkey
+        (Binary(48, 48), consolidation_request.target_pubkey),
     ]
 
-    sedes = List([schema for schema, _ in deposit_receipt_rlp])
-    values = [value for _, value in deposit_receipt_rlp]
-    return b"\x00" + encode(values, sedes)
+    sedes = List([schema for schema, _ in consolidation_request_rlp])
+    values = [value for _, value in consolidation_request_rlp]
+    return b"\x01" + encode(values, sedes)
+
+
+def get_deposit_request_rlp_bytes(spec, deposit_request):
+    deposit_request_rlp = [
+        # pubkey
+        (Binary(48, 48), deposit_request.pubkey),
+        # withdrawal_credentials
+        (Binary(32, 32), deposit_request.withdrawal_credentials),
+        # amount
+        (big_endian_int, deposit_request.amount),
+        # pubkey
+        (Binary(96, 96), deposit_request.signature),
+        # index
+        (big_endian_int, deposit_request.index),
+    ]
+
+    sedes = List([schema for schema, _ in deposit_request_rlp])
+    values = [value for _, value in deposit_request_rlp]
+    return encode(values, sedes)
 
 
 def compute_el_block_hash(spec, payload):
@@ -180,8 +197,10 @@ def compute_el_block_hash(spec, payload):
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if is_post_electra(spec):
         requests_encoded = []
-        requests_encoded += [get_deposit_receipt_rlp_bytes(receipt) for receipt in payload.deposit_receipts]
+        requests_encoded += [get_deposit_request_rlp_bytes(receipt) for receipt in payload.deposit_requests]
         requests_encoded += [get_withdrawal_request_rlp_bytes(request) for request in payload.withdrawal_requests]
+        requests_encoded += [get_consolidation_request_rlp_bytes(request) for request in payload.consolidation_requests]
+
         requests_trie_root = compute_trie_root_from_indexed_data(requests_encoded)
 
     payload_header = get_execution_payload_header(spec, payload)
@@ -227,8 +246,9 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
     if is_post_electra(spec):
-        payload.deposit_receipts = []
+        payload.deposit_requests = []
         payload.withdrawal_requests = []
+        payload.consolidation_requests = []
 
     payload.block_hash = compute_el_block_hash(spec, payload)
 

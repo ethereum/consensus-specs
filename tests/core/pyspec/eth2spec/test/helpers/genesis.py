@@ -131,7 +131,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         )
 
     if is_post_electra(spec):
-        state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+        state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_whisk(spec):
         vc = len(state.validators)
