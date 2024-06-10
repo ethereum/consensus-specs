@@ -197,7 +197,7 @@ def compute_el_block_hash(spec, payload):
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if is_post_electra(spec):
         requests_encoded = []
-        requests_encoded += [get_deposit_request_rlp_bytes(receipt) for receipt in payload.deposit_requests]
+        requests_encoded += [get_deposit_request_rlp_bytes(request) for request in payload.deposit_requests]
         requests_encoded += [get_withdrawal_request_rlp_bytes(request) for request in payload.withdrawal_requests]
         requests_encoded += [get_consolidation_request_rlp_bytes(request) for request in payload.consolidation_requests]
 
