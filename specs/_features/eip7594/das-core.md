@@ -203,7 +203,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 #### `get_extended_sample_count`
 
 ```python
-def get_extended_sample_count(samples_per_slot: uint64, allowed_failures: uint64) -> uint64:
+def get_extended_sample_count(allowed_failures: uint64) -> uint64:
     assert 0 <= allowed_failures <= NUMBER_OF_COLUMNS // 2
 
     def math_comb(n, k):
@@ -220,8 +220,8 @@ def get_extended_sample_count(samples_per_slot: uint64, allowed_failures: uint64
 
     worst_case_missing = NUMBER_OF_COLUMNS // 2 + 1
     false_positive_threshold = hypergeom_cdf(0, NUMBER_OF_COLUMNS,
-                                             worst_case_missing, samples_per_slot)
-    for sample_count in range(samples_per_slot, NUMBER_OF_COLUMNS + 1):
+                                             worst_case_missing, SAMPLES_PER_SLOT)
+    for sample_count in range(SAMPLES_PER_SLOT, NUMBER_OF_COLUMNS + 1):
         if hypergeom_cdf(allowed_failures, NUMBER_OF_COLUMNS,
                          worst_case_missing, sample_count) <= false_positive_threshold:
             break
