@@ -137,6 +137,25 @@ def get_withdrawal_rlp(withdrawal):
     return encode(values, sedes)
 
 
+def get_deposit_request_rlp_bytes(deposit_request):
+    deposit_request_rlp = [
+        # pubkey
+        (Binary(48, 48), deposit_request.pubkey),
+        # withdrawal_credentials
+        (Binary(32, 32), deposit_request.withdrawal_credentials),
+        # amount
+        (big_endian_int, deposit_request.amount),
+        # pubkey
+        (Binary(96, 96), deposit_request.signature),
+        # index
+        (big_endian_int, deposit_request.index),
+    ]
+
+    sedes = List([schema for schema, _ in deposit_request_rlp])
+    values = [value for _, value in deposit_request_rlp]
+    return b"\x00" + encode(values, sedes)
+
+
 # https://eips.ethereum.org/EIPS/eip-7002
 def get_withdrawal_request_rlp_bytes(withdrawal_request):
     withdrawal_request_rlp = [
@@ -164,26 +183,7 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
 
     sedes = List([schema for schema, _ in consolidation_request_rlp])
     values = [value for _, value in consolidation_request_rlp]
-    return b"\x01" + encode(values, sedes)
-
-
-def get_deposit_request_rlp_bytes(spec, deposit_request):
-    deposit_request_rlp = [
-        # pubkey
-        (Binary(48, 48), deposit_request.pubkey),
-        # withdrawal_credentials
-        (Binary(32, 32), deposit_request.withdrawal_credentials),
-        # amount
-        (big_endian_int, deposit_request.amount),
-        # pubkey
-        (Binary(96, 96), deposit_request.signature),
-        # index
-        (big_endian_int, deposit_request.index),
-    ]
-
-    sedes = List([schema for schema, _ in deposit_request_rlp])
-    values = [value for _, value in deposit_request_rlp]
-    return encode(values, sedes)
+    return b"\x02" + encode(values, sedes)
 
 
 def compute_el_block_hash(spec, payload):
