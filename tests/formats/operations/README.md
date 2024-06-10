@@ -46,8 +46,8 @@ Operations:
 | `withdrawals`             | `ExecutionPayload`           | `execution_payload` | `process_withdrawals(state, execution_payload)` (new in Capella)                 |
 | `bls_to_execution_change` | `SignedBLSToExecutionChange` | `address_change`    | `process_bls_to_execution_change(state, address_change)` (new in Capella) |
 | `deposit_request`         | `DepositRequest`             | `deposit_request`   | `process_deposit_request(state, deposit_request)` (new in Electra)               |
-| `execution_layer_withdrawal_request`                   | `ExecutionLayerWithdrawalRequest`         | `execution_layer_withdrawal_request` | `process_execution_layer_withdrawal_request(state, execution_layer_withdrawal_request)` (new in Electra) |
-| `execution_layer_consolidation_request`                   | `ExecutionLayerConsolidationRequest`         | `execution_layer_consolidation_request` | `process_execution_layer_consolidation_request(state, execution_layer_consolidation_request)` (new in Electra) |
+| `withdrawal_request`      | `WithdrawalRequest`          | `withdrawal_request` | `process_withdrawal_request(state, withdrawal_request)` (new in Electra) |
+| `consolidation_request`   | `ConsolidationRequest`        | `consolidation_request` | `process_consolidation_request(state, consolidation_request)` (new in Electra) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 

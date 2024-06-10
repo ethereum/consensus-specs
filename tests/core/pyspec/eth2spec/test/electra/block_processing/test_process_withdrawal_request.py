@@ -29,14 +29,14 @@ def test_basic_withdrawal_request(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request
     )
 
 
@@ -51,14 +51,14 @@ def test_basic_withdrawal_request_with_compounding_credentials(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request
     )
 
 
@@ -74,7 +74,7 @@ def test_basic_withdrawal_request_with_full_partial_withdrawal_queue(spec, state
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
@@ -89,10 +89,10 @@ def test_basic_withdrawal_request_with_full_partial_withdrawal_queue(spec, state
     ] * spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
 
     # Exit should still be processed
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
 
@@ -113,14 +113,14 @@ def test_incorrect_source_address(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=incorrect_address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -142,14 +142,14 @@ def test_incorrect_withdrawal_credential_prefix(spec, state):
         spec.BLS_WITHDRAWAL_PREFIX
         + state.validators[validator_index].withdrawal_credentials[1:]
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -168,14 +168,14 @@ def test_on_withdrawal_request_initiated_validator(spec, state):
     )
     # Initiate exit earlier
     spec.initiate_validator_exit(state, validator_index)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -189,7 +189,7 @@ def test_activation_epoch_less_than_shard_committee_period(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
@@ -200,8 +200,8 @@ def test_activation_epoch_less_than_shard_committee_period(spec, state):
         + spec.config.SHARD_COMMITTEE_PERIOD
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -221,16 +221,16 @@ def test_basic_partial_withdrawal_request(spec, state):
     state.balances[validator_index] += amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -253,16 +253,16 @@ def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
     state.balances[validator_index] += 2 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -286,16 +286,16 @@ def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state)
     state.balances[validator_index] += excess_balance
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -316,7 +316,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -331,10 +331,10 @@ def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
     # Set balance so that the validator still has excess balance even with the pending withdrawals
     state.balances[validator_index] += 3 * amount
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -357,7 +357,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(
     amount = spec.UINT64_MAX
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -376,10 +376,10 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(
     # Set balance so that the validator still has excess balance even with the pending withdrawals
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
 
@@ -399,7 +399,7 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     )
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -407,10 +407,10 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
 
     churn_limit = spec.get_activation_exit_churn_limit(state)
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -435,16 +435,16 @@ def test_partial_withdrawal_request_with_high_amount(spec, state):
     state.balances[validator_index] += 1
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -467,16 +467,16 @@ def test_partial_withdrawal_request_with_low_amount(spec, state):
     state.balances[validator_index] += amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
     )
 
     # Check that the assigned exit epoch is correct
@@ -501,7 +501,7 @@ def test_partial_withdrawal_queue_full(spec, state):
     # Ensure that the validator has sufficient excess balance
     state.balances[validator_index] += 2 * amount
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -514,8 +514,8 @@ def test_partial_withdrawal_queue_full(spec, state):
     state.pending_partial_withdrawals = [
         partial_withdrawal
     ] * spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -534,16 +534,16 @@ def test_no_compounding_credentials(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
         success=False,
     )
 
@@ -559,14 +559,14 @@ def test_no_excess_balance(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -583,7 +583,7 @@ def test_pending_withdrawals_consume_all_excess_balance(spec, state):
     state.balances[validator_index] += 10 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -595,8 +595,8 @@ def test_pending_withdrawals_consume_all_excess_balance(spec, state):
     )
     state.pending_partial_withdrawals = [partial_withdrawal] * 10
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -615,16 +615,16 @@ def test_insufficient_effective_balance(spec, state):
     ].effective_balance -= spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
+    yield from run_withdrawal_request_processing(
         spec,
         state,
-        execution_layer_withdrawal_request,
+        withdrawal_request,
         success=False,
     )
 
@@ -644,14 +644,14 @@ def test_partial_withdrawal_incorrect_source_address(spec, state):
     state.balances[validator_index] += 2 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=incorrect_address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -673,14 +673,14 @@ def test_partial_withdrawal_incorrect_withdrawal_credential_prefix(spec, state):
         spec.BLS_WITHDRAWAL_PREFIX
         + state.validators[validator_index].withdrawal_credentials[1:]
     )
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -699,14 +699,14 @@ def test_partial_withdrawal_on_exit_initiated_validator(spec, state):
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
     # Initiate exit earlier
     spec.initiate_validator_exit(state, validator_index)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -722,7 +722,7 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     state.balances[validator_index] += 2 * amount
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
         amount=amount,
@@ -733,8 +733,8 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
         + spec.config.SHARD_COMMITTEE_PERIOD
     )
 
-    yield from run_execution_layer_withdrawal_request_processing(
-        spec, state, execution_layer_withdrawal_request, success=False
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 
@@ -743,28 +743,28 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
 #
 
 
-def run_execution_layer_withdrawal_request_processing(
-    spec, state, execution_layer_withdrawal_request, valid=True, success=True
+def run_withdrawal_request_processing(
+    spec, state, withdrawal_request, valid=True, success=True
 ):
     """
-    Run ``process_execution_layer_withdrawal_request``, yielding:
+    Run ``process_withdrawal_request``, yielding:
       - pre-state ('pre')
-      - execution_layer_withdrawal_request ('execution_layer_withdrawal_request')
+      - withdrawal_request ('withdrawal_request')
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     If ``success == False``, it doesn't initiate exit successfully
     """
     validator_index = get_validator_index_by_pubkey(
-        state, execution_layer_withdrawal_request.validator_pubkey
+        state, withdrawal_request.validator_pubkey
     )
 
     yield "pre", state
-    yield "execution_layer_withdrawal_request", execution_layer_withdrawal_request
+    yield "withdrawal_request", withdrawal_request
 
     if not valid:
         expect_assertion_error(
-            lambda: spec.process_execution_layer_withdrawal_request(
-                state, execution_layer_withdrawal_request
+            lambda: spec.process_withdrawal_request(
+                state, withdrawal_request
             )
         )
         yield "post", None
@@ -776,11 +776,11 @@ def run_execution_layer_withdrawal_request_processing(
     pre_effective_balance = state.validators[validator_index].effective_balance
     pre_state = state.copy()
     expected_amount_to_withdraw = compute_amount_to_withdraw(
-        spec, state, validator_index, execution_layer_withdrawal_request.amount
+        spec, state, validator_index, withdrawal_request.amount
     )
 
-    spec.process_execution_layer_withdrawal_request(
-        state, execution_layer_withdrawal_request
+    spec.process_withdrawal_request(
+        state, withdrawal_request
     )
 
     yield "post", state
@@ -794,7 +794,7 @@ def run_execution_layer_withdrawal_request_processing(
             state.validators[validator_index].effective_balance == pre_effective_balance
         )
         # Full exit request
-        if execution_layer_withdrawal_request.amount == spec.FULL_EXIT_REQUEST_AMOUNT:
+        if withdrawal_request.amount == spec.FULL_EXIT_REQUEST_AMOUNT:
             assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
             assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
             assert spec.get_pending_balance_to_withdraw(state, validator_index) == 0
