@@ -240,8 +240,11 @@ def mk_mutations(spec, seed, num, test_fn, debug=False):
 
 
 class MutatorsGenerator:
-    def __init__(self, spec, seed, num, test_fn, debug=False):
+    def __init__(self, fork, preset, spec, solution, seed, num, test_fn, debug=False):
+        self.fork = fork
+        self.preset = preset
         self.spec = spec
+        self.solution = solution
         self.seed = seed
         self.num = num
         self.test_fn = test_fn
@@ -250,6 +253,8 @@ class MutatorsGenerator:
 
     def next_test_case(self):
         if self.iterator is None:
-            self.iterator = iter(mk_mutations(self.spec, self.seed, self.num, self.test_fn, self.debug))
+            def test_inst_fn():
+                return self.test_fn(self.fork, self.preset, self.seed, self.solution)
+            self.iterator = iter(mk_mutations(self.spec, self.seed, self.num, test_inst_fn, self.debug))
         _, test_case = next(self.iterator)
         return test_case
