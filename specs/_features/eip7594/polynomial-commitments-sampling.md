@@ -39,7 +39,6 @@
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
-    - [`compute_cells`](#compute_cells)
   - [Cell verification](#cell-verification)
     - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
@@ -65,7 +64,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 The following is a list of the public methods:
 
 * [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
-* [`compute_cells`](#compute_cells)
 * [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
 * [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 * [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
@@ -457,31 +455,6 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
         proofs.append(proof)
 
     return cells, proofs
-```
-
-#### `compute_cells`
-
-```python
-def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
-    """
-    Compute the cell data for an extended blob (without computing the proofs).
-
-    Public method.
-    """
-    assert len(blob) == BYTES_PER_BLOB
-    
-    polynomial = blob_to_polynomial(blob)
-    polynomial_coeff = polynomial_eval_to_coeff(polynomial)
-
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
-                              compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
-    extended_data_rbo = bit_reversal_permutation(extended_data)
-    cells = []
-    for cell_index in range(CELLS_PER_EXT_BLOB):
-        start = cell_index * FIELD_ELEMENTS_PER_CELL
-        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
-        cells.append(coset_evals_to_cell(CosetEvals(extended_data_rbo[start:end])))
-    return cells
 ```
 
 ### Cell verification
