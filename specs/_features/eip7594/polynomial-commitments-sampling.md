@@ -537,7 +537,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                                 cells: Sequence[Cell],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
-    Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
+    Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
     matrix. The list of all commitments is also provided in row_commitments_bytes.
 
     This function implements the naive algorithm of checking every cell
@@ -562,7 +562,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
-    # Get commitments via row IDs
+    # Get commitments via row indices
     commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
 
     # Get objects from bytes
@@ -583,7 +583,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ```python
 def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) -> Sequence[BLSFieldElement]:
     """
-    Given the cells IDs that are missing from the data, compute the polynomial that vanishes at every point that
+    Given the cells indices that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
     
     This method assumes that all of the cells cannot be missing. In this case the vanishing polynomial
