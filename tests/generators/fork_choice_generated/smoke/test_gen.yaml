@@ -9,7 +9,13 @@ block_weight_test:
   instances: smoke/block_tree_other.yaml # 4
   seed: 123
   nr_variations: 32
-  nr_mutations: 3
+  nr_mutations: 1
+shuffling_test:
+  test_type: block_tree
+  instances: smoke/block_tree_other.yaml # 4
+  seed: 123
+  nr_variations: 2
+  nr_mutations: 31
 attester_slashing_test:
   test_type: block_tree
   instances: smoke/block_tree_other.yaml # 4
