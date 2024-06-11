@@ -640,16 +640,16 @@ def recover_data(cell_ids: Sequence[CellID],
     # Convert Z(x) to evaluation form over a coset of the FFT domain
     zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
-    # Compute H(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
+    # Compute Q_3(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
     reconstructed_poly_over_coset = [
         div(a, b)
         for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)
     ]
 
-    # Convert H(x) to monomial form
+    # Convert Q_3(x) to monomial form
     reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
-    # Convert H(x) to evaluation form over the FFT domain and bit reverse the result
+    # Convert Q_3(x) to evaluation form over the FFT domain and bit reverse the result
     reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly_coeff, roots_of_unity_extended))
 
     return reconstructed_data
