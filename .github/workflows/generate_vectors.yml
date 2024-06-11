@@ -4,9 +4,6 @@ defaults:
   run:
     shell: zsh {0}
 
-env:
-  TEST_PRESET_TYPE: "minimal"
-
 on:
   workflow_dispatch:
     inputs:
