@@ -52,20 +52,20 @@ def test_construct_vanishing_polynomial(spec):
     rng = random.Random(5566)
 
     num_missing_cells = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-    # Get a unique list of `num_missing_cells` cell IDs
-    unique_missing_cell_ids = rng.sample(range(spec.CELLS_PER_EXT_BLOB), num_missing_cells)
+    # Get a unique list of `num_missing_cells` cell indices
+    unique_missing_cell_indices = rng.sample(range(spec.CELLS_PER_EXT_BLOB), num_missing_cells)
 
-    zero_poly_coeff = spec.construct_vanishing_polynomial(unique_missing_cell_ids)
+    zero_poly_coeff = spec.construct_vanishing_polynomial(unique_missing_cell_indices)
     roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_EXT_BLOB)
     zero_poly_eval = spec.fft_field(zero_poly_coeff, roots_of_unity)
     zero_poly_eval_brp = spec.bit_reversal_permutation(zero_poly_eval)
 
-    for cell_id in range(spec.CELLS_PER_EXT_BLOB):
-        start = cell_id * spec.FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * spec.FIELD_ELEMENTS_PER_CELL
-        if cell_id in unique_missing_cell_ids:
+    for cell_index in range(spec.CELLS_PER_EXT_BLOB):
+        start = cell_index * spec.FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * spec.FIELD_ELEMENTS_PER_CELL
+        if cell_index in unique_missing_cell_indices:
             assert all(a == 0 for a in zero_poly_eval_brp[start:end])
-        else:  # cell_id in cell_ids
+        else:  # cell_index in cell_indices
             assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
 
