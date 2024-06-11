@@ -17,6 +17,7 @@
   - [Custody setting](#custody-setting)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
+    - [`MatrixEntry`](#matrixentry)
   - [Helper functions](#helper-functions)
     - [`get_custody_columns`](#get_custody_columns)
     - [`compute_extended_matrix`](#compute_extended_matrix)
@@ -53,12 +54,10 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Custom types
 
-We define the following Python custom types for type hinting and readability:
-
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `DataColumn` | `List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]` | The data of each column in EIP-7594 |
-| `ExtendedMatrix` | `List[Cell, MAX_CELLS_IN_EXTENDED_MATRIX]` | The full data of one-dimensional erasure coding extended blobs (in row major format). |
+| `RowIndex` | `uint64` | Row identifier in the matrix of cells |
+| `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
 
 ## Configuration
 
@@ -79,7 +78,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Description |
 | - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumn` random samples a node queries per slot |
+| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `1` | Minimum number of subnets an honest node custodies and serves samples from |
 | `TARGET_NUMBER_OF_PEERS` | `70` | Suggested minimum peer count |
 
@@ -90,11 +89,21 @@ We define the following Python custom types for type hinting and readability:
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex  # Index of column in extended matrix
-    column: DataColumn
+    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+```
+
+#### `MatrixEntry`
+
+```python
+class MatrixEntry(Container):
+    cell: Cell
+    kzg_proof: KZGProof
+    column_index: ColumnIndex
+    row_index: RowIndex
 ```
 
 ### Helper functions
@@ -132,7 +141,7 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
 #### `compute_extended_matrix`
 
 ```python
-def compute_extended_matrix(blobs: Sequence[Blob]) -> ExtendedMatrix:
+def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX]:
     """
     Return the full ``ExtendedMatrix``.
 
@@ -140,29 +149,44 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> ExtendedMatrix:
     The data structure for storing cells is implementation-dependent.
     """
     extended_matrix = []
-    for blob in blobs:
-        extended_matrix.extend(compute_cells(blob))
-    return ExtendedMatrix(extended_matrix)
+    for blob_index, blob in enumerate(blobs):
+        cells, proofs = compute_cells_and_kzg_proofs(blob)
+        for cell_id, (cell, proof) in enumerate(zip(cells, proofs)):
+            extended_matrix.append(MatrixEntry(
+                cell=cell,
+                kzg_proof=proof,
+                row_index=blob_index,
+                column_index=cell_id,
+            ))
+    return extended_matrix
 ```
 
 #### `recover_matrix`
 
 ```python
-def recover_matrix(cells_dict: Dict[Tuple[BlobIndex, CellID], Cell], blob_count: uint64) -> ExtendedMatrix:
+def recover_matrix(partial_matrix: Sequence[MatrixEntry],
+                   blob_count: uint64) -> List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX]:
     """
-    Return the recovered ``ExtendedMatrix``.
+    Return the recovered extended matrix.
 
-    This helper demonstrates how to apply ``recover_all_cells``.
+    This helper demonstrates how to apply ``recover_cells_and_kzg_proofs``.
     The data structure for storing cells is implementation-dependent.
     """
-    extended_matrix: List[Cell] = []
+    extended_matrix = []
     for blob_index in range(blob_count):
-        cell_ids = [cell_id for b_index, cell_id in cells_dict.keys() if b_index == blob_index]
-        cells = [cells_dict[(BlobIndex(blob_index), cell_id)] for cell_id in cell_ids]
+        cell_ids = [e.column_index for e in partial_matrix if e.row_index == blob_index]
+        cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
+        proofs = [e.kzg_proof for e in partial_matrix if e.row_index == blob_index]
 
-        all_cells_for_row = recover_all_cells(cell_ids, cells)
-        extended_matrix.extend(all_cells_for_row)
-    return ExtendedMatrix(extended_matrix)
+        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_ids, cells, proofs)
+        for cell_id, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
+            extended_matrix.append(MatrixEntry(
+                cell=cell,
+                kzg_proof=proof,
+                row_index=blob_index,
+                column_index=cell_id,
+            ))
+    return extended_matrix
 ```
 
 #### `get_data_column_sidecars`
@@ -182,15 +206,15 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     proofs = [cells_and_proofs[i][1] for i in range(blob_count)]
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
-        column = DataColumn([cells[row_index][column_index]
-                             for row_index in range(blob_count)])
-        kzg_proof_of_column = [proofs[row_index][column_index]
-                               for row_index in range(blob_count)]
+        column_cells = [cells[row_index][column_index]
+                        for row_index in range(blob_count)]
+        column_proofs = [proofs[row_index][column_index]
+                         for row_index in range(blob_count)]
         sidecars.append(DataColumnSidecar(
             index=column_index,
-            column=column,
+            column=column_cells,
             kzg_commitments=block.body.blob_kzg_commitments,
-            kzg_proofs=kzg_proof_of_column,
+            kzg_proofs=column_proofs,
             signed_block_header=signed_block_header,
             kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
         ))
@@ -283,7 +307,7 @@ Such trailing techniques and their analysis will be valuable for any DAS constru
 
 ### Row (blob) custody
 
-In the one-dimension construction, a node samples the peers by requesting the whole `DataColumn`. In reconstruction, a node can reconstruct all the blobs by 50% of the columns. Note that nodes can still download the row via `blob_sidecar_{subnet_id}` subnets.
+In the one-dimension construction, a node samples the peers by requesting the whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the blobs by 50% of the columns. Note that nodes can still download the row via `blob_sidecar_{subnet_id}` subnets.
 
 The potential benefits of having row custody could include:
 

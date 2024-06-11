@@ -105,7 +105,7 @@ def test_verify_cell_kzg_proof_batch(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_recover_all_cells(spec):
+def test_recover_cells_and_kzg_proofs(spec):
     rng = random.Random(5566)
 
     # Number of samples we will be recovering from
@@ -115,7 +115,7 @@ def test_recover_all_cells(spec):
     blob = get_sample_blob(spec)
 
     # Extend data with Reed-Solomon and split the extended data in cells
-    cells = spec.compute_cells(blob)
+    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
     # Compute the cells we will be recovering from
     cell_ids = []
@@ -125,19 +125,21 @@ def test_recover_all_cells(spec):
         while j in cell_ids:
             j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         cell_ids.append(j)
-    # Now the cells themselves
+    # Now the cells/proofs themselves
     known_cells = [cells[cell_id] for cell_id in cell_ids]
+    known_proofs = [proofs[cell_id] for cell_id in cell_ids]
 
-    # Recover all of the cells
-    recovered_cells = spec.recover_all_cells(cell_ids, known_cells)
+    # Recover the missing cells and proofs
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, known_cells, known_proofs)
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
     blob_byte_array = [b for b in blob]
     assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
 
-    # Check that the recovered cells match the original cells
+    # Check that the recovered cells/proofs match the original cells/proofs
     assert cells == recovered_cells
+    assert proofs == recovered_proofs
 
 
 @with_eip7594_and_later
