@@ -235,11 +235,11 @@ Due to the deterministic custody functions, a node knows exactly what a peer sho
 
 ## Reconstruction and cross-seeding
 
-If the node obtains 50%+ of all the columns, they can reconstruct the full data matrix via `recover_matrix` helper.
+If a node fails to get a column on the column subnet, a node can also utilize the Req/Resp message to query the missing column from other peers.
 
-If a node fails to sample a peer or fails to get a column on the column subnet, a node can utilize the Req/Resp message to query the missing column from other peers.
+If the node obtains 50%+ of all the columns, it SHOULD reconstruct the full data matrix via `recover_matrix` helper. Nodes MAY delay this reconstruction allowing time for other columns to arrive over the network. If delaying reconstruction, nodes may use a random delay in order to desynchronize reconstruction among nodes, thus reducing overall CPU load.
 
-Once the node obtain the column, the node SHOULD send the missing columns to the column subnets.
+Once the node obtains a column through reconstruction, the node MUST expose the new column as if it had received it over the network. If the node is subscribed to the subnet corresponding to the column, it MUST send the reconstructed DataColumnSidecar to its topic mesh neighbors. If instead the node is not subscribed to the corresponding subnet, it SHOULD still expose the availability of the DataColumnSidecar as part of the gossip emission process.
 
 *Note*: A node always maintains a matrix view of the rows and columns they are following, able to cross-reference and cross-seed in either direction.
 
