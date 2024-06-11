@@ -68,7 +68,7 @@ The following is a list of the public methods:
 * [`compute_cells`](#compute_cells)
 * [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
 * [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
-* [`recover_all_cells`](#recover_all_cells)
+* [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 
 ## Custom types
