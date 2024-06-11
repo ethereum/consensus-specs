@@ -580,6 +580,9 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
     We never encounter this case however because this method is used solely for recovery and recovery only
     works then at most half of the cells are missing.
     """
+
+    assert len(missing_cell_ids) != 0
+
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
