@@ -151,12 +151,12 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELL
     extended_matrix = []
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
-        for cell_id, (cell, proof) in enumerate(zip(cells, proofs)):
+        for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
             extended_matrix.append(MatrixEntry(
                 cell=cell,
                 kzg_proof=proof,
                 row_index=blob_index,
-                column_index=cell_id,
+                column_index=cell_index,
             ))
     return extended_matrix
 ```
@@ -174,17 +174,17 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
     """
     extended_matrix = []
     for blob_index in range(blob_count):
-        cell_ids = [e.column_index for e in partial_matrix if e.row_index == blob_index]
+        cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
         proofs = [e.kzg_proof for e in partial_matrix if e.row_index == blob_index]
 
-        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_ids, cells, proofs)
-        for cell_id, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
+        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells, proofs)
+        for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
             extended_matrix.append(MatrixEntry(
                 cell=cell,
                 kzg_proof=proof,
                 row_index=blob_index,
-                column_index=cell_id,
+                column_index=cell_index,
             ))
     return extended_matrix
 ```
