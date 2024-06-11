@@ -575,21 +575,13 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
     """
     Given the cells IDs that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
+    
+    This method assumes that all of the cells cannot be missing. In this case the vanishing polynomial
+    could be computed as Z(x) = x^n - 1, where `n` is FIELD_ELEMENTS_PER_EXT_BLOB.
+
+    We never encounter this case however because this method is used solely for recovery and recovery only
+    works then at most half of the cells are missing.
     """
-
-    # If all of the cells are missing, then the vanishing polynomial
-    # can be computed as Z(x) = x^n - 1, where `n` is FIELD_ELEMENTS_PER_EXT_BLOB
-    # 
-    # Note: this makes the function complete on all inputs, however this code path should not 
-    # be hit since this method is used for data recovery and if all of the
-    # cells are missing, then we can return early.  
-    if len(missing_cell_ids) == CELLS_PER_EXT_BLOB:
-        z_x = [BLSFieldElement(0)] * (FIELD_ELEMENTS_PER_EXT_BLOB + 1)
-        z_x[0] = BLS_MODULUS - 1
-        z_x[-1] = 1
-
-        return z_x
-
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
