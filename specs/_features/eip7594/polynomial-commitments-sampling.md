@@ -1,4 +1,4 @@
-# EIP-7594 -- Polynomial Commitments
+# EIP-7594 -- Polynomial Commitments Sampling
 
 ## Table of contents
 
@@ -46,7 +46,7 @@
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
   - [`recover_shifted_data`](#recover_shifted_data)
   - [`recover_original_data`](#recover_original_data)
-  - [`recover_all_cells`](#recover_all_cells)
+  - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -67,9 +67,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
 | `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellID` | `uint64` | Cell identifier |
-| `RowIndex` | `uint64` | Row identifier |
-| `ColumnIndex` | `uint64` | Column identifier |
+| `CellID` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
 
 ## Constants
 
@@ -660,14 +658,18 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
     return reconstructed_data
 ```
 
-### `recover_all_cells`
+### `recover_cells_and_kzg_proofs`
 
 ```python
-def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequence[Cell]:
+def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
+                                 cells: Sequence[Cell],
+                                 proofs_bytes: Sequence[Bytes48]) -> Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
-    Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
-    half of which can be missing.
-    This algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
+    Given at least 50% of cells/proofs for a blob, recover all the cells/proofs.
+    This algorithm uses FFTs to recover cells faster than using Lagrange
+    implementation, as can be seen here:
     https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
 
     A faster version thanks to Qi Zhou can be found here:
@@ -675,17 +677,20 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
 
     Public method.
     """
-    assert len(cell_ids) == len(cells)
+    assert len(cell_ids) == len(cells) == len(proofs_bytes)
     # Check we have enough cells to be able to perform the reconstruction
     assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_ids) == len(set(cell_ids))
-    # Check that each cell is the correct length
-    for cell in cells:
-        assert len(cell) == BYTES_PER_CELL
     # Check that the cell ids are within bounds
     for cell_id in cell_ids:
         assert cell_id < CELLS_PER_EXT_BLOB
+    # Check that each cell is the correct length
+    for cell in cells:
+        assert len(cell) == BYTES_PER_CELL
+    # Check that each proof is the correct length
+    for proof_bytes in proofs_bytes:
+        assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Get the extended domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
@@ -716,9 +721,21 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
         end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
         assert reconstructed_data[start:end] == coset_evals
 
-    reconstructed_data_as_cells = [
+    recovered_cells = [
         coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
+    
+    polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
+    polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
+    recovered_proofs = [None] * CELLS_PER_EXT_BLOB
+    for i, cell_id in enumerate(cell_ids):
+        recovered_proofs[cell_id] = bytes_to_kzg_proof(proofs_bytes[i])
+    for i in range(CELLS_PER_EXT_BLOB):
+        if recovered_proofs[i] is None:
+            coset = coset_for_cell(CellID(i))
+            proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+            assert coset_evals_to_cell(ys) == recovered_cells[i]
+            recovered_proofs[i] = proof
  
-    return reconstructed_data_as_cells
+    return recovered_cells, recovered_proofs
 ```

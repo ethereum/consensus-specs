@@ -11,11 +11,9 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.test.helpers.constants import EIP7594
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.kzg_tests import (
-    BLOB_RANDOM_VALID1,
-    BLOB_RANDOM_VALID2,
-    BLOB_RANDOM_VALID3,
     CELL_RANDOM_VALID1,
     CELL_RANDOM_VALID2,
+    G1,
     INVALID_BLOBS,
     INVALID_G1_POINTS,
     INVALID_INDIVIDUAL_CELL_BYTES,
@@ -616,187 +614,237 @@ def case04_verify_cell_kzg_proof_batch():
 
 
 ###############################################################################
-# Test cases for recover_all_cells
+# Test cases for recover_cells_and_kzg_proofs
 ###############################################################################
 
-def case05_recover_all_cells():
+def case05_recover_cells_and_kzg_proofs():
     # Valid: No missing cells
-    blob = BLOB_RANDOM_VALID1
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[0]
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB))
-    recovered_cells = spec.recover_all_cells(cell_ids, cells)
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, cells, proofs)
     assert recovered_cells == cells
-    identifier = make_id(cell_ids, cells)
-    yield f'recover_all_cells_case_valid_no_missing_{identifier}', {
+    assert recovered_proofs == proofs
+    identifier = make_id(cell_ids, cells, proofs)
+    yield f'recover_cells_and_kzg_proofs_case_valid_no_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(cells),
+            'proofs': encode_hex_list(proofs),
         },
-        'output': encode_hex_list(recovered_cells)
+        'output': (encode_hex_list(recovered_cells), encode_hex_list(recovered_proofs))
     }
 
     # Valid: Half missing cells (every other cell)
-    blob = BLOB_RANDOM_VALID2
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[1]
     cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, partial_cells, partial_proofs)
     assert recovered_cells == cells
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_valid_half_missing_every_other_cell_{identifier}', {
+    assert recovered_proofs == proofs
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
-        'output': encode_hex_list(recovered_cells)
+        'output': (encode_hex_list(recovered_cells), encode_hex_list(recovered_proofs))
     }
 
     # Valid: Half missing cells (first half)
-    blob = BLOB_RANDOM_VALID3
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[2]
     cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB // 2))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, partial_cells, partial_proofs)
     assert recovered_cells == cells
+    assert recovered_proofs == proofs
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_valid_half_missing_first_half_{identifier}', {
+    yield f'recover_cells_and_kzg_proofs_case_valid_half_missing_first_half_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
-        'output': encode_hex_list(recovered_cells)
+        'output': (encode_hex_list(recovered_cells), encode_hex_list(recovered_proofs))
     }
 
     # Valid: Half missing cells (second half)
-    blob = BLOB_RANDOM_VALID1
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[3]
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2, spec.CELLS_PER_EXT_BLOB))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    recovered_cells = spec.recover_all_cells(cell_ids, partial_cells)
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, partial_cells, partial_proofs)
     assert recovered_cells == cells
+    assert recovered_proofs == proofs
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_valid_half_missing_second_half_{identifier}', {
+    yield f'recover_cells_and_kzg_proofs_case_valid_half_missing_second_half_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
-        'output': encode_hex_list(recovered_cells)
+        'output': (encode_hex_list(recovered_cells), encode_hex_list(recovered_proofs))
     }
 
     # Edge case: All cells are missing
     cell_ids, partial_cells = [], []
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells)
     identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_all_cells_are_missing_{identifier}', {
+    yield f'recover_cells_and_kzg_proofs_case_invalid_all_cells_are_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: More than half missing
-    blob = BLOB_RANDOM_VALID2
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[4]
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 - 1))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_more_than_half_missing_{identifier}', {
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_more_than_half_missing_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: More cells provided than CELLS_PER_EXT_BLOB
-    blob = BLOB_RANDOM_VALID2
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[5]
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB)) + [0]
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_more_cells_than_cells_per_ext_blob_{identifier}', {
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext_blob_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: Invalid cell_id
-    blob = BLOB_RANDOM_VALID1
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[6]
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
     # Replace first cell_id with an invalid value
     cell_ids[0] = spec.CELLS_PER_EXT_BLOB
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_cell_id_{identifier}', {
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_cell_id_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: Invalid cell
-    blob = BLOB_RANDOM_VALID2
     for cell in INVALID_INDIVIDUAL_CELL_BYTES:
-        cells = spec.compute_cells(blob)
+        cells, proofs = VALID_CELLS_AND_PROOFS[6]
         cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
         partial_cells = [cells[cell_id] for cell_id in cell_ids]
+        partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
         # Replace first cell with an invalid value
         partial_cells[0] = cell
-        expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-        identifier = make_id(cell_ids, partial_cells)
-        yield f'recover_all_cells_case_invalid_cell_{identifier}', {
+        expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+        identifier = make_id(cell_ids, partial_cells, partial_proofs)
+        yield f'recover_cells_and_kzg_proofs_case_invalid_cell_{identifier}', {
             'input': {
                 'cell_ids': cell_ids,
                 'cells': encode_hex_list(partial_cells),
+                'proofs': encode_hex_list(partial_proofs),
+            },
+            'output': None
+        }
+
+    # Edge case: Invalid proof
+    for proof in INVALID_G1_POINTS:
+        cells, proofs = VALID_CELLS_AND_PROOFS[0]
+        cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+        partial_cells = [cells[cell_id] for cell_id in cell_ids]
+        partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+        # Replace first proof with an invalid value
+        partial_proofs[0] = proof
+        expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+        identifier = make_id(cell_ids, partial_cells, partial_proofs)
+        yield f'recover_cells_and_kzg_proofs_case_invalid_proof_{identifier}', {
+            'input': {
+                'cell_ids': cell_ids,
+                'cells': encode_hex_list(partial_cells),
+                'proofs': encode_hex_list(partial_proofs),
             },
             'output': None
         }
 
     # Edge case: More cell_ids than cells
-    blob = BLOB_RANDOM_VALID3
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[0]
     cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
     # Add another cell_id
     cell_ids.append(spec.CELLS_PER_EXT_BLOB - 1)
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_more_cell_ids_than_cells_{identifier}', {
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_more_cell_ids_than_cells_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: More cells than cell_ids
-    blob = BLOB_RANDOM_VALID1
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[1]
     cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
     # Add another cell
     partial_cells.append(CELL_RANDOM_VALID1)
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_more_cells_than_cell_ids_{identifier}', {
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_ids_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
+        },
+        'output': None
+    }
+
+    # Edge case: More proofs than cell_ids
+    cells, proofs = VALID_CELLS_AND_PROOFS[1]
+    cell_ids = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
+    partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    # Add another proof
+    partial_proofs.append(G1)
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_more_proofs_than_cell_ids_{identifier}', {
+        'input': {
+            'cell_ids': cell_ids,
+            'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
 
     # Edge case: Duplicate cell_id
-    blob = BLOB_RANDOM_VALID2
-    cells = spec.compute_cells(blob)
+    cells, proofs = VALID_CELLS_AND_PROOFS[2]
     # There will be 65 cells, where 64 are unique and 1 is a duplicate.
     # Depending on the implementation, 63 & 1 might not fail for the right
     # reason. For example, if the implementation assigns cells in an array
@@ -804,14 +852,16 @@ def case05_recover_all_cells():
     # to insufficient cell count, not because of a duplicate cell.
     cell_ids = list(range(spec.CELLS_PER_EXT_BLOB // 2 + 1))
     partial_cells = [cells[cell_id] for cell_id in cell_ids]
+    partial_proofs = [proofs[cell_id] for cell_id in cell_ids]
     # Replace first cell_id with the second cell_id
     cell_ids[0] = cell_ids[1]
-    expect_exception(spec.recover_all_cells, cell_ids, partial_cells)
-    identifier = make_id(cell_ids, partial_cells)
-    yield f'recover_all_cells_case_invalid_duplicate_cell_id_{identifier}', {
+    expect_exception(spec.recover_cells_and_kzg_proofs, cell_ids, partial_cells, partial_proofs)
+    identifier = make_id(cell_ids, partial_cells, partial_proofs)
+    yield f'recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_id_{identifier}', {
         'input': {
             'cell_ids': cell_ids,
             'cells': encode_hex_list(partial_cells),
+            'proofs': encode_hex_list(partial_proofs),
         },
         'output': None
     }
@@ -853,5 +903,5 @@ if __name__ == "__main__":
         create_provider(EIP7594, 'compute_cells_and_kzg_proofs', case02_compute_cells_and_kzg_proofs),
         create_provider(EIP7594, 'verify_cell_kzg_proof', case03_verify_cell_kzg_proof),
         create_provider(EIP7594, 'verify_cell_kzg_proof_batch', case04_verify_cell_kzg_proof_batch),
-        create_provider(EIP7594, 'recover_all_cells', case05_recover_all_cells),
+        create_provider(EIP7594, 'recover_cells_and_kzg_proofs', case05_recover_cells_and_kzg_proofs),
     ])
