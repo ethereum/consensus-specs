@@ -7,6 +7,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Public Methods](#public-methods)
 - [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
@@ -55,9 +56,20 @@
 
 This document extends [polynomial-commitments.md](polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
 
+## Public Methods
+
 For any KZG library extended to support DAS, functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
 
 Public functions MUST accept raw bytes as input and perform the required cryptographic normalization before invoking any internal functions.
+
+The following is a list of the public methods:
+
+* [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
+* [`compute_cells`](#compute_cells)
+* [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
+* [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
+* [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
+
 
 ## Custom types
 
