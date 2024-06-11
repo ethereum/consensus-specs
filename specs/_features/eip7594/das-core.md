@@ -57,7 +57,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `RowIndex` | `BlobIndex` | Row identifier in the matrix of cells |
-| `ColumnIndex` | `CellID` | Column identifier in the matrix of cells |
+| `ColumnIndex` | `CellIndex` | Column identifier in the matrix of cells |
 
 ## Configuration
 
