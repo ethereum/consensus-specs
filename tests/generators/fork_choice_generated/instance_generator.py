@@ -53,9 +53,8 @@ def _create_providers(test_name: str, /,
                 def make_cases_fn() -> Iterable[TestCase]:
                     for seed in seeds:
                         mutation_generator = MutatorsGenerator(
-                            spec, seed, number_of_mutations,
-                            lambda: test_fn(fork_name, preset_name, seed, solution),
-                            debug=debug)
+                            fork_name, preset_name, spec, solution,
+                            seed, number_of_mutations, test_fn, debug=debug)
                         for j in range(1 + number_of_mutations):
                             yield TestCase(fork_name=fork_name,
                                         preset_name=preset_name,
