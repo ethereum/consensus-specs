@@ -581,7 +581,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ### `construct_vanishing_polynomial`
 
 ```python
-def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellIndex]) -> Sequence[BLSFieldElement]:
+def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) -> Sequence[BLSFieldElement]:
     """
     Given the cells IDs that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
@@ -593,7 +593,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellIndex]) -> Seq
     works if at least half of the cells are available.
     """
 
-    assert len(missing_cell_ids) != 0
+    assert len(missing_cell_indices) != 0
 
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
@@ -615,7 +615,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellIndex]) -> Seq
 ### `recover_data`
 
 ```python
-def recover_data(cell_ids: Sequence[CellIndex],
+def recover_data(cell_indices: Sequence[CellIndex],
                  cells: Sequence[Cell],
                  ) -> Sequence[BLSFieldElement]:
     """
@@ -636,8 +636,9 @@ def recover_data(cell_ids: Sequence[CellIndex],
 
     # Compute Z(x) in monomial form
     # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
-    missing_cell_ids = [CellIndex(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-    zero_poly_coeff = construct_vanishing_polynomial(missing_cell_ids)
+    missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
+                            if cell_index not in cell_indices]
+    zero_poly_coeff = construct_vanishing_polynomial(missing_cell_indices)
 
     # Convert Z(x) to evaluation form over the FFT domain
     zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
@@ -707,7 +708,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    reconstructed_data = recover_data(cell_ids, cosets_evals)
+    reconstructed_data = recover_data(cell_indices, cosets_evals)
 
     for cell_index, coset_evals in zip(cell_indices, cosets_evals):
         start = cell_index * FIELD_ELEMENTS_PER_CELL
