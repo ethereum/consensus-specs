@@ -1,38 +1,38 @@
 block_tree_test:
   test_type: block_tree
-  instances: smoke/block_tree_tree.yaml # 128
+  instances: small/block_tree_tree.yaml # 128
   seed: 123
   nr_variations: 2
   nr_mutations: 1
 block_weight_test:
   test_type: block_tree
-  instances: smoke/block_tree_other.yaml # 4
+  instances: small/block_tree_other.yaml # 4
   seed: 123
   nr_variations: 32
   nr_mutations: 1
 shuffling_test:
   test_type: block_tree
-  instances: smoke/block_tree_other.yaml # 4
+  instances: small/block_tree_other.yaml # 4
   seed: 123
   nr_variations: 2
   nr_mutations: 31
 attester_slashing_test:
   test_type: block_tree
-  instances: smoke/block_tree_other.yaml # 4
+  instances: small/block_tree_other.yaml # 4
   seed: 123
   nr_variations: 8
   nr_mutations: 3
   with_attester_slashings: true
 invalid_message_test:
   test_type: block_tree
-  instances: smoke/block_tree_other.yaml # 4
+  instances: small/block_tree_other.yaml # 4
   seed: 123
   nr_variations: 16
   nr_mutations: 1
   with_invalid_messages: true
 block_cover_test:
   test_type: block_cover
-  instances: smoke/block_cover.yaml # 24
+  instances: small/block_cover.yaml # 24
   seed: 456
   nr_variations: 2
   nr_mutations: 3
