@@ -8,5 +8,3 @@
   sm_links: *id001
 - block_parents: [0, 0, 1, 2, 3, 4, 5, 5, 3, 2, 1, 0]
   sm_links: *id001
-- block_parents: [0, 0, 1, 2, 3, 4, 4, 6, 3, 2, 1, 0]
-  sm_links: *id001
