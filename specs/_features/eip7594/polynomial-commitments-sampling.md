@@ -182,8 +182,8 @@ def fft_field(vals: Sequence[BLSFieldElement],
 #### `coset_fft_field`
 
 ```python
-def coset_fft_field(vals: Sequence[BLSFieldElement], 
-                    roots_of_unity: Sequence[BLSFieldElement], 
+def coset_fft_field(vals: Sequence[BLSFieldElement],
+                    roots_of_unity: Sequence[BLSFieldElement],
                     inv: bool=False) -> Sequence[BLSFieldElement]:
     """
     Computes an FFT/IFFT over a coset of the roots of unity. 
