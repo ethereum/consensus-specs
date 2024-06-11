@@ -624,13 +624,15 @@ def recover_data(cell_ids: Sequence[CellID],
     # Compute Z(x) in monomial form
     # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
     missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-
     zero_poly_coeff = construct_vanishing_polynomial(missing_cell_ids)
+
     # Convert Z(x) to evaluation form over the FFT domain
     zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
+
     # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
+
     # Convert (E*Z)(x) to monomial form 
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
