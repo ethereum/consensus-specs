@@ -188,12 +188,13 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
     This is useful for when one wants to divide by a polynomial which 
     vanishes on one or more elements in the domain.
     """
-
     vals = vals.copy()
     
-    # Multiply each entry in `vals` by succeeding powers of `factor`
-    # ie [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]
     def shift_vals(vals: Sequence[BLSFieldElement], factor: BLSFieldElement) -> Sequence[BLSFieldElement]:
+        """  
+        Multiply each entry in `vals` by succeeding powers of `factor`  
+        i.e., [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]  
+        """  
         shift = 1
         for i in range(len(vals)):
             vals[i] = BLSFieldElement((int(vals[i]) * shift) % BLS_MODULUS)
@@ -578,7 +579,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Sequen
     could be computed as Z(x) = x^n - 1, where `n` is FIELD_ELEMENTS_PER_EXT_BLOB.
 
     We never encounter this case however because this method is used solely for recovery and recovery only
-    works then at most half of the cells are missing.
+    works if at least half of the cells are available.
     """
 
     assert len(missing_cell_ids) != 0
@@ -695,10 +696,7 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    reconstructed_data = recover_data(
-        cell_ids,
-        cosets_evals
-    )
+    reconstructed_data = recover_data(cell_ids, cosets_evals)
 
     for cell_id, coset_evals in zip(cell_ids, cosets_evals):
         start = cell_id * FIELD_ELEMENTS_PER_CELL
