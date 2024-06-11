@@ -67,7 +67,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
 | `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellID` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
+| `CellIndex` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
 
 ## Constants
 
@@ -402,15 +402,15 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: CellID) -> Coset:
+def coset_for_cell(cell_index: CellIndex) -> Coset:
     """
-    Get the coset for a given ``cell_id``
+    Get the coset for a given ``cell_index``.
     """
-    assert cell_id < CELLS_PER_EXT_BLOB
+    assert cell_index < CELLS_PER_EXT_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
-    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)])
 ```
 
 ## Cells
@@ -439,7 +439,7 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
     proofs = []
 
     for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(CellID(i))
+        coset = coset_for_cell(CellIndex(i))
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(coset_evals_to_cell(ys))
         proofs.append(proof)
@@ -465,9 +465,9 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
     extended_data_rbo = bit_reversal_permutation(extended_data)
     cells = []
-    for cell_id in range(CELLS_PER_EXT_BLOB):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+    for cell_index in range(CELLS_PER_EXT_BLOB):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         cells.append(coset_evals_to_cell(CosetEvals(extended_data_rbo[start:end])))
     return cells
 ```
@@ -478,7 +478,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
 ```python
 def verify_cell_kzg_proof(commitment_bytes: Bytes48,
-                          cell_id: CellID,
+                          cell_index: CellIndex,
                           cell: Cell,
                           proof_bytes: Bytes48) -> bool:
     """
@@ -487,11 +487,11 @@ def verify_cell_kzg_proof(commitment_bytes: Bytes48,
     Public method.
     """
     assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert cell_id < CELLS_PER_EXT_BLOB
+    assert cell_index < CELLS_PER_EXT_BLOB
     assert len(cell) == BYTES_PER_CELL
     assert len(proof_bytes) == BYTES_PER_PROOF
     
-    coset = coset_for_cell(cell_id)
+    coset = coset_for_cell(cell_index)
 
     return verify_kzg_proof_multi_impl(
         bytes_to_kzg_commitment(commitment_bytes),
@@ -553,7 +553,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ### `construct_vanishing_polynomial`
 
 ```python
-def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
+def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) -> Tuple[
         Sequence[BLSFieldElement],
         Sequence[BLSFieldElement]]:
     """
@@ -565,8 +565,8 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
     short_zero_poly = vanishing_polynomialcoeff([
-        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_EXT_BLOB)]
-        for missing_cell_id in missing_cell_ids
+        roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
+        for missing_cell_index in missing_cell_indices
     ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
@@ -580,12 +580,12 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
 
     # Sanity check
-    for cell_id in range(CELLS_PER_EXT_BLOB):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        if cell_id in missing_cell_ids:
+    for cell_index in range(CELLS_PER_EXT_BLOB):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
+        if cell_index in missing_cell_indices:
             assert all(a == 0 for a in zero_poly_eval_brp[start:end])
-        else:  # cell_id in cell_ids
+        else:  # cell_index in cell_indices
             assert all(a != 0 for a in zero_poly_eval_brp[start:end])
 
     return zero_poly_coeff, zero_poly_eval
@@ -594,7 +594,7 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
 ### `recover_shifted_data`
 
 ```python
-def recover_shifted_data(cell_ids: Sequence[CellID],
+def recover_shifted_data(cell_indices: Sequence[CellIndex],
                          cells: Sequence[Cell],
                          zero_poly_eval: Sequence[BLSFieldElement],
                          zero_poly_coeff: Sequence[BLSFieldElement],
@@ -609,9 +609,9 @@ def recover_shifted_data(cell_ids: Sequence[CellID],
     shift_inv = div(BLSFieldElement(1), shift_factor)
 
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
-    for cell_id, cell in zip(cell_ids, cells):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+    for cell_index, cell in zip(cell_indices, cells):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
@@ -661,7 +661,7 @@ def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldEle
 ### `recover_cells_and_kzg_proofs`
 
 ```python
-def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
+def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
                                  cells: Sequence[Cell],
                                  proofs_bytes: Sequence[Bytes48]) -> Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
@@ -677,14 +677,14 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
 
     Public method.
     """
-    assert len(cell_ids) == len(cells) == len(proofs_bytes)
+    assert len(cell_indices) == len(cells) == len(proofs_bytes)
     # Check we have enough cells to be able to perform the reconstruction
-    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
+    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
-    assert len(cell_ids) == len(set(cell_ids))
-    # Check that the cell ids are within bounds
-    for cell_id in cell_ids:
-        assert cell_id < CELLS_PER_EXT_BLOB
+    assert len(cell_indices) == len(set(cell_indices))
+    # Check that the cell indices are within bounds
+    for cell_index in cell_indices:
+        assert cell_index < CELLS_PER_EXT_BLOB
     # Check that each cell is the correct length
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
@@ -698,11 +698,12 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-    zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
+    missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
+                            if cell_index not in cell_indices]
+    zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_indices)
 
     eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
-        cell_ids,
+        cell_indices,
         cosets_evals,
         zero_poly_eval,
         zero_poly_coeff,
@@ -716,9 +717,9 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
         roots_of_unity_extended,
     )
 
-    for cell_id, coset_evals in zip(cell_ids, cosets_evals):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+    for cell_index, coset_evals in zip(cell_indices, cosets_evals):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         assert reconstructed_data[start:end] == coset_evals
 
     recovered_cells = [
@@ -728,11 +729,11 @@ def recover_cells_and_kzg_proofs(cell_ids: Sequence[CellID],
     polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
     polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
-    for i, cell_id in enumerate(cell_ids):
-        recovered_proofs[cell_id] = bytes_to_kzg_proof(proofs_bytes[i])
+    for i, cell_index in enumerate(cell_indices):
+        recovered_proofs[cell_index] = bytes_to_kzg_proof(proofs_bytes[i])
     for i in range(CELLS_PER_EXT_BLOB):
         if recovered_proofs[i] is None:
-            coset = coset_for_cell(CellID(i))
+            coset = coset_for_cell(CellIndex(i))
             proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
             assert coset_evals_to_cell(ys) == recovered_cells[i]
             recovered_proofs[i] = proof

@@ -36,10 +36,10 @@ def test_verify_cell_kzg_proof(spec):
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
-    cell_id = 0
-    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
-    cell_id = 1
-    assert spec.verify_cell_kzg_proof(commitment, cell_id, cells[cell_id], proofs[cell_id])
+    cell_index = 0
+    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
+    cell_index = 1
+    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
 
 
 @with_eip7594_and_later
@@ -77,19 +77,19 @@ def test_recover_cells_and_kzg_proofs(spec):
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
     # Compute the cells we will be recovering from
-    cell_ids = []
+    cell_indices = []
     # First figure out just the indices of the cells
     for i in range(N_SAMPLES):
         j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        while j in cell_ids:
+        while j in cell_indices:
             j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        cell_ids.append(j)
+        cell_indices.append(j)
     # Now the cells/proofs themselves
-    known_cells = [cells[cell_id] for cell_id in cell_ids]
-    known_proofs = [proofs[cell_id] for cell_id in cell_ids]
+    known_cells = [cells[cell_index] for cell_index in cell_indices]
+    known_proofs = [proofs[cell_index] for cell_index in cell_indices]
 
     # Recover the missing cells and proofs
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_ids, known_cells, known_proofs)
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells, known_proofs)
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
