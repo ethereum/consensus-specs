@@ -6,14 +6,11 @@ from instance_generator import (
     presets,
     _load_block_tree_instances,
     _load_block_cover_instances,
-    _create_providers
 )
+from test_provider import GENERATOR_NAME, create_providers
 
 
 yaml = YAML(typ='safe')
-
-
-GENERATOR_NAME = 'fork_choice_generated'
 
 
 if __name__ == "__main__":
@@ -67,7 +64,7 @@ if __name__ == "__main__":
         else:
             raise ValueError(f'Unsupported test type: {test_type}')
         
-        providers = _create_providers(test_name, forks, presets, debug, initial_seed,
+        providers = create_providers(test_name, forks, presets, debug, initial_seed,
                                       solutions, nr_variations, nr_mutations, test_kind)
         gen_runner.run_generator(GENERATOR_NAME, providers, arg_parser)
 
