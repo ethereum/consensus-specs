@@ -1,66 +1,16 @@
 from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.test.helpers.constants import MINIMAL, MAINNET
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 from itertools import product
 from toolz.dicttoolz import merge
 from typing import Iterable, Callable
-from eth2spec.utils import bls
-from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from minizinc import Instance, Model, Solver
 from ruamel.yaml import YAML
-import random
-from test_provider import PlainFCTestCase, FCTestDNA
-
-
-BLS_ACTIVE = False
-GENERATOR_NAME = 'fork_choice_generated'
+from test_provider import GENERATOR_NAME, create_providers
 
 
 forks = [ALTAIR]
 presets = [MINIMAL]
-
-
-def _create_providers(test_name: str, /,
-        forks: Iterable[SpecForkName],
-        presets: Iterable[PresetBaseName],
-        debug: bool,
-        initial_seed: int,
-        solutions,
-        number_of_variations: int,
-        number_of_mutations: int,
-        test_kind: str,
-        ) -> Iterable[TestProvider]:
-    def prepare_fn() -> None:
-        bls.use_milagro()
-        return
-
-    seeds = [initial_seed]
-    if number_of_variations > 1:
-        rnd = random.Random(initial_seed)
-        seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
-        seeds[0] = initial_seed
-    
-    for fork_name in forks:
-        for preset_name in presets:
-            for i, solution in enumerate(solutions):
-                def make_cases_fn() -> Iterable[TestCase]:
-                    for seed in seeds:
-                        for j in range(1 + number_of_mutations):
-                            test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                            yield PlainFCTestCase(
-                                test_dna=test_dna,
-                                bls_active=BLS_ACTIVE,
-                                debug=debug,
-                                fork_name=fork_name,
-                                preset_name=preset_name,
-                                runner_name=GENERATOR_NAME,
-                                handler_name=test_name,
-                                suite_name='pyspec_tests',
-                                case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
-                            )
-
-                yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
 
 
 def _find_sm_link_solutions(anchor_epoch: int,
@@ -312,6 +262,6 @@ if __name__ == "__main__":
     else:
         raise ValueError(f'Unsupported test kind: {args.fc_gen_test_kind}')
 
-    providers = _create_providers(test_name, forks, presets, args.fc_gen_debug, args.fc_gen_seed,
+    providers = create_providers(test_name, forks, presets, args.fc_gen_debug, args.fc_gen_seed,
                                   solutions, args.fc_gen_variations, args.fc_gen_mutations, test_kind)
     gen_runner.run_generator(GENERATOR_NAME, providers, arg_parser)
