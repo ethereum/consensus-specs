@@ -1,20 +1,16 @@
 from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.test.helpers.constants import MINIMAL, MAINNET
-from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestProvider
 from itertools import product
 from toolz.dicttoolz import merge
 from typing import Iterable, Callable
-from importlib import import_module
 from eth2spec.utils import bls
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from minizinc import Instance, Model, Solver
 from ruamel.yaml import YAML
-from mutation_operators import mk_mutations, MutatorsGenerator
 import random
-from instantiators.block_tree import yield_block_tree_test_case
-from instantiators.block_cover import yield_block_cover_test_case
+from test_provider import PlainFCTestCase, FCTestDNA
 
 
 BLS_ACTIVE = False
@@ -33,7 +29,7 @@ def _create_providers(test_name: str, /,
         solutions,
         number_of_variations: int,
         number_of_mutations: int,
-        test_fn: Callable,
+        test_kind: str,
         ) -> Iterable[TestProvider]:
     def prepare_fn() -> None:
         bls.use_milagro()
@@ -47,22 +43,22 @@ def _create_providers(test_name: str, /,
     
     for fork_name in forks:
         for preset_name in presets:
-            spec = spec_targets[preset_name][fork_name]
-
             for i, solution in enumerate(solutions):
                 def make_cases_fn() -> Iterable[TestCase]:
                     for seed in seeds:
-                        mutation_generator = MutatorsGenerator(
-                            fork_name, preset_name, spec, solution,
-                            seed, number_of_mutations, test_fn, debug=debug)
                         for j in range(1 + number_of_mutations):
-                            yield TestCase(fork_name=fork_name,
-                                        preset_name=preset_name,
-                                        runner_name=GENERATOR_NAME,
-                                        handler_name=test_name,
-                                        suite_name='pyspec_tests',
-                                        case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
-                                        case_fn=mutation_generator.next_test_case)
+                            test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
+                            yield PlainFCTestCase(
+                                test_dna=test_dna,
+                                bls_active=BLS_ACTIVE,
+                                debug=debug,
+                                fork_name=fork_name,
+                                preset_name=preset_name,
+                                runner_name=GENERATOR_NAME,
+                                handler_name=test_name,
+                                suite_name='pyspec_tests',
+                                case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
+                            )
 
                 yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
 
@@ -106,32 +102,6 @@ def _load_block_tree_instances(instance_path: str) -> Iterable[dict]:
     yaml = YAML(typ='safe')
     solutions = yaml.load(open(instance_path, 'r'))
     return solutions
-
-
-def _create_block_tree_providers(test_name: str, /,
-        forks: Iterable[SpecForkName],
-        presets: Iterable[PresetBaseName],
-        debug: bool,
-        initial_seed: int,
-        solutions: Iterable,
-        number_of_variations: int,
-        number_of_mutations: int,
-        with_attester_slashings: bool,
-        with_invalid_messages: bool) -> Iterable[TestProvider]:
-    def test_fn(phase: str, preset: str, seed: int, solution):
-        return yield_block_tree_test_case(generator_mode=True,
-                                          phase=phase,
-                                          preset=preset,
-                                          bls_active=BLS_ACTIVE,
-                                          debug=debug,
-                                          seed=seed,
-                                          sm_links=solution['sm_links'],
-                                          block_parents=solution['block_parents'],
-                                          with_attester_slashings=with_attester_slashings,
-                                          with_invalid_messages=with_invalid_messages)
-
-    yield from _create_providers(
-        test_name, forks, presets, debug, initial_seed, solutions, number_of_variations, number_of_mutations, test_fn)
 
 
 def _find_block_cover_model_solutions(anchor_epoch: int,
@@ -207,27 +177,6 @@ def _load_block_cover_instances(instance_path: str):
     yaml = YAML(typ='safe')
     solutions = yaml.load(open(instance_path, 'r'))
     return solutions
-
-
-def _create_block_cover_providers(test_name: str, /,
-        forks: Iterable[SpecForkName],
-        presets: Iterable[PresetBaseName],
-        debug: bool,
-        initial_seed: int,
-        solutions,
-        number_of_variations: int,
-        number_of_mutations: int) -> Iterable[TestProvider]:
-    def test_fn(phase: str, preset: str, seed: int, solution):
-        return yield_block_cover_test_case(generator_mode=True,
-                                           phase=phase,
-                                           preset=preset,
-                                           bls_active=BLS_ACTIVE,
-                                           debug=debug,
-                                           seed=seed,
-                                           model_params=solution)
-
-    yield from _create_providers(
-        test_name, forks, presets, debug, initial_seed, solutions, number_of_variations, number_of_mutations, test_fn)
 
 
 if __name__ == "__main__":
@@ -339,27 +288,19 @@ if __name__ == "__main__":
             block_tree_solutions = _find_block_tree_solutions(16, 3, 3)
             solutions = [merge(*sols) for sols in product(sm_link_solutions, block_tree_solutions)]
         
-        if not args.fc_gen_attester_slashings and not args.fc_gen_invalid_messages:
+        with_attester_slashings, with_invalid_messages = args.fc_gen_attester_slashings, args.fc_gen_invalid_messages
+        if not with_attester_slashings and not with_invalid_messages:
             test_name = 'block_tree'
-        elif args.fc_gen_attester_slashings and not args.fc_gen_invalid_messages:
+            test_kind = 'block_tree_test'
+        elif with_attester_slashings and not with_invalid_messages:
             test_name = 'attester_slashings'
-        elif args.fc_gen_invalid_messages and not args.fc_gen_attester_slashings:
+            test_kind = 'attester_slashing_test'
+        elif with_attester_slashings and with_invalid_messages:
             test_name = 'invalid_messages'
+            test_kind = 'invalid_message_test'
         else:
             test_name = 'attester_slashings_and_invalid_messages'
-
-        gen_runner.run_generator(GENERATOR_NAME,
-                                _create_block_tree_providers(test_name,
-                                                forks=forks,
-                                                presets=presets,
-                                                debug=args.fc_gen_debug,
-                                                initial_seed=args.fc_gen_seed,
-                                                solutions=solutions,
-                                                number_of_variations=args.fc_gen_variations,
-                                                number_of_mutations=args.fc_gen_mutations,
-                                                with_attester_slashings=args.fc_gen_attester_slashings,
-                                                with_invalid_messages=args.fc_gen_invalid_messages),
-                                arg_parser)
+            test_kind = 'attestet_slashing_and_invalid_message_test'
     elif args.fc_gen_test_kind == 'block_cover':
         if args.fc_gen_instances_path is not None:
             solutions = _load_block_cover_instances(args.fc_gen_instances_path)
@@ -367,16 +308,10 @@ if __name__ == "__main__":
             solutions = _generate_block_cover_model_solutions(args.fc_gen_anchor_epoch, args.fc_gen_nr_solutions, args.fc_gen_debug)
 
         test_name = 'block_cover'
-        gen_runner.run_generator(GENERATOR_NAME,
-                                _create_block_cover_providers(
-                                                test_name,
-                                                forks=forks,
-                                                presets=presets,
-                                                debug=args.fc_gen_debug,
-                                                initial_seed=args.fc_gen_seed,
-                                                solutions=solutions,
-                                                number_of_variations=args.fc_gen_variations,
-                                                number_of_mutations=args.fc_gen_mutations),
-                                arg_parser)
+        test_kind = 'block_cover_test'
     else:
         raise ValueError(f'Unsupported test kind: {args.fc_gen_test_kind}')
+
+    providers = _create_providers(test_name, forks, presets, args.fc_gen_debug, args.fc_gen_seed,
+                                  solutions, args.fc_gen_variations, args.fc_gen_mutations, test_kind)
+    gen_runner.run_generator(GENERATOR_NAME, providers, arg_parser)
