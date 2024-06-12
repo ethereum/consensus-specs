@@ -5,9 +5,8 @@ from instance_generator import (
     forks,
     presets,
     _load_block_tree_instances,
-    _create_block_tree_providers,
     _load_block_cover_instances,
-    _create_block_cover_providers
+    _create_providers
 )
 
 
@@ -50,32 +49,26 @@ if __name__ == "__main__":
         nr_mutations = params['nr_mutations']
         with_attester_slashings = params.get('with_attester_slashings', False)
         with_invalid_messages = params.get('with_invalid_messages', False)
+        debug = args.fc_gen_debug
 
         if test_type == 'block_tree':
             solutions = _load_block_tree_instances(instances_path)
-            providers = _create_block_tree_providers(test_name,
-                                                    forks=forks,
-                                                    presets=presets,
-                                                    debug=args.fc_gen_debug,
-                                                    initial_seed=initial_seed,
-                                                    solutions=solutions,
-                                                    number_of_variations=nr_variations,
-                                                    number_of_mutations=nr_mutations,
-                                                    with_attester_slashings=with_attester_slashings,
-                                                    with_invalid_messages=with_invalid_messages)
+            if not with_attester_slashings and not with_invalid_messages:
+                test_kind = 'block_tree_test'
+            elif with_attester_slashings and not with_invalid_messages:
+                test_kind = 'attester_slashing_test'
+            elif not with_attester_slashings and with_invalid_messages:
+                test_kind = 'invalid_message_test'
+            else:
+                test_kind = 'attestet_slashing_and_invalid_message_test'
         elif test_type == 'block_cover':
             solutions = _load_block_cover_instances(instances_path)
-            providers = _create_block_cover_providers(test_name,
-                                                     forks=forks,
-                                                     presets=presets,
-                                                     debug=args.fc_gen_debug,
-                                                     initial_seed=initial_seed,
-                                                     solutions=solutions,
-                                                     number_of_variations=nr_variations,
-                                                     number_of_mutations=nr_mutations)
+            test_kind = 'block_cover_test'
         else:
             raise ValueError(f'Unsupported test type: {test_type}')
         
+        providers = _create_providers(test_name, forks, presets, debug, initial_seed,
+                                      solutions, nr_variations, nr_mutations, test_kind)
         gen_runner.run_generator(GENERATOR_NAME, providers, arg_parser)
 
 
