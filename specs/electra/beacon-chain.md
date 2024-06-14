@@ -58,6 +58,7 @@
     - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
@@ -126,8 +127,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
 
 ### Domains
@@ -432,6 +431,8 @@ class BeaconState(Container):
 
 #### Updated `compute_proposer_index`
 
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` preset.
+
 ```python
 def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
     """
@@ -614,6 +615,36 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
     return output
 ```
+
+#### Modified `get_next_sync_committee_indices`
+
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` preset.
+
+```python
+def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    """
+    Return the sync committee indices, with possible duplicates, for the next sync committee.
+    """
+    epoch = Epoch(get_current_epoch(state) + 1)
+
+    MAX_RANDOM_BYTE = 2**8 - 1
+    active_validator_indices = get_active_validator_indices(state, epoch)
+    active_validator_count = uint64(len(active_validator_indices))
+    seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
+    i = 0
+    sync_committee_indices: List[ValidatorIndex] = []
+    while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
+        shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
+        candidate_index = active_validator_indices[shuffled_index]
+        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        # [Modified in Electra:EIP7251]
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+            sync_committee_indices.append(candidate_index)
+        i += 1
+    return sync_committee_indices
+```
+
 
 ### Beacon state mutators
 
@@ -1438,8 +1469,10 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     # Process activations
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+        # [Modified in Electra:EIP7251]
+        validator.effective_balance = min(
+            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_validator_max_effective_balance(validator))
+        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
