@@ -202,8 +202,9 @@ This section outlines configurations that are used in this spec.
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
 | `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
-| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
-| `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet | |
+| `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | 
+| `ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS` | `3` | The number of bits used to shuffle nodes to a new subnet within `EPOCHS_PER_SUBNET_SUBSCRIPTION` | |
 
 ### MetaData
 
@@ -1030,11 +1031,20 @@ Because Phase 0 does not have shards and thus does not have Shard Committees, th
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
-    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    subnet_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    shuffling_bit_size = (
+        NODE_ID_BITS
+        - ATTESTATION_SUBNET_PREFIX_BITS
+        - ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS
+    )
+    shuffling_bits = (node_id >> shuffling_bit_size) % (1 << ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS)
+    shuffling_multiplier = EPOCHS_PER_SUBNET_SUBSCRIPTION >> ATTESTATION_SUBNET_SHUFFLING_PREFIX_BITS
+    epoch_transition = (
+        (subnet_prefix + (shuffling_bits * shuffling_multiplier)) % EPOCHS_PER_SUBNET_SUBSCRIPTION
+    )
+    permutation_seed = hash(uint_to_bytes(uint64((epoch + epoch_transition) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
     permutated_prefix = compute_shuffled_index(
-        node_id_prefix,
+        subnet_prefix,
         1 << ATTESTATION_SUBNET_PREFIX_BITS,
         permutation_seed,
     )
