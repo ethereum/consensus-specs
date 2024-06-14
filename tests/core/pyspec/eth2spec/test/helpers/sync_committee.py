@@ -111,14 +111,21 @@ def validate_sync_committee_rewards(spec, pre_state, post_state, committee_indic
         assert post_state.balances[index] == (0 if balance < penalty else balance - penalty)
 
 
-def run_sync_committee_processing(spec, state, block, expect_exception=False, skip_reward_validation=False):
+def run_sync_committee_processing(spec, state, block, expect_exception=False, skip_reward_validation=False,
+                                  zero_balance_proposer_index=None):
     """
     Processes everything up to the sync committee work, then runs the sync committee work in isolation, and
     produces a pre-state and post-state (None if exception) specifically for sync-committee processing changes.
     """
-    pre_state = state.copy()
     # process up to the sync committee work
     call = run_block_processing_to(spec, state, block, 'process_sync_aggregate')
+
+    if zero_balance_proposer_index is not None:
+        pre_balance = 0
+        state.balances[zero_balance_proposer_index] = pre_balance
+
+    pre_state = state.copy()
+
     yield 'pre', state
     yield 'sync_aggregate', block.body.sync_aggregate
     if expect_exception:
