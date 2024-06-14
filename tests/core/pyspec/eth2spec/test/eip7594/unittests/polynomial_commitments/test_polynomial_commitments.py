@@ -20,7 +20,7 @@ def test_fft(spec):
     # then we apply an FFT to get evaluations over the roots of unity
     # we then apply an inverse FFT to the evaluations to get coefficients
 
-    # we check two things: 
+    # we check two things:
     # 1) the original coefficients and the resulting coefficients match
     # 2) the evaluations that we got are the same as if we would have evaluated individually
 
@@ -42,19 +42,19 @@ def test_fft(spec):
     # second check: result of FFT are really the evaluations
     for i, w in enumerate(roots_of_unity):
         individual_evaluation = spec.evaluate_polynomialcoeff(poly_coeff, w)
-        assert individual_evaluation == poly_eval[i] 
+        assert individual_evaluation == poly_eval[i]
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
 def test_coset_fft(spec):
-    
+
     # in this test we sample a random polynomial in coefficient form
     # then we apply a Coset FFT to get evaluations over the coset of the roots of unity
     # we then apply an inverse Coset FFT to the evaluations to get coefficients
 
-    # we check two things: 
+    # we check two things:
     # 1) the original coefficients and the resulting coefficients match
     # 2) the evaluations that we got are the same as if we would have evaluated individually
 
@@ -81,7 +81,7 @@ def test_coset_fft(spec):
         # the element of the coset is coset_shift * w
         shifted_w = spec.BLSFieldElement((coset_shift * int(w)) % BLS_MODULUS)
         individual_evaluation = spec.evaluate_polynomialcoeff(poly_coeff, shifted_w)
-        assert individual_evaluation == poly_eval[i] 
+        assert individual_evaluation == poly_eval[i]
 
 
 @with_eip7594_and_later
