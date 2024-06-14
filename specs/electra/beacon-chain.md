@@ -132,8 +132,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
 
 ### Domains

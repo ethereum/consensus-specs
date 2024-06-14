@@ -105,7 +105,9 @@ def test_initialize_beacon_state_some_small_balances(spec):
     assert state.eth1_data.deposit_count == len(deposits)
     assert state.eth1_data.block_hash == eth1_block_hash
     # only main deposits participate to the active balance
-    assert spec.get_total_active_balance(state) == main_deposit_count * max_effective_balance
+    # NOTE: they are pre-ELECTRA deposits with BLS_WITHDRAWAL_PREFIX,
+    # so `MAX_EFFECTIVE_BALANCE` is used
+    assert spec.get_total_active_balance(state) == main_deposit_count * spec.MAX_EFFECTIVE_BALANCE
 
     # yield state
     yield 'state', state
