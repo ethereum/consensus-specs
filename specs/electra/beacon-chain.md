@@ -1526,7 +1526,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         balance = state.balances[index]
         # [Modified in Electra:EIP7251]
         validator.effective_balance = min(
-            balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE_ELECTRA)
+            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_validator_max_effective_balance(validator))
         if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
