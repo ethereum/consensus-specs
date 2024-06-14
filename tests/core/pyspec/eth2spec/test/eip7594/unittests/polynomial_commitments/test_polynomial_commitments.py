@@ -15,17 +15,34 @@ from eth2spec.utils.bls import BLS_MODULUS
 @spec_test
 @single_phase
 def test_fft(spec):
+
+    # in this test we sample a random polynomial in coefficient form
+    # then we apply an FFT to get evaluations over the roots of unity
+    # we then apply an inverse FFT to the evaluations to get coefficients
+
+    # we check two things: 
+    # 1) the original coefficients and the resulting coefficients match
+    # 2) the evaluations that we got are the same as if we would have evaluated individually
+
     rng = random.Random(5566)
 
     roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
 
+    # sample a random polynomial
     poly_coeff = [rng.randint(0, BLS_MODULUS - 1) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
 
+    # do an FFT and then an inverse FFT
     poly_eval = spec.fft_field(poly_coeff, roots_of_unity)
     poly_coeff_inversed = spec.fft_field(poly_eval, roots_of_unity, inv=True)
 
+    # first check: inverse FFT after FFT results in original coefficients
     assert len(poly_eval) == len(poly_coeff) == len(poly_coeff_inversed)
     assert poly_coeff_inversed == poly_coeff
+
+    # second check: result of FFT are really the evaluations
+    for i, w in enumerate(roots_of_unity):
+        individual_evaluation = spec.evaluate_polynomialcoeff(poly_coeff, w)
+        assert individual_evaluation == poly_eval[i] 
 
 
 @with_eip7594_and_later
