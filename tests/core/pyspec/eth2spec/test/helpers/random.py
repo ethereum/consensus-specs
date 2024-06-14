@@ -90,7 +90,7 @@ def slash_random_validators(spec, state, rng, fraction=0.5):
     for index in range(len(state.validators)):
         # slash at least one validator
         sampled = rng.random() < fraction
-        if index == 0 or sampled:
+        if sampled:
             spec.slash_validator(state, index)
             slashed_indices.append(index)
     return slashed_indices
