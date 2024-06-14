@@ -28,7 +28,7 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [`custody_subnet_count`](#custody_subnet_count)
+      - [Custody subnet count](#custody-subnet-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -218,7 +218,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
-  columns: List[ColumnIndex]
+  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
 
@@ -284,10 +284,10 @@ After the initial data column sidecar, clients MAY stop in the process of respon
 
 #### ENR structure
 
-##### `custody_subnet_count`
+##### Custody subnet count
 
-A new field is added to the ENR under the key `custody_subnet_count` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key                    | Value        |
-|:-----------------------|:-------------|
-| `custody_subnet_count` | SSZ `uint64` |
+| Key   | Value                                    |
+|:------|:-----------------------------------------|
+| `csc` | Custody subnet count, big endian integer |

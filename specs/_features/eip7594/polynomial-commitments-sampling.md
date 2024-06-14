@@ -1,4 +1,4 @@
-# EIP-7594 -- Polynomial Commitments
+# EIP-7594 -- Polynomial Commitments Sampling
 
 ## Table of contents
 
@@ -7,6 +7,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Public Methods](#public-methods)
 - [Custom types](#custom-types)
 - [Constants](#constants)
 - [Preset](#preset)
@@ -20,13 +21,13 @@
   - [FFTs](#ffts)
     - [`_fft_field`](#_fft_field)
     - [`fft_field`](#fft_field)
+    - [`coset_fft_field`](#coset_fft_field)
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
     - [`polynomial_eval_to_coeff`](#polynomial_eval_to_coeff)
     - [`add_polynomialcoeff`](#add_polynomialcoeff)
     - [`neg_polynomialcoeff`](#neg_polynomialcoeff)
     - [`multiply_polynomialcoeff`](#multiply_polynomialcoeff)
     - [`divide_polynomialcoeff`](#divide_polynomialcoeff)
-    - [`shift_polynomialcoeff`](#shift_polynomialcoeff)
     - [`interpolate_polynomialcoeff`](#interpolate_polynomialcoeff)
     - [`vanishing_polynomialcoeff`](#vanishing_polynomialcoeff)
     - [`evaluate_polynomialcoeff`](#evaluate_polynomialcoeff)
@@ -38,26 +39,33 @@
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
-    - [`compute_cells`](#compute_cells)
   - [Cell verification](#cell-verification)
     - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
-  - [`recover_shifted_data`](#recover_shifted_data)
-  - [`recover_original_data`](#recover_original_data)
-  - [`recover_all_cells`](#recover_all_cells)
+  - [`recover_data`](#recover_data)
+  - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This document extends [polynomial-commitments.md](polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
+This document extends [polynomial-commitments.md](../../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
+
+## Public Methods
 
 For any KZG library extended to support DAS, functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
 
 Public functions MUST accept raw bytes as input and perform the required cryptographic normalization before invoking any internal functions.
+
+The following is a list of the public methods:
+
+- [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
+- [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
+- [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
+- [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 ## Custom types
 
@@ -67,9 +75,7 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `Coset` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
 | `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellID` | `uint64` | Cell identifier |
-| `RowIndex` | `uint64` | Row identifier |
-| `ColumnIndex` | `uint64` | Column identifier |
+| `CellIndex` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
 
 ## Constants
 
@@ -180,6 +186,41 @@ def fft_field(vals: Sequence[BLSFieldElement],
         return _fft_field(vals, roots_of_unity)
 ```
 
+#### `coset_fft_field`
+
+```python
+def coset_fft_field(vals: Sequence[BLSFieldElement],
+                    roots_of_unity: Sequence[BLSFieldElement],
+                    inv: bool=False) -> Sequence[BLSFieldElement]:
+    """
+    Computes an FFT/IFFT over a coset of the roots of unity. 
+    This is useful for when one wants to divide by a polynomial which 
+    vanishes on one or more elements in the domain.
+    """
+    vals = vals.copy()
+    
+    def shift_vals(vals: Sequence[BLSFieldElement], factor: BLSFieldElement) -> Sequence[BLSFieldElement]:
+        """  
+        Multiply each entry in `vals` by succeeding powers of `factor`  
+        i.e., [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]  
+        """  
+        shift = 1
+        for i in range(len(vals)):
+            vals[i] = BLSFieldElement((int(vals[i]) * shift) % BLS_MODULUS)
+            shift = (shift * int(factor)) % BLS_MODULUS
+        return vals
+
+    # This is the coset generator; it is used to compute a FFT/IFFT over a coset of
+    # the roots of unity.
+    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
+    if inv:
+        vals = fft_field(vals, roots_of_unity, inv)
+        shift_inv = bls_modular_inverse(shift_factor)
+        return shift_vals(vals, shift_inv)
+    else:
+        vals = shift_vals(vals, shift_factor)
+        return fft_field(vals, roots_of_unity, inv)
+```
 
 ### Polynomials in coefficient form
 
@@ -255,23 +296,6 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
         apos -= 1
         diff -= 1
     return [x % BLS_MODULUS for x in o]
-```
-
-#### `shift_polynomialcoeff`
-
-```python
-def shift_polynomialcoeff(polynomial_coeff: PolynomialCoeff, factor: BLSFieldElement) -> PolynomialCoeff:
-    """
-    Shift the evaluation of a polynomial in coefficient form by factor.
-    This results in a new polynomial g(x) = f(factor * x)
-    """
-    factor_power = 1
-    inv_factor = pow(int(factor), BLS_MODULUS - 2, BLS_MODULUS)
-    o = []
-    for p in polynomial_coeff:
-        o.append(int(p) * factor_power % BLS_MODULUS)
-        factor_power = factor_power * inv_factor % BLS_MODULUS
-    return o
 ```
 
 #### `interpolate_polynomialcoeff`
@@ -404,15 +428,15 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_id: CellID) -> Coset:
+def coset_for_cell(cell_index: CellIndex) -> Coset:
     """
-    Get the coset for a given ``cell_id``
+    Get the coset for a given ``cell_index``.
     """
-    assert cell_id < CELLS_PER_EXT_BLOB
+    assert cell_index < CELLS_PER_EXT_BLOB
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
-    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_id:FIELD_ELEMENTS_PER_CELL * (cell_id + 1)])
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)])
 ```
 
 ## Cells
@@ -441,37 +465,12 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
     proofs = []
 
     for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(CellID(i))
+        coset = coset_for_cell(CellIndex(i))
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(coset_evals_to_cell(ys))
         proofs.append(proof)
 
     return cells, proofs
-```
-
-#### `compute_cells`
-
-```python
-def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
-    """
-    Compute the cell data for an extended blob (without computing the proofs).
-
-    Public method.
-    """
-    assert len(blob) == BYTES_PER_BLOB
-    
-    polynomial = blob_to_polynomial(blob)
-    polynomial_coeff = polynomial_eval_to_coeff(polynomial)
-
-    extended_data = fft_field(polynomial_coeff + [0] * FIELD_ELEMENTS_PER_BLOB,
-                              compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
-    extended_data_rbo = bit_reversal_permutation(extended_data)
-    cells = []
-    for cell_id in range(CELLS_PER_EXT_BLOB):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        cells.append(coset_evals_to_cell(CosetEvals(extended_data_rbo[start:end])))
-    return cells
 ```
 
 ### Cell verification
@@ -480,7 +479,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 
 ```python
 def verify_cell_kzg_proof(commitment_bytes: Bytes48,
-                          cell_id: CellID,
+                          cell_index: CellIndex,
                           cell: Cell,
                           proof_bytes: Bytes48) -> bool:
     """
@@ -489,11 +488,11 @@ def verify_cell_kzg_proof(commitment_bytes: Bytes48,
     Public method.
     """
     assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert cell_id < CELLS_PER_EXT_BLOB
+    assert cell_index < CELLS_PER_EXT_BLOB
     assert len(cell) == BYTES_PER_CELL
     assert len(proof_bytes) == BYTES_PER_PROOF
     
-    coset = coset_for_cell(cell_id)
+    coset = coset_for_cell(cell_index)
 
     return verify_kzg_proof_multi_impl(
         bytes_to_kzg_commitment(commitment_bytes),
@@ -511,7 +510,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                                 cells: Sequence[Cell],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
-    Verify a set of cells, given their corresponding proofs and their coordinates (row_id, column_id) in the blob
+    Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
     matrix. The list of all commitments is also provided in row_commitments_bytes.
 
     This function implements the naive algorithm of checking every cell
@@ -536,7 +535,7 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
-    # Get commitments via row IDs
+    # Get commitments via row indices
     commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
 
     # Get objects from bytes
@@ -555,20 +554,24 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
 ### `construct_vanishing_polynomial`
 
 ```python
-def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
-        Sequence[BLSFieldElement],
-        Sequence[BLSFieldElement]]:
+def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) -> Sequence[BLSFieldElement]:
     """
-    Given the cells that are missing from the data, compute the polynomial that vanishes at every point that
+    Given the cells indices that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
+    
+    This method assumes that all of the cells cannot be missing. In this case the vanishing polynomial
+    could be computed as Z(x) = x^n - 1, where `n` is FIELD_ELEMENTS_PER_EXT_BLOB.
+
+    We never encounter this case however because this method is used solely for recovery and recovery only
+    works if at least half of the cells are available.
     """
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
     short_zero_poly = vanishing_polynomialcoeff([
-        roots_of_unity_reduced[reverse_bits(missing_cell_id, CELLS_PER_EXT_BLOB)]
-        for missing_cell_id in missing_cell_ids
+        roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
+        for missing_cell_index in missing_cell_indices
     ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
@@ -576,98 +579,80 @@ def construct_vanishing_polynomial(missing_cell_ids: Sequence[CellID]) -> Tuple[
     for i, coeff in enumerate(short_zero_poly):
         zero_poly_coeff[i * FIELD_ELEMENTS_PER_CELL] = coeff
 
-    # Compute evaluations of the extended vanishing polynomial
-    zero_poly_eval = fft_field(zero_poly_coeff,
-                               compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB))
-    zero_poly_eval_brp = bit_reversal_permutation(zero_poly_eval)
-
-    # Sanity check
-    for cell_id in range(CELLS_PER_EXT_BLOB):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
-        if cell_id in missing_cell_ids:
-            assert all(a == 0 for a in zero_poly_eval_brp[start:end])
-        else:  # cell_id in cell_ids
-            assert all(a != 0 for a in zero_poly_eval_brp[start:end])
-
-    return zero_poly_coeff, zero_poly_eval
+    return zero_poly_coeff
 ```
 
-### `recover_shifted_data`
+### `recover_data`
 
 ```python
-def recover_shifted_data(cell_ids: Sequence[CellID],
-                         cells: Sequence[Cell],
-                         zero_poly_eval: Sequence[BLSFieldElement],
-                         zero_poly_coeff: Sequence[BLSFieldElement],
-                         roots_of_unity_extended: Sequence[BLSFieldElement]) -> Tuple[
-                             Sequence[BLSFieldElement],
-                             Sequence[BLSFieldElement],
-                             BLSFieldElement]:
+def recover_data(cell_indices: Sequence[CellIndex],
+                 cells: Sequence[Cell],
+                 ) -> Sequence[BLSFieldElement]:
     """
-    Given Z(x), return polynomial Q_1(x)=(E*Z)(k*x) and Q_2(x)=Z(k*x) and k^{-1}.
+    Recover the missing evaluations for the extended blob, given at least half of the evaluations.
     """
-    shift_factor = BLSFieldElement(PRIMITIVE_ROOT_OF_UNITY)
-    shift_inv = div(BLSFieldElement(1), shift_factor)
 
+    # Get the extended domain. This will be referred to as the FFT domain.
+    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
+
+    # Flatten the cells into evaluations.
+    # If a cell is missing, then its evaluation is zero.
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
-    for cell_id, cell in zip(cell_ids, cells):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+    for cell_index, cell in zip(cell_indices, cells):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    # Compute (E*Z)(x)
+    # Compute Z(x) in monomial form
+    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
+    missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
+                            if cell_index not in cell_indices]
+    zero_poly_coeff = construct_vanishing_polynomial(missing_cell_indices)
+
+    # Convert Z(x) to evaluation form over the FFT domain
+    zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
+
+    # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    extended_evaluations_fft = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
+    # Convert (E*Z)(x) to monomial form 
+    extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    # Compute (E*Z)(k*x)
-    shifted_extended_evaluation = shift_polynomialcoeff(extended_evaluations_fft, shift_factor)
-    # Compute Z(k*x)
-    shifted_zero_poly = shift_polynomialcoeff(zero_poly_coeff, shift_factor)
+    # Convert (E*Z)(x) to evaluation form over a coset of the FFT domain
+    extended_evaluations_over_coset = coset_fft_field(extended_evaluation_times_zero_coeffs, roots_of_unity_extended)
 
-    eval_shifted_extended_evaluation = fft_field(shifted_extended_evaluation, roots_of_unity_extended)
-    eval_shifted_zero_poly = fft_field(shifted_zero_poly, roots_of_unity_extended)
+    # Convert Z(x) to evaluation form over a coset of the FFT domain
+    zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
-    return eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv
-```
-
-### `recover_original_data`
-
-```python
-def recover_original_data(eval_shifted_extended_evaluation: Sequence[BLSFieldElement],
-                          eval_shifted_zero_poly: Sequence[BLSFieldElement],
-                          shift_inv: BLSFieldElement,
-                          roots_of_unity_extended: Sequence[BLSFieldElement]) -> Sequence[BLSFieldElement]:
-    """
-    Given Q_1, Q_2 and k^{-1}, compute P(x).
-    """
-    # Compute Q_3 = Q_1(x)/Q_2(x) = P(k*x)
-    eval_shifted_reconstructed_poly = [
+    # Compute Q_3(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
+    reconstructed_poly_over_coset = [
         div(a, b)
-        for a, b in zip(eval_shifted_extended_evaluation, eval_shifted_zero_poly)
+        for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)
     ]
 
-    shifted_reconstructed_poly = fft_field(eval_shifted_reconstructed_poly, roots_of_unity_extended, inv=True)
+    # Convert Q_3(x) to monomial form
+    reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
-    # Unshift P(k*x) by k^{-1} to get P(x)
-    reconstructed_poly = shift_polynomialcoeff(shifted_reconstructed_poly, shift_inv)
-
-    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly, roots_of_unity_extended))
+    # Convert Q_3(x) to evaluation form over the FFT domain and bit reverse the result
+    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly_coeff, roots_of_unity_extended))
 
     return reconstructed_data
 ```
 
-### `recover_all_cells`
+### `recover_cells_and_kzg_proofs`
 
 ```python
-def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequence[Cell]:
+def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
+                                 cells: Sequence[Cell],
+                                 proofs_bytes: Sequence[Bytes48]) -> Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
-    Recover all of the cells in the extended blob from FIELD_ELEMENTS_PER_EXT_BLOB evaluations, 
-    half of which can be missing.
-    This algorithm uses FFTs to recover cells faster than using Lagrange implementation, as can be seen here:
+    Given at least 50% of cells/proofs for a blob, recover all the cells/proofs.
+    This algorithm uses FFTs to recover cells faster than using Lagrange
+    implementation, as can be seen here:
     https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
 
     A faster version thanks to Qi Zhou can be found here:
@@ -675,47 +660,46 @@ def recover_all_cells(cell_ids: Sequence[CellID], cells: Sequence[Cell]) -> Sequ
 
     Public method.
     """
-    assert len(cell_ids) == len(cells)
+    assert len(cell_indices) == len(cells) == len(proofs_bytes)
     # Check we have enough cells to be able to perform the reconstruction
-    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_ids) <= CELLS_PER_EXT_BLOB
+    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
-    assert len(cell_ids) == len(set(cell_ids))
+    assert len(cell_indices) == len(set(cell_indices))
+    # Check that the cell indices are within bounds
+    for cell_index in cell_indices:
+        assert cell_index < CELLS_PER_EXT_BLOB
     # Check that each cell is the correct length
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
-
-    # Get the extended domain
-    roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
+    # Check that each proof is the correct length
+    for proof_bytes in proofs_bytes:
+        assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    missing_cell_ids = [CellID(cell_id) for cell_id in range(CELLS_PER_EXT_BLOB) if cell_id not in cell_ids]
-    zero_poly_coeff, zero_poly_eval = construct_vanishing_polynomial(missing_cell_ids)
+    reconstructed_data = recover_data(cell_indices, cosets_evals)
 
-    eval_shifted_extended_evaluation, eval_shifted_zero_poly, shift_inv = recover_shifted_data(
-        cell_ids,
-        cosets_evals,
-        zero_poly_eval,
-        zero_poly_coeff,
-        roots_of_unity_extended,
-    )
-
-    reconstructed_data = recover_original_data(
-        eval_shifted_extended_evaluation,
-        eval_shifted_zero_poly,
-        shift_inv,
-        roots_of_unity_extended,
-    )
-
-    for cell_id, coset_evals in zip(cell_ids, cosets_evals):
-        start = cell_id * FIELD_ELEMENTS_PER_CELL
-        end = (cell_id + 1) * FIELD_ELEMENTS_PER_CELL
+    for cell_index, coset_evals in zip(cell_indices, cosets_evals):
+        start = cell_index * FIELD_ELEMENTS_PER_CELL
+        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         assert reconstructed_data[start:end] == coset_evals
 
-    reconstructed_data_as_cells = [
+    recovered_cells = [
         coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
+    
+    polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
+    polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
+    recovered_proofs = [None] * CELLS_PER_EXT_BLOB
+    for i, cell_index in enumerate(cell_indices):
+        recovered_proofs[cell_index] = bytes_to_kzg_proof(proofs_bytes[i])
+    for i in range(CELLS_PER_EXT_BLOB):
+        if recovered_proofs[i] is None:
+            coset = coset_for_cell(CellIndex(i))
+            proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+            assert coset_evals_to_cell(ys) == recovered_cells[i]
+            recovered_proofs[i] = proof
  
-    return reconstructed_data_as_cells
+    return recovered_cells, recovered_proofs
 ```

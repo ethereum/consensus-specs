@@ -9,7 +9,7 @@ from eth2spec.test.context import (
 def run_get_custody_columns(spec, peer_count, custody_subnet_count):
     assignments = [spec.get_custody_columns(node_id, custody_subnet_count) for node_id in range(peer_count)]
 
-    columns_per_subnet = spec.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    columns_per_subnet = spec.config.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     for assignment in assignments:
         assert len(assignment) == custody_subnet_count * columns_per_subnet
         assert len(assignment) == len(set(assignment))
@@ -20,8 +20,8 @@ def run_get_custody_columns(spec, peer_count, custody_subnet_count):
 @single_phase
 def test_get_custody_columns_peers_within_number_of_columns(spec):
     peer_count = 10
-    custody_subnet_count = spec.CUSTODY_REQUIREMENT
-    assert spec.NUMBER_OF_COLUMNS > peer_count
+    custody_subnet_count = spec.config.CUSTODY_REQUIREMENT
+    assert spec.config.NUMBER_OF_COLUMNS > peer_count
     run_get_custody_columns(spec, peer_count, custody_subnet_count)
 
 
@@ -30,8 +30,8 @@ def test_get_custody_columns_peers_within_number_of_columns(spec):
 @single_phase
 def test_get_custody_columns_peers_more_than_number_of_columns(spec):
     peer_count = 200
-    custody_subnet_count = spec.CUSTODY_REQUIREMENT
-    assert spec.NUMBER_OF_COLUMNS < peer_count
+    custody_subnet_count = spec.config.CUSTODY_REQUIREMENT
+    assert spec.config.NUMBER_OF_COLUMNS < peer_count
     run_get_custody_columns(spec, peer_count, custody_subnet_count)
 
 
