@@ -215,7 +215,11 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
         return r
 
     def hypergeom_cdf(k, M, n, N):
-        return sum([math_comb(n, i) * math_comb(M - n, N - i) / math_comb(M, N)
+        k = int(k)
+        M = int(M)
+        n = int(n)
+        N = int(N)
+        return sum([math_comb(n, i) * math_comb(M - n, N - i) // math_comb(M, N)
                     for i in range(k + 1)])
 
     worst_case_missing = NUMBER_OF_COLUMNS // 2 + 1
