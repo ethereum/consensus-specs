@@ -276,3 +276,11 @@ def yield_block_cover_test_case(spec, state, model_params=None, debug=False, see
     yield from yield_fork_choice_test_case(spec, store, test_data, debug)
     # Run sanity checks against model params
     run_sanity_checks(spec, store, model_params, target_block_root)
+
+@with_altair_and_later
+@spec_state_test
+def yield_block_cover_test_data(spec, state, model_params=None, debug=False, seed=1):
+    test_data, _ = gen_block_cover_test_data(spec, state, model_params, debug, seed)
+    yield 'test_data', test_data
+    # Run sanity checks against model params
+    # run_sanity_checks(spec, store, model_params, target_block_root)

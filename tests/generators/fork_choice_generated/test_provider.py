@@ -3,13 +3,17 @@ from typing import Any, Iterable, Optional, Tuple
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart, TestProvider
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.test.helpers.fork_choice import (
-    on_tick_and_append_step, output_store_checks
+    on_tick_and_append_step, output_store_checks,
+    get_block_file_name,
+    get_attestation_file_name,
+    get_attester_slashing_file_name,
 )
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from eth2spec.utils import bls
 from scheduler import MessageScheduler
-from instantiators.block_cover import yield_block_cover_test_case
-from instantiators.block_tree import yield_block_tree_test_case
+from instantiators.block_cover import yield_block_cover_test_case, yield_block_cover_test_data
+from instantiators.block_tree import yield_block_tree_test_case, yield_block_tree_test_data
+from instantiators.helpers import FCTestData
 from mutation_operators import mutate_test_vector
 import random
 
@@ -42,34 +46,38 @@ class PlainFCTestCase(TestCase):
     
     def mutation_case_fn(self):
         spec = spec_targets[self.preset_name][self.fork_name]
-        base = list(self.plain_case_fn())
+
         mut_seed = self.test_dna.mutation_seed
         if mut_seed is None:
-            return base
-        
-        rnd = random.Random(mut_seed)
-        fc_test_case = parse_test_case(base)
-        events = steps_to_events(fc_test_case.steps)
-        tv_, = list(mutate_test_vector(rnd, events, 1, debug=self.debug))
-        mutated_tc = update_test_case(spec, fc_test_case, tv_)
-        #mutated_tc.meta['mutation_seed'] = mut_seed
-        return mutated_tc.dump()
+            return list(self.call_instantiator(test_data_only=False))
+        else:
+            test_data = list(self.call_instantiator(test_data_only=True))
+            fc_test_case, events = parse_test_data(spec, test_data)
+            tv_, = list(mutate_test_vector(random.Random(mut_seed), events, 1, debug=self.debug))
+            mutated_tc = update_test_case(spec, fc_test_case, tv_)
+            #mutated_tc.meta['mutation_seed'] = mut_seed
+            return mutated_tc.dump()
     
     def plain_case_fn(self) -> Iterable[TestCasePart]:
+        yield from self.call_instantiator(test_data_only=False)
+    
+    def call_instantiator(self, test_data_only) -> Iterable[TestCasePart]:
         phase, preset = self.fork_name, self.preset_name
         bls_active, debug = self.bls_active, self.debug
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
         if self.test_dna.kind in ['block_tree_test', 'attester_slashing_test', 'invalid_message_test']:
             with_attester_slashings = self.test_dna.kind == 'attester_slashing_test'
             with_invalid_messages = self.test_dna.kind == 'invalid_message_test'
-            return yield_block_tree_test_case(
+            instantiator_fn = yield_block_tree_test_data if test_data_only else yield_block_tree_test_case
+            return instantiator_fn(
                 generator_mode=True,
                 phase=phase, preset=preset,
                 bls_active=bls_active, debug=debug,
                 seed=seed, sm_links=solution['sm_links'], block_parents=solution['block_parents'],
                 with_attester_slashings=with_attester_slashings, with_invalid_messages=with_invalid_messages)
         elif self.test_dna.kind == 'block_cover_test':
-            return yield_block_cover_test_case(
+            instantiator_fn = yield_block_cover_test_data if test_data_only else yield_block_cover_test_case
+            return instantiator_fn(
                 generator_mode=True,
                 phase=phase, preset=preset,
                 bls_active=bls_active, debug=debug,
@@ -86,7 +94,7 @@ class FCTestCase:
     blocks: dict
     atts: dict
     slashings: dict
-    steps: list
+    steps: Optional[list]
 
     def with_steps(self, steps):
         return FCTestCase(self.meta, self.anchor_block, self.anchor_state, self.blocks, self.atts, self.slashings, steps)
@@ -94,58 +102,76 @@ class FCTestCase:
     def dump(self):
         for k,v in self.meta.items():
             yield k, 'meta', v
-        yield 'anchor_state', 'ssz', self.anchor_state
-        yield 'anchor_block', 'ssz', self.anchor_block
+        yield 'anchor_state', 'ssz', self.anchor_state.encode_bytes()
+        yield 'anchor_block', 'ssz', self.anchor_block.encode_bytes()
         for k,v in self.blocks.items():
-            yield k, 'ssz', v
+            yield k, 'ssz', v.encode_bytes()
         for k,v in self.atts.items():
-            yield k, 'ssz', v
+            yield k, 'ssz', v.encode_bytes()
         for k,v in self.slashings.items():
-            yield k, 'ssz', v
+            yield k, 'ssz', v.encode_bytes()
         yield 'steps', 'data', self.steps
 
 
-def parse_test_case(test_case):
-    meta = {}
-    anchor_block = None
-    anchor_state = None
+def parse_test_data(spec, _test_data) -> Tuple[FCTestCase, list[Any]]:
+    (elem_0, elem_1, elem_2), = _test_data
+    assert elem_1 == 'data' and elem_0 == 'test_data'
+
+    test_data: FCTestData = elem_2
+    meta = test_data.meta
+    anchor_state = test_data.anchor_state
+    anchor_block = test_data.anchor_block
     blocks = {}
     atts = {}
     slashings = {}
-    steps = None
-    for i, elem in enumerate(test_case):
-        assert isinstance(elem, tuple) and len(elem) == 3
-        if elem[1] == 'meta':
-            meta[elem[0]] = elem[2]
-        elif elem[1] == 'ssz':
-            if elem[0] == 'anchor_state':
-                assert anchor_state is None
-                anchor_state = elem[2]
-            elif elem[0] == 'anchor_block':
-                assert anchor_block is None
-                anchor_block = elem[2]
-            elif elem[0].startswith('block_'):
-                blocks[elem[0]] = elem[2]
-            elif elem[0].startswith('attestation_'):
-                atts[elem[0]] = elem[2]
-            elif elem[0].startswith('attester_slashing_'):
-                slashings[elem[0]] = elem[2]
-            else:
-                raise ValueError(f'not implemented {elem[0]}/{elem[1]}')
-        elif elem[1] == 'data' and elem[0] == 'steps':
-            assert steps is None
-            steps = elem[2]
+    events = []
+
+    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
+
+    def get_time(slot):
+        return int(slot * spec.config.SECONDS_PER_SLOT + store.genesis_time)
+
+    for b in test_data.blocks:
+        signed_block = b.payload
+        event_id = get_block_file_name(signed_block)
+        blocks[event_id] = signed_block
+        events.append((get_time(signed_block.message.slot), ('block', event_id)))
+    
+    for a in test_data.atts:
+        attestation = a.payload
+        event_id = get_attestation_file_name(attestation)
+        atts[event_id] = attestation
+        events.append((get_time(attestation.data.slot + 1), ('attestation', event_id)))
+    
+    for s in test_data.slashings:
+        slashing = s.payload
+        event_id = get_attester_slashing_file_name(slashing)
+        effective_slot = max(slashing.attestation_1.data.slot, slashing.attestation_2.data.slot) + 1
+        slashings[event_id] = slashing
+        events.append((get_time(effective_slot), ('attester_slashing', event_id)))
+
+    def get_key(event):
+        time, (event_type, _) = event
+        if event_type == 'block':
+            prio = 2
+        elif event_type == 'attestation':
+            prio = 0
         else:
-            raise ValueError(f'not implemented {elem[0]}/{elem[1]}')
-    return FCTestCase(meta, anchor_block, anchor_state, blocks, atts, slashings, steps)
+            assert event_type == 'attester_slashing'
+            prio = 1
+        return (time, prio)
+    
+    events = sorted(events, key=get_key)
+
+    return FCTestCase(meta, anchor_block, anchor_state, blocks, atts, slashings, []), events
 
 
 def update_test_case(spec, fc_test_case: FCTestCase, events):
     old_bls_state = bls.bls_active
     bls.bls_active = False
     try:
-        anchor_state = spec.BeaconState.decode_bytes(fc_test_case.anchor_state)
-        anchor_block = spec.BeaconBlock.decode_bytes(fc_test_case.anchor_block)
+        anchor_state = fc_test_case.anchor_state
+        anchor_block = fc_test_case.anchor_block
         store = spec.get_forkchoice_store(anchor_state, anchor_block)
         test_steps = []
         scheduler = MessageScheduler(spec, anchor_state, anchor_block)
@@ -159,19 +185,19 @@ def update_test_case(spec, fc_test_case: FCTestCase, events):
 
             if kind == 'block':
                 block_id = event
-                sb = spec.SignedBeaconBlock.decode_bytes(fc_test_case.blocks[block_id])
+                sb = fc_test_case.blocks[block_id]
                 valid = scheduler.process_block(sb)
                 test_steps.append({'block': block_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
             elif kind == 'attestation':
                 att_id = event
-                att = spec.Attestation.decode_bytes(fc_test_case.atts[att_id])
+                att = fc_test_case.atts[att_id]
                 valid = scheduler.process_attestation(att, is_from_block=False)
                 test_steps.append({'attestation': att_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
             elif kind == 'attester_slashing':
                 slashing_id = event
-                slashing = spec.AttesterSlashing.decode_bytes(fc_test_case.slashings[slashing_id])
+                slashing = fc_test_case.slashings[slashing_id]
                 valid = scheduler.process_slashing(slashing)
                 test_steps.append({'attester_slashing': slashing_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
@@ -185,32 +211,6 @@ def update_test_case(spec, fc_test_case: FCTestCase, events):
     finally:
         bls.bls_active = old_bls_state
 
-
-def steps_to_events(steps):
-    curr = 0
-    events = []
-    for step in steps:
-        if 'tick' in step:
-            curr = step['tick']
-        elif 'block' in step:
-            events.append((curr, ('block', step['block'])))
-        elif 'attestation' in step:
-            events.append((curr, ('attestation', step['attestation'])))
-        elif 'attester_slashing' in step:
-            events.append((curr, ('attester_slashing', step['attester_slashing'])))
-        elif 'checks' in step or 'property_checks' in step:
-            pass
-        else:
-            assert False, step
-    return events
-
-
-def events_to_steps(events):
-    steps = []
-    for (time, event) in events:
-        steps.append({'tick': int(time)})
-        steps.append({event[0]: event[1]})
-    return steps
 
 def create_providers(test_name: str, /,
         forks: Iterable[SpecForkName],
