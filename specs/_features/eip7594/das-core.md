@@ -8,39 +8,38 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [EIP-7594 -- Data Availability Sampling Core](#eip-7594----data-availability-sampling-core)
-  - [Table of contents](#table-of-contents)
-  - [Constants](#constants)
-    - [Misc](#misc)
-  - [Custom types](#custom-types)
-  - [Configuration](#configuration)
-    - [Data size](#data-size)
-    - [Networking](#networking)
-    - [Custody setting](#custody-setting)
-    - [Containers](#containers)
-      - [`DataColumnSidecar`](#datacolumnsidecar)
-      - [`MatrixEntry`](#matrixentry)
-    - [Helper functions](#helper-functions)
-      - [`get_custody_columns`](#get_custody_columns)
-      - [`compute_extended_matrix`](#compute_extended_matrix)
-      - [`recover_matrix`](#recover_matrix)
-      - [`get_data_column_sidecars`](#get_data_column_sidecars)
-  - [Custody](#custody)
-    - [Custody requirement](#custody-requirement)
-    - [Public, deterministic selection](#public-deterministic-selection)
-  - [Peer discovery](#peer-discovery)
-  - [Extended data](#extended-data)
-  - [Column gossip](#column-gossip)
-    - [Parameters](#parameters)
-  - [Peer sampling](#peer-sampling)
-    - [sample selection](#sample-selection)
-  - [Peer scoring](#peer-scoring)
-  - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
-  - [DAS providers](#das-providers)
-  - [A note on fork choice](#a-note-on-fork-choice)
-  - [FAQs](#faqs)
-    - [Row (blob) custody](#row-blob-custody)
-    - [Subnet stability](#subnet-stability)
+- [Constants](#constants)
+  - [Misc](#misc)
+- [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Data size](#data-size)
+  - [Networking](#networking)
+  - [Custody setting](#custody-setting)
+  - [Containers](#containers)
+    - [`DataColumnSidecar`](#datacolumnsidecar)
+    - [`MatrixEntry`](#matrixentry)
+  - [Helper functions](#helper-functions)
+    - [`get_custody_columns`](#get_custody_columns)
+    - [`compute_extended_matrix`](#compute_extended_matrix)
+    - [`recover_matrix`](#recover_matrix)
+    - [`get_data_column_sidecars`](#get_data_column_sidecars)
+    - [`generate_sample_selection`](#generate_sample_selection)
+- [Custody](#custody)
+  - [Custody requirement](#custody-requirement)
+  - [Public, deterministic selection](#public-deterministic-selection)
+- [Peer discovery](#peer-discovery)
+- [Extended data](#extended-data)
+- [Column gossip](#column-gossip)
+  - [Parameters](#parameters)
+- [Peer sampling](#peer-sampling)
+  - [sample selection](#sample-selection)
+- [Peer scoring](#peer-scoring)
+- [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
+- [DAS providers](#das-providers)
+- [A note on fork choice](#a-note-on-fork-choice)
+- [FAQs](#faqs)
+  - [Row (blob) custody](#row-blob-custody)
+  - [Subnet stability](#subnet-stability)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -224,6 +223,23 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     return sidecars
 ```
 
+#### `generate_sample_selection`
+
+```python
+def generate_sample_selection(active_peers: Sequence[NodeID], custody_subnet_count: Sequence[uint64], samples_per_slot: uint64) -> Sequence[ColumnIndex]:
+    # This is example implementation, in practice, it could be made more efficient by having a peer monitor that
+    # periodically add / prune the peer <-> column mapping concurrently upon peer connection / disconnection.
+    columns_custodied = set()
+    for peer, csc in zip(active_peers, custody_subnet_count):
+        columns = get_custody_columns(peer, csc)
+        columns_custodied = columns_custodied.update(columns)
+    
+    column_list = list(columns_custodied)
+    random.shuffle(column_list)
+
+    return sorted(column_list[:samples_per_slot])
+```
+
 ## Custody
 
 ### Custody requirement
@@ -266,15 +282,17 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 ## Peer sampling
 
+A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. At each slot, a node makes `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+
 ### sample selection
 
-With below calculation, the probability that a column is custodied by at least one of the `TARGET_NUMBER_OF_PEERS` is 89.2%, that means the expected number of columns covered by `TARGET_NUMBER_OF_PEERS` is 114, leaving 14 columns not covered.
+In the worst case scenario (every peer custodies minimum number of columns), the probability that a column is custodied by at least one of the `TARGET_NUMBER_OF_PEERS` is 89.2% (see below calculation), that means the expected number of columns covered by `TARGET_NUMBER_OF_PEERS` is 114, leaving 14 columns not covered.
 
 $$
 E(\text{distinct numbers}) = 128 * P(\text{covered}) = 128 * (1 - P(\text{not covered by at least one peer})) = 128 * (1 - \left( \frac{31}{32} \right)^{70}) = 114
 $$
 
-Therefore it is recommended that nodes select sampling columns from what its existing peers custodied instead of from the whole 128 columns range. Compared to random sampling from 128 columns, the benefits are:
+Therefore it is RECOMMENDED that nodes select sampling columns from what its existing peers custodied instead of from the whole `NUMBER_OF_COLUMNS` range. Compared to random sampling from `NUMBER_OF_COLUMNS` columns, the benefits are:
 
 1. This change makes error handling much easier as clients does not need to handle the case where there is no peer that custodies the randomly selected sample column (with `SAMPLES_PER_SLOT = 16`, the probability of that happening for at least one column is 84.3%):
 
@@ -282,12 +300,9 @@ $$
 P(\text{samples are all covered}) = 1 - (\frac{114}{128})^{8} = \text{84.3%}.
 $$
 
-2. abc
-3. retry, parallelization much easier to implement compared to random selection (with columns not covered by peers).
-
-A node is recommended to select at least `SAMPLES_PER_SLOT` column IDS for sampling, the selection pool should be all the columns custodied by all peers instead of the whole `NUMBER_OF_COLUMNS` range. 
-
-A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries. At each slot, a node makes `SAMPLES_PER_SLOT` queries for samples from their peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) to request from. If a node has enough good/honest peers across all rows and columns, this has a high chance of success.
+2. This change removes the need for sample replacement as it is guaranteed at selection phase that the sample is custodied by active peer.
+3. This change makes parallel sampling much easier by removing sampling replacement need from sampling phase.
+4. Although in practice this will almost never happen (10% nodes are super nodes on mainnet), it would still be nice to make explicit guarantees here to avoid assumptions on what the network structure will look like in the future.
 
 ## Peer scoring
 
