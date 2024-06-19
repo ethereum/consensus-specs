@@ -24,6 +24,8 @@ from eth2spec.test.context import (
     with_custom_state,
     with_presets,
     spec_test,
+    default_balances_electra,
+    misc_balances_electra,
 )
 
 
@@ -132,7 +134,9 @@ def test_random_with_exits_with_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
+@single_phase
 def test_random_only_one_participant_without_duplicates(spec, state):
     rng = random.Random(501)
     yield from _test_harness_for_randomized_test_case(
@@ -144,7 +148,9 @@ def test_random_only_one_participant_without_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
+@single_phase
 def test_random_low_participation_without_duplicates(spec, state):
     rng = random.Random(601)
     yield from _test_harness_for_randomized_test_case(
@@ -156,7 +162,9 @@ def test_random_low_participation_without_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
+@single_phase
 def test_random_high_participation_without_duplicates(spec, state):
     rng = random.Random(701)
     yield from _test_harness_for_randomized_test_case(
@@ -168,7 +176,9 @@ def test_random_high_participation_without_duplicates(spec, state):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
+@single_phase
 def test_random_all_but_one_participating_without_duplicates(spec, state):
     rng = random.Random(801)
     yield from _test_harness_for_randomized_test_case(
@@ -181,7 +191,7 @@ def test_random_all_but_one_participating_without_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
+@with_custom_state(balances_fn=misc_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):
     rng = random.Random(1501)
@@ -194,7 +204,8 @@ def test_random_misc_balances_and_half_participation_without_duplicates(spec, st
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_with_exits_without_duplicates(spec, state):
     rng = random.Random(1502)

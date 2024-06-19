@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 # Run 'consensus-specs' tests from a docker container instance.
 # *Be sure to launch Docker before running this script.*
