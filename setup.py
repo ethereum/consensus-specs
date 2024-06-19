@@ -552,7 +552,7 @@ setup(
         "pycryptodome==3.15.0",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable @ git+https://github.com/etan-status/remerkleable@dev/etan/sc-7495",
+        "remerkleable==0.1.28",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",

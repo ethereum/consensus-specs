@@ -27,8 +27,8 @@
     - [`DepositRequest`](#depositrequest)
     - [`PendingBalanceDeposit`](#pendingbalancedeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
-    - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
-    - [`ExecutionLayerConsolidationRequest`](#executionlayerconsolidationrequest)
+    - [`WithdrawalRequest`](#withdrawalrequest)
+    - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -58,6 +58,7 @@
     - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
@@ -91,11 +92,11 @@
       - [Voluntary exits](#voluntary-exits)
         - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
-        - [New `process_execution_layer_withdrawal_request`](#new-process_execution_layer_withdrawal_request)
+        - [New `process_withdrawal_request`](#new-process_withdrawal_request)
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
-        - [New `process_execution_layer_consolidation_request`](#new-process_execution_layer_consolidation_request)
+        - [New `process_consolidation_request`](#new-process_consolidation_request)
 - [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -126,8 +127,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
 
 ### Domains
@@ -227,23 +226,23 @@ class PendingPartialWithdrawal(Container):
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
-#### `ExecutionLayerWithdrawalRequest`
+#### `WithdrawalRequest`
 
 *Note*: The container is new in EIP7251:EIP7002.
 
 ```python
-class ExecutionLayerWithdrawalRequest(Container):
+class WithdrawalRequest(Container):
     source_address: ExecutionAddress
     validator_pubkey: BLSPubkey
     amount: Gwei
 ```
 
-#### `ExecutionLayerConsolidationRequest`
+#### `ConsolidationRequest`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class ExecutionLayerConsolidationRequest(Container):
+class ConsolidationRequest(Container):
     source_address: ExecutionAddress
     source_pubkey: BLSPubkey
     target_pubkey: BLSPubkey
@@ -277,8 +276,8 @@ class AttesterSlashing(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
     data: AttestationData
-    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
     signature: BLSSignature
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
 ```
 
 #### `IndexedAttestation`
@@ -336,9 +335,9 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
-    withdrawal_requests: List[ExecutionLayerWithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     # [New in Electra:EIP7251]
-    consolidation_requests: List[ExecutionLayerConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+    consolidation_requests: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -431,6 +430,8 @@ class BeaconState(Container):
 ### Predicates
 
 #### Updated `compute_proposer_index`
+
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` preset.
 
 ```python
 def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
@@ -614,6 +615,36 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
     return output
 ```
+
+#### Modified `get_next_sync_committee_indices`
+
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` preset.
+
+```python
+def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    """
+    Return the sync committee indices, with possible duplicates, for the next sync committee.
+    """
+    epoch = Epoch(get_current_epoch(state) + 1)
+
+    MAX_RANDOM_BYTE = 2**8 - 1
+    active_validator_indices = get_active_validator_indices(state, epoch)
+    active_validator_count = uint64(len(active_validator_indices))
+    seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
+    i = 0
+    sync_committee_indices: List[ValidatorIndex] = []
+    while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
+        shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
+        candidate_index = active_validator_indices[shuffled_index]
+        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        # [Modified in Electra:EIP7251]
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+            sync_committee_indices.append(candidate_index)
+        i += 1
+    return sync_committee_indices
+```
+
 
 ### Beacon state mutators
 
@@ -1075,9 +1106,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.execution_payload.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.execution_payload.withdrawal_requests, process_execution_layer_withdrawal_request)
+    for_ops(body.execution_payload.withdrawal_requests, process_withdrawal_request)
     # [New in Electra:EIP7251]
-    for_ops(body.execution_payload.consolidation_requests, process_execution_layer_consolidation_request)
+    for_ops(body.execution_payload.consolidation_requests, process_consolidation_request)
 ```
 
 ##### Attestations
@@ -1236,16 +1267,16 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 
 ##### Execution layer withdrawal requests
 
-###### New `process_execution_layer_withdrawal_request`
+###### New `process_withdrawal_request`
 
 *Note*: This function is new in Electra following EIP-7002 and EIP-7251.
 
 ```python
-def process_execution_layer_withdrawal_request(
+def process_withdrawal_request(
     state: BeaconState,
-    execution_layer_withdrawal_request: ExecutionLayerWithdrawalRequest
+    withdrawal_request: WithdrawalRequest
 ) -> None:
-    amount = execution_layer_withdrawal_request.amount
+    amount = withdrawal_request.amount
     is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
 
     # If partial withdrawal queue is full, only full exits are processed
@@ -1254,7 +1285,7 @@ def process_execution_layer_withdrawal_request(
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkey exists
-    request_pubkey = execution_layer_withdrawal_request.validator_pubkey
+    request_pubkey = withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
         return
     index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
@@ -1263,7 +1294,7 @@ def process_execution_layer_withdrawal_request(
     # Verify withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(validator)
     is_correct_source_address = (
-        validator.withdrawal_credentials[12:] == execution_layer_withdrawal_request.source_address
+        validator.withdrawal_credentials[12:] == withdrawal_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
@@ -1326,12 +1357,12 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
 
 ##### Execution layer consolidation requests
 
-###### New `process_execution_layer_consolidation_request`
+###### New `process_consolidation_request`
 
 ```python
-def process_execution_layer_consolidation_request(
+def process_consolidation_request(
     state: BeaconState,
-    execution_layer_consolidation_request: ExecutionLayerConsolidationRequest
+    consolidation_request: ConsolidationRequest
 ) -> None:
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
@@ -1342,8 +1373,8 @@ def process_execution_layer_consolidation_request(
 
     validator_pubkeys = [v.pubkey for v in state.validators]
     # Verify pubkeys exists
-    request_source_pubkey = execution_layer_consolidation_request.source_pubkey
-    request_target_pubkey = execution_layer_consolidation_request.target_pubkey
+    request_source_pubkey = consolidation_request.source_pubkey
+    request_target_pubkey = consolidation_request.target_pubkey
     if request_source_pubkey not in validator_pubkeys:
         return
     if request_target_pubkey not in validator_pubkeys:
@@ -1360,7 +1391,7 @@ def process_execution_layer_consolidation_request(
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
-        source_validator.withdrawal_credentials[12:] == execution_layer_consolidation_request.source_address
+        source_validator.withdrawal_credentials[12:] == consolidation_request.source_address
     )
     if not (has_correct_credential and is_correct_source_address):
         return
@@ -1438,8 +1469,10 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     # Process activations
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+        # [Modified in Electra:EIP7251]
+        validator.effective_balance = min(
+            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_validator_max_effective_balance(validator))
+        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
