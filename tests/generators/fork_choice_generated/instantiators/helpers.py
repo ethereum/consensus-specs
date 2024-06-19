@@ -236,12 +236,12 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
     return signed_blocks, anchor_tip
 
 
-def make_events(spec, genesis_time, initial_store_time, test_data: FCTestData) -> list[tuple[int, object, bool]]:
+def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     """
         Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
         Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
     """
-    store_time = initial_store_time
+    genesis_time = test_data.anchor_state.genesis_time
     test_events = []
 
     def slot_to_time(slot):
@@ -249,47 +249,44 @@ def make_events(spec, genesis_time, initial_store_time, test_data: FCTestData) -
     
     def add_tick_step(time):
         test_events.append(('tick', time, None))
-        nonlocal store_time
-        store_time = time
     
     def add_message_step(kind, message):
         test_events.append((kind, message.payload, message.valid))
     
     add_tick_step(slot_to_time(test_data.anchor_state.slot))
 
-    # Apply generated messages
-    max_block_slot = max(b.payload.message.slot for b in test_data.blocks)
-    max_attestation_slot = max(a.payload.data.slot for a in test_data.atts) + 1 if any(test_data.atts) else 0
-    max_slashing_slot = max(max(s.payload.attestation_1.data.slot,
-                                s.payload.attestation_2.data.slot)
-                            for s in test_data.slashings) + 1 if any(test_data.slashings) else 0
+    def get_seffective_slot(message):
+        event_kind, data, _ = message
+        if event_kind == 'block':
+            return data.message.slot
+        elif event_kind == 'attestation':
+            return data.data.slot + 1
+        elif event_kind == 'attester_slashing':
+            return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
+        else:
+            assert False
 
-    start_slot = min(b.payload.message.slot for b in test_data.blocks)
-    end_slot = max(max_block_slot, max_attestation_slot, max_slashing_slot)
+    messages = [('attestation', m.payload, m.valid) for m in test_data.atts] \
+               + [('attester_slashing', m.payload, m.valid) for m in test_data.slashings] \
+               + [('block', m.payload, m.valid) for m in test_data.blocks]
 
-    # Advance time to start_slot
-    add_tick_step(slot_to_time(start_slot))
+    slot = None
 
-    # Apply messages to store
-    for slot in range(start_slot, end_slot + 1):
-        # on_tick
-        add_tick_step(slot_to_time(slot))
+    for event in sorted(messages, key=get_seffective_slot):
+        event_kind, message, valid = event
+        event_slot = get_seffective_slot(event)
+        if slot is None:
+            slot = event_slot
+            # record tick twice for compatibility with prior code
+            add_tick_step(slot_to_time(slot))
+            add_tick_step(slot_to_time(slot))
+        else:
+            while slot < event_slot:
+                slot += 1
+                add_tick_step(slot_to_time(slot))
+        add_message_step(event_kind, ProtocolMessage(message, valid))
 
-        # on_attestation for attestations from the previous slot
-        for attestation_message in (a for a in test_data.atts if a.payload.data.slot == slot - 1):
-            add_message_step('attestation', attestation_message)
-
-        # on_attester_slashing for slashing from the previous slot
-        for attester_slashing_message in (s for s in test_data.slashings
-                                          if max(s.payload.attestation_1.data.slot,
-                                                 s.payload.attestation_2.data.slot) == slot - 1):
-            add_message_step('attester_slashing', attester_slashing_message)
-
-        # on_block for blocks from the current slot
-        for signed_block_message in (b for b in test_data.blocks if b.payload.message.slot == slot):
-            add_message_step('block', signed_block_message)
-    
-    if store_time < test_data.store_final_time:
+    if slot is None or slot_to_time(slot) < test_data.store_final_time:
         add_tick_step(test_data.store_final_time)
     
     return test_events
@@ -352,5 +349,5 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
 
 
 def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool):
-    test_events = make_events(spec, store.genesis_time, store.time, test_data)
+    test_events = make_events(spec, test_data)
     yield from yield_fork_choice_test_events(spec, store, test_data, test_events, debug)
