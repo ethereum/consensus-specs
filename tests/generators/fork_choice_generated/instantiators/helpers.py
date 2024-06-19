@@ -16,6 +16,9 @@ from eth2spec.test.helpers.fork_choice import (
     add_attester_slashing,
     add_block,
     output_store_checks,
+    run_on_attestation,
+    run_on_attester_slashing,
+    run_on_block
 )
 from .debug_helpers import print_head
 
@@ -233,23 +236,26 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
     return signed_blocks, anchor_tip
 
 
-def _on_tick_and_append_step(spec, store, slot, test_steps):
-    time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
-    assert store.time == time
+def make_events(spec, genesis_time, initial_store_time, test_data: FCTestData) -> list[tuple[int, object, bool]]:
+    """
+        Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
+        Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
+    """
+    store_time = initial_store_time
+    test_events = []
 
-
-def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool):
-    # Yield meta
-    for k, v in test_data.meta.items():
-        yield k, 'meta', v
-
-    # Yield anchor state and block initialization
-    yield 'anchor_state', test_data.anchor_state
-    yield 'anchor_block', test_data.anchor_block
-
-    test_steps = []
-    _on_tick_and_append_step(spec, store, test_data.anchor_state.slot, test_steps)
+    def slot_to_time(slot):
+        return slot * spec.config.SECONDS_PER_SLOT + genesis_time
+    
+    def add_tick_step(time):
+        test_events.append(('tick', time, None))
+        nonlocal store_time
+        store_time = time
+    
+    def add_message_step(kind, message):
+        test_events.append((kind, message.payload, message.valid))
+    
+    add_tick_step(slot_to_time(test_data.anchor_state.slot))
 
     # Apply generated messages
     max_block_slot = max(b.payload.message.slot for b in test_data.blocks)
@@ -262,37 +268,80 @@ def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool)
     end_slot = max(max_block_slot, max_attestation_slot, max_slashing_slot)
 
     # Advance time to start_slot
-    _on_tick_and_append_step(spec, store, start_slot, test_steps)
+    add_tick_step(slot_to_time(start_slot))
 
     # Apply messages to store
     for slot in range(start_slot, end_slot + 1):
         # on_tick
-        _on_tick_and_append_step(spec, store, slot, test_steps)
+        add_tick_step(slot_to_time(slot))
 
         # on_attestation for attestations from the previous slot
         for attestation_message in (a for a in test_data.atts if a.payload.data.slot == slot - 1):
-            yield from add_attestation(spec, store, attestation_message.payload,
-                                       test_steps, valid=attestation_message.valid)
+            add_message_step('attestation', attestation_message)
 
         # on_attester_slashing for slashing from the previous slot
         for attester_slashing_message in (s for s in test_data.slashings
                                           if max(s.payload.attestation_1.data.slot,
                                                  s.payload.attestation_2.data.slot) == slot - 1):
-            yield from add_attester_slashing(spec, store, attester_slashing_message.payload,
-                                             test_steps, valid=attester_slashing_message.valid)
+            add_message_step('attester_slashing', attester_slashing_message)
 
         # on_block for blocks from the current slot
         for signed_block_message in (b for b in test_data.blocks if b.payload.message.slot == slot):
-            yield from add_block(spec, store, signed_block_message.payload, test_steps, signed_block_message.valid)
+            add_message_step('block', signed_block_message)
+    
+    if store_time < test_data.store_final_time:
+        add_tick_step(test_data.store_final_time)
+    
+    return test_events
 
-            block_root = signed_block_message.payload.message.hash_tree_root()
-            if signed_block_message.valid:
-                assert store.blocks[block_root] == signed_block_message.payload.message
+
+def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_events: list, debug: bool):
+    # Yield meta
+    for k, v in test_data.meta.items():
+        yield k, 'meta', v
+
+    # Yield anchor state and block initialization
+    yield 'anchor_state', test_data.anchor_state
+    yield 'anchor_block', test_data.anchor_block
+
+    test_steps = []
+
+    def try_add_mesage(runner, message):
+        try:
+            runner(spec, store, message, valid=True)
+            return True
+        except AssertionError:
+            return False
+
+    for event in test_events:
+        event_kind = event[0]
+        if event_kind == 'tick':
+            _, time, _ = event
+            on_tick_and_append_step(spec, store, time, test_steps)
+            assert store.time == time
+        elif event_kind == 'block':
+            _, signed_block, valid = event
+            if valid is None:
+                valid = try_add_mesage(run_on_block, signed_block)
+            yield from add_block(spec, store, signed_block, test_steps, valid=valid)
+
+            block_root = signed_block.message.hash_tree_root()
+            if valid:
+                assert store.blocks[block_root] == signed_block.message
             else:
                 assert block_root not in store.blocks.values()
-
-    if store.time < test_data.store_final_time:
-        on_tick_and_append_step(spec, store, test_data.store_final_time, test_steps)
+        elif event_kind == 'attestation':
+            _, attestation, valid = event
+            if valid is None:
+                valid = try_add_mesage(run_on_attestation, attestation)
+            yield from add_attestation(spec, store, attestation, test_steps, valid=valid)
+        elif event_kind == 'attester_slashing':
+            _, attester_slashing, valid = event
+            if valid is None:
+                valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
+            yield from add_attester_slashing(spec, store, attester_slashing, test_steps, valid=valid)
+        else:
+            raise ValueError('Unknown event ' + str(event_kind))
 
     if debug:
         print('               head: ' + print_head(spec, store))
@@ -300,3 +349,8 @@ def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield 'steps', test_steps
+
+
+def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool):
+    test_events = make_events(spec, store.genesis_time, store.time, test_data)
+    yield from yield_fork_choice_test_events(spec, store, test_data, test_events, debug)
