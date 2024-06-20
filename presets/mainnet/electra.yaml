@@ -43,3 +43,8 @@ MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 16
 # ---------------------------------------------------------------
 # 2**3 ( = 8) pending withdrawals
 MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 8
+
+# Pending deposits processing
+# ---------------------------------------------------------------
+# 2**4 ( = 4) pending deposits
+MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING: 16

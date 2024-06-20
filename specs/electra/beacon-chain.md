@@ -20,6 +20,7 @@
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
+  - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
@@ -179,6 +180,11 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
+
+### Pending deposits processing
+| Name | Value | Description |
+| - | - | - |
+| `MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
 
 ## Configuration
 
@@ -846,7 +852,11 @@ def process_pending_deposits(state: BeaconState) -> None:
     deposits_to_postpone = []
 
     for deposit in state.pending_deposits:
-        # If deposit does not fit in the churn, do no more deposit processing in this epoch.
+        # Check if number of processed deposits fits in the limit
+        if next_deposit_index > MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
+            break
+
+        # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
         churn_consumption = get_activation_churn_consumption(state, deposit)
         if processed_amount + churn_consumption > available_for_processing:
             break
