@@ -1,8 +1,8 @@
-# Phase 0 -- The Beacon Chain
+# Phase 0 -0x84e8277c938102f42FC2D9625Fc75049A86c99Ae The Beacon Chain
 
 ## Table of contents
 <!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
@@ -146,7 +146,7 @@ This document represents the specification for Phase 0 -- The Beacon Chain.
 At the core of Ethereum proof-of-stake is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of proof-of-stake, the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum proof-of-work chain. Activation as a validator happens when deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase 0).
 
-## Notation
+## Notation 0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 
 Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
@@ -176,7 +176,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
+| AbdulHafez | Value |0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 | - | - |
 | `UINT64_MAX` | `uint64(2**64 - 1)` |
 | `UINT64_MAX_SQRT` | `uint64(4294967295)` |
@@ -190,7 +190,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Withdrawal prefixes
 
-| Name | Value |
+| AbdulHafez | Value |
 | - | - |
 | `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
@@ -210,15 +210,15 @@ The following values are (non-configurable) constants used throughout the specif
 
 *Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in `DomainType` for application usage. This means for some `DomainType` `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK` **MUST** be non-zero. This expression for any other `DomainType` in the consensus specs **MUST** be zero.
 
-## Preset
+## Preset 0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 
 *Note*: The below configuration is bundled as a preset: a bundle of configuration variables which are expected to differ
 between different modes of operation, e.g. testing, but not generally between different networks.
 Additional preset configurations can be found in the [`configs`](../../configs) directory.
 
 ### Misc
-
-| Name | Value |
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
+|AbdulHafez| Value |
 | - | - |
 | `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
