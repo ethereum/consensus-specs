@@ -25,7 +25,7 @@
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`DepositRequest`](#depositrequest)
-    - [`PendingBalanceDeposit`](#pendingbalancedeposit)
+    - [`PendingDeposit`](#pendingdeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
     - [`ExecutionLayerWithdrawalRequest`](#executionlayerwithdrawalrequest)
     - [`ExecutionLayerConsolidationRequest`](#executionlayerconsolidationrequest)
@@ -70,7 +70,7 @@
   - [Epoch processing](#epoch-processing)
     - [Updated `process_epoch`](#updated-process_epoch)
     - [Updated  `process_registry_updates`](#updated--process_registry_updates)
-    - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
+    - [New `process_pending_deposits`](#new-process_pending_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Updated `process_effective_balance_updates`](#updated-process_effective_balance_updates)
   - [Block processing](#block-processing)
@@ -86,8 +86,6 @@
       - [Deposits](#deposits)
         - [Updated  `apply_deposit`](#updated--apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
-        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
-        - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
       - [Voluntary exits](#voluntary-exits)
         - [Updated `process_voluntary_exit`](#updated-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
@@ -156,7 +154,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `PENDING_BALANCE_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending balance deposits |
+| `PENDING_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending deposits |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
 | `PENDING_CONSOLIDATIONS_LIMIT` | `uint64(2**18)` (= 262,144) | pending consolidations |
 
@@ -207,14 +205,17 @@ class DepositRequest(Container):
     index: uint64
 ```
 
-#### `PendingBalanceDeposit`
+#### `PendingDeposit`
 
 *Note*: The container is new in EIP7251.
 
 ```python
-class PendingBalanceDeposit(Container):
-    index: ValidatorIndex
+class PendingDeposit(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
     amount: Gwei
+    signature: BLSSignature
+    slot: Slot
 ```
 
 #### `PendingPartialWithdrawal`
@@ -420,7 +421,7 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch  # [New in Electra:EIP7251]
     consolidation_balance_to_consume: Gwei  # [New in Electra:EIP7251]
     earliest_consolidation_epoch: Epoch  # [New in Electra:EIP7251]
-    pending_balance_deposits: List[PendingBalanceDeposit, PENDING_BALANCE_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
+    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
     # [New in Electra:EIP7251]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in Electra:EIP7251]
@@ -655,9 +656,14 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
     if balance > MIN_ACTIVATION_BALANCE:
         excess_balance = balance - MIN_ACTIVATION_BALANCE
         state.balances[index] = MIN_ACTIVATION_BALANCE
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=excess_balance)
-        )
+        validator = state.validators[index]
+        state.pending_deposits.append(PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=excess_balance,
+            signature=bls.G2_POINT_AT_INFINITY,
+            slot=GENESIS_SLOT,
+        ))
 ```
 
 #### New `queue_entire_balance_and_reset_validator`
@@ -668,9 +674,13 @@ def queue_entire_balance_and_reset_validator(state: BeaconState, index: Validato
     validator = state.validators[index]
     validator.effective_balance = 0
     validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-    state.pending_balance_deposits.append(
-        PendingBalanceDeposit(index=index, amount=balance)
-    )
+    state.pending_deposits.append(PendingDeposit(
+        pubkey=validator.pubkey,
+        withdrawal_credentials=validator.withdrawal_credentials,
+        amount=balance,
+        signature=bls.G2_POINT_AT_INFINITY,
+        slot=GENESIS_SLOT,
+    ))
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
@@ -769,7 +779,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings(state)
     process_eth1_data_reset(state)
-    process_pending_balance_deposits(state)  # [New in Electra:EIP7251]
+    process_pending_deposits(state)  # [New in Electra:EIP7251]
     process_pending_consolidations(state)  # [New in Electra:EIP7251]
     process_effective_balance_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings_reset(state)
@@ -804,44 +814,75 @@ def process_registry_updates(state: BeaconState) -> None:
             validator.activation_epoch = activation_epoch
 ```
 
-#### New `process_pending_balance_deposits`
+#### New `process_pending_deposits`
 
 ```python
-def process_pending_balance_deposits(state: BeaconState) -> None:
+def process_pending_deposits(state: BeaconState) -> None:
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
     deposits_to_postpone = []
 
-    for deposit in state.pending_balance_deposits:
-        validator = state.validators[deposit.index]
-        # Validator is exiting, postpone the deposit until after withdrawable epoch
-        if validator.exit_epoch < FAR_FUTURE_EPOCH:
-            if get_current_epoch(state) <= validator.withdrawable_epoch:
-                deposits_to_postpone.append(deposit)
-            # Deposited balance will never become active. Increase balance but do not consume churn
-            else:
-                increase_balance(state, deposit.index, deposit.amount)
-        # Validator is not exiting, attempt to process deposit
-        else:
+    for deposit in state.pending_deposits:
+        validator_pubkeys = [v.pubkey for v in state.validators]
+
+        if deposit.pubkey not in validator_pubkeys:
             # Deposit does not fit in the churn, no more deposit processing in this epoch.
             if processed_amount + deposit.amount > available_for_processing:
                 break
-            # Deposit fits in the churn, process it. Increase balance and consume churn.
-            else: 
-                increase_balance(state, deposit.index, deposit.amount)
+            # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+            if is_valid_deposit_signature(
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature
+            ):
+                add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
+                # Consume churn only if signature is valid.
                 processed_amount += deposit.amount
+        else:
+            validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+            validator = state.validators[validator_index]
+            # Validator is exiting, postpone the deposit until after withdrawable epoch
+            if validator.exit_epoch < FAR_FUTURE_EPOCH:
+                if get_current_epoch(state) <= validator.withdrawable_epoch:
+                    deposits_to_postpone.append(deposit)
+                # Deposited balance will never become active. Increase balance but do not consume churn
+                else:
+                    increase_balance(state, validator_index, deposit.amount)
+            # Validator is not exiting, attempt to process deposit
+            else:
+                # Deposit does not fit in the churn, no more deposit processing in this epoch.
+                if processed_amount + deposit.amount > available_for_processing:
+                    break
+                # Deposit fits in the churn, process it. Increase balance and consume churn.
+                else:
+                    increase_balance(state, validator_index, deposit.amount)
+                    processed_amount += deposit.amount
+                    # Check if valid deposit switch to compounding credentials
+                    if (
+                        is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
+                        and has_eth1_withdrawal_credential(validator)
+                        and is_valid_deposit_signature(
+                            deposit.pubkey,
+                            deposit.withdrawal_credentials,
+                            deposit.amount,
+                            deposit.signature
+                        )
+                    ):
+                        switch_to_compounding_validator(state, validator_index)
+
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
+    state.pending_deposits = state.pending_deposits[next_deposit_index:]
 
-    if len(state.pending_balance_deposits) == 0:
+    if len(state.pending_deposits) == 0:
         state.deposit_balance_to_consume = Gwei(0)
     else:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
 
-    state.pending_balance_deposits += deposits_to_postpone
+    state.pending_deposits += deposits_to_postpone
 ```
 
 #### New `process_pending_consolidations`
@@ -1143,21 +1184,25 @@ def apply_deposit(state: BeaconState,
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
+            # [New in Electra:EIP7251]
+            state.pending_deposits.append(PendingDeposit(
+                pubkey=pubkey,
+                withdrawal_credentials=withdrawal_credentials,
+                amount=amount,
+                signature=signature,
+                slot=GENESIS_SLOT,
+            ))
     else:
         # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=amount)
-        )  # [Modified in Electra:EIP-7251]
-        # Check if valid deposit switch to compounding credentials
-        if (
-            is_compounding_withdrawal_credential(withdrawal_credentials)
-            and has_eth1_withdrawal_credential(state.validators[index])
-            and is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature)
-        ):
-            switch_to_compounding_validator(state, index)
-
+        # [Modified in Electra:EIP-7251]
+        state.pending_deposits.append(PendingDeposit(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            amount=amount,
+            signature=signature,
+            slot=GENESIS_SLOT
+        ))
 ```
 
 ###### New `is_valid_deposit_signature`
@@ -1175,38 +1220,6 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
     domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
     signing_root = compute_signing_root(deposit_message, domain)
     return bls.Verify(pubkey, signing_root, signature)
-```
-
-###### Modified `add_validator_to_registry`
-
-```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
-    index = get_index_for_new_validator(state)
-    validator = get_validator_from_deposit(pubkey, withdrawal_credentials)
-    set_or_append_list(state.validators, index, validator)
-    set_or_append_list(state.balances, index, 0)  # [Modified in Electra:EIP7251]
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, uint64(0))
-    state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [New in Electra:EIP7251]
-```
-
-###### Updated `get_validator_from_deposit`
-
-```python
-def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32) -> Validator:
-    return Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=0,  # [Modified in Electra:EIP7251]
-    )
 ```
 
 ##### Voluntary exits
@@ -1315,13 +1328,13 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
         state.deposit_requests_start_index = deposit_request.index
 
-    apply_deposit(
-        state=state,
+    state.pending_deposits.append(PendingDeposit(
         pubkey=deposit_request.pubkey,
         withdrawal_credentials=deposit_request.withdrawal_credentials,
         amount=deposit_request.amount,
         signature=deposit_request.signature,
-    )
+        slot=state.slot,
+    ))
 ```
 
 ##### Execution layer consolidation requests
@@ -1431,9 +1444,11 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         process_deposit(state, deposit)
 
     # Process deposit balance updates
-    for deposit in state.pending_balance_deposits:
-        increase_balance(state, deposit.index, deposit.amount)
-    state.pending_balance_deposits = []
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    for deposit in state.pending_deposits:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        increase_balance(state, validator_index, deposit.amount)
+    state.pending_deposits = []
 
     # Process activations
     for index, validator in enumerate(state.validators):

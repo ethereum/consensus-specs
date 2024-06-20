@@ -365,8 +365,11 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     yield 'post', state
 
     if is_post_electra(spec):
-        assert state.pending_balance_deposits[0].amount == amount
-        assert state.pending_balance_deposits[0].index == validator_index
+        assert state.pending_deposits[0].pubkey == deposit.data.pubkey
+        assert state.pending_deposits[0].withdrawal_credentials == deposit.data.withdrawal_credentials
+        assert state.pending_deposits[0].amount == deposit.data.amount
+        assert state.pending_deposits[0].signature == deposit.data.signature
+        assert state.pending_deposits[0].slot == spec.GENESIS_SLOT
     else:
         # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
         validator = state.validators[validator_index]
@@ -405,7 +408,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
     balance = state.balances[validator_index]
     if is_post_electra(spec):
-        balance += state.pending_balance_deposits[0].amount
+        balance += state.pending_deposits[0].amount
 
     assert spec.is_fully_withdrawable_validator(
         state.validators[validator_index],

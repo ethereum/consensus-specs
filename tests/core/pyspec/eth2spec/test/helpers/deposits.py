@@ -219,6 +219,22 @@ def prepare_deposit_request(spec, validator_index, amount,
         signed,
     )
 
+
+def build_pending_deposit_top_up(spec, state, validator_index, amount, slot=None):
+    """
+    Create a pending deposit which is a top up to an existing validator
+    """
+    if slot is None:
+        slot = spec.GENESIS_SLOT
+
+    return spec.PendingDeposit(
+        pubkey=state.validators[validator_index].pubkey,
+        withdrawal_credentials=state.validators[validator_index].withdrawal_credentials,
+        amount=amount,
+        signature=bls.G2_POINT_AT_INFINITY,
+        slot=slot,
+    )
+
 #
 # Run processing
 #
@@ -243,7 +259,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         pre_effective_balance = state.validators[validator_index].effective_balance
 
     if is_post_electra(spec):
-        pre_pending_deposits = len(state.pending_balance_deposits)
+        pre_pending_deposits = len(state.pending_deposits)
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -285,9 +301,13 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             assert get_balance(state, validator_index) == pre_balance
             assert state.validators[validator_index].effective_balance == pre_effective_balance
             # new correct balance deposit queued up
-            assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
-            assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit.data.amount
-            assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
+            assert len(state.pending_deposits) == pre_pending_deposits + 1
+            assert state.pending_deposits[pre_pending_deposits].pubkey == deposit.data.pubkey
+            assert state.pending_deposits[
+                pre_pending_deposits].withdrawal_credentials == deposit.data.withdrawal_credentials
+            assert state.pending_deposits[pre_pending_deposits].amount == deposit.data.amount
+            assert state.pending_deposits[pre_pending_deposits].signature == deposit.data.signature
+            assert state.pending_deposits[pre_pending_deposits].slot == spec.GENESIS_SLOT
 
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
 
@@ -337,7 +357,7 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
-    pre_pending_deposits = len(state.pending_balance_deposits)
+    pre_pending_deposits = len(state.pending_deposits)
 
     yield 'pre', state
     yield 'deposit_request', deposit_request
@@ -363,13 +383,17 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
             assert len(state.validators) == pre_validator_count
             assert len(state.balances) == pre_validator_count
         else:
-            # new validator
-            assert len(state.validators) == pre_validator_count + 1
-            assert len(state.balances) == pre_validator_count + 1
+            # new validator is only created after the pending_deposits processing
+            assert len(state.validators) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
 
-        assert len(state.pending_balance_deposits) == pre_pending_deposits + 1
-        assert state.pending_balance_deposits[pre_pending_deposits].amount == deposit_request.amount
-        assert state.pending_balance_deposits[pre_pending_deposits].index == validator_index
+        assert len(state.pending_deposits) == pre_pending_deposits + 1
+        assert state.pending_deposits[pre_pending_deposits].pubkey == deposit_request.pubkey
+        assert state.pending_deposits[
+            pre_pending_deposits].withdrawal_credentials == deposit_request.withdrawal_credentials
+        assert state.pending_deposits[pre_pending_deposits].amount == deposit_request.amount
+        assert state.pending_deposits[pre_pending_deposits].signature == deposit_request.signature
+        assert state.pending_deposits[pre_pending_deposits].slot == state.slot
 
 
 def run_deposit_request_processing_with_specific_fork_version(
