@@ -58,6 +58,7 @@
     - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [`get_activation_churn_consumption`](#get_activation_churn_consumption)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
@@ -616,6 +617,27 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     return output
 ```
 
+#### `get_activation_churn_consumption`
+
+```python
+def get_activation_churn_consumption(state: BeaconState, pending_deposit: PendingDeposit) -> Gwei:
+    """
+    Return amount of activation churn consumed by the ``pending_deposit``.
+    """
+    validator_pubkeys = [v.pubkey for v in state.validators]
+
+    if pending_deposit.pubkey not in validator_pubkeys:
+        return pending_deposit.amount
+    else:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        validator = state.validators[validator_index]
+        # Validator is exiting, do not consume the churn
+        if validator.exit_epoch < FAR_FUTURE_EPOCH:
+            return Gwei(0)
+        else:
+            return pending_deposit.amount
+```
+
 ### Beacon state mutators
 
 #### Updated  `initiate_validator_exit`
@@ -824,12 +846,17 @@ def process_pending_deposits(state: BeaconState) -> None:
     deposits_to_postpone = []
 
     for deposit in state.pending_deposits:
+        # If deposit does not fit in the churn, do no more deposit processing in this epoch.
+        churn_consumption = get_activation_churn_consumption(state, deposit)
+        if processed_amount + churn_consumption > available_for_processing:
+            break
+
+        # Consume churn and process deposit
+        processed_amount += churn_consumption
+
         validator_pubkeys = [v.pubkey for v in state.validators]
 
         if deposit.pubkey not in validator_pubkeys:
-            # Deposit does not fit in the churn, no more deposit processing in this epoch.
-            if processed_amount + deposit.amount > available_for_processing:
-                break
             # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
             if is_valid_deposit_signature(
                 deposit.pubkey,
@@ -838,8 +865,6 @@ def process_pending_deposits(state: BeaconState) -> None:
                 deposit.signature
             ):
                 add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
-                # Consume churn only if signature is valid.
-                processed_amount += deposit.amount
         else:
             validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
             validator = state.validators[validator_index]
@@ -852,25 +877,20 @@ def process_pending_deposits(state: BeaconState) -> None:
                     increase_balance(state, validator_index, deposit.amount)
             # Validator is not exiting, attempt to process deposit
             else:
-                # Deposit does not fit in the churn, no more deposit processing in this epoch.
-                if processed_amount + deposit.amount > available_for_processing:
-                    break
-                # Deposit fits in the churn, process it. Increase balance and consume churn.
-                else:
-                    increase_balance(state, validator_index, deposit.amount)
-                    processed_amount += deposit.amount
-                    # Check if valid deposit switch to compounding credentials
-                    if (
-                        is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
-                        and has_eth1_withdrawal_credential(validator)
-                        and is_valid_deposit_signature(
-                            deposit.pubkey,
-                            deposit.withdrawal_credentials,
-                            deposit.amount,
-                            deposit.signature
-                        )
-                    ):
-                        switch_to_compounding_validator(state, validator_index)
+                # Increase balance
+                increase_balance(state, validator_index, deposit.amount)
+                # Check if valid deposit switch to compounding credentials.
+                if (
+                    is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
+                    and has_eth1_withdrawal_credential(validator)
+                    and is_valid_deposit_signature(
+                        deposit.pubkey,
+                        deposit.withdrawal_credentials,
+                        deposit.amount,
+                        deposit.signature
+                    )
+                ):
+                    switch_to_compounding_validator(state, validator_index)
 
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
