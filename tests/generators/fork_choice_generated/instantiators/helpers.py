@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from .debug_helpers import print_epoch
+from eth2spec.utils.ssz.ssz_typing import View
 from eth2spec.test.helpers.state import (
     next_slot,
 )
@@ -254,6 +255,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         test_events.append((kind, message.payload, message.valid))
     
     add_tick_step(slot_to_time(test_data.anchor_state.slot))
+    slot = test_data.anchor_state.slot
 
     def get_seffective_slot(message):
         event_kind, data, _ = message
@@ -270,20 +272,12 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
                + [('attester_slashing', m.payload, m.valid) for m in test_data.slashings] \
                + [('block', m.payload, m.valid) for m in test_data.blocks]
 
-    slot = None
-
     for event in sorted(messages, key=get_seffective_slot):
         event_kind, message, valid = event
         event_slot = get_seffective_slot(event)
-        if slot is None:
-            slot = event_slot
-            # record tick twice for compatibility with prior code
+        while slot < event_slot:
+            slot += 1
             add_tick_step(slot_to_time(slot))
-            add_tick_step(slot_to_time(slot))
-        else:
-            while slot < event_slot:
-                slot += 1
-                add_tick_step(slot_to_time(slot))
         add_message_step(event_kind, ProtocolMessage(message, valid))
 
     if slot is None or slot_to_time(slot) < test_data.store_final_time:
@@ -292,6 +286,25 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     return test_events
 
 
+def filter_out_duplicate_messages(fn):
+    def wrapper(*args, **kwargs):
+        processed_keys = set()
+        for data in fn(*args, **kwargs):
+            if len(data) != 2:
+                yield data
+            else:
+                (key, value) = data
+                if value is not None and isinstance(value, (bytes, View)):
+                    # skip already processed ssz parts
+                    if key not in processed_keys:
+                        processed_keys.add(key)
+                        yield data
+                else:
+                    yield data
+    return wrapper
+
+
+@filter_out_duplicate_messages
 def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_events: list, debug: bool):
     # Yield meta
     for k, v in test_data.meta.items():
@@ -314,8 +327,9 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
         event_kind = event[0]
         if event_kind == 'tick':
             _, time, _ = event
-            on_tick_and_append_step(spec, store, time, test_steps)
-            assert store.time == time
+            if time > store.time:
+                on_tick_and_append_step(spec, store, time, test_steps)
+                assert store.time == time
         elif event_kind == 'block':
             _, signed_block, valid = event
             if valid is None:
