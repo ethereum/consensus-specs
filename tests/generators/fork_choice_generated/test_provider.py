@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Tuple
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart, TestProvider
+from eth2spec.test.context import spec_test
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step, output_store_checks,
@@ -13,7 +14,7 @@ from eth2spec.utils import bls
 from scheduler import MessageScheduler
 from instantiators.block_cover import yield_block_cover_test_case, yield_block_cover_test_data
 from instantiators.block_tree import yield_block_tree_test_case, yield_block_tree_test_data
-from instantiators.helpers import FCTestData, make_events, yield_fork_choice_test_events
+from instantiators.helpers import FCTestData, make_events, yield_fork_choice_test_events, filter_out_duplicate_messages
 from mutation_operators import mutate_test_vector
 import random
 
@@ -48,17 +49,23 @@ class PlainFCTestCase(TestCase):
         spec = spec_targets[self.preset_name][self.fork_name]
 
         mut_seed = self.test_dna.mutation_seed
+        test_data = list(self.call_instantiator(test_data_only=True))[0][2]
+        events = make_events(spec, test_data)
+        store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
         if mut_seed is None:
-            return list(self.call_instantiator(test_data_only=False))
+            return (spec_test(yield_fork_choice_test_events))(
+                spec, store, test_data, events, self.debug, generator_mode=True, bls_active=self.bls_active)
         else:
-            test_data = list(self.call_instantiator(test_data_only=True))[0][2]
-            test_vector = events_to_test_vector(make_events(spec, test_data))
+            test_vector = events_to_test_vector(events)
             mutated_vector, = list(mutate_test_vector(random.Random(mut_seed), test_vector, 1, debug=self.debug))
             #mutated_tc.meta['mutation_seed'] = mut_seed
 
             mutated_events = test_vector_to_events(mutated_vector)
 
-            return yield_test_parts(spec, test_data, mutated_vector)
+            # return (spec_test(yield_fork_choice_test_events))(
+            #     spec, store, test_data, mutated_events, self.debug, generator_mode=True, bls_active=self.bls_active)
+            return (spec_test(yield_test_parts))(
+                spec, store, test_data, mutated_events, generator_mode=True, bls_active=self.bls_active)
     
     def plain_case_fn(self) -> Iterable[TestCasePart]:
         yield from self.call_instantiator(test_data_only=False)
@@ -119,54 +126,56 @@ def test_vector_to_events(test_vector):
     return events
 
 
-def yield_test_parts(spec, test_data: FCTestData, events):
-    old_bls_state = bls.bls_active
-    bls.bls_active = False
-    try:
+@filter_out_duplicate_messages
+def yield_test_parts(spec, store, test_data: FCTestData, events):
         for k,v in test_data.meta.items():
             yield k, 'meta', v
         
-        yield 'anchor_state', 'ssz', test_data.anchor_state.encode_bytes()
-        yield 'anchor_block', 'ssz', test_data.anchor_block.encode_bytes()
+        yield 'anchor_state', test_data.anchor_state
+        yield 'anchor_block', test_data.anchor_block
 
         for message in test_data.blocks:
             block = message.payload
-            yield get_block_file_name(block), 'ssz', block.encode_bytes()
+            yield get_block_file_name(block), block.encode_bytes()
         
         for message in test_data.atts:
             attestation = message.payload
-            yield get_attestation_file_name(attestation), 'ssz', attestation.encode_bytes()
+            yield get_attestation_file_name(attestation), attestation.encode_bytes()
         
         for message in test_data.slashings:
             attester_slashing = message.payload
-            yield get_attester_slashing_file_name(attester_slashing), 'ssz', attester_slashing.encode_bytes()
+            yield get_attester_slashing_file_name(attester_slashing), attester_slashing.encode_bytes()
         
         anchor_state = test_data.anchor_state
         anchor_block = test_data.anchor_block
-        store = spec.get_forkchoice_store(anchor_state, anchor_block)
         test_steps = []
         scheduler = MessageScheduler(spec, anchor_state, anchor_block)
 
-        for (time, (kind, event)) in events:
-            scheduler.process_tick(time)
-            on_tick_and_append_step(spec, store, time, test_steps)
+        for (kind, data, _) in events:
+            if kind == 'tick':
+                time = data
+                if time > store.time:
+                    scheduler.process_tick(time)
+                    on_tick_and_append_step(spec, store, time, test_steps)
 
-            # output checks after applying buffered messages, since they affect store state
-            output_store_checks(spec, store, test_steps)
-
-            if kind == 'block':
-                block_id = get_block_file_name(event)
-                valid = scheduler.process_block(event)
+                    # output checks after applying buffered messages, since they affect store state
+                    output_store_checks(spec, store, test_steps)
+            elif kind == 'block':
+                block = data
+                block_id = get_block_file_name(block)
+                valid = scheduler.process_block(block)
                 test_steps.append({'block': block_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
             elif kind == 'attestation':
-                att_id = get_attestation_file_name(event)
-                valid = scheduler.process_attestation(event, is_from_block=False)
+                attestation = data
+                att_id = get_attestation_file_name(attestation)
+                valid = scheduler.process_attestation(attestation, is_from_block=False)
                 test_steps.append({'attestation': att_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
             elif kind == 'attester_slashing':
-                slashing_id = get_attester_slashing_file_name(event)
-                valid = scheduler.process_slashing(event)
+                attester_slashing = data
+                slashing_id = get_attester_slashing_file_name(attester_slashing)
+                valid = scheduler.process_slashing(attester_slashing)
                 test_steps.append({'attester_slashing': slashing_id, 'valid': valid})
                 output_store_checks(spec, store, test_steps)
             else:
@@ -175,9 +184,7 @@ def yield_test_parts(spec, test_data: FCTestData, events):
         # on_tick_and_append_step(spec, store, next_slot_time, test_steps, checks_with_viable_for_head_weights=True)
         on_tick_and_append_step(spec, store, next_slot_time, test_steps)
 
-        yield 'steps', 'data', test_steps
-    finally:
-        bls.bls_active = old_bls_state
+        yield 'steps', test_steps
 
 
 def create_providers(test_name: str, /,
