@@ -479,17 +479,24 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # - interpolation_poly_k is the interpolation polynomial for the kth cell
     # - h_k is the coset shift specifying the evaluation domain of the kth cell
 
-
     # Preparation
-    l = len(row_indices)
+    num_cells = len(row_indices)
     n = FIELD_ELEMENTS_PER_CELL
     num_rows = len(row_commitments)
 
     # Step 1: Derive powers of r, i.e., r^0, ..., r^{l-1}, where l = len(row_indices)
-    r = int(verify_cell_kzg_proof_batch_challenge(row_commitments, row_indices, column_indices, cosets_evals, proofs))
+    r = int(
+        verify_cell_kzg_proof_batch_challenge(
+            row_commitments,
+            row_indices,
+            column_indices,
+            cosets_evals,
+            proofs
+        )
+    )
     current_power = 1
     r_powers = []
-    for _ in range(l):
+    for _ in range(num_cells):
         r_powers.append(current_power)
         current_power = (current_power * r) % BLS_MODULUS
 
@@ -502,34 +509,34 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # Step 4: Compute RL = RLC - RLI + RLP
     # Step 4.1: Compute RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
     commitment_weights = [0] * num_rows
-    for k in range(l):
+    for k in range(num_cells):
         commitment_weights[row_indices[k]] = (commitment_weights[row_indices[k]] + r_powers[k]) % BLS_MODULUS
     rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, commitment_weights))
 
     # Step 4.2: Compute RLI = [sum_k r^k * interpolation_poly_k(s)]
     # Note: an efficient implementation would use the IDFT based method explained in the blog post
     sum_interp_polys_coeff = [0]
-    for k in range(l):
+    for k in range(num_cells):
         interp_poly_coeff = interpolate_polynomialcoeff(coset_for_cell(column_indices[k]), cosets_evals[k])
         interp_poly_scaled_coeff = multiply_polynomialcoeff([r_powers[k]], interp_poly_coeff)
-        sum_interp_polys_coeff = add_polynomialcoeff(sum_interp_polys_coeff,interp_poly_scaled_coeff)
+        sum_interp_polys_coeff = add_polynomialcoeff(sum_interp_polys_coeff, interp_poly_scaled_coeff)
     rli = bls.bytes48_to_G1(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:n], sum_interp_polys_coeff))
 
     # Step 4.3: Compute RLP = sum_k r^k * h_k^n * proofs[k]
     weighted_r_powers = []
-    for k in range(l):
+    for k in range(num_cells):
         cosetshift = coset_shift_for_cell(column_indices[k])
         cosetshift_pow = pow(cosetshift, n, BLS_MODULUS)
         wrp = (r_powers[k] * cosetshift_pow) % BLS_MODULUS
         weighted_r_powers.append(wrp)
-    rlp = bls.bytes48_to_G1(g1_lincomb(proofs, weighted_r_powers)) #TODO: Maybe proofs need to be turned into g1 things first?
+    rlp = bls.bytes48_to_G1(g1_lincomb(proofs, weighted_r_powers))
 
     # Step 4.4: Compute RL = RLC - RLI + RLP
     rl = bls.add(rlc, bls.neg(rli))
     rl = bls.add(rl, rlp)
 
     # Step 5: Check pairing (LL, LR) = pairing (RL, [1])
-    return (bls.pairing_check([[ll, lr], [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])),],]))
+    return (bls.pairing_check([[ll, lr], [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])), ], ]))
 ```
 
 
