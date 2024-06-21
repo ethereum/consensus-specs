@@ -140,6 +140,7 @@ def test_verify_cell_kzg_proof_batch(spec):
         proofs_bytes=[proofs[0], proofs[4]],
     )
 
+
 @with_eip7594_and_later
 @spec_test
 @single_phase
