@@ -12,8 +12,6 @@ class ElectraSpecBuilder(BaseSpecBuilder):
 from eth2spec.deneb import {preset_name} as deneb
 '''
 
-## TODO: deal with changed gindices
-
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {

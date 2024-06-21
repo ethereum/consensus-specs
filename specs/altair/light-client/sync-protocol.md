@@ -21,6 +21,9 @@
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
 - [Helper functions](#helper-functions)
+  - [`finalized_root_gindex_at_slot`](#finalized_root_gindex_at_slot)
+  - [`current_sync_committee_gindex_at_slot`](#current_sync_committee_gindex_at_slot)
+  - [`next_sync_committee_gindex_at_slot`](#next_sync_committee_gindex_at_slot)
   - [`is_valid_light_client_header`](#is_valid_light_client_header)
   - [`is_sync_committee_update`](#is_sync_committee_update)
   - [`is_finality_update`](#is_finality_update)
@@ -28,6 +31,7 @@
   - [`is_next_sync_committee_known`](#is_next_sync_committee_known)
   - [`get_safety_threshold`](#get_safety_threshold)
   - [`get_subtree_index`](#get_subtree_index)
+  - [`is_valid_normalized_merkle_branch`](#is_valid_normalized_merkle_branch)
   - [`compute_sync_committee_period_at_slot`](#compute_sync_committee_period_at_slot)
 - [Light client initialization](#light-client-initialization)
   - [`initialize_light_client_store`](#initialize_light_client_store)
@@ -171,6 +175,30 @@ class LightClientStore(object):
 
 ## Helper functions
 
+### `finalized_root_gindex_at_slot`
+
+```python
+def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    # pylint: disable=unused-argument
+    return FINALIZED_ROOT_GINDEX
+```
+
+### `current_sync_committee_gindex_at_slot`
+
+```python
+def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    # pylint: disable=unused-argument
+    return CURRENT_SYNC_COMMITTEE_GINDEX
+```
+
+### `next_sync_committee_gindex_at_slot`
+
+```python
+def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    # pylint: disable=unused-argument
+    return NEXT_SYNC_COMMITTEE_GINDEX
+```
+
 ### `is_valid_light_client_header`
 
 ```python
@@ -273,6 +301,22 @@ def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
     return uint64(generalized_index % 2**(floorlog2(generalized_index)))
 ```
 
+### `is_valid_normalized_merkle_branch`
+
+```python
+def is_valid_normalized_merkle_branch(leaf: Bytes32,
+                                      branch: Sequence[Bytes32],
+                                      gindex: GeneralizedIndex,
+                                      root: Root) -> bool:
+    depth = floorlog2(gindex)
+    index = get_subtree_index(gindex)
+    num_extra = len(branch) - depth
+    for i in range(num_extra):
+        if branch[i] != Bytes32():
+            return False
+    return is_valid_merkle_branch(leaf, branch[num_extra:], depth, index, root)
+```
+
 ### `compute_sync_committee_period_at_slot`
 
 ```python
@@ -292,11 +336,10 @@ def initialize_light_client_store(trusted_block_root: Root,
     assert is_valid_light_client_header(bootstrap.header)
     assert hash_tree_root(bootstrap.header.beacon) == trusted_block_root
 
-    assert is_valid_merkle_branch(
+    assert is_valid_normalized_merkle_branch(
         leaf=hash_tree_root(bootstrap.current_sync_committee),
         branch=bootstrap.current_sync_committee_branch,
-        depth=floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX),
-        index=get_subtree_index(CURRENT_SYNC_COMMITTEE_GINDEX),
+        gindex=current_sync_committee_gindex_at_slot(bootstrap.header.beacon.slot),
         root=bootstrap.header.beacon.state_root,
     )
 
@@ -364,11 +407,10 @@ def validate_light_client_update(store: LightClientStore,
         else:
             assert is_valid_light_client_header(update.finalized_header)
             finalized_root = hash_tree_root(update.finalized_header.beacon)
-        assert is_valid_merkle_branch(
+        assert is_valid_normalized_merkle_branch(
             leaf=finalized_root,
             branch=update.finality_branch,
-            depth=floorlog2(FINALIZED_ROOT_GINDEX),
-            index=get_subtree_index(FINALIZED_ROOT_GINDEX),
+            gindex=finalized_root_gindex_at_slot(update.attested_header.beacon.slot),
             root=update.attested_header.beacon.state_root,
         )
 
@@ -379,11 +421,10 @@ def validate_light_client_update(store: LightClientStore,
     else:
         if update_attested_period == store_period and is_next_sync_committee_known(store):
             assert update.next_sync_committee == store.next_sync_committee
-        assert is_valid_merkle_branch(
+        assert is_valid_normalized_merkle_branch(
             leaf=hash_tree_root(update.next_sync_committee),
             branch=update.next_sync_committee_branch,
-            depth=floorlog2(NEXT_SYNC_COMMITTEE_GINDEX),
-            index=get_subtree_index(NEXT_SYNC_COMMITTEE_GINDEX),
+            gindex=next_sync_committee_gindex_at_slot(update.attested_header.beacon.slot),
             root=update.attested_header.beacon.state_root,
         )
 
