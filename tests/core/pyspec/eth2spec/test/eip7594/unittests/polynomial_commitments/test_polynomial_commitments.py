@@ -140,6 +140,24 @@ def test_verify_cell_kzg_proof_batch(spec):
         proofs_bytes=[proofs[0], proofs[4]],
     )
 
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_verify_cell_kzg_proof_batch_invalid(spec):
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
+
+    assert len(cells) == len(proofs)
+
+    assert not spec.verify_cell_kzg_proof_batch(
+        row_commitments_bytes=[commitment],
+        row_indices=[0, 0],
+        column_indices=[0, 4],
+        cells=[cells[0], cells[5]],
+        proofs_bytes=[proofs[0], proofs[4]],
+    )
+
 
 @with_eip7594_and_later
 @spec_test

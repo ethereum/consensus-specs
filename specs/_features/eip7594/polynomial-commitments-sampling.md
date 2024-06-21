@@ -34,6 +34,7 @@
   - [KZG multiproofs](#kzg-multiproofs)
     - [`compute_kzg_proof_multi_impl`](#compute_kzg_proof_multi_impl)
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
+    - [`verify_cell_kzg_proof_batch_impl`](#verify_cell_kzg_proof_batch_impl)
   - [Cell cosets](#cell-cosets)
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
@@ -193,17 +194,17 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
                     roots_of_unity: Sequence[BLSFieldElement],
                     inv: bool=False) -> Sequence[BLSFieldElement]:
     """
-    Computes an FFT/IFFT over a coset of the roots of unity. 
-    This is useful for when one wants to divide by a polynomial which 
+    Computes an FFT/IFFT over a coset of the roots of unity.
+    This is useful for when one wants to divide by a polynomial which
     vanishes on one or more elements in the domain.
     """
     vals = vals.copy()
-    
+
     def shift_vals(vals: Sequence[BLSFieldElement], factor: BLSFieldElement) -> Sequence[BLSFieldElement]:
-        """  
-        Multiply each entry in `vals` by succeeding powers of `factor`  
-        i.e., [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]  
-        """  
+        """
+        Multiply each entry in `vals` by succeeding powers of `factor`
+        i.e., [vals[0] * factor^0, vals[1] * factor^1, ..., vals[n] * factor^n]
+        """
         shift = 1
         for i in range(len(vals)):
             vals[i] = BLSFieldElement((int(vals[i]) * shift) % BLS_MODULUS)
@@ -362,12 +363,12 @@ def compute_kzg_proof_multi_impl(
     """
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
-    This is done by committing to the following quotient polynomial:  
+    This is done by committing to the following quotient polynomial:
         Q(X) = f(X) - I(X) / Z(X)
     Where:
         - I(X) is the degree `k-1` polynomial that agrees with f(x) at all `k` points
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
-    
+
     We further note that since the degree of I(X) is less than the degree of Z(X),
     the computation can be simplified in monomial form to Q(X) = f(X) / Z(X)
     """
@@ -401,7 +402,7 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
         Q(X) is the quotient polynomial computed by the prover
         I(X) is the degree k-1 polynomial that evaluates to `ys` at all `zs`` points
         Z(X) is the polynomial that evaluates to zero on all `k` points
-    
+
     The verifier receives the commitments to Q(X) and f(X), so they check the equation
     holds by using the following pairing equation:
         e([Q(X)]_1, [Z(X)]_2) == e([f(X)]_1 - [I(X)]_1, [1]_2)
@@ -422,6 +423,31 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
         ],
     ]))
 ```
+
+#### `verify_cell_kzg_proof_batch_impl`
+
+```python
+def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
+                                     row_indices: Sequence[RowIndex],
+                                     column_indices: Sequence[ColumnIndex],
+                                     cosets_evals: Sequence[CosetEvals],
+                                     proofs: Sequence[KZGProof]):
+    """
+    Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
+    matrix. The i-th cell is in row row_indices[i] and in column column_indices[i].
+    The list of all commitments is provided in row_commitments_bytes.
+
+    This function implements the universal verification equation introduced here:
+    https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
+    """
+
+    ## Currently still a naive solution
+    return all(
+        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), coset_evals, proof)
+        for commitment, column_index, coset_evals, proof in zip(commitments, column_indices, cosets_evals, proofs)
+    )
+```
+
 
 ### Cell cosets
 
@@ -457,7 +483,7 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
     Public method.
     """
     assert len(blob) == BYTES_PER_BLOB
-    
+
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
 
@@ -491,7 +517,7 @@ def verify_cell_kzg_proof(commitment_bytes: Bytes48,
     assert cell_index < CELLS_PER_EXT_BLOB
     assert len(cell) == BYTES_PER_CELL
     assert len(proof_bytes) == BYTES_PER_PROOF
-    
+
     coset = coset_for_cell(cell_index)
 
     return verify_kzg_proof_multi_impl(
@@ -511,18 +537,12 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
-    matrix. The list of all commitments is also provided in row_commitments_bytes.
-
-    This function implements the naive algorithm of checking every cell
-    individually; an efficient algorithm can be found here:
-    https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
-
-    This implementation does not require randomness, but for the algorithm that
-    requires it, `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` should be used to compute
-    the challenge value.
+    matrix. The i-th cell is in row row_indices[i] and in column column_indices[i].
+    The list of all commitments is provided in row_commitments_bytes.
 
     Public method.
     """
+
     assert len(cells) == len(proofs_bytes) == len(row_indices) == len(column_indices)
     for commitment_bytes in row_commitments_bytes:
         assert len(commitment_bytes) == BYTES_PER_COMMITMENT
@@ -543,10 +563,8 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
-    return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), coset_evals, proof)
-        for commitment, column_index, coset_evals, proof in zip(commitments, column_indices, cosets_evals, proofs)
-    )
+    # Do the actual verification
+    return verify_cell_kzg_proof_batch_impl(commitments, row_indices, column_indices, cosets_evals, proofs)
 ```
 
 ## Reconstruction
@@ -558,7 +576,7 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
     """
     Given the cells indices that are missing from the data, compute the polynomial that vanishes at every point that
     corresponds to a missing field element.
-    
+
     This method assumes that all of the cells cannot be missing. In this case the vanishing polynomial
     could be computed as Z(x) = x^n - 1, where `n` is FIELD_ELEMENTS_PER_EXT_BLOB.
 
@@ -617,7 +635,7 @@ def recover_data(cell_indices: Sequence[CellIndex],
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    # Convert (E*Z)(x) to monomial form 
+    # Convert (E*Z)(x) to monomial form
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
     # Convert (E*Z)(x) to evaluation form over a coset of the FFT domain
@@ -688,7 +706,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     recovered_cells = [
         coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
         for i in range(CELLS_PER_EXT_BLOB)]
-    
+
     polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
     polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
@@ -700,6 +718,6 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
             proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
             assert coset_evals_to_cell(ys) == recovered_cells[i]
             recovered_proofs[i] = proof
- 
+
     return recovered_cells, recovered_proofs
 ```
