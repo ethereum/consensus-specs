@@ -22,6 +22,7 @@
     - [`_fft_field`](#_fft_field)
     - [`fft_field`](#fft_field)
     - [`coset_fft_field`](#coset_fft_field)
+    - [`verify_cell_kzg_proof_batch_challenge`](#verify_cell_kzg_proof_batch_challenge)
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
     - [`polynomial_eval_to_coeff`](#polynomial_eval_to_coeff)
     - [`add_polynomialcoeff`](#add_polynomialcoeff)
@@ -36,6 +37,7 @@
     - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
     - [`verify_cell_kzg_proof_batch_impl`](#verify_cell_kzg_proof_batch_impl)
   - [Cell cosets](#cell-cosets)
+    - [`coset_shift_for_cell`](#coset_shift_for_cell)
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
@@ -221,6 +223,24 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
     else:
         vals = shift_vals(vals, shift_factor)
         return fft_field(vals, roots_of_unity, inv)
+```
+
+#### `verify_cell_kzg_proof_batch_challenge`
+
+```python
+def verify_cell_kzg_proof_batch_challenge(row_commitments: Sequence[KZGCommitment],
+                                          row_indices: Sequence[RowIndex],
+                                          column_indices: Sequence[ColumnIndex],
+                                          cosets_evals: Sequence[CosetEvals],
+                                          proofs: Sequence[KZGProof]) -> BLSFieldElement:
+    """
+    Compute a random challenge r used in the universal verification equation, see
+    https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
+
+    To compute the challenge, `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` should be used as a hash prefix
+    """
+    # TODO
+    return BLSFieldElement(2)
 ```
 
 ### Polynomials in coefficient form
@@ -427,11 +447,11 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `verify_cell_kzg_proof_batch_impl`
 
 ```python
-def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
+def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
                                      row_indices: Sequence[RowIndex],
                                      column_indices: Sequence[ColumnIndex],
                                      cosets_evals: Sequence[CosetEvals],
-                                     proofs: Sequence[KZGProof]):
+                                     proofs: Sequence[KZGProof]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
     matrix. The i-th cell is in row row_indices[i] and in column column_indices[i].
@@ -441,15 +461,93 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
     """
 
-    ## Currently still a naive solution
-    return all(
-        verify_kzg_proof_multi_impl(commitment, coset_for_cell(column_index), coset_evals, proof)
-        for commitment, column_index, coset_evals, proof in zip(commitments, column_indices, cosets_evals, proofs)
-    )
+    # The verification equation that we will check is pairing ( LL, LR ) = pairing (RL, [1]), where
+    # LL = sum_k r^k proofs[k],
+    # LR = [s^n]
+    # RL = RLC - RLI + RLP, with
+    #   RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
+    #   RLI = [sum_k r^k * interpolation_poly_k(s)]
+    #   RLP = sum_k r^k * h_k^n * proofs[k]
+    #
+    # Here, the variables have the following meaning:
+    # - k < len(row_indices) is an index iterating over all cells in the input
+    # - r is a random coefficient, derived from hashing all data provided by the prover
+    # - s is the secret embedded in the KZG setup
+    # - n = FIELD_ELEMENTS_PER_CELL is the size of the evaluation domain
+    # - i ranges over all rows that are touched
+    # - k_i < len(row_indices) ranges over all cells that are in row i
+    # - interpolation_poly_k is the interpolation polynomial for the kth cell
+    # - h_k is the coset shift specifying the evaluation domain of the kth cell
+
+
+    # Preparation
+    l = len(row_indices)
+    n = FIELD_ELEMENTS_PER_CELL
+    num_rows = len(row_commitments)
+
+    # Step 1: Derive powers of r, i.e., r^0, ..., r^{l-1}, where l = len(row_indices)
+    r = int(verify_cell_kzg_proof_batch_challenge(row_commitments, row_indices, column_indices, cosets_evals, proofs))
+    current_power = 1
+    r_powers = []
+    for _ in range(l):
+        r_powers.append(current_power)
+        current_power = (current_power * r) % BLS_MODULUS
+
+    # Step 2: Compute LL = sum_k r^k proofs[k]
+    ll = bls.bytes48_to_G1(g1_lincomb(proofs, r_powers))
+
+    # Step 3: Compute LR = [s^n]
+    lr = bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[n])
+
+    # Step 4: Compute RL = RLC - RLI + RLP
+    # Step 4.1: Compute RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
+    commitment_weights = [0] * num_rows
+    for k in range(l):
+        commitment_weights[row_indices[k]] = (commitment_weights[row_indices[k]] + r_powers[k]) % BLS_MODULUS
+    rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, commitment_weights))
+
+    # Step 4.2: Compute RLI = [sum_k r^k * interpolation_poly_k(s)]
+    # Note: an efficient implementation would use the IDFT based method explained in the blog post
+    sum_interp_polys_coeff = [0]
+    for k in range(l):
+        interp_poly_coeff = interpolate_polynomialcoeff(coset_for_cell(column_indices[k]), cosets_evals[k])
+        interp_poly_scaled_coeff = multiply_polynomialcoeff([r_powers[k]], interp_poly_coeff)
+        sum_interp_polys_coeff = add_polynomialcoeff(sum_interp_polys_coeff,interp_poly_scaled_coeff)
+    rli = bls.bytes48_to_G1(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:n], sum_interp_polys_coeff))
+
+    # Step 4.3: Compute RLP = sum_k r^k * h_k^n * proofs[k]
+    weighted_r_powers = []
+    for k in range(l):
+        cosetshift = coset_shift_for_cell(column_indices[k])
+        cosetshift_pow = pow(cosetshift, n, BLS_MODULUS)
+        wrp = (r_powers[k] * cosetshift_pow) % BLS_MODULUS
+        weighted_r_powers.append(wrp)
+    rlp = bls.bytes48_to_G1(g1_lincomb(proofs, weighted_r_powers)) #TODO: Maybe proofs need to be turned into g1 things first?
+
+    # Step 4.4: Compute RL = RLC - RLI + RLP
+    rl = bls.add(rlc, bls.neg(rli))
+    rl = bls.add(rl, rlp)
+
+    # Step 5: Check pairing (LL, LR) = pairing (RL, [1])
+    return (bls.pairing_check([[ll, lr], [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])),],]))
 ```
 
 
 ### Cell cosets
+
+#### `coset_shift_for_cell`
+
+```python
+def coset_shift_for_cell(cell_index: CellIndex) -> BLSFieldElement:
+    """
+    Get the shift that determines the coset for a given ``cell_index``.
+    """
+    assert cell_index < CELLS_PER_EXT_BLOB
+    roots_of_unity_brp = bit_reversal_permutation(
+        compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
+    )
+    return roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index]
+```
 
 #### `coset_for_cell`
 
@@ -555,16 +653,13 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
-    # Get commitments via row indices
-    commitments_bytes = [row_commitments_bytes[row_index] for row_index in row_indices]
-
     # Get objects from bytes
-    commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in commitments_bytes]
+    row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in row_commitments_bytes]
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
     # Do the actual verification
-    return verify_cell_kzg_proof_batch_impl(commitments, row_indices, column_indices, cosets_evals, proofs)
+    return verify_cell_kzg_proof_batch_impl(row_commitments, row_indices, column_indices, cosets_evals, proofs)
 ```
 
 ## Reconstruction
