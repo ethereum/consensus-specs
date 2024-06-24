@@ -239,8 +239,33 @@ def verify_cell_kzg_proof_batch_challenge(row_commitments: Sequence[KZGCommitmen
 
     To compute the challenge, `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` should be used as a hash prefix
     """
-    # TODO
-    return BLSFieldElement(2)
+    # input the domain separator
+    hashinput = RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN
+
+    # input the field elements per cell
+    hashinput += int.to_bytes(FIELD_ELEMENTS_PER_CELL, 8, KZG_ENDIANNESS)
+
+    # input the number of commitments
+    num_commitments = len(row_commitments)
+    hashinput += int.to_bytes(num_commitments, 8, KZG_ENDIANNESS)
+
+    # input the number of cells
+    num_cells = len(row_indices)
+    hashinput += int.to_bytes(num_cells, 8, KZG_ENDIANNESS)
+
+    # input all commitments
+    for commitment in row_commitments:
+        hashinput += commitment
+
+    # input each cell with its indices and proof
+    for k in range(num_cells):
+        hashinput += int.to_bytes(row_indices[k], 8, KZG_ENDIANNESS)
+        hashinput += int.to_bytes(column_indices[k], 8, KZG_ENDIANNESS)
+        for eval in cosets_evals[k]:
+            hashinput += bls_field_to_bytes(eval)
+        hashinput += proofs[k]
+
+    return hash_to_bls_field(hashinput)
 ```
 
 ### Polynomials in coefficient form
@@ -484,7 +509,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     n = FIELD_ELEMENTS_PER_CELL
     num_rows = len(row_commitments)
 
-    # Step 1: Derive powers of r, i.e., r^0, ..., r^{l-1}, where l = len(row_indices)
+    # Step 1: Derive powers of r, i.e., r^0, ..., r^{num_cells-1}
     r = int(
         verify_cell_kzg_proof_batch_challenge(
             row_commitments,
