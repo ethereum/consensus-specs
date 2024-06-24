@@ -263,9 +263,9 @@ def build_randomized_execution_payload(spec, state, rng):
     execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
         get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
     )
-    execution_payload.block_number = rng.randint(0, 10e10)
-    execution_payload.gas_limit = rng.randint(0, 10e10)
-    execution_payload.gas_used = rng.randint(0, 10e10)
+    execution_payload.block_number = rng.randint(0, int(10e10))
+    execution_payload.gas_limit = rng.randint(0, int(10e10))
+    execution_payload.gas_used = rng.randint(0, int(10e10))
     extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
     execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
         get_random_bytes_list(rng, extra_data_length)
