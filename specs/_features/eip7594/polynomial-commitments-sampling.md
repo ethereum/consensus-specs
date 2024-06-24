@@ -525,7 +525,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # Step 4.3: Compute RLP = sum_k r^k * h_k^n * proofs[k]
     weighted_r_powers = []
     for k in range(num_cells):
-        cosetshift = coset_shift_for_cell(column_indices[k])
+        cosetshift = int(coset_shift_for_cell(column_indices[k]))
         cosetshift_pow = pow(cosetshift, n, BLS_MODULUS)
         wrp = (r_powers[k] * cosetshift_pow) % BLS_MODULUS
         weighted_r_powers.append(wrp)
