@@ -33,5 +33,5 @@ class PayloadAttributes(object):
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
-    max_blobs_per_block: uint64  # [New in Electra]
+    base_fee_per_blob_gas: uint64  # [New in Electra]
 ```
