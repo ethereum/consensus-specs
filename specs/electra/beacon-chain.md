@@ -463,8 +463,8 @@ def fake_exponential(factor: int, numerator: int, denominator: int) -> int:
 ```python
 def get_blob_base_fee_update_fraction(max_blobs: int, target_blobs:int)) -> int:
     max_excess_per_block = (max_blobs - target_blobs) * BLOB_GAS_PER_BLOB
-    # 1 / ln(9 / 8) ~= 8.49 = 849 / 1000
-    return max_excess_per_block * 849 // 1000
+    # 1 / ln(9 / 8) ~= 8.49 = 849 / 100
+    return max_excess_per_block * 849 // 100
 ```
 
 
