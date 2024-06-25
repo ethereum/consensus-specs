@@ -206,7 +206,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 def get_extended_sample_count(allowed_failures: uint64) -> uint64:
     assert 0 <= allowed_failures <= NUMBER_OF_COLUMNS // 2
 
-    def math_comb(n, k):
+    def math_comb(n: int, k: int) -> int:
         if not 0 <= k <= n:
             return 0
         r = 1
@@ -214,12 +214,14 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
             r = r * (n - i) // (i + 1)
         return r
 
-    def hypergeom_cdf(k, M, n, N):
+    def hypergeom_cdf(k: uint64, M: uint64, n: uint64, N: uint64) -> float:
+        # NOTE: It contains float-point computations.
+        # Convert uint64 to Python integers before computations.
         k = int(k)
         M = int(M)
         n = int(n)
         N = int(N)
-        return sum([math_comb(n, i) * math_comb(M - n, N - i) // math_comb(M, N)
+        return sum([math_comb(n, i) * math_comb(M - n, N - i) / math_comb(M, N)
                     for i in range(k + 1)])
 
     worst_case_missing = NUMBER_OF_COLUMNS // 2 + 1
