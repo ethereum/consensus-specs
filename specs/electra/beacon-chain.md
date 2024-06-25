@@ -458,7 +458,7 @@ def fake_exponential(factor: int, numerator: int, denominator: int) -> int:
     return output // denominator
 ```
 
-#### `fake_exponential`
+#### `get_blob_base_fee_update_fraction`
 
 ```python
 def get_blob_base_fee_update_fraction(max_blobs: int, target_blobs:int)) -> int:
