@@ -851,15 +851,19 @@ def process_pending_deposits(state: BeaconState) -> None:
     next_deposit_index = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
 
     for deposit in state.pending_deposits:
-        # Do not process any deposit requests if Eth1 bridge deposits are not yet applied
-        if (state.deposit_requests_start_index != UNSET_DEPOSIT_REQUESTS_START_INDEX
-            and state.eth1_deposit_index < state.deposit_requests_start_index
-            and deposit.slot > GENESIS_SLOT):
+        # Do not process a deposit request if Eth1 bridge deposits are not yet applied.
+        is_deposit_request = deposit.slot > GENESIS_SLOT
+        if is_deposit_request and state.eth1_deposit_index < state.deposit_requests_start_index:
             break
 
-        # Check if number of processed deposits fits in the limit
+        # Check if deposit has been finalized, otherwise, stop processing.
+        if deposit.slot > finalized_slot:
+            break
+
+        # Check if number of processed deposits fits in the limit, otherwise, stop processing.
         if next_deposit_index > MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
             break
 
