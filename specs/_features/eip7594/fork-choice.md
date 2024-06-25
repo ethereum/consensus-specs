@@ -6,12 +6,18 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Containers](#containers)
-- [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
-  - [`is_data_available`](#is_data_available)
+  - [Helpers](#helpers)
+    - [`get_custody_parameters`](#get_custody_parameters)
+    - [`get_sampling_columns`](#get_sampling_columns)
+    - [`retrieve_column_sidecars`](#retrieve_column_sidecars)
+    - [`is_data_available`](#is_data_available)
+    - [`is_chain_available`](#is_chain_available)
+    - [`get_head`](#get_head)
+    - [`is_peer_sampling_required`](#is_peer_sampling_required)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
+    - [Pull-up tip helpers](#pull-up-tip-helpers)
+      - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -22,7 +28,21 @@ This is the modification of the fork choice accompanying EIP-7594
 
 ### Helpers
 
-### `is_data_available`
+#### `get_custody_parameters`
+
+`def get_custody_parameters() -> Tuple[NodeID, uint64]`
+
+#### `get_sampling_columns`
+
+
+`def get_sampling_columns() -> Sequence[ColumnIndex]`
+
+
+#### `retrieve_column_sidecars`
+
+`def retrieve_column_sidecars(beacon_block_root: Root, columns_to_retrieve: Sequence[ColumnIndex]) -> Sequence[DataColumnSidecar]`
+
+#### `is_data_available`
 
 ```python
 def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False) -> bool:
@@ -38,7 +58,7 @@ def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False
     )
 ```
 
-### `is_chain_available`
+#### `is_chain_available`
 
 ```python
 def is_chain_available(store: Store, beacon_block_root: Root) -> bool: 
@@ -55,7 +75,7 @@ def is_chain_available(store: Store, beacon_block_root: Root) -> bool:
     
 ```
 
-### `get_head`
+#### `get_head`
 
 ```python
 def get_head(store: Store) -> Root:
@@ -81,6 +101,8 @@ def get_head(store: Store) -> Root:
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
+
+#### `is_peer_sampling_required`
 
 ```python
 def is_peer_sampling_required(store, slot):
