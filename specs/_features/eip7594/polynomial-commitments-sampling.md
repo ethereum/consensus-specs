@@ -22,7 +22,7 @@
     - [`_fft_field`](#_fft_field)
     - [`fft_field`](#fft_field)
     - [`coset_fft_field`](#coset_fft_field)
-    - [`verify_cell_kzg_proof_batch_challenge`](#verify_cell_kzg_proof_batch_challenge)
+    - [`compute_verify_cell_kzg_proof_batch_challenge`](#compute_verify_cell_kzg_proof_batch_challenge)
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
     - [`polynomial_eval_to_coeff`](#polynomial_eval_to_coeff)
     - [`add_polynomialcoeff`](#add_polynomialcoeff)
@@ -225,14 +225,14 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
         return fft_field(vals, roots_of_unity, inv)
 ```
 
-#### `verify_cell_kzg_proof_batch_challenge`
+#### `compute_verify_cell_kzg_proof_batch_challenge`
 
 ```python
-def verify_cell_kzg_proof_batch_challenge(row_commitments: Sequence[KZGCommitment],
-                                          row_indices: Sequence[RowIndex],
-                                          column_indices: Sequence[ColumnIndex],
-                                          cosets_evals: Sequence[CosetEvals],
-                                          proofs: Sequence[KZGProof]) -> BLSFieldElement:
+def compute_verify_cell_kzg_proof_batch_challenge(row_commitments: Sequence[KZGCommitment],
+                                                  row_indices: Sequence[RowIndex],
+                                                  column_indices: Sequence[ColumnIndex],
+                                                  cosets_evals: Sequence[CosetEvals],
+                                                  proofs: Sequence[KZGProof]) -> BLSFieldElement:
     """
     Compute a random challenge r used in the universal verification equation, see
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
@@ -511,7 +511,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
 
     # Step 1: Derive powers of r, i.e., r^0, ..., r^{num_cells-1}
     r = int(
-        verify_cell_kzg_proof_batch_challenge(
+        compute_verify_cell_kzg_proof_batch_challenge(
             row_commitments,
             row_indices,
             column_indices,
