@@ -635,7 +635,7 @@ def get_activation_churn_consumption(state: BeaconState, pending_deposit: Pendin
     if pending_deposit.pubkey not in validator_pubkeys:
         return pending_deposit.amount
     else:
-        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        validator_index = ValidatorIndex(validator_pubkeys.index(pending_deposit.pubkey))
         validator = state.validators[validator_index]
         # Validator is exiting, do not consume the churn
         if validator.exit_epoch < FAR_FUTURE_EPOCH:
@@ -850,8 +850,15 @@ def process_pending_deposits(state: BeaconState) -> None:
     processed_amount = 0
     next_deposit_index = 0
     deposits_to_postpone = []
+    is_churn_limit_reached = False
 
     for deposit in state.pending_deposits:
+        # Do not process any deposit requests if Eth1 bridge deposits are not yet applied
+        if (state.deposit_requests_start_index != UNSET_DEPOSIT_REQUESTS_START_INDEX
+            and state.eth1_deposit_index < state.deposit_requests_start_index
+            and deposit.slot > GENESIS_SLOT):
+            break
+
         # Check if number of processed deposits fits in the limit
         if next_deposit_index > MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
             break
@@ -859,6 +866,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
         churn_consumption = get_activation_churn_consumption(state, deposit)
         if processed_amount + churn_consumption > available_for_processing:
+            is_churn_limit_reached = True
             break
 
         # Consume churn and process deposit
@@ -907,10 +915,10 @@ def process_pending_deposits(state: BeaconState) -> None:
 
     state.pending_deposits = state.pending_deposits[next_deposit_index:]
 
-    if len(state.pending_deposits) == 0:
-        state.deposit_balance_to_consume = Gwei(0)
-    else:
+    if is_churn_limit_reached:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
+    else:
+        state.deposit_balance_to_consume = Gwei(0)
 
     state.pending_deposits += deposits_to_postpone
 ```
