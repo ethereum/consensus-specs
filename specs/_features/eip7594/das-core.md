@@ -223,7 +223,7 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 
 For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with the `get_data_column_sidecars(signed_block: SignedBeaconBlock, blobs: Sequence[Blob])` helper.
 
-To custody a particular column, a node joins the respective gossip subnet. Verifiable samples from their respective column are gossiped on the assigned subnet.
+Verifiable samples from their respective column are distributed on the assigned subnet. To custody a particular column, a node joins the respective gossipsub subnet. If a node fails to get a column on the column subnet, a node can also utilize the Req/Resp protocol to query the missing column from other peers.
 
 ## Peer sampling
 
@@ -234,8 +234,6 @@ A node SHOULD maintain a diverse set of peers for each column and each slot by v
 Due to the deterministic custody functions, a node knows exactly what a peer should be able to respond to. In the event that a peer does not respond to samples of their custodied rows/columns, a node may downscore or disconnect from a peer.
 
 ## Reconstruction and cross-seeding
-
-If a node fails to get a column on the column subnet, a node can also utilize the Req/Resp message to query the missing column from other peers.
 
 If the node obtains 50%+ of all the columns, it SHOULD reconstruct the full data matrix via `recover_matrix` helper. Nodes MAY delay this reconstruction allowing time for other columns to arrive over the network. If delaying reconstruction, nodes may use a random delay in order to desynchronize reconstruction among nodes, thus reducing overall CPU load.
 
