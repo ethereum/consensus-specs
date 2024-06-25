@@ -565,6 +565,9 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
     We never encounter this case however because this method is used solely for recovery and recovery only
     works if at least half of the cells are available.
     """
+
+    assert len(missing_cell_indices) != 0
+
     # Get the small domain
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
