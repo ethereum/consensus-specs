@@ -486,13 +486,13 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
     """
 
-    # The verification equation that we will check is pairing ( LL, LR ) = pairing (RL, [1]), where
+    # The verification equation that we will check is pairing (LL, LR) = pairing (RL, [1]), where
     # LL = sum_k r^k proofs[k],
     # LR = [s^n]
-    # RL = RLC - RLI + RLP, with
+    # RL = RLC - RLI + RLP, where
     #   RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
-    #   RLI = [sum_k r^k * interpolation_poly_k(s)]
-    #   RLP = sum_k r^k * h_k^n * proofs[k]
+    #   RLI = [sum_k r^k interpolation_poly_k(s)]
+    #   RLP = sum_k (r^k * h_k^n) proofs[k]
     #
     # Here, the variables have the following meaning:
     # - k < len(row_indices) is an index iterating over all cells in the input
@@ -509,21 +509,15 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     n = FIELD_ELEMENTS_PER_CELL
     num_rows = len(row_commitments)
 
-    # Step 1: Derive powers of r, i.e., r^0, ..., r^{num_cells-1}
-    r = int(
-        compute_verify_cell_kzg_proof_batch_challenge(
-            row_commitments,
-            row_indices,
-            column_indices,
-            cosets_evals,
-            proofs
-        )
+    # Step 1: Compute a challenge r and its powers r^0, ..., r^{num_cells-1}
+    r = compute_verify_cell_kzg_proof_batch_challenge(
+        row_commitments,
+        row_indices,
+        column_indices,
+        cosets_evals,
+        proofs
     )
-    current_power = 1
-    r_powers = []
-    for _ in range(num_cells):
-        r_powers.append(current_power)
-        current_power = (current_power * r) % BLS_MODULUS
+    r_powers = compute_powers(r, num_cells)
 
     # Step 2: Compute LL = sum_k r^k proofs[k]
     ll = bls.bytes48_to_G1(g1_lincomb(proofs, r_powers))
@@ -535,10 +529,10 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # Step 4.1: Compute RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
     commitment_weights = [0] * num_rows
     for k in range(num_cells):
-        commitment_weights[row_indices[k]] = (commitment_weights[row_indices[k]] + r_powers[k]) % BLS_MODULUS
+        commitment_weights[row_indices[k]] = (commitment_weights[row_indices[k]] + int(r_powers[k])) % BLS_MODULUS
     rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, commitment_weights))
 
-    # Step 4.2: Compute RLI = [sum_k r^k * interpolation_poly_k(s)]
+    # Step 4.2: Compute RLI = [sum_k r^k interpolation_poly_k(s)]
     # Note: an efficient implementation would use the IDFT based method explained in the blog post
     sum_interp_polys_coeff = [0]
     for k in range(num_cells):
@@ -547,12 +541,12 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
         sum_interp_polys_coeff = add_polynomialcoeff(sum_interp_polys_coeff, interp_poly_scaled_coeff)
     rli = bls.bytes48_to_G1(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:n], sum_interp_polys_coeff))
 
-    # Step 4.3: Compute RLP = sum_k r^k * h_k^n * proofs[k]
+    # Step 4.3: Compute RLP = sum_k (r^k * h_k^n) proofs[k]
     weighted_r_powers = []
     for k in range(num_cells):
         cosetshift = int(coset_shift_for_cell(column_indices[k]))
         cosetshift_pow = pow(cosetshift, n, BLS_MODULUS)
-        wrp = (r_powers[k] * cosetshift_pow) % BLS_MODULUS
+        wrp = (int(r_powers[k]) * cosetshift_pow) % BLS_MODULUS
         weighted_r_powers.append(wrp)
     rlp = bls.bytes48_to_G1(g1_lincomb(proofs, weighted_r_powers))
 
@@ -667,8 +661,11 @@ def verify_cell_kzg_proof_batch(row_commitments_bytes: Sequence[Bytes48],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
-    matrix. The i-th cell is in row row_indices[i] and in column column_indices[i].
+    matrix. The i-th cell is in row = row_indices[i] and in column = column_indices[i].
     The list of all commitments is provided in row_commitments_bytes.
+
+    This function implements the universal verification equation that has been introduced here:
+    https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
 
     Public method.
     """
