@@ -645,8 +645,7 @@ def recover_data(cell_indices: Sequence[CellIndex],
 
 ```python
 def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
-                                 cells: Sequence[Cell],
-                                 proofs_bytes: Sequence[Bytes48]) -> Tuple[
+                                 cells: Sequence[Cell]) -> Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
@@ -660,7 +659,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
 
     Public method.
     """
-    assert len(cell_indices) == len(cells) == len(proofs_bytes)
+    assert len(cell_indices) == len(cells)
     # Check we have enough cells to be able to perform the reconstruction
     assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
@@ -671,9 +670,6 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Check that each cell is the correct length
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
-    # Check that each proof is the correct length
-    for proof_bytes in proofs_bytes:
-        assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
@@ -692,14 +688,12 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
     polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
-    for i, cell_index in enumerate(cell_indices):
-        recovered_proofs[cell_index] = bytes_to_kzg_proof(proofs_bytes[i])
+
     for i in range(CELLS_PER_EXT_BLOB):
-        if recovered_proofs[i] is None:
-            coset = coset_for_cell(CellIndex(i))
-            proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-            assert coset_evals_to_cell(ys) == recovered_cells[i]
-            recovered_proofs[i] = proof
+        coset = coset_for_cell(CellIndex(i))
+        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+        assert coset_evals_to_cell(ys) == recovered_cells[i]
+        recovered_proofs[i] = proof
  
     return recovered_cells, recovered_proofs
 ```
