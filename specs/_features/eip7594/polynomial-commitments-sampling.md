@@ -44,7 +44,7 @@
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
-  - [`recover_data`](#recover_data)
+  - [`recover_polynomial_coeff`](#recover_polynomial_coeff)
   - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -582,14 +582,14 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
     return zero_poly_coeff
 ```
 
-### `recover_data`
+### `recover_polynomial_coeff`
 
 ```python
-def recover_data(cell_indices: Sequence[CellIndex],
+def recover_polynomial_coeff(cell_indices: Sequence[CellIndex],
                  cells: Sequence[Cell],
                  ) -> Sequence[BLSFieldElement]:
     """
-    Recover the missing evaluations for the extended blob, given at least half of the evaluations.
+    Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended_blob.
     """
 
     # Get the extended domain. This will be referred to as the FFT domain.
@@ -635,10 +635,7 @@ def recover_data(cell_indices: Sequence[CellIndex],
     # Convert Q_3(x) to monomial form
     reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
-    # Convert Q_3(x) to evaluation form over the FFT domain and bit reverse the result
-    reconstructed_data = bit_reversal_permutation(fft_field(reconstructed_poly_coeff, roots_of_unity_extended))
-
-    return reconstructed_data
+    return reconstructed_poly_coeff
 ```
 
 ### `recover_cells_and_kzg_proofs`
@@ -678,19 +675,8 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Convert cells to coset evals
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    reconstructed_data = recover_data(cell_indices, cosets_evals)
+    polynomial_coeff = recover_polynomial_coeff(cell_indices, cosets_evals)
 
-    for cell_index, coset_evals in zip(cell_indices, cosets_evals):
-        start = cell_index * FIELD_ELEMENTS_PER_CELL
-        end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
-        assert reconstructed_data[start:end] == coset_evals
-
-    recovered_cells = [
-        coset_evals_to_cell(reconstructed_data[i * FIELD_ELEMENTS_PER_CELL:(i + 1) * FIELD_ELEMENTS_PER_CELL])
-        for i in range(CELLS_PER_EXT_BLOB)]
-    
-    polynomial_eval = reconstructed_data[:FIELD_ELEMENTS_PER_BLOB]
-    polynomial_coeff = polynomial_eval_to_coeff(polynomial_eval)
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
     for i, cell_index in enumerate(cell_indices):
         recovered_proofs[cell_index] = bytes_to_kzg_proof(proofs_bytes[i])
@@ -698,7 +684,6 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
         if recovered_proofs[i] is None:
             coset = coset_for_cell(CellIndex(i))
             proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-            assert coset_evals_to_cell(ys) == recovered_cells[i]
             recovered_proofs[i] = proof
  
     return recovered_cells, recovered_proofs
