@@ -72,6 +72,7 @@
   - [Epoch processing](#epoch-processing)
     - [Updated `process_epoch`](#updated-process_epoch)
     - [Updated  `process_registry_updates`](#updated--process_registry_updates)
+    - [New `apply_pending_deposit`](#new-apply_pending_deposit)
     - [New `process_pending_deposits`](#new-process_pending_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Updated `process_effective_balance_updates`](#updated-process_effective_balance_updates)
@@ -626,22 +627,22 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 #### `get_activation_churn_consumption`
 
 ```python
-def get_activation_churn_consumption(state: BeaconState, pending_deposit: PendingDeposit) -> Gwei:
+def get_activation_churn_consumption(state: BeaconState, deposit: PendingDeposit) -> Gwei:
     """
-    Return amount of activation churn consumed by the ``pending_deposit``.
+    Return amount of activation churn consumed by the ``deposit``.
     """
     validator_pubkeys = [v.pubkey for v in state.validators]
 
-    if pending_deposit.pubkey not in validator_pubkeys:
-        return pending_deposit.amount
+    if deposit.pubkey not in validator_pubkeys:
+        return deposit.amount
     else:
-        validator_index = ValidatorIndex(validator_pubkeys.index(pending_deposit.pubkey))
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
         validator = state.validators[validator_index]
         # Validator is exiting, do not consume the churn
         if validator.exit_epoch < FAR_FUTURE_EPOCH:
             return Gwei(0)
         else:
-            return pending_deposit.amount
+            return deposit.amount
 ```
 
 ### Beacon state mutators
@@ -842,7 +843,62 @@ def process_registry_updates(state: BeaconState) -> None:
             validator.activation_epoch = activation_epoch
 ```
 
+#### New `apply_pending_deposit`
+
+```python
+def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> bool:
+    """
+    Applies ``deposit`` to the ``state``.
+    Returns ``True`` if ``deposit`` has been successfully applied
+    and can be removed from the queue.
+    """
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if deposit.pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature
+        ):
+            add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
+    else:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        validator = state.validators[validator_index]
+        # Validator is exiting, postpone the deposit until after withdrawable epoch
+        if validator.exit_epoch < FAR_FUTURE_EPOCH:
+            if get_current_epoch(state) <= validator.withdrawable_epoch:
+                return False
+            # Deposited balance will never become active. Increase balance but do not consume churn
+            else:
+                increase_balance(state, validator_index, deposit.amount)
+        # Validator is not exiting, attempt to process deposit
+        else:
+            # Increase balance
+            increase_balance(state, validator_index, deposit.amount)
+            # Check if valid deposit switch to compounding credentials.
+            if (
+                is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
+                and has_eth1_withdrawal_credential(validator)
+                and is_valid_deposit_signature(
+                    deposit.pubkey,
+                    deposit.withdrawal_credentials,
+                    deposit.amount,
+                    deposit.signature
+                )
+            ):
+                switch_to_compounding_validator(state, validator_index)
+
+    return True
+```
+
 #### New `process_pending_deposits`
+
+Iterating over `pending_deposits` queue this function runs the following checks before applying pending deposit:
+1. All Eth1 bridge deposits are processed before the first deposit request gets processed.
+2. Deposit position in the queue is finalized.
+3. Deposit does not exceed the `MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING` limit.
+4. Deposit does not exceed the activation churn limit.
 
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
@@ -854,16 +910,20 @@ def process_pending_deposits(state: BeaconState) -> None:
     finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
 
     for deposit in state.pending_deposits:
-        # Do not process a deposit request if Eth1 bridge deposits are not yet applied.
-        is_deposit_request = deposit.slot > GENESIS_SLOT
-        if is_deposit_request and state.eth1_deposit_index < state.deposit_requests_start_index:
+        # Do not process deposit requests if Eth1 bridge deposits are not yet applied.
+        if (
+            # Is deposit request
+            deposit.slot > GENESIS_SLOT and
+            # There are pending Eth1 bridge deposits
+            state.eth1_deposit_index < state.deposit_requests_start_index
+        ):
             break
 
         # Check if deposit has been finalized, otherwise, stop processing.
         if deposit.slot > finalized_slot:
             break
 
-        # Check if number of processed deposits fits in the limit, otherwise, stop processing.
+        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
         if next_deposit_index > MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
             break
 
@@ -873,52 +933,20 @@ def process_pending_deposits(state: BeaconState) -> None:
             is_churn_limit_reached = True
             break
 
-        # Consume churn and process deposit
+        # Consume churn and apply deposit
         processed_amount += churn_consumption
+        is_deposit_applied = apply_pending_deposit(state, deposit)
 
-        validator_pubkeys = [v.pubkey for v in state.validators]
-
-        if deposit.pubkey not in validator_pubkeys:
-            # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-            if is_valid_deposit_signature(
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature
-            ):
-                add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
-        else:
-            validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
-            validator = state.validators[validator_index]
-            # Validator is exiting, postpone the deposit until after withdrawable epoch
-            if validator.exit_epoch < FAR_FUTURE_EPOCH:
-                if get_current_epoch(state) <= validator.withdrawable_epoch:
-                    deposits_to_postpone.append(deposit)
-                # Deposited balance will never become active. Increase balance but do not consume churn
-                else:
-                    increase_balance(state, validator_index, deposit.amount)
-            # Validator is not exiting, attempt to process deposit
-            else:
-                # Increase balance
-                increase_balance(state, validator_index, deposit.amount)
-                # Check if valid deposit switch to compounding credentials.
-                if (
-                    is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
-                    and has_eth1_withdrawal_credential(validator)
-                    and is_valid_deposit_signature(
-                        deposit.pubkey,
-                        deposit.withdrawal_credentials,
-                        deposit.amount,
-                        deposit.signature
-                    )
-                ):
-                    switch_to_compounding_validator(state, validator_index)
+        # Postpone deposit if it has not been applied.
+        if not is_deposit_applied:
+            deposits_to_postpone.append(deposit)
 
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
     state.pending_deposits = state.pending_deposits[next_deposit_index:]
 
+    # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
     else:
