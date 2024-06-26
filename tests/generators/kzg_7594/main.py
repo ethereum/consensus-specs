@@ -13,7 +13,6 @@ from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.kzg_tests import (
     CELL_RANDOM_VALID1,
     CELL_RANDOM_VALID2,
-    G1,
     INVALID_BLOBS,
     INVALID_G1_POINTS,
     INVALID_INDIVIDUAL_CELL_BYTES,
