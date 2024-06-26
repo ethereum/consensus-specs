@@ -586,8 +586,8 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
 
 ```python
 def recover_polynomial_coeff(cell_indices: Sequence[CellIndex],
-                 cells: Sequence[Cell],
-                 ) -> Sequence[BLSFieldElement]:
+                             cells: Sequence[Cell],
+                            ) -> Sequence[BLSFieldElement]:
     """
     Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended_blob.
     """
@@ -678,13 +678,13 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     polynomial_coeff = recover_polynomial_coeff(cell_indices, cosets_evals)
 
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
-    for i, cell_index in enumerate(cell_indices):
-        recovered_proofs[cell_index] = bytes_to_kzg_proof(proofs_bytes[i])
+    recovered_cells = [None] * CELLS_PER_EXT_BLOB
+
     for i in range(CELLS_PER_EXT_BLOB):
-        if recovered_proofs[i] is None:
-            coset = coset_for_cell(CellIndex(i))
-            proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-            recovered_proofs[i] = proof
+        coset = coset_for_cell(CellIndex(i))
+        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+        recovered_proofs[i] = proof
+        recovered_cells[i] = ys
  
     return recovered_cells, recovered_proofs
 ```
