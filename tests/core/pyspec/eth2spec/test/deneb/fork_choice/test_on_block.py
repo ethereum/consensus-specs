@@ -2,7 +2,6 @@ from random import Random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_phases([DENEB]),
     with_phases,
 )
 
