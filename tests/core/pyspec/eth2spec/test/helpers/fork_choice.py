@@ -10,6 +10,7 @@ from eth2spec.test.helpers.attestations import (
 
 from eth2spec.test.helpers.forks import is_post_eip_7594
 
+
 class BlobData(NamedTuple):
     """
     The return values of ``retrieve_blobs_and_proofs`` helper.
@@ -153,7 +154,7 @@ def on_tick_and_append_step(spec, store, time, test_steps):
 
 def run_on_block(spec, store, signed_block, valid=True):
     if is_post_eip_7594(spec):
-        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool: 
+        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool:
             if beacon_block_root == b'\x00' * 32:
                 # anchor block has current_justified_checkpoint root 0x0
                 return True
@@ -164,12 +165,12 @@ def run_on_block(spec, store, signed_block, valid=True):
                 return True
             parent_root = block.parent_root
             return (
-                spec.is_data_available(beacon_block_root, require_peer_sampling=True) 
+                spec.is_data_available(beacon_block_root, require_peer_sampling=True)
                 and is_chain_available(store, parent_root)
             )
         spec.is_chain_available = is_chain_available
-    else: 
-        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool: 
+    else:
+        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool:
             return True
         spec.is_chain_available = is_chain_available
 

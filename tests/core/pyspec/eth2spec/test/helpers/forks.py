@@ -44,6 +44,7 @@ def is_post_electra(spec):
 def is_post_whisk(spec):
     return is_post_fork(spec.fork, WHISK)
 
+
 def is_post_eip_7594(spec):
     return is_post_fork(spec.fork, EIP7594)
 
