@@ -304,7 +304,7 @@ To custody a particular column, a node joins the respective gossip subnet. Verif
 
 At each slot, a node SHOULD select at least `SAMPLES_PER_SLOT` column IDs for sampling. It is recommended to use uniform random selection without replacement based on local randomness. Sampling is considered successful if the node manages to retrieve all selected columns.
 
-Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT` columns while allowing some missing, respecting the same target false positive threshold (the probability of successful sampling of an unavailable block) as dictated by the `SAMPLES_PER_SLOT` parameter. A node can use the `get_extended_sample_count(allowed_failures) -> sample_count` helper function to determine the sample count for any selected number of allowed failures. Sampling is then considered successful if any `sample_count - allowed_failures` columns are retrieved successfully.
+Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT` columns while allowing some missing, respecting the same target false positive threshold (the probability of successful sampling of an unavailable block) as dictated by the `SAMPLES_PER_SLOT` parameter. If using uniform random selection without replacement, a node can use the `get_extended_sample_count(allowed_failures) -> sample_count` helper function to determine the sample count (number of unique column IDs) for any selected number of allowed failures. Sampling is then considered successful if any `sample_count - allowed_failures` columns are retrieved successfully.
 
 For reference, the table below shows the number of samples and the number of allowed missing columns assuming `NUMBER_OF_COLUMNS = 128` and `SAMPLES_PER_SLOT = 16`.
 
