@@ -164,12 +164,11 @@ def test_recover_cells_and_kzg_proofs(spec):
         while j in cell_indices:
             j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         cell_indices.append(j)
-    # Now the cells/proofs themselves
+    # Now the cells themselves
     known_cells = [cells[cell_index] for cell_index in cell_indices]
-    known_proofs = [proofs[cell_index] for cell_index in cell_indices]
 
     # Recover the missing cells and proofs
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells, known_proofs)
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells)
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data

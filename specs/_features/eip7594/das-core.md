@@ -179,9 +179,8 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
     for blob_index in range(blob_count):
         cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
-        proofs = [e.kzg_proof for e in partial_matrix if e.row_index == blob_index]
 
-        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells, proofs)
+        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
         for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
             extended_matrix.append(MatrixEntry(
                 cell=cell,
