@@ -492,7 +492,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # LL = sum_k r^k proofs[k],
     # LR = [s^n]
     # RL = RLC - RLI + RLP, where
-    #   RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
+    #   RLC = sum_i weights[i] commitments[i]
     #   RLI = [sum_k r^k interpolation_poly_k(s)]
     #   RLP = sum_k (r^k * h_k^n) proofs[k]
     #
@@ -502,7 +502,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # - s is the secret embedded in the KZG setup
     # - n = FIELD_ELEMENTS_PER_CELL is the size of the evaluation domain
     # - i ranges over all rows that are touched
-    # - k_i < len(row_indices) ranges over all cells that are in row i
+    # - weights[i] is a weight computed for row i. It depends on r and on which cells are in row i
     # - interpolation_poly_k is the interpolation polynomial for the kth cell
     # - h_k is the coset shift specifying the evaluation domain of the kth cell
 
@@ -528,15 +528,15 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     lr = bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[n])
 
     # Step 4: Compute RL = RLC - RLI + RLP
-    # Step 4.1: Compute RLC = sum_i (sum_{k_i} r^{k_i}) commitments[i]
-    # Step 4.1a: Compute commitment_weights[i] = (sum_{k_i} r^{k_i}) for all rows i
-    # Note: we do that by iterating over all k_i and updating commitment_weights[i] accordingly
-    commitment_weights = [0] * num_rows
-    for k_i in range(num_cells):
-        i = row_indices[k_i]
-        commitment_weights[i] = (commitment_weights[i] + int(r_powers[k_i])) % BLS_MODULUS
+    # Step 4.1: Compute RLC = sum_i weights[i] commitments[i]
+    # Step 4.1a: Compute weights[i]: the sum of all r^k for which cell k is in row i.
+    # Note: we do that by iterating over all k and updating the correct weights[i] accordingly
+    weights = [0] * num_rows
+    for k in range(num_cells):
+        i = row_indices[k]
+        weights[i] = (weights[i] + int(r_powers[k])) % BLS_MODULUS
     # Step 4.1b: Linearly combine the weights with the commitments to get RLC
-    rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, commitment_weights))
+    rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, weights))
 
     # Step 4.2: Compute RLI = [sum_k r^k interpolation_poly_k(s)]
     # Note: an efficient implementation would use the IDFT based method explained in the blog post
