@@ -1,6 +1,6 @@
 from .constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    ELECTRA, WHISK,
+    ELECTRA, WHISK, EIP7594,
     PREVIOUS_FORK_OF,
 )
 
@@ -43,6 +43,9 @@ def is_post_electra(spec):
 
 def is_post_whisk(spec):
     return is_post_fork(spec.fork, WHISK)
+
+def is_post_eip_7594(spec):
+    return is_post_fork(spec.fork, EIP7594)
 
 
 def get_spec_for_fork_version(spec, fork_version, phases):
