@@ -8,8 +8,6 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 
-from eth2spec.test.helpers.forks import is_post_eip_7594
-
 
 class BlobData(NamedTuple):
     """
@@ -153,27 +151,6 @@ def on_tick_and_append_step(spec, store, time, test_steps):
 
 
 def run_on_block(spec, store, signed_block, valid=True):
-    if is_post_eip_7594(spec):
-        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool:
-            if beacon_block_root == b'\x00' * 32:
-                # anchor block has current_justified_checkpoint root 0x0
-                return True
-            block = store.blocks[beacon_block_root]
-            block_epoch = spec.compute_epoch_at_slot(block.slot)
-            current_epoch = spec.get_current_store_epoch(store)
-            if block_epoch + spec.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS <= current_epoch:
-                return True
-            parent_root = block.parent_root
-            return (
-                spec.is_data_available(beacon_block_root, require_peer_sampling=True)
-                and is_chain_available(store, parent_root)
-            )
-        spec.is_chain_available = is_chain_available
-    else:
-        def is_chain_available(store: spec.Store, beacon_block_root: spec.Root) -> bool:
-            return True
-        spec.is_chain_available = is_chain_available
-
     if not valid:
         try:
             spec.on_block(store, signed_block)
