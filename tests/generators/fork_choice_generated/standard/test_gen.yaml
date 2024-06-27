@@ -14,8 +14,8 @@ shuffling_test:
   test_type: block_tree
   instances: standard/block_tree_other.yaml # 8
   seed: 6673
-  nr_variations: 1
-  nr_mutations: 20
+  nr_variations: 4
+  nr_mutations: 63
 attester_slashing_test:
   test_type: block_tree
   instances: standard/block_tree_other.yaml # 8
