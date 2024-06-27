@@ -25,9 +25,9 @@ class QueueItem:
 
 
 class MessageScheduler:
-    def __init__(self, spec, anchor_state, anchor_block):
+    def __init__(self, spec, store):
         self.spec = spec
-        self.store = spec.get_forkchoice_store(anchor_state, anchor_block)
+        self.store = store
         self.message_queue = []
 
     def is_early_message(self, item: QueueItem) -> bool:
@@ -42,30 +42,45 @@ class MessageScheduler:
         self.message_queue.clear()
         return messages
     
-    def process_queue(self):
+    def process_queue(self) -> tuple[bool, list]:
+        applied_events = []
         updated = False
         for item in self.drain_queue():
             if self.is_early_message(item):
                 self.enque_message(item)
             else:
                 if item.is_attestation:
-                    self.process_attestation(item.message)
+                    if self.process_attestation(item.message):
+                        applied_events.append(('attestation', item.message, True))
                 else:
-                    updated |= self.process_block(item.message)
-        return updated
+                    updated_, events_ = self.process_block(item.message, recovery=True)
+                    if updated_:
+                        updated = True
+                        applied_events.extend(events_)
+                        assert ('block', item.message, True) in events_
+        return updated, applied_events
 
-    def purge_queue(self):
-        while self.process_queue():
-            pass
+    def purge_queue(self) -> list:
+        applied_events = []
+        while True:
+            updated, events = self.process_queue()
+            applied_events.extend(events)
+            if updated:
+                continue
+            else:
+                return applied_events
     
-    def process_tick(self, time):
+    def process_tick(self, time) -> list:
+        applied_events = []
         SECONDS_PER_SLOT = self.spec.config.SECONDS_PER_SLOT
         assert time >= self.store.time
         tick_slot = (time - self.store.genesis_time) // SECONDS_PER_SLOT
         while self.spec.get_current_slot(self.store) < tick_slot:
             previous_time = self.store.genesis_time + (self.spec.get_current_slot(self.store) + 1) * SECONDS_PER_SLOT
             self.spec.on_tick(self.store, previous_time)
-            self.purge_queue()
+            applied_events.append(('tick', previous_time, self.spec.get_current_slot(self.store) < tick_slot))
+            applied_events.extend(self.purge_queue())
+        return applied_events
 
     def process_attestation(self, attestation, is_from_block=False):
         try:
@@ -91,16 +106,18 @@ class MessageScheduler:
         for attester_slashing in block.body.attester_slashings:
             self.process_slashing(attester_slashing)
 
-    def process_block(self, signed_block):
+    def process_block(self, signed_block, recovery=False) -> tuple[bool, list]:
+        applied_events = []
         try:
             self.spec.on_block(self.store, signed_block)
             valid = True
+            applied_events.append(('block', signed_block, recovery))
         except AssertionError:
             item = QueueItem(signed_block, False)
             if self.is_early_message(item):
                 self.enque_message(item)
             valid = False
         if valid:
-            self.purge_queue()
+            applied_events.extend(self.purge_queue())
             self.process_block_messages(signed_block)
-        return valid
+        return valid, applied_events
