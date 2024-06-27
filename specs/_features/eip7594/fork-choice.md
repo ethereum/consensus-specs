@@ -57,6 +57,9 @@ def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False
 
 ```python
 def is_chain_available(store: Store, beacon_block_root: Root) -> bool: 
+    if beacon_block_root not in store.blocks:
+        # Deal with Genesis edge cases, where current_justified_checkpoint and parent_root are not set
+        return True
     block = store.blocks[beacon_block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
     current_epoch = get_current_store_epoch(store)
@@ -143,9 +146,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in EIP7594] Do not import the block if its unrealized justified checkpoint is not available
     pulled_up_state = state.copy()
     process_justification_and_finalization(pulled_up_state)
-    # Do not make the check in the Genesis edge case, where current_justified_checkpoint is not set
-    if pulled_up_state.current_justified_checkpoint.root in store.blocks:
-        assert is_chain_available(store, pulled_up_state.current_justified_checkpoint.root)
+    assert is_chain_available(store, pulled_up_state.current_justified_checkpoint.root)
 
     # Add new block to the store
     store.blocks[block_root] = block
