@@ -81,8 +81,8 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `16` | Number of `DataColumn` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `6` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(16 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
+| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
 | `TARGET_NUMBER_OF_PEERS` | `100` | Suggested minimum peer count |
 
 
@@ -204,12 +204,13 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 ### Custody requirement
 
-Each node *without attached validators* downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. A node with validators attached downloads and custodies a higher minimum of subnets per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached downloads and custodies a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` subnets per slot, as well as `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` additional subnets, where `total_node_balance` is the sum of the balances of all validators attached to that node.
+Each node *without attached validators* downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. A node with validators attached downloads and custodies a higher minimum of subnets per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` subnets per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `DATA_COLUMN_SIDECAR_SUBNET_COUNT`.
 
 ```python
-def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
+def get_validators_custody_requirement(state: BeaconState, validator_indices: List[ValidatorIndex]) -> uint64:
     total_node_balance = sum(state.balances[index] for index in validator_indices)
-    return VALIDATOR_CUSTODY_REQUIREMENT + (total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET)
+    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET
+    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
 
 The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
