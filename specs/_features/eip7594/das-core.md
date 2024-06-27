@@ -207,7 +207,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 Each node *without attached validators* downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. A node with validators attached downloads and custodies a higher minimum of subnets per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` subnets per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `DATA_COLUMN_SIDECAR_SUBNET_COUNT`.
 
 ```python
-def get_validators_custody_requirement(state: BeaconState, validator_indices: List[ValidatorIndex]) -> uint64:
+def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
     total_node_balance = sum(state.balances[index] for index in validator_indices)
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), DATA_COLUMN_SIDECAR_SUBNET_COUNT)
