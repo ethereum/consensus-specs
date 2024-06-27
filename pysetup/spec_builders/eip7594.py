@@ -17,17 +17,9 @@ from eth2spec.deneb import {preset_name} as deneb
     @classmethod
     def sundry_functions(cls) -> str:
         return """
-def get_custody_parameters() -> Tuple[NodeID, uint64]:
-    return NodeID(1), uint64(1)
-
-
-def get_sampling_columns() -> Sequence[ColumnIndex]:
-    return [ColumnIndex(1), ColumnIndex(2)]
-
-
 def retrieve_column_sidecars(beacon_block_root: Root,
-                             columns_to_retrieve: Sequence[ColumnIndex]) -> Sequence[DataColumnSidecar]:
-    return [DataColumnSidecar()]
+                             require_peer_sampling: bool) -> Sequence[DataColumnSidecar]:
+    return []
 """
 
     @classmethod

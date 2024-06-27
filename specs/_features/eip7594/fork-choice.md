@@ -46,12 +46,7 @@ This is the modification of the fork choice accompanying EIP-7594
 
 ```python
 def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False) -> bool:
-    # Unimplemented function which returns the node_id and custody_subnet_count
-    node_id, custody_subnet_count = get_custody_parameters()
-    columns_to_retrieve = get_custody_columns(node_id, custody_subnet_count)
-    if require_peer_sampling:
-        columns_to_retrieve += get_sampling_columns()	
-    column_sidecars = retrieve_column_sidecars(beacon_block_root, columns_to_retrieve)
+    column_sidecars = retrieve_column_sidecars(beacon_block_root, require_peer_sampling)
     return all(
         verify_data_column_sidecar_kzg_proofs(column_sidecar)
         for column_sidecar in column_sidecars
@@ -65,7 +60,7 @@ def is_chain_available(store: Store, beacon_block_root: Root) -> bool:
     block = store.blocks[beacon_block_root]
     block_epoch = compute_epoch_at_slot(block.slot)
     current_epoch = get_current_store_epoch(store)
-    if block_epoch + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS <= current_epoch:
+    if block_epoch + MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS <= current_epoch:
         return True
     parent_root = block.parent_root
     return (
@@ -105,8 +100,8 @@ def get_head(store: Store) -> Root:
 #### `is_peer_sampling_required`
 
 ```python
-def is_peer_sampling_required(store, slot):
-    return compute_epoch_at_slot(slot) + 2 <= get_current_epoch(store)
+def is_peer_sampling_required(store: Store, slot: Slot):
+    return compute_epoch_at_slot(slot) + 2 <= get_current_store_epoch(store)
 ```
 
 ## Updated fork-choice handlers
@@ -170,7 +165,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 
     # Eagerly compute unrealized justification and finality.
-    compute_pulled_up_tip(store, block_root, pulled_up_state)
+    compute_pulled_up_tip(store, pulled_up_state, block_root)
 ```
 
 #### Pull-up tip helpers
