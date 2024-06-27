@@ -19,7 +19,10 @@ from eth2spec.test.helpers.fork_choice import (
     output_store_checks,
     run_on_attestation,
     run_on_attester_slashing,
-    run_on_block
+    run_on_block,
+    get_block_file_name,
+    get_attestation_file_name,
+    get_attester_slashing_file_name,
 )
 from .debug_helpers import print_head
 
@@ -304,6 +307,37 @@ def filter_out_duplicate_messages(fn):
     return wrapper
 
 
+def _add_block(spec, store, signed_block, test_steps):
+    """
+    Helper method to add a block, when it's unknown whether it's valid or not
+    """
+    yield get_block_file_name(signed_block), signed_block
+    try:
+        run_on_block(spec, store, signed_block)
+        valid = True
+    except AssertionError:
+        valid = False
+    
+    test_steps.append({'block': get_block_file_name(signed_block), 'valid': valid})
+    
+    if valid:
+        # An on_block step implies receiving block's attestations
+        for attestation in signed_block.message.body.attestations:
+            try:
+                run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
+            except AssertionError:
+                # ignore possible faults, if the block is valud
+                pass
+
+        # An on_block step implies receiving block's attester slashings
+        for attester_slashing in signed_block.message.body.attester_slashings:
+            try:
+                run_on_attester_slashing(spec, store, attester_slashing, valid=True)
+            except AssertionError:
+                # ignore possible faults, if the block is valud
+                pass
+
+
 @filter_out_duplicate_messages
 def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_events: list, debug: bool):
     # Yield meta
@@ -314,6 +348,18 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
     yield 'anchor_state', test_data.anchor_state
     yield 'anchor_block', test_data.anchor_block
 
+    for message in test_data.blocks:
+        block = message.payload
+        yield get_block_file_name(block), block.encode_bytes()
+    
+    for message in test_data.atts:
+        attestation = message.payload
+        yield get_attestation_file_name(attestation), attestation.encode_bytes()
+    
+    for message in test_data.slashings:
+        attester_slashing = message.payload
+        yield get_attester_slashing_file_name(attester_slashing), attester_slashing.encode_bytes()
+    
     test_steps = []
 
     def try_add_mesage(runner, message):
@@ -323,34 +369,41 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
         except AssertionError:
             return False
 
+    # record initial tick
+    on_tick_and_append_step(spec, store, store.time, test_steps, checks_with_viable_for_head_weights=True)
+
     for event in test_events:
         event_kind = event[0]
         if event_kind == 'tick':
             _, time, _ = event
             if time > store.time:
-                on_tick_and_append_step(spec, store, time, test_steps)
+                on_tick_and_append_step(spec, store, time, test_steps, checks_with_viable_for_head_weights=True)
                 assert store.time == time
         elif event_kind == 'block':
             _, signed_block, valid = event
             if valid is None:
-                valid = try_add_mesage(run_on_block, signed_block)
-            yield from add_block(spec, store, signed_block, test_steps, valid=valid)
-
-            block_root = signed_block.message.hash_tree_root()
-            if valid:
-                assert store.blocks[block_root] == signed_block.message
+                yield from _add_block(spec, store, signed_block, test_steps)
             else:
-                assert block_root not in store.blocks.values()
+                yield from add_block(spec, store, signed_block, test_steps, valid=valid)
+
+                block_root = signed_block.message.hash_tree_root()
+                if valid:
+                    assert store.blocks[block_root] == signed_block.message
+                else:
+                    assert block_root not in store.blocks.values()
+            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
         elif event_kind == 'attestation':
             _, attestation, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attestation, attestation)
             yield from add_attestation(spec, store, attestation, test_steps, valid=valid)
+            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
         elif event_kind == 'attester_slashing':
             _, attester_slashing, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
             yield from add_attester_slashing(spec, store, attester_slashing, test_steps, valid=valid)
+            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
         else:
             raise ValueError('Unknown event ' + str(event_kind))
 
