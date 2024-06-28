@@ -56,6 +56,14 @@ All validator responsibilities remain unchanged other than the following:
 - Proposers are no longer required to broadcast `BlobSidecar` objects, as this becomes a builder's duty. 
 - Some validators are selected per slot to become PTC members, these validators must broadcat `PayloadAttestationMessage` objects during the assigned slot before the deadline of `3 * SECONDS_PER_SLOT // INTERVALS_PER_SLOT` seconds into the slot. 
 
+### Attestation
+
+Attestation duties are not changed for validators, however the attestation deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`. 
+
+### Sync Committee participations
+
+Sync committee duties are not changed for validators, however the submission deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`. 
+
 
 ### Block proposal
 
