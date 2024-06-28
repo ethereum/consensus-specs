@@ -36,6 +36,8 @@ def get_process_calls(spec):
         'process_sync_committee_updates',  # altair
         'process_full_withdrawals',  # capella
         'process_partial_withdrawals',  # capella
+        'process_pending_deposits',  # electra
+        'process_pending_consolidations',  # electra
         # TODO: add sharding processing functions when spec stabilizes.
     ]
 

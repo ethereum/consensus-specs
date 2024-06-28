@@ -154,7 +154,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         earliest_exit_epoch=earliest_exit_epoch,
         consolidation_balance_to_consume=0,
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
-        pending_balance_deposits=[],
+        pending_deposits=[],
         pending_partial_withdrawals=[],
         pending_consolidations=[],
     )

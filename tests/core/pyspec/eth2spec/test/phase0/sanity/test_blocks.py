@@ -745,7 +745,7 @@ def test_deposit_in_block(spec, state):
     yield 'post', state
 
     if is_post_electra(spec):
-        balance = state.pending_balance_deposits[0].amount
+        balance = state.pending_deposits[0].amount
     else:
         balance = get_balance(state, validator_index)
 
@@ -816,7 +816,7 @@ def test_deposit_top_up(spec, state):
 
     balance = get_balance(state, validator_index)
     if is_post_electra(spec):
-        balance += state.pending_balance_deposits[0].amount
+        balance += state.pending_deposits[0].amount
 
     assert balance == (
         validator_pre_balance + amount + sync_committee_reward - sync_committee_penalty
