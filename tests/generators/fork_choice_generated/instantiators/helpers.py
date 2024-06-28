@@ -370,14 +370,14 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
             return False
 
     # record initial tick
-    on_tick_and_append_step(spec, store, store.time, test_steps, checks_with_viable_for_head_weights=True)
+    on_tick_and_append_step(spec, store, store.time, test_steps)
 
     for event in test_events:
         event_kind = event[0]
         if event_kind == 'tick':
             _, time, _ = event
             if time > store.time:
-                on_tick_and_append_step(spec, store, time, test_steps, checks_with_viable_for_head_weights=True)
+                on_tick_and_append_step(spec, store, time, test_steps)
                 assert store.time == time
         elif event_kind == 'block':
             _, signed_block, valid = event
@@ -391,19 +391,19 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
                     assert store.blocks[block_root] == signed_block.message
                 else:
                     assert block_root not in store.blocks.values()
-            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+            output_store_checks(spec, store, test_steps)
         elif event_kind == 'attestation':
             _, attestation, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attestation, attestation)
             yield from add_attestation(spec, store, attestation, test_steps, valid=valid)
-            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+            output_store_checks(spec, store, test_steps)
         elif event_kind == 'attester_slashing':
             _, attester_slashing, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
             yield from add_attester_slashing(spec, store, attester_slashing, test_steps, valid=valid)
-            output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+            output_store_checks(spec, store, test_steps)
         else:
             raise ValueError('Unknown event ' + str(event_kind))
 
