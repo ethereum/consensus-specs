@@ -1,0 +1,8 @@
+# Minimal preset - EIPXXXX
+
+# Execution
+# ---------------------------------------------------------------
+# 2**1(= 2)
+PTC_SIZE: 2
+# 2**2 (= 4)
+MAX_PAYLOAD_ATTESTATIONS: 4

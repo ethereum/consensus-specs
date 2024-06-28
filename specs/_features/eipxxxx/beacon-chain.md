@@ -112,7 +112,7 @@ class PayloadAttestationData(Container):
 
 ```python
 class PayloadAttestation(Container):
-    aggregation_bits: BitVector[PTC_SIZE]
+    aggregation_bits: Bitvector[PTC_SIZE]
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -151,7 +151,7 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: ValidatorIndex
     beacon_block_root: Root
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    payload_withheld: bool
+    payload_withheld: boolean
     state_root: Root
 ```
 

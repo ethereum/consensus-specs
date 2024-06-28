@@ -1,0 +1,8 @@
+# Mainnet preset - EIPXXXX
+
+# Execution
+# ---------------------------------------------------------------
+# 2**9 (= 512)
+PTC_SIZE: 512
+# 2**2 (= 4)
+MAX_PAYLOAD_ATTESTATIONS: 4
