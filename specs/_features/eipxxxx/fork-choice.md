@@ -44,6 +44,7 @@ This is the modification of the fork choice accompanying the ePBS upgrade.
 | Name                 | Value       |
 | -------------------- | ----------- |
 | `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE/2` (=`uint64(256)`) | 
+| `INTERVALS_PER_SLOT` | `4` # [modified in EIP-XXXX] |
 | `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-XXXX] | 
 | `PAYLOAD_WITHHOLD_BOOST` | `40` | 
 | `PAYLOAD_REVEAL_BOOST` | `40` | 
