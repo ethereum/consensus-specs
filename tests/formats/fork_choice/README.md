@@ -185,6 +185,13 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
 }
 ```
 
+Additional check utilized by the generated fork choice tests:
+```yaml
+viable_for_head_roots_and_weights: {
+    <head-root>: <weight>             -- A <bytes32-hex-str, int> map listing roots of all viable for head blocks and their fork choice weights
+}
+```
+
 For example:
 
 ```yaml
@@ -196,6 +203,8 @@ For example:
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
     get_proposer_head: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
     should_override_forkchoice_update: {validator_is_connected: false, result: false}
+    viable_for_head_roots_and_weights: {'0x533290b6f44d31c925acd08dfc8448624979d48c40b877d4e6714648866c9ddb': 192000000000,
+      '0x5cfb9d9099cdf1d8ab68ce96cdae9f0fa6eef16914a01070580dfdc1d2d59ec3': 544000000000}
 ```
 
 *Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.
