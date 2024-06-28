@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import ALTAIR
+from eth2spec.test.helpers.constants import ALTAIR, DENEB
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from itertools import product
@@ -9,7 +9,7 @@ from ruamel.yaml import YAML
 from test_provider import GENERATOR_NAME, create_providers
 
 
-forks = [ALTAIR]
+forks = [DENEB]
 presets = [MINIMAL]
 
 
