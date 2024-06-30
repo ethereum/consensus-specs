@@ -586,15 +586,15 @@ def process_execution_payload(state: BeaconState, signed_envelope: SignedExecuti
     # Verify consistency with the beacon block
     assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
 
-    # Verify the withdrawals root
-    assert hash_tree_root(payload.withdrawals) == state.last_withdrawals_root
-
     # Verify consistency with the committed header
     committed_header = state.execution_payload_header
     assert envelope.builder_index == committed_header.builder_index
     assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
 
     if not envelope.payload_withheld: 
+        # Verify the withdrawals root
+        assert hash_tree_root(payload.withdrawals) == state.last_withdrawals_root
+
         assert committed_header.block_hash == payload.block_hash 
         # Verify consistency of the parent hash with respect to the previous execution payload
         assert payload.parent_hash == state.latest_block_hash
