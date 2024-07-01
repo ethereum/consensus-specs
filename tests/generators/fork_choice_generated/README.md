@@ -16,7 +16,7 @@ Install requirements (preferrably, in a dedicated Python environment)
 > pip install -r requirements.txt
 ```
 
-In order to run tests, instal tqdm additionally.
+In order to run tests, install `tqdm` additionally.
 ```
 > pip install tqdm
 ```
@@ -38,7 +38,7 @@ Install `tqdm` library (to show progress)
 
 and then
 ```
-> python test_run.py -i ${test_dirt}
+> python test_run.py -i ${test_dir}
 ```
 
 # Generating configurations
