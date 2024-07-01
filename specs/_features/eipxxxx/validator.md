@@ -9,6 +9,8 @@ This document represents the changes and additions to the Honest validator guide
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Attestation](#attestation)
+  - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
     - [Constructing the new `signed_execution_payload_header_envelope` field in  `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header_envelope-field-in--beaconblockbody)
     - [Constructing the new `payload_attestations` field in  `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in--beaconblockbody)
