@@ -115,26 +115,26 @@ def generate_block_cover(params):
 
 gen_params = {
     ###################
-    # small instances #
+    # tiny instances #
     ###################
 
-    'block_tree_tree_small': {
-        'out_path': 'small/block_tree_tree.yaml',
+    'block_tree_tree_tiny': {
+        'out_path': 'tiny/block_tree_tree.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
             ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 8, 'max_children': 2, 'number_of_solutions': 3}),
             ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 3}),
         ]
     },
-    'block_tree_other_small': {
-        'out_path': 'small/block_tree_other.yaml',
+    'block_tree_other_tiny': {
+        'out_path': 'tiny/block_tree_other.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
             ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 3}),
         ]
     },
-    'block_cover_small': {
-        'out_path': 'small/block_cover.yaml',
+    'block_cover_tiny': {
+        'out_path': 'tiny/block_cover.yaml',
         'models': ['block_cover'],
         'params': [
             ({'anchor_epoch': 0, 'number_of_solutions': 1},),
@@ -143,11 +143,11 @@ gen_params = {
     },
 
     ###################
-    # smoke instances #
+    # small instances #
     ###################
 
-    'block_tree_tree_smoke': {
-        'out_path': 'smoke/block_tree_tree.yaml',
+    'block_tree_tree_small': {
+        'out_path': 'small/block_tree_tree.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
             ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 3}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 2}),
@@ -155,8 +155,8 @@ gen_params = {
             ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 73}),
         ]
     },
-    'block_tree_tree_smoke_2': {
-        'out_path': 'smoke/block_tree_tree_2.yaml',
+    'block_tree_tree_small_2': {
+        'out_path': 'small/block_tree_tree_2.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
             ({'anchor_epoch': 0, 'number_of_epochs': 6, 'number_of_links': 4}, {'number_of_blocks': 16, 'max_children': 2, 'number_of_solutions': 2}),
@@ -164,15 +164,15 @@ gen_params = {
             ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 283}),
         ]
     },
-    'block_tree_other_smoke': {
-        'out_path': 'smoke/block_tree_other.yaml',
+    'block_tree_other_small': {
+        'out_path': 'small/block_tree_other.yaml',
         'models': ['sm_link', 'block_tree'],
         'params': [
             ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}],  {'number_of_blocks': 12, 'max_children': 2, 'number_of_solutions': 4}),
         ]
     },
-    'block_cover_smoke': {
-        'out_path': 'smoke/block_cover.yaml',
+    'block_cover_small': {
+        'out_path': 'small/block_cover.yaml',
         'models': ['block_cover'],
         'params': [
             ({'anchor_epoch': 0, 'number_of_solutions': 2},),
