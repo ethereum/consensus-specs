@@ -173,6 +173,10 @@ finalized_checkpoint: {
     root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
+viable_for_head_roots_and_weights: {
+    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks
+    weight: int               -- Integer value from get_weight(store, viable_block_root)
+}
 ```
 
 Additionally, these fields if `get_proposer_head` and `should_override_forkchoice_update` features are implemented:
