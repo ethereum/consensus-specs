@@ -5,12 +5,13 @@ This is an accompanying document which describes the expected actions of a "buil
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Introduction](#introduction)
-- [Builders attributions](#builders-attributions)
-  - [Constructing the payload bid](#constructing-the-payload-bid)
-  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
-  - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
-  - [Honest payload withheld messages](#honest-payload-withheld-messages)
+- [ePBS -- Honest Builder](#epbs----honest-builder)
+  - [Introduction](#introduction)
+  - [Builders attributions](#builders-attributions)
+    - [Constructing the payload bid](#constructing-the-payload-bid)
+    - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+    - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
+    - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -46,7 +47,7 @@ def get_execution_payload_header_signature(state: BeaconState, header: Execution
     return bls.Sign(privkey, signing_root)
 ```
 
-The builder assembles then `signed_exceution_payload_header = SignedExecutionPayloadHeader(message=header, signature=signature)` and broadcasts it on the `execution_payload_header` global gossip topic. 
+The builder assembles then `signed_execution_payload_header = SignedExecutionPayloadHeader(message=header, signature=signature)` and broadcasts it on the `execution_payload_header` global gossip topic. 
 
 ### Constructing the `BlobSidecar`s
 
@@ -105,7 +106,7 @@ def get_execution_payload_envelope_signature(state: BeaconState, envelope: Execu
     signing_root = compute_signing_root(envelope, domain)
     return bls.Sign(privkey, signing_root)
 ```
-The builder assembles then `signed_exceution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)` and broadcasts it on the `execution_payload` global gossip topic. 
+The builder assembles then `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)` and broadcasts it on the `execution_payload` global gossip topic. 
 
 ### Honest payload withheld messages
 
