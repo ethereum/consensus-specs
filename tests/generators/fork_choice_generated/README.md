@@ -12,9 +12,9 @@ To simplfy adoption of the tests, we follow the test format described in the [fo
 
 Install requirements (preferrably, in a dedicated Python environment)
 
-'''
+```
 > pip install -r requirements.txt
-'''
+```
 
 In order to run tests, instal tqdm additionally.
 ```
