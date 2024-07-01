@@ -5,13 +5,12 @@ This is an accompanying document which describes the expected actions of a "buil
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [ePBS -- Honest Builder](#epbs----honest-builder)
-  - [Introduction](#introduction)
-  - [Builders attributions](#builders-attributions)
-    - [Constructing the payload bid](#constructing-the-payload-bid)
-    - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
-    - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
-    - [Honest payload withheld messages](#honest-payload-withheld-messages)
+- [Introduction](#introduction)
+- [Builders attributions](#builders-attributions)
+  - [Constructing the payload bid](#constructing-the-payload-bid)
+  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+  - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
+  - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
