@@ -103,7 +103,7 @@ generate_tests: $(GENERATOR_TARGETS)
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec:
-	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
+	python3 -m venv venv; . venv/bin/activate; pip install .[test]; pip uninstall --require-virtualenv -y eth2spec; python3 setup.py pyspecdev
 
 # check the setup tool requirements
 preinstallation:
