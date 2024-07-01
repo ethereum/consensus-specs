@@ -110,7 +110,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
 * [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
 
-*Note:* This specification is built upon [Deneb](../../deneb/beacon_chain.md) and is under active development.
+*Note:* This specification is built upon [Deneb](../deneb/beacon_chain.md) and is under active development.
 
 ## Constants
 
