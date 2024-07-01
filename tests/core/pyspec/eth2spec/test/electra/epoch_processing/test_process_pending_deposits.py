@@ -279,3 +279,42 @@ def test_processing_deposit_of_withdrawable_validator_does_not_get_churned(spec,
     # First deposit does not consume any.
     assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state)
     assert state.pending_deposits == [build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount)]
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_over_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100 
+    overmax = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING + 1
+    for i in range(overmax):
+        state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[i].pubkey,
+        withdrawal_credentials=state.validators[i].withdrawal_credentials,
+        amount=amount,
+        slot=state.slot
+        ))
+    
+    assert len(state.pending_deposits) == overmax,"pending deposits is not over max"
+    yield from run_process_pending_deposits(spec, state)
+    # the remaining deposit over MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING should remain in pending_deposits
+    assert len(state.pending_deposits) == 1
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_deposit_not_finalized(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    slot=spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+    # deposit is not finalized yet, so it is postponed
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=slot,
+    ))
+    # set deposit_balance_to_consume to some initial amount to see its removal later on in the test
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
