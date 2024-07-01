@@ -7,8 +7,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Upgrading light client data](#upgrading-light-client-data)
-  - [Upgrading the store](#upgrading-the-store)
+- [Upgrading light client data](#upgrading-light-client-data)
+- [Upgrading the store](#upgrading-the-store)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -17,7 +17,7 @@
 
 This document describes how to upgrade existing light client objects based on the [Capella specification](../../capella/light-client/sync-protocol.md) to Deneb. This is necessary when processing pre-Deneb data with a post-Deneb `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
 
-### Upgrading light client data
+## Upgrading light client data
 
 A Deneb `LightClientStore` can still process earlier light client data. In order to do so, that pre-Deneb data needs to be locally upgraded to Deneb before processing.
 
@@ -90,7 +90,7 @@ def upgrade_lc_optimistic_update_to_deneb(pre: capella.LightClientOptimisticUpda
     )
 ```
 
-### Upgrading the store
+## Upgrading the store
 
 Existing `LightClientStore` objects based on Capella MUST be upgraded to Deneb before Deneb based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `DENEB_FORK_EPOCH`.
 

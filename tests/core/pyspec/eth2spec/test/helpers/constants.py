@@ -39,7 +39,7 @@ ALL_PHASES = (
     EIP7594,
 )
 # The forks that have light client specs
-LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0],)
+LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
