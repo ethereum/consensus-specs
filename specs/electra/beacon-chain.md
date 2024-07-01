@@ -49,8 +49,8 @@
     - [Updated `is_fully_withdrawable_validator`](#updated-is_fully_withdrawable_validator)
     - [Updated `is_partially_withdrawable_validator`](#updated-is_partially_withdrawable_validator)
   - [Misc](#misc-1)
-    - [`get_committee_indices`](#get_committee_indices)
-    - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
+    - [New `get_committee_indices`](#new-get_committee_indices)
+    - [New `get_validator_max_effective_balance`](#new-get_validator_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
@@ -60,7 +60,7 @@
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [Updated  `initiate_validator_exit`](#updated--initiate_validator_exit)
+    - [Updated `initiate_validator_exit`](#updated-initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
@@ -70,7 +70,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Updated `process_epoch`](#updated-process_epoch)
-    - [Updated  `process_registry_updates`](#updated--process_registry_updates)
+    - [Updated `process_registry_updates`](#updated-process_registry_updates)
     - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Updated `process_effective_balance_updates`](#updated-process_effective_balance_updates)
@@ -85,7 +85,7 @@
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposits](#deposits)
-        - [Updated  `apply_deposit`](#updated--apply_deposit)
+        - [Updated `apply_deposit`](#updated-apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
         - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
         - [Updated `get_validator_from_deposit`](#updated-get_validator_from_deposit)
@@ -525,14 +525,14 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Misc
 
-#### `get_committee_indices`
+#### New `get_committee_indices`
 
 ```python
 def get_committee_indices(committee_bits: Bitvector) -> Sequence[CommitteeIndex]:
     return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
-#### `get_validator_max_effective_balance`
+#### New `get_validator_max_effective_balance`
 
 ```python
 def get_validator_max_effective_balance(validator: Validator) -> Gwei:
@@ -648,7 +648,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 ### Beacon state mutators
 
-#### Updated  `initiate_validator_exit`
+#### Updated `initiate_validator_exit`
 
 ```python
 def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
@@ -810,7 +810,7 @@ def process_epoch(state: BeaconState) -> None:
     process_sync_committee_updates(state)
 ```
 
-#### Updated  `process_registry_updates`
+#### Updated `process_registry_updates`
 
 `process_registry_updates` uses the updated definition of `initiate_validator_exit`
 and changes how the activation epochs are computed for eligible validators.
@@ -1160,7 +1160,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
-###### Updated  `apply_deposit`
+###### Updated `apply_deposit`
 
 *NOTE*: `process_deposit` is updated with a new definition of `apply_deposit`.
 
