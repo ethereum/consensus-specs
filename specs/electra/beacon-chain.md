@@ -49,8 +49,8 @@
     - [Modified `is_fully_withdrawable_validator`](#modified-is_fully_withdrawable_validator)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc-1)
-    - [`get_committee_indices`](#get_committee_indices)
-    - [`get_validator_max_effective_balance`](#get_validator_max_effective_balance)
+    - [New `get_committee_indices`](#new-get_committee_indices)
+    - [New `get_validator_max_effective_balance`](#new-get_validator_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
@@ -60,7 +60,7 @@
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [Modified  `initiate_validator_exit`](#modified--initiate_validator_exit)
+    - [Modified `initiate_validator_exit`](#modified--initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
@@ -531,14 +531,14 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Misc
 
-#### `get_committee_indices`
+#### New `get_committee_indices`
 
 ```python
 def get_committee_indices(committee_bits: Bitvector) -> Sequence[CommitteeIndex]:
     return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
-#### `get_validator_max_effective_balance`
+#### New `get_validator_max_effective_balance`
 
 ```python
 def get_validator_max_effective_balance(validator: Validator) -> Gwei:
