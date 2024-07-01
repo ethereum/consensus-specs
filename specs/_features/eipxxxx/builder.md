@@ -28,14 +28,15 @@ Thus, builders tasks are divided in two, submitting bids, and submitting payload
 
 Builders can broadcast a payload bid for the current or the next slot's proposer to include. They produce a `SignedExecutionPayloadHeader` as follows. 
 
-1. Set `header.parent_block_hash` to the current head of the execution chain (this can be obtained from the beacon state as `state.last_block_hash`). 
+1. Set `header.parent_block_hash` to the current head of the execution chain (this can be obtained from the beacon state as `state.last_block_hash`).
 2. Set `header.parent_block_root` to be the head of the consensus chain (this can be obtained from the beacon state as `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and `parent_block_hash` must be compatible, in the sense that they both should come from the same `state` by the method described in this and the previous point. 
-3. Construct an execution payload. This can be performed with an external execution engine with a call to `engine_getPayloadV4`. 
-4. Set `header.block_hash` to be the block hash of the constructed payload, that is `payload.block_hash` 
-5. Set `header.builder_index` to be the validator index of the builder performing these actions. 
-6. Set `header.slot`  to be the slot for which this bid is aimed. This slot **MUST** be either the current slot or the next slot.  
-7. Set `header.value` to be the value that the builder will pay the proposer if the bid is accepted. The builder **MUST** have balance enough to fulfill this bid. 
-8. Set `header.kzg_commitments_root` to be the `hash_tree_root`  of the `blobsbundle.commitments`  field returned by `engine_getPayloadV4`. 
+3. Construct an execution payload. This can be performed with an external execution engine with a call to `engine_getPayloadV4`.
+4. Set `header.block_hash` to be the block hash of the constructed payload, that is `payload.block_hash`.
+5. Set `header.gas_limit` to be the gas limit of the constructed payload, that is `payload.gas_limit`.
+6. Set `header.builder_index` to be the validator index of the builder performing these actions.
+7. Set `header.slot`  to be the slot for which this bid is aimed. This slot **MUST** be either the current slot or the next slot.
+8. Set `header.value` to be the value that the builder will pay the proposer if the bid is accepted. The builder **MUST** have balance enough to fulfill this bid.
+9. Set `header.kzg_commitments_root` to be the `hash_tree_root`  of the `blobsbundle.commitments`  field returned by `engine_getPayloadV4`.
 
 After building the `header`, the builder obtains a `signature` of the header by using
 

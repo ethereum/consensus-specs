@@ -192,13 +192,14 @@ class BeaconBlockBody(Container):
 
 #### `ExecutionPayloadHeader`
 
-**Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information and KZG commitments root to verify the inclusion proofs. 
+**Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs. 
 
 ```python
 class ExecutionPayloadHeader(Container):
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
+    gas_limit: uint64
     builder_index: ValidatorIndex
     slot: Slot
     value: Gwei
@@ -594,6 +595,9 @@ def process_execution_payload(state: BeaconState, signed_envelope: SignedExecuti
     if not envelope.payload_withheld: 
         # Verify the withdrawals root
         assert hash_tree_root(payload.withdrawals) == state.last_withdrawals_root
+
+        # Verify the gas_limit
+        assert commited_header.gas_limit == payload.gas_limit
 
         assert committed_header.block_hash == payload.block_hash 
         # Verify consistency of the parent hash with respect to the previous execution payload
