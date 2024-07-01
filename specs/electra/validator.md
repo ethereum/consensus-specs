@@ -139,6 +139,7 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        max_blobs_per_block=MAX_BLOBS_PER_BLOCK,  # [New in Electra]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
