@@ -60,7 +60,7 @@
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [Modified `initiate_validator_exit`](#modified--initiate_validator_exit)
+    - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
@@ -655,7 +655,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 ### Beacon state mutators
 
-#### Modified  `initiate_validator_exit`
+#### Modified `initiate_validator_exit`
 
 *Note*: The function `initiate_validator_exit` is modified to use the new `compute_exit_epoch_and_update_churn` function.
 
