@@ -90,7 +90,7 @@ def test_apply_pending_deposit_withdrawable_epoch_while_exited(spec, state):
 def test_apply_pending_deposit_switch_to_compounding(spec, state):
     amount = 100 
 
-    # choose a value public key that's not in the validator set
+    # choose a value public key that's in the validator set
     index = 0
     withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[index])[1:]
     compounding_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + spec.hash(pubkeys[index])[1:]
@@ -114,3 +114,4 @@ def test_apply_pending_deposit_switch_to_compounding(spec, state):
     # validator count should increase by 1
     assert state.balances[0] == amount
     assert state.validators[0].withdrawal_credentials == compounding_credentials
+    
