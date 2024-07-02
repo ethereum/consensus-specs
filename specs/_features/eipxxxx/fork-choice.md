@@ -44,7 +44,7 @@ This is the modification of the fork choice accompanying the ePBS upgrade.
 
 | Name                 | Value       |
 | -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE/2` (=`uint64(256)`) | 
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE / 2` (=`uint64(256)`) | 
 | `INTERVALS_PER_SLOT` | `4` # [modified in EIP-XXXX] |
 | `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-XXXX] | 
 | `PAYLOAD_WITHHOLD_BOOST` | `40` | 
@@ -100,9 +100,9 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    payload_withhold_boost_root: Root # [New in EIP-XXXX]
-    payload_withhold_boost_full: boolean # [New in EIP-XXXX]
-    payload_reveal_boost_root: Root # [New in EIP-XXXX]
+    payload_withhold_boost_root: Root  # [New in EIP-XXXX]
+    payload_withhold_boost_full: boolean  # [New in EIP-XXXX]
+    payload_reveal_boost_root: Root  # [New in EIP-XXXX]
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -110,8 +110,8 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict) # [New in EIP-XXXX]
-    ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict) # [New in EIP-XXXX]
+    execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)  # [New in EIP-XXXX]
+    ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict)  # [New in EIP-XXXX]
 ```
 
 ### Modified `get_forkchoice_store` 
@@ -132,9 +132,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
-        payload_withhold_boost_root=proposer_boost_root, # [New in EIP-XXXX]
-        payload_withhold_boost_full=True, # [New in EIP-XXXX]
-        payload_reveal_boost_root=proposer_boost_root, # [New in EIP-XXXX]
+        payload_withhold_boost_root=proposer_boost_root,  # [New in EIP-XXXX]
+        payload_withhold_boost_full=True,  # [New in EIP-XXXX]
+        payload_reveal_boost_root=proposer_boost_root,  # [New in EIP-XXXX]
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
@@ -156,8 +156,9 @@ def notify_ptc_messages(store: Store, state: BeaconState, payload_attestations: 
     for payload_attestation in payload_attestations:
         indexed_payload_attestation = get_indexed_payload_attestation(state, Slot(state.slot - 1), payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
-            on_payload_attestation_message(store, PayloadAttestationMessage(validator_index=idx,
-                    data=payload_attestation.data, signature= BLSSignature(), is_from_block=True))
+            on_payload_attestation_message(store,
+                                            PayloadAttestationMessage(validator_index=idx,
+                                            data=payload_attestation.data, signature=BLSSignature(), is_from_block=True))
 ```
 
 ### `is_payload_present`
@@ -333,19 +334,29 @@ def get_head(store: Store) -> ChildNode:
         children = [
             ChildNode(root=root, slot=block.slot, is_payload_present=present) for (root, block) in blocks.items()
             if block.parent_root == best_child.root and 
-            is_parent_node_full(store, block) == best_child.is_payload_present if root != store.justified_checkpoint.root
-            for present in (True, False) if root in store.execution_payload_states or present == False
+            is_parent_node_full(store, block) == best_child.is_payload_present if 
+            root != store.justified_checkpoint.root
+            for present in (True, False) if root in store.execution_payload_states or not present
         ]
         if len(children) == 0:
             return best_child
         # if we have children we consider the current head advanced as a possible head 
-        children += [ChildNode(root=best_child.root, slot=best_child.slot + 1, is_payload_present=best_child.is_payload_present)]
+        children += [
+            ChildNode(root=best_child.root, slot=best_child.slot + 1, is_payload_present=best_child.is_payload_present)
+        ]
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring full blocks according to the PTC vote
         # Ties are then broken by favoring full blocks
         # Ties broken then by favoring higher slot numbers
         # Ties then broken by favoring block with lexicographically higher root
-        new_best_child = max(children, key=lambda child: (get_weight(store, child), is_payload_present(store, child.root), child.is_payload_present, child.slot, child.root))
+        new_best_child = max(children, key=lambda child: (
+            get_weight(store, child), 
+            is_payload_present(store, child.root), 
+            child.is_payload_present, 
+            child.slot, 
+            child.root
+        )
+        )
         if new_best_child.root == best_child.root:
             return new_best_child
         best_child = new_best_child
@@ -402,7 +413,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.ptc_vote[block_root] = [PAYLOAD_ABSENT]*PTC_SIZE
+    store.ptc_vote[block_root] = [PAYLOAD_ABSENT] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)

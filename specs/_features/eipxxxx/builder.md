@@ -41,7 +41,8 @@ Builders can broadcast a payload bid for the current or the next slot's proposer
 After building the `header`, the builder obtains a `signature` of the header by using
 
 ```python
-def get_execution_payload_header_signature(state: BeaconState, header: ExecutionPayloadHeader, privkey: int) -> BLSSignature:
+def get_execution_payload_header_signature(
+        state: BeaconState, header: ExecutionPayloadHeader, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(header.slot))
     signing_root = compute_signing_root(header, domain)
     return bls.Sign(privkey, signing_root)
@@ -101,7 +102,8 @@ After setting these parameters, the builder should run `process_execution_payloa
 6. Set `state_root` to `hash_tree_root(state)`. 
 After preparing the `envelope` the builder should sign the envelope using:
 ```python
-def get_execution_payload_envelope_signature(state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int) -> BLSSignature:
+def get_execution_payload_envelope_signature(
+        state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(envelope, domain)
     return bls.Sign(privkey, signing_root)
