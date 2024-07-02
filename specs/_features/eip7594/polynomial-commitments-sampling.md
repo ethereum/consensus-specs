@@ -43,7 +43,6 @@
   - [Cell computation](#cell-computation)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
   - [Cell verification](#cell-verification)
-    - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
@@ -641,32 +640,6 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
 ```
 
 ### Cell verification
-
-#### `verify_cell_kzg_proof`
-
-```python
-def verify_cell_kzg_proof(commitment_bytes: Bytes48,
-                          cell_index: CellIndex,
-                          cell: Cell,
-                          proof_bytes: Bytes48) -> bool:
-    """
-    Check a cell proof
-
-    Public method.
-    """
-    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert cell_index < CELLS_PER_EXT_BLOB
-    assert len(cell) == BYTES_PER_CELL
-    assert len(proof_bytes) == BYTES_PER_PROOF
-
-    coset = coset_for_cell(cell_index)
-
-    return verify_kzg_proof_multi_impl(
-        bytes_to_kzg_commitment(commitment_bytes),
-        coset,
-        cell_to_coset_evals(cell),
-        bytes_to_kzg_proof(proof_bytes))
-```
 
 #### `verify_cell_kzg_proof_batch`
 

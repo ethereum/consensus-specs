@@ -111,20 +111,6 @@ def test_construct_vanishing_polynomial(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_kzg_proof(spec):
-    blob = get_sample_blob(spec)
-    commitment = spec.blob_to_kzg_commitment(blob)
-    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
-
-    cell_index = 0
-    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
-    cell_index = 1
-    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
-
-
-@with_eip7594_and_later
-@spec_test
-@single_phase
 def test_verify_cell_kzg_proof_batch(spec):
 
     # test with a single blob / commitment
