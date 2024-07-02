@@ -13,6 +13,7 @@
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
   - [Modified `Store`](#modified-store)
+  - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [`notify_ptc_messages`](#notify_ptc_messages)
   - [`is_payload_present`](#is_payload_present)
   - [`is_parent_node_full`](#is_parent_node_full)
