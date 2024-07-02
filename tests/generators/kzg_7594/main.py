@@ -19,7 +19,6 @@ from eth2spec.test.utils.kzg_tests import (
     VALID_BLOBS,
     VALID_CELLS_AND_PROOFS,
     VALID_COMMITMENTS,
-    VALID_INDIVIDUAL_RANDOM_CELL_BYTES,
     bls_add_one,
     encode_hex_list,
     expect_exception,
