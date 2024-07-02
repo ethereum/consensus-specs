@@ -344,4 +344,3 @@ def test_processing_deposit_of_withdrawable_validator_does_not_get_churned(spec,
     # First deposit does not consume any.
     assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state)
     assert state.pending_deposits == [build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount)]
-
