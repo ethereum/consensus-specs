@@ -58,7 +58,7 @@ Auxiliary class to consider `(block, slot, bool)` LMD voting
 class ChildNode(Container):
     root: Root
     slot: Slot
-    is_payload_present: bool
+    is_payload_present: boolean
 ```
 
 ## Helpers
@@ -108,7 +108,7 @@ class Store(object):
     execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict) # [New in EIP-XXXX]
     ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict) # [New in EIP-XXXX]
     payload_withhold_boost_root: Root # [New in EIP-XXXX]
-    payload_withhold_boost_full: bool # [New in EIP-XXXX]
+    payload_withhold_boost_full: boolean # [New in EIP-XXXX]
     payload_reveal_boost_root: Root # [New in EIP-XXXX]
 ```
    
