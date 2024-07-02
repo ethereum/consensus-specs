@@ -954,7 +954,7 @@ def process_pending_deposits(state: BeaconState) -> None:
             break
 
         # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
-        if next_deposit_index > MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
             break
 
         # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
