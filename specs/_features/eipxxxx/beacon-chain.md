@@ -329,9 +329,9 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     committees_per_slot = bit_floor(min(get_committee_count_per_slot(state, epoch), PTC_SIZE))
     members_per_committee = PTC_SIZE // committees_per_slot
     
-    validator_indices = [] 
+    validator_indices: List[ValidatorIndex] = [] 
     for idx in range(committees_per_slot):
-        beacon_committee = get_beacon_committee(state, slot, idx)
+        beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
         validator_indices += beacon_committee[:members_per_committee]
     return validator_indices
 ```
@@ -356,7 +356,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
         committee_offset += len(committee)
 
     ptc = get_ptc(state, attestation.data.slot)
-    return [i for i in output if i not in ptc]
+    return Set([i for i in output if i not in ptc])
 ```
 
 #### `get_payload_attesting_indices`
@@ -402,7 +402,7 @@ The post-state corresponding to a pre-state `state` and a signed execution paylo
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawals(state) [Modified in EIP-XXXX]
+    process_withdrawals(state) # [Modified in EIP-XXXX]
     process_execution_payload_header(state, block) # [Modified in EIP-XXXX, removed process_execution_payload]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
@@ -597,7 +597,7 @@ def process_execution_payload(state: BeaconState, signed_envelope: SignedExecuti
         assert hash_tree_root(payload.withdrawals) == state.last_withdrawals_root
 
         # Verify the gas_limit
-        assert commited_header.gas_limit == payload.gas_limit
+        assert committed_header.gas_limit == payload.gas_limit
 
         assert committed_header.block_hash == payload.block_hash 
         # Verify consistency of the parent hash with respect to the previous execution payload
@@ -617,6 +617,10 @@ def process_execution_payload(state: BeaconState, signed_envelope: SignedExecuti
         )
 
         # Process Electra operations
+        def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+            for operation in operations:
+                fn(state, operation)
+
         for_ops(payload.deposit_requests, process_deposit_request)
         for_ops(payload.withdrawal_requests, process_withdrawal_request)
         for_ops(payload, process_consolidation_request)
