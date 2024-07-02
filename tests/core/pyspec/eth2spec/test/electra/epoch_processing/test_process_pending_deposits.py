@@ -291,7 +291,7 @@ def test_pending_deposit_over_max(spec, state):
         pubkey=state.validators[i].pubkey,
         withdrawal_credentials=state.validators[i].withdrawal_credentials,
         amount=amount,
-        slot=state.slot
+        slot=spec.GENESIS_SLOT
         ))
     
     assert len(state.pending_deposits) == overmax,"pending deposits is not over max"
