@@ -99,19 +99,49 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
+    payload_withhold_boost_root: Root # [New in EIP-XXXX]
+    payload_withhold_boost_full: boolean # [New in EIP-XXXX]
+    payload_reveal_boost_root: Root # [New in EIP-XXXX]
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict) # [New in EIP-XXXX]
     ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict) # [New in EIP-XXXX]
-    payload_withhold_boost_root: Root # [New in EIP-XXXX]
-    payload_withhold_boost_full: boolean # [New in EIP-XXXX]
-    payload_reveal_boost_root: Root # [New in EIP-XXXX]
 ```
-   
+
+### Modified `get_forkchoice_store` 
+
+```python
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_epoch = get_current_epoch(anchor_state)
+    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
+    return Store(
+        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
+        genesis_time=anchor_state.genesis_time,
+        justified_checkpoint=justified_checkpoint,
+        finalized_checkpoint=finalized_checkpoint,
+        unrealized_justified_checkpoint=justified_checkpoint,
+        unrealized_finalized_checkpoint=finalized_checkpoint,
+        proposer_boost_root=proposer_boost_root,
+        payload_withhold_boost_root=proposer_boost_root, # [New in EIP-XXXX]
+        payload_withhold_boost_full=True, # [New in EIP-XXXX]
+        payload_reveal_boost_root=proposer_boost_root, # [New in EIP-XXXX]
+        equivocating_indices=set(),
+        blocks={anchor_root: copy(anchor_block)},
+        block_states={anchor_root: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        unrealized_justifications={anchor_root: justified_checkpoint},
+    )
+```
+
 ### `notify_ptc_messages`
 
 ```python
@@ -123,10 +153,10 @@ def notify_ptc_messages(store: Store, state: BeaconState, payload_attestations: 
     if state.slot == 0:
         return
     for payload_attestation in payload_attestations:
-        indexed_payload_attestation = get_indexed_payload_attestation(state, state.slot - 1, payload_attestation)
+        indexed_payload_attestation = get_indexed_payload_attestation(state, Slot(state.slot - 1), payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
-            store.on_payload_attestation_message(PayloadAttestationMessage(validator_index=idx,
-                    data=payload_attestation.data, signature= BLSSignature(), is_from_block=true))
+            on_payload_attestation_message(store, PayloadAttestationMessage(validator_index=idx,
+                    data=payload_attestation.data, signature= BLSSignature(), is_from_block=True))
 ```
 
 ### `is_payload_present`
@@ -167,7 +197,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
     parent = store.blocks[block.parent_root]
     if parent.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
-    return ChildNode(root=block.parent_root, slot=parent.slot, is_payload_present=is_parent_node_full(block))
+    return ChildNode(root=block.parent_root, slot=parent.slot, is_payload_present=is_parent_node_full(store, block))
 ```
 
 ### Modified `get_checkpoint_block`
@@ -205,7 +235,7 @@ def is_supporting_vote(store: Store, node: ChildNode, message: LatestMessage) ->
 ### New `compute_proposer_boost`
 This is a helper to compute the proposer boost. It applies the proposer boost to any ancestor of the proposer boost root taking into account the payload presence. There is one exception: if the requested node has the same root and slot as the block with the proposer boost root, then the proposer boost is applied to both empty and full versions of the node. 
 ```python
-def compute_proposer_boost(store: Store, state: State, node: ChildNode) -> Gwei:
+def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
     if store.proposer_boost_root == Root():
         return Gwei(0)
     ancestor = get_ancestor(store, store.proposer_boost_root, node.slot)
@@ -225,10 +255,10 @@ def compute_proposer_boost(store: Store, state: State, node: ChildNode) -> Gwei:
 This is a similar helper that applies for the withhold boost. In this case this always takes into account the reveal status.
 
 ```python
-def compute_withhold_boost(store: Store, state: State, node: ChildNode) -> Gwei:
+def compute_withhold_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
     if store.payload_withhold_boost_root == Root():
         return Gwei(0)
-    ancestor = get_ancestor(store, store.payload_withold_boost_root, node.slot)
+    ancestor = get_ancestor(store, store.payload_withhold_boost_root, node.slot)
     if ancestor.root != node.root:
         return Gwei(0)
     if node.slot >= store.blocks[store.payload_withhold_boost_root].slot:
@@ -244,7 +274,7 @@ def compute_withhold_boost(store: Store, state: State, node: ChildNode) -> Gwei:
 This is a similar helper to the last two, the only difference is that the reveal boost is only applied to the full version of the node when querying for the same slot as the revealed payload. 
 
 ```python
-def compute_reveal_boost(store: Store, state: State, node: ChildNode) -> Gwei:
+def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
     if store.payload_reveal_boost_root == Root():
         return Gwei(0)
     ancestor = get_ancestor(store, store.payload_reveal_boost_root, node.slot)
@@ -252,7 +282,7 @@ def compute_reveal_boost(store: Store, state: State, node: ChildNode) -> Gwei:
         return Gwei(0)
     if node.slot >= store.blocks[store.payload_reveal_boost_root].slot:
         ancestor.is_payload_present = True
-    if is_ancestor_full != node.is_payload_present:
+    if ancestor.is_payload_present != node.is_payload_present:
         return Gwei(0)
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
     return  (committee_weight * PAYLOAD_REVEAL_BOOST) // 100
@@ -267,7 +297,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     unslashed_and_active_indices = [
         i for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not is_slashed_attester(state.validators[i])
+        if not state.validators[i].slashed
     ]
     attestation_score = Gwei(sum(
         state.validators[i].effective_balance for i in unslashed_and_active_indices
@@ -277,7 +307,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
     ))
 
     # Compute boosts
-    proposer_score = compute_boost(store, state, node)
+    proposer_score = compute_proposer_boost(store, state, node)
     builder_reveal_score = compute_reveal_boost(store, state, node)
     builder_withhold_score = compute_withhold_boost(store, state, node)
 
@@ -302,7 +332,7 @@ def get_head(store: Store) -> ChildNode:
         children = [
             ChildNode(root=root, slot=block.slot, is_payload_present=present) for (root, block) in blocks.items()
             if block.parent_root == best_child.root and 
-            is_parent_node_full(store, block) == best_child.is_payload_present if root != store.justified_root
+            is_parent_node_full(store, block) == best_child.is_payload_present if root != store.justified_checkpoint.root
             for present in (True, False) if root in store.execution_payload_states or present == False
         ]
         if len(children) == 0:
@@ -374,7 +404,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.ptc_vote[block_root] = [PAYLOAD_ABSENT]*PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
-    store.notify_ptc_messages(state, block.body.payload_attestations)
+    notify_ptc_messages(store, state, block.body.payload_attestations)
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
@@ -497,5 +527,5 @@ def on_payload_attestation_message(store: Store,
     if ptc_vote.count(PAYLOAD_WITHHELD) > PAYLOAD_TIMELY_THRESHOLD:
         block = store.blocks[data.beacon_block_root]
         store.payload_withhold_boost_root = block.parent_root
-        store.payload_withhold_boost_full = is_parent_node_full(block)
+        store.payload_withhold_boost_full = is_parent_node_full(store, block)
 ```
