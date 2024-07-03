@@ -52,7 +52,7 @@ The builder assembles then `signed_execution_payload_header = SignedExecutionPay
 
 ### Constructing the `BlobSidecar`s
 
-[Modified in EIP-XXXX]
+[Modified in EIP-7732]
 
 The `BlobSidecar` container is modified indirectly because the constant `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. Each sidecar is obtained from the modified 
 

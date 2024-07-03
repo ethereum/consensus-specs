@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to EIP-XXXX](#fork-to-eip-xxxx)
+- [Fork to EIP-7732](#fork-to-eip-7732)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of the EIP-XXXX upgrade.
+This document describes the process of the EIP-7732 upgrade.
 
 ## Configuration
 
@@ -57,7 +57,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to EIP-XXXX
+## Fork to EIP-7732
 
 ### Fork trigger
 
@@ -114,7 +114,7 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-XXXX]
+        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-7732]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
@@ -130,9 +130,9 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # ePBS
-        latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-XXXX]
-        latest_full_slot=pre.slot,  # [New in EIP-XXXX]
-        last_withdrawals_root=Root(),  # [New in EIP-XXXX]
+        latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-7732]
+        latest_full_slot=pre.slot,  # [New in EIP-7732]
+        last_withdrawals_root=Root(),  # [New in EIP-7732]
     )
 
     return post
