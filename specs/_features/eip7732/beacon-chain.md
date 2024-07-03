@@ -359,7 +359,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
         committee_offset += len(committee)
 
     ptc = get_ptc(state, attestation.data.slot)
-    return Set([i for i in output if i not in ptc])
+    return set([i for i in output if i not in ptc])
 ```
 
 #### `get_payload_attesting_indices`
