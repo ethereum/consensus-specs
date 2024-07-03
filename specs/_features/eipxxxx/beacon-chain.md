@@ -583,7 +583,7 @@ def verify_execution_payload_envelope_signature(
 ```python
 def process_execution_payload(state: BeaconState, 
                               signed_envelope: SignedExecutionPayloadEnvelope, 
-                              execution_engine: ExecutionEngine, verify=True) -> None:
+                              execution_engine: ExecutionEngine, verify: bool = True) -> None:
     # Verify signature
     if verify: 
         assert verify_execution_payload_envelope_signature(state, signed_envelope)
