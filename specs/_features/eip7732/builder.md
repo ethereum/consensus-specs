@@ -1,4 +1,4 @@
-# ePBS -- Honest Builder
+# EIP-7732 -- Honest Builder
 
 This is an accompanying document which describes the expected actions of a "builder" participating in the Ethereum proof-of-stake protocol.
 
@@ -16,7 +16,7 @@ This is an accompanying document which describes the expected actions of a "buil
 
 ## Introduction
 
-With the ePBS Fork, the protocol includes new staked participants of the protocol called *Builders*. While Builders are a subset of the validator set, they have extra attributions that are optional. Validators may opt to not be builders and as such we collect the set of guidelines for those validators that want to act as builders in this document. 
+With the EIP-7732 Fork, the protocol includes new staked participants of the protocol called *Builders*. While Builders are a subset of the validator set, they have extra attributions that are optional. Validators may opt to not be builders and as such we collect the set of guidelines for those validators that want to act as builders in this document. 
 
 ## Builders attributions
 
