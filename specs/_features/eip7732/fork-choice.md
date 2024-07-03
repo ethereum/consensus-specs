@@ -1,4 +1,4 @@
-# ePBS -- Fork Choice
+# EIP-7732 -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -38,7 +38,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the ePBS upgrade.
+This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 

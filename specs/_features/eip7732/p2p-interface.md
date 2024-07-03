@@ -1,6 +1,6 @@
-# ePBS -- Networking
+# EIP-7732 -- Networking
 
-This document contains the consensus-layer networking specification for ePBS.
+This document contains the consensus-layer networking specification for EIP7732.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -184,7 +184,7 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`      | `epbs.SignedBeaconBlock`      |
+| `EIP7732_FORK_VERSION`      | `eip7732.SignedBeaconBlock`   |
 
 ##### BeaconBlocksByRoot v3
 
@@ -201,7 +201,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`      | `epbs.SignedBeaconBlock`      | 
+| `EIP7732_FORK_VERSION`      | `eip7732.SignedBeaconBlock`   | 
 
 
 ##### BlobSidecarsByRoot v2
@@ -213,7 +213,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
 | `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
-| `EIP7732_FORK_VERSION`      | `epbs.BlobSidecar`            |
+| `EIP7732_FORK_VERSION`      | `eip7732.BlobSidecar`            |
 
 
 ##### ExecutionPayloadEnvelopeByRoot v1
@@ -226,7 +226,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`      | Chunk SSZ type                        |
 |---------------------|---------------------------------------|
-| `EIP7732_FORK_VERSION` | `epbs.SignedExecutionPayloadEnvelope` |
+| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 

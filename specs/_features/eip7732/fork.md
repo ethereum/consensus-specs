@@ -1,4 +1,4 @@
-# ePBS -- Fork Logic
+# EIP-7732 -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -68,7 +68,7 @@ For now, we assume the condition will be triggered at epoch `EIP7732_FORK_EPOCH`
 ### Upgrading the state
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`,
-an irregular state change is made to upgrade to ePBS.
+an irregular state change is made to upgrade to EIP-7732.
 
 ```python
 def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:

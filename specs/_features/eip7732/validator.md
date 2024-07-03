@@ -1,6 +1,6 @@
-# ePBS -- Honest Validator
+# EIP-7732 -- Honest Validator
 
-This document represents the changes and additions to the Honest validator guide included in the ePBS fork. 
+This document represents the changes and additions to the Honest validator guide included in the EIP-7732 fork. 
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
