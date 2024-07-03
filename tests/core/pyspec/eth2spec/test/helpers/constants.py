@@ -20,7 +20,7 @@ DAS = SpecForkName('das')
 ELECTRA = SpecForkName('electra')
 WHISK = SpecForkName('whisk')
 EIP7594 = SpecForkName('eip7594')
-EIPXXXX = SpecForkName('eipxxxx')
+EIP7732 = SpecForkName('eip7732')
 
 #
 # SpecFork settings
@@ -38,12 +38,12 @@ ALL_PHASES = (
     ELECTRA,
     # Experimental patches
     EIP7594,
-    EIPXXXX,
+    EIP7732,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0],)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK, EIPXXXX)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK, EIP7732)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK)
 
@@ -59,7 +59,7 @@ PREVIOUS_FORK_OF = {
     # Experimental patches
     WHISK: CAPELLA,
     EIP7594: DENEB,
-    EIPXXXX: ELECTRA,
+    EIP7732: ELECTRA,
 }
 
 # For fork transition tests
@@ -70,7 +70,7 @@ POST_FORK_OF = {
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
     DENEB: ELECTRA,
-    ELECTRA: EIPXXXX,
+    ELECTRA: EIP7732,
 }
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()

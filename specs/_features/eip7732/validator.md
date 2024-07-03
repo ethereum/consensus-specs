@@ -47,7 +47,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-[New in EIP-XXXX]
+[New in EIP-7732]
 
 `get_ptc_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting their assigned PTC slot. 
 

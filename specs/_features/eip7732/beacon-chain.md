@@ -1,4 +1,4 @@
-# EIP-XXXX -- The Beacon Chain
+# EIP-7732 -- The Beacon Chain
 
 ## Table of contents
 
@@ -80,20 +80,20 @@ At any given slot, the status of the blockchain's head may be either
 
 | Name | Value | 
 | - | - | 
-| `PTC_SIZE` | `uint64(2**9)` (=512)  # (New in EIP-XXXX) |
+| `PTC_SIZE` | `uint64(2**9)` (=512)  # (New in EIP-7732) |
 
 ### Domain types
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_BUILDER`     | `DomainType('0x1B000000')`  # (New in EIP-XXXX)|
-| `DOMAIN_PTC_ATTESTER`       | `DomainType('0x0C000000')`  # (New in EIP-XXXX)|
+| `DOMAIN_BEACON_BUILDER`     | `DomainType('0x1B000000')`  # (New in EIP-7732)|
+| `DOMAIN_PTC_ATTESTER`       | `DomainType('0x0C000000')`  # (New in EIP-7732)|
 
 ### Max operations per block
 
 | Name | Value |
 | - | - |
-| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4)  # (New in EIP-XXXX) |
+| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4)  # (New in EIP-7732) |
 
 ## Containers
 
@@ -182,12 +182,12 @@ class BeaconBlockBody(Container):
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    # Removed execution_payload [Removed in EIP-XXXX]
-    # Removed blob_kzg_commitments [Removed in EIP-XXXX]
+    # Removed execution_payload [Removed in EIP-7732]
+    # Removed blob_kzg_commitments [Removed in EIP-7732]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     # PBS
-    signed_execution_payload_header: SignedExecutionPayloadHeader   # [New in EIP-XXXX]
-    payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-XXXX]
+    signed_execution_payload_header: SignedExecutionPayloadHeader   # [New in EIP-7732]
+    payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-7732]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -262,9 +262,9 @@ class BeaconState(Container):
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     # PBS
-    latest_block_hash: Hash32  # [New in EIP-XXXX]
-    latest_full_slot: Slot  # [New in EIP-XXXX]
-    latest_withdrawals_root: Root  # [New in EIP-XXXX]
+    latest_block_hash: Hash32  # [New in EIP-7732]
+    latest_full_slot: Slot  # [New in EIP-7732]
+    latest_withdrawals_root: Root  # [New in EIP-7732]
 ```
 
 ## Helper functions
@@ -394,7 +394,7 @@ def get_indexed_payload_attestation(state: BeaconState, slot: Slot,
 
 ## Beacon chain state transition function
 
-*Note*: state transition is fundamentally modified in EIP-XXXX. The full state transition is broken in two parts, first importing a signed block and then importing an execution payload.
+*Note*: state transition is fundamentally modified in EIP-7732. The full state transition is broken in two parts, first importing a signed block and then importing an execution payload.
 
 The post-state corresponding to a pre-state `state` and a signed beacon block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid. 
 
@@ -405,11 +405,11 @@ The post-state corresponding to a pre-state `state` and a signed execution paylo
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawals(state)  # [Modified in EIP-XXXX]
-    process_execution_payload_header(state, block)  # [Modified in EIP-XXXX, removed process_execution_payload]
+    process_withdrawals(state)  # [Modified in EIP-7732]
+    process_execution_payload_header(state, block)  # [Modified in EIP-7732, removed process_execution_payload]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in EIP-XXXX]
+    process_operations(state, block.body)  # [Modified in EIP-7732]
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -505,10 +505,10 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    # Removed `process_deposit_request` in EIP-XXXX
-    # Removed `process_withdrawal_request` in EIP-XXXX
-    # Removed `process_consolidation_request` in EIP-XXXX
-    for_ops(body.payload_attestations, process_payload_attestation)  # [New in EIP-XXXX]
+    # Removed `process_deposit_request` in EIP-7732
+    # Removed `process_withdrawal_request` in EIP-7732
+    # Removed `process_consolidation_request` in EIP-7732
+    for_ops(body.payload_attestations, process_payload_attestation)  # [New in EIP-7732]
 ```
 
 ##### Payload Attestations

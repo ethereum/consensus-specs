@@ -5,7 +5,7 @@ This document contains the consensus-layer networking specification for ePBS.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Modification in EIP-XXXX](#modification-in-eip-xxxx)
+- [Modification in EIP-7732](#modification-in-eip-7732)
   - [Preset](#preset)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
@@ -27,11 +27,11 @@ This document contains the consensus-layer networking specification for ePBS.
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Modification in EIP-XXXX
+## Modification in EIP-7732
 
 ### Preset
 
-*[Modified in EIP-XXXX]*
+*[Modified in EIP-7732]*
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
@@ -58,7 +58,7 @@ class BlobSidecar(Container):
 
 ##### Modified `verify_blob_sidecar_inclusion_proof`
 
-`verify_blob_sidecar_inclusion_proof` is modified in EIP-XXXX to account for the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and no longer in the beacon block body. 
+`verify_blob_sidecar_inclusion_proof` is modified in EIP-7732 to account for the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and no longer in the beacon block body. 
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
@@ -76,7 +76,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP-XXXX to support upgraded types.
+Some gossip meshes are upgraded in the fork of EIP-7732 to support upgraded types.
 
 #### Topics and messages
 
@@ -85,23 +85,23 @@ Topics follow the same specification as in prior upgrades.
 The `beacon_block` topic is updated to support the modified type
 | Name | Message Type |
 | --- | --- |
-| `beacon_block` | `SignedBeaconBlock` [modified in EIP-XXXX] |
+| `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
 | Name                          | Message Type                                         |
 |-------------------------------|------------------------------------------------------|
-| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-XXXX] |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-XXXX]       |
-| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-XXXX]            |
+| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732] |
+| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732]       |
+| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]            |
 
 ##### Global topics
 
-EIP-XXXX introduces new global topics for execution header, execution payload and payload attestation.
+EIP-7732 introduces new global topics for execution header, execution payload and payload attestation.
 
 ###### `beacon_block`
 
-[Modified in EIP-XXXX]
+[Modified in EIP-7732]
 
 The *type* of the payload of this topic changes to the (modified) `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md). 
 
