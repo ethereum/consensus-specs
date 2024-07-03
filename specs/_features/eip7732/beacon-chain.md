@@ -358,8 +358,10 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
         committee_offset += len(committee)
 
+    if compute_epoch_at_slot(attestation.data.slot) < EIP7732_FORK_EPOCH:
+        return output
     ptc = get_ptc(state, attestation.data.slot)
-    return set([i for i in output if i not in ptc])
+    return set(i for i in output if i not in ptc)
 ```
 
 #### `get_payload_attesting_indices`
