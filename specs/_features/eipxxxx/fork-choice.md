@@ -156,9 +156,15 @@ def notify_ptc_messages(store: Store, state: BeaconState, payload_attestations: 
     for payload_attestation in payload_attestations:
         indexed_payload_attestation = get_indexed_payload_attestation(state, Slot(state.slot - 1), payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
-            on_payload_attestation_message(store,
-                                            PayloadAttestationMessage(validator_index=idx,
-                                            data=payload_attestation.data, signature=BLSSignature(), is_from_block=True))
+            on_payload_attestation_message(
+                store,
+                PayloadAttestationMessage(
+                    validator_index=idx,
+                    data=payload_attestation.data, 
+                    signature=BLSSignature(), 
+                    is_from_block=True
+                )
+            )
 ```
 
 ### `is_payload_present`
@@ -179,7 +185,9 @@ def is_payload_present(store: Store, beacon_block_root: Root) -> bool:
 ```python
 def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
     parent = store.blocks[block.parent_root]
-    return block.body.signed_execution_payload_header.message.parent_block_hash == parent.body.signed_execution_payload_header.message.block_hash
+    parent_block_hash = block.body.signed_execution_payload_header.message.parent_block_hash
+    message_block_hash = parent.body.signed_execution_payload_header.message.block_hash
+    return parent_block_hash == message_block_hash
 ```
 
 ### Modified `get_ancestor` 
@@ -230,7 +238,7 @@ def is_supporting_vote(store: Store, node: ChildNode, message: LatestMessage) ->
     message_block = store.blocks[message.root]
     if node.slot >= message_block.slot:
         return False
-    ancestor =  get_ancestor(store, message.root, node.slot)
+    ancestor = get_ancestor(store, message.root, node.slot)
     return (node.root == ancestor.root) and (node.is_payload_present == ancestor.is_payload_present)
 ```
 
@@ -250,7 +258,7 @@ def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) ->
     if (node.slot < proposer_boost_slot) and (ancestor.is_payload_present != node.is_payload_present):
         return Gwei(0)
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return  (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ```
 
 ### New `compute_withhold_boost`
@@ -269,7 +277,7 @@ def compute_withhold_boost(store: Store, state: BeaconState, node: ChildNode) ->
         return Gwei(0)
 
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return  (committee_weight * PAYLOAD_WITHHOLD_BOOST) // 100
+    return (committee_weight * PAYLOAD_WITHHOLD_BOOST) // 100
 ```
 
 ### New `compute_reveal_boost`
@@ -287,7 +295,7 @@ def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> G
     if ancestor.is_payload_present != node.is_payload_present:
         return Gwei(0)
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return  (committee_weight * PAYLOAD_REVEAL_BOOST) // 100
+    return (committee_weight * PAYLOAD_REVEAL_BOOST) // 100
 ```
 
 ### Modified `get_weight`
@@ -497,8 +505,8 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
 ### `on_payload_attestation_message`
 
 ```python
-def on_payload_attestation_message(store: Store, 
-    ptc_message: PayloadAttestationMessage, is_from_block: bool=False) -> None:
+def on_payload_attestation_message(
+        store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool=False) -> None:
     """
     Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` directly on the wire.
     """
@@ -518,9 +526,14 @@ def on_payload_attestation_message(store: Store,
         # Check that the attestation is for the current slot
         assert data.slot == get_current_slot(store)
         # Verify the signature
-        assert is_valid_indexed_payload_attestation(state, 
-            IndexedPayloadAttestation(attesting_indices = [ptc_message.validator_index], data = data,
-                                      signature = ptc_message.signature))
+        assert is_valid_indexed_payload_attestation(
+            state, 
+            IndexedPayloadAttestation(
+                attesting_indices=[ptc_message.validator_index],
+                data=data,
+                signature=ptc_message.signature
+            )
+        )
     # Update the ptc vote for the block
     ptc_index = ptc.index(ptc_message.validator_index)
     ptc_vote = store.ptc_vote[data.beacon_block_root]
