@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name                | Value |
 |---------------------| - |
-| `EPBS_FORK_VERSION` | `Version('0x06000000')` |
-| `EPBS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| `EIP7732_FORK_VERSION` | `Version('0x09000000')` |
+| `EIP7732_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EPBS_FORK_EPOCH:
-        return EPBS_FORK_VERSION
+    if epoch >= EIP7732_FORK_EPOCH:
+        return EIP7732_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -63,11 +63,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 TBD. This fork is defined for testing purposes, the EIP may be combined with other 
 consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `EPBS_FORK_EPOCH`.
+For now, we assume the condition will be triggered at epoch `EIP7732_FORK_EPOCH`.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EPBS_FORK_EPOCH`,
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`,
 an irregular state change is made to upgrade to ePBS.
 
 ```python
@@ -81,7 +81,7 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EPBS_FORK_EPOCH,  # [Modified in ePBS]
+            current_version=EIP7732_FORK_EPOCH,  # [Modified in ePBS]
             epoch=epoch,
         ),
         # History
