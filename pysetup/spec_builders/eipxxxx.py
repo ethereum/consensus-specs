@@ -10,7 +10,7 @@ class EIPXXXXSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f'''
-from eth2spec.eipxxxx import {preset_name} as eipxxxx
+from eth2spec.electra import {preset_name} as electra
 '''
 
     @classmethod

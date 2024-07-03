@@ -71,8 +71,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to ePBS.
 
 ```python
-def upgrade_to_epbs(pre: deneb.BeaconState) -> BeaconState:
-    epoch = deneb.get_current_epoch(pre)
+def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
+    epoch = electra.get_current_epoch(pre)
 
     post = BeaconState(
         # Versioning
@@ -120,6 +120,15 @@ def upgrade_to_epbs(pre: deneb.BeaconState) -> BeaconState:
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
+        deposit_requests_start_index=pre.deposit_requests_start_index,
+        deposit_balance_to_consumer=pre.deposit_balance_to_consumer,
+        exit_balance_to_consumer=pre.exit_balance_to_consumer,
+        earliest_exit_epoch=pre.earliest_exit_epoch,
+        consolidation_balance_to_consumer=pre.consolidation_balance_to_consumer,
+        earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
+        pending_balance_deposits=pre.pending_balance_deposits,
+        pending_partial_withdrawals=pre.pending_partial_withdrawals,
+        pending_consolidations=pre.pending_consolidations,
         # ePBS
         latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-XXXX]
         latest_full_slot=pre.slot,  # [New in EIP-XXXX]
