@@ -121,7 +121,8 @@ def run_test(test_info):
                         str(viable_for_head_root): int(spec.get_weight(store, viable_for_head_root))
                         for viable_for_head_root in leaves_viable_for_head
                     }
-                    assert value == viable_for_head_roots_and_weights
+                    expected = { kv['root']: kv['weight'] for kv in value}
+                    assert expected == viable_for_head_roots_and_weights
                 else:
                     assert False
         else:
