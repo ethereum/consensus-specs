@@ -133,7 +133,7 @@ class StemStateDiff(Container):
     # Bitmap to indicate which tx accesses this stem,
     # if bit #n is set, then transaction #n accesses
     # this stem. Used to execute txs concurrently.
-    tx_accesses: BitList[MAX_TRANSACTIONS_PER_PAYLOAD]
+    tx_accesses: Bitlist[MAX_TRANSACTIONS_PER_PAYLOAD]
 ```
 
 #### `IPAProof`
