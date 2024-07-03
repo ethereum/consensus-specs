@@ -71,7 +71,7 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to ePBS.
 
 ```python
-def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
+def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
     epoch = electra.get_current_epoch(pre)
 
     post = BeaconState(
@@ -81,7 +81,7 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIP7732_FORK_EPOCH,  # [Modified in ePBS]
+            current_version=EIP7732_FORK_VERSION,  # [Modified in EIP-7732]
             epoch=epoch,
         ),
         # History
@@ -121,10 +121,10 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         deposit_requests_start_index=pre.deposit_requests_start_index,
-        deposit_balance_to_consumer=pre.deposit_balance_to_consumer,
-        exit_balance_to_consumer=pre.exit_balance_to_consumer,
+        deposit_balance_to_consume=pre.deposit_balance_to_consume,
+        exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,
-        consolidation_balance_to_consumer=pre.consolidation_balance_to_consumer,
+        consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
         pending_balance_deposits=pre.pending_balance_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
@@ -132,7 +132,7 @@ def upgrade_to_epbs(pre: electra.BeaconState) -> BeaconState:
         # ePBS
         latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-7732]
         latest_full_slot=pre.slot,  # [New in EIP-7732]
-        last_withdrawals_root=Root(),  # [New in EIP-7732]
+        latest_withdrawals_root=Root(),  # [New in EIP-7732]
     )
 
     return post
