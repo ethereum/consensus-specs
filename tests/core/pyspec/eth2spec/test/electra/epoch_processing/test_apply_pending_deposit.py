@@ -49,6 +49,22 @@ def test_apply_pending_deposit_not_withdrawable_epoch_while_exiting(spec, state)
 
 @with_electra_and_later
 @spec_state_test
+def test_apply_pending_deposit_not_withdrawable_epoch_at_current_epoch_while_exiting(spec, state):
+    amount = 100 
+    # validator exit epoch must be less than far future
+    state.validators[0].exit_epoch = spec.FAR_FUTURE_EPOCH - 1
+    state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) 
+  
+    deposit = spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials= state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+        )
+    assert spec.apply_pending_deposit(state,deposit) == False
+
+@with_electra_and_later
+@spec_state_test
 def test_apply_pending_deposit_withdrawable_epoch_while_exiting(spec, state):
     amount = 100 
     state.slot = spec.SLOTS_PER_EPOCH * 2
@@ -66,6 +82,7 @@ def test_apply_pending_deposit_withdrawable_epoch_while_exiting(spec, state):
     state.balances[0] = 0
     assert spec.apply_pending_deposit(state,deposit) == True
     assert state.balances[0] == amount
+
 
 @with_electra_and_later
 @spec_state_test
