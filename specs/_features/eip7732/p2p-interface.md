@@ -184,7 +184,7 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EPBS_FORK_VERSION`      | `epbs.SignedBeaconBlock`      |
+| `EIP7732_FORK_VERSION`      | `epbs.SignedBeaconBlock`      |
 
 ##### BeaconBlocksByRoot v3
 
@@ -201,7 +201,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EPBS_FORK_VERSION`      | `epbs.SignedBeaconBlock`      | 
+| `EIP7732_FORK_VERSION`      | `epbs.SignedBeaconBlock`      | 
 
 
 ##### BlobSidecarsByRoot v2
@@ -213,7 +213,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
 | `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
-| `EPBS_FORK_VERSION`      | `epbs.BlobSidecar`            |
+| `EIP7732_FORK_VERSION`      | `epbs.BlobSidecar`            |
 
 
 ##### ExecutionPayloadEnvelopeByRoot v1
@@ -226,7 +226,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`      | Chunk SSZ type                        |
 |---------------------|---------------------------------------|
-| `EPBS_FORK_VERSION` | `epbs.SignedExecutionPayloadEnvelope` |
+| `EIP7732_FORK_VERSION` | `epbs.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
