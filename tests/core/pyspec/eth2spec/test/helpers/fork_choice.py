@@ -371,10 +371,13 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
         leaves_viable_for_head = [root for root in filtered_block_roots
                                   if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)]
 
-        viable_for_head_roots_and_weights = {
-            encode_hex(viable_for_head_root): int(spec.get_weight(store, viable_for_head_root))
+        viable_for_head_roots_and_weights = [
+            {
+                "root": encode_hex(viable_for_head_root),
+                "weight": int(spec.get_weight(store, viable_for_head_root))
+            }
             for viable_for_head_root in leaves_viable_for_head
-        }
+        ]
         checks["viable_for_head_roots_and_weights"] = viable_for_head_roots_and_weights
 
     test_steps.append({"checks": checks})
