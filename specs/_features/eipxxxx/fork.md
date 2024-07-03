@@ -114,16 +114,16 @@ def upgrade_to_epbs(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=ExecutionPayloadHeader(), # [Modified in EIP-XXXX]
+        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-XXXX]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # ePBS
-        latest_block_hash=pre.latest_execution_payload_header.block_hash, # [New in EIP-XXXX]
-        latest_full_slot=pre.slot, # [New in EIP-XXXX]
-        last_withdrawals_root=Root(), # [New in EIP-XXXX]
+        latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-XXXX]
+        latest_full_slot=pre.slot,  # [New in EIP-XXXX]
+        last_withdrawals_root=Root(),  # [New in EIP-XXXX]
     )
 
     return post
