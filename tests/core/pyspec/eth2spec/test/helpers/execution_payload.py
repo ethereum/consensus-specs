@@ -283,10 +283,10 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         transactions=empty_txs,
     )
     if not is_post_eip7732(spec):
-        payload.state_root = latest.state_root,  # no changes to the state
-        payload.block_number = latest.block_number + 1,
-        payload.gas_limit = latest.gas_limit,  # retain same limit
-        payload.base_fee_per_gas = latest.base_fee_per_gas,  # retain same base_fee
+        payload.state_root = latest.state_root  # no changes to the state
+        payload.block_number = latest.block_number + 1
+        payload.gas_limit = latest.gas_limit  # retain same limit
+        payload.base_fee_per_gas = latest.base_fee_per_gas  # retain same base_fee
     if is_post_capella(spec):
         payload.withdrawals = get_expected_withdrawals(spec, state)
     if is_post_deneb(spec):
