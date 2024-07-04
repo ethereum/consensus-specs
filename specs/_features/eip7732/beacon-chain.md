@@ -29,6 +29,8 @@
 - [Helper functions](#helper-functions)
   - [Math](#math)
     - [`bit_floor`](#bit_floor)
+  - [Misc](#misc-1)
+    - [`remove_flag`](#remove_flag)
   - [Predicates](#predicates)
     - [`is_valid_indexed_payload_attestation`](#is_valid_indexed_payload_attestation)
     - [`is_parent_block_full`](#is_parent_block_full)
@@ -39,13 +41,17 @@
     - [`get_indexed_payload_attestation`](#get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Modified `process_withdrawals`](#modified-process_withdrawals)
-    - [New `verify_execution_payload_header_signature`](#new-verify_execution_payload_header_signature)
-    - [New `process_execution_payload_header`](#new-process_execution_payload_header)
-    - [Modified `process_operations`](#modified-process_operations)
+    - [Withdrawals](#withdrawals)
+      - [Modified `process_withdrawals`](#modified-process_withdrawals)
+    - [Execution payload header](#execution-payload-header)
+      - [New `verify_execution_payload_header_signature`](#new-verify_execution_payload_header_signature)
+      - [New `process_execution_payload_header`](#new-process_execution_payload_header)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
       - [Payload Attestations](#payload-attestations)
-    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+        - [`process_payload_attestation`](#process_payload_attestation)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
+      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -165,8 +171,8 @@ class SignedExecutionPayloadEnvelope(Container):
 
 ### Modified containers
 
+#### `BeaconBlockBody`
 
-#### `BeaconBlockBody` 
 **Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly.
 
 ```python
@@ -207,6 +213,7 @@ class ExecutionPayloadHeader(Container):
 ```
 
 #### `BeaconState`
+
 *Note*: The `BeaconState` is modified to track the last withdrawals honored in the CL. The `latest_execution_payload_header` is modified semantically to refer not to a past committed `ExecutionPayload` but instead it corresponds to the state's slot builder's bid. Another addition is to track the last committed block hash and the last slot that was full, that is in which there were both consensus and execution blocks included. 
 
 ```python
@@ -282,7 +289,17 @@ def bit_floor(n: uint64) -> uint64:
         return 0
     return uint64(1) << (n.bit_length() - 1)
 ```
-    
+
+### Misc
+
+#### `remove_flag`
+
+```python
+def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
+    flag = ParticipationFlags(2**flag_index)
+    return flags & ~flag
+```
+
 ### Predicates
 
 #### `is_valid_indexed_payload_attestation`
@@ -303,6 +320,7 @@ def is_valid_indexed_payload_attestation(
     indices = indexed_payload_attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(set(indices)):
         return False
+
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, None)
@@ -340,6 +358,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
 ```
 
 #### Modified `get_attesting_indices`
+
 `get_attesting_indices` is modified to ignore PTC votes
 
 ```python
@@ -355,7 +374,6 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
         committee_attesters = set(
             index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
         output = output.union(committee_attesters)
-
         committee_offset += len(committee)
 
     if compute_epoch_at_slot(attestation.data.slot) < EIP7732_FORK_EPOCH:
@@ -375,7 +393,6 @@ def get_payload_attesting_indices(state: BeaconState, slot: Slot,
     ptc = get_ptc(state, slot)
     return set(index for i, index in enumerate(ptc) if payload_attestation.aggregation_bits[i])
 ```
-
 
 #### `get_indexed_payload_attestation`
 
@@ -398,9 +415,9 @@ def get_indexed_payload_attestation(state: BeaconState, slot: Slot,
 
 *Note*: state transition is fundamentally modified in EIP-7732. The full state transition is broken in two parts, first importing a signed block and then importing an execution payload.
 
-The post-state corresponding to a pre-state `state` and a signed beacon block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid. 
+The post-state corresponding to a pre-state `state` and a signed beacon block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
 
-The post-state corresponding to a pre-state `state` and a signed execution payload envelope `signed_envelope` is defined as `process_execution_payload(state, signed_envelope)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid. 
+The post-state corresponding to a pre-state `state` and a signed execution payload envelope `signed_envelope` is defined as `process_execution_payload(state, signed_envelope)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause an `uint64` overflow or underflow are also considered invalid.
 
 ### Block processing
 
@@ -415,7 +432,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### Modified `process_withdrawals`
+#### Withdrawals
+
+##### Modified `process_withdrawals`
+
 **Note:** This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances. 
 
 ```python
@@ -449,7 +469,9 @@ def process_withdrawals(state: BeaconState) -> None:
         state.next_withdrawal_validator_index = next_validator_index
 ```
 
-#### New `verify_execution_payload_header_signature`
+#### Execution payload header
+
+##### New `verify_execution_payload_header_signature`
 
 ```python
 def verify_execution_payload_header_signature(state: BeaconState, 
@@ -460,7 +482,7 @@ def verify_execution_payload_header_signature(state: BeaconState,
     return bls.Verify(builder.pubkey, signing_root, signed_header.signature)
 ```
 
-#### New `process_execution_payload_header`
+##### New `process_execution_payload_header`
 
 ```python
 def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> None:
@@ -488,7 +510,9 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     state.latest_execution_payload_header = header
 ```
 
-#### Modified `process_operations`
+#### Operations
+
+##### Modified `process_operations`
 
 **Note:** `process_operations` is modified to process PTC attestations
 
@@ -515,11 +539,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ##### Payload Attestations
 
-```python
-def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    flag = ParticipationFlags(2**flag_index)
-    return flags & ~flag
-``` 
+###### `process_payload_attestation`
 
 ```python
 def process_payload_attestation(state: BeaconState, payload_attestation: PayloadAttestation) -> None:
@@ -569,7 +589,9 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     increase_balance(state, proposer_index, proposer_reward)
 ```
 
-#### New `verify_execution_payload_envelope_signature`
+#### Modified `process_execution_payload`
+
+##### New `verify_execution_payload_envelope_signature`
 
 ```python
 def verify_execution_payload_envelope_signature(
@@ -579,7 +601,6 @@ def verify_execution_payload_envelope_signature(
     return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
 ```
 
-#### Modified `process_execution_payload`
 *Note*: `process_execution_payload` is now an independent check in state transition. It is called when importing a signed execution payload proposed by the builder of the current slot.
 
 ```python
