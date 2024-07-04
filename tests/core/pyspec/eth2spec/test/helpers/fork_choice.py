@@ -2,6 +2,7 @@ from typing import NamedTuple, Sequence, Any
 
 from eth_utils import encode_hex
 from eth2spec.test.exceptions import BlockNotFoundException
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
@@ -267,6 +268,12 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
+    if is_post_eip7732:
+        return {
+            'slot': int(head.slot),
+            'root': encode_hex(head.root),
+        }
+
     slot = store.blocks[head].slot
     return {
         'slot': int(slot),

@@ -11,6 +11,7 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
 )
 from eth2spec.test.helpers.constants import MAINNET
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -28,7 +29,12 @@ def _apply_base_block_a(spec, state, store, test_steps):
     block = build_empty_block(spec, state, slot=state.slot + 1)
     signed_block_a = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
-    assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
+    head = spec.get_head(store)
+    expected_root = signed_block_a.message.hash_tree_root()
+    if is_post_eip7732:
+        assert head.root == expected_root
+    else:
+        assert spec.get_head(store) == signed_block_a.message.hash_tree_root()
 
 
 @with_altair_and_later

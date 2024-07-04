@@ -11,6 +11,7 @@ from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.random import (
     randomize_state,
 )
@@ -77,7 +78,10 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
         yield 'post', None
         return
 
-    spec.process_withdrawals(state, execution_payload)
+    if is_post_eip7732:
+        spec.process_withdrawals(state)
+    else:
+        spec.process_withdrawals(state, execution_payload)
 
     yield 'post', state
 
