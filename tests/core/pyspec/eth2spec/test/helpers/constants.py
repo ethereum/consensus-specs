@@ -38,14 +38,13 @@ ALL_PHASES = (
     ELECTRA,
     # Experimental patches
     EIP7594,
-    EIP7732,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0],)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK, EIP7732)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
-ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK)
+ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK, EIP7732)
 
 # NOTE: the same definition as in `pysetup/md_doc_paths.py`
 PREVIOUS_FORK_OF = {
@@ -70,7 +69,6 @@ POST_FORK_OF = {
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
     DENEB: ELECTRA,
-    ELECTRA: EIP7732,
 }
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()
