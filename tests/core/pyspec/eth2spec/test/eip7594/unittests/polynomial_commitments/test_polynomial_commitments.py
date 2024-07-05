@@ -188,7 +188,6 @@ def test_verify_cell_kzg_proof_batch_invalid(spec):
 
     assert not spec.verify_cell_kzg_proof_batch(
         commitments_bytes=[commitment, commitment],
-        row_indices=[0, 0],
         column_indices=[0, 4],
         cells=[cells[0], cells[5]],  # Note: this is where it should go wrong
         proofs_bytes=[proofs[0], proofs[4]],
