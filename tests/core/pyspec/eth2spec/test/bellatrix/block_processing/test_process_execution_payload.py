@@ -35,8 +35,11 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
             payload=execution_payload,
             beacon_block_root=state.latest_block_header.hash_tree_root(),
             payload_withheld=False,
-            state_root=state.hash_tree_root(),
         )
+        post_state = state.copy()
+        post_state.latest_block_hash = execution_payload.block_hash
+        post_state.latest_full_slot = state.slot
+        envelope.state_root = post_state.hash_tree_root()
         privkey = privkeys[0]
         signature = spec.get_execution_payload_envelope_signature(
             state,
@@ -82,7 +85,11 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 
     yield 'post', state
 
-    assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
+    if is_post_eip7732(spec):
+        assert state.latest_full_slot == state.slot
+        assert state.latest_block_hash == execution_payload.block_hash
+    else:
+        assert state.latest_execution_payload_header == get_execution_payload_header(spec, state, body.execution_payload)
 
 
 def run_success_test(spec, state):

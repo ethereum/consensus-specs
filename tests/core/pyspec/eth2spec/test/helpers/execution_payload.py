@@ -15,17 +15,15 @@ from eth2spec.test.helpers.forks import (
 )
 
 
-def get_execution_payload_header(spec, execution_payload):
+def get_execution_payload_header(spec, state, execution_payload):
     if is_post_eip7732(spec):
         return spec.ExecutionPayloadHeader(
             parent_block_hash=execution_payload.parent_hash,
-            parent_block_root=spec.Root(),  # TODO: Fix this
+            parent_block_root=state.latest_block_header.hash_tree_root(),
             block_hash=execution_payload.block_hash,
             gas_limit=execution_payload.gas_limit,
-            builder_index=spec.ValidatorIndex(0),  # TODO: Fix this
-            slot=spec.Slot(0),  # TODO: Fix this
-            value=spec.Gwei(0),  # TODO: Fix this
-            blob_kzg_commitments_root=spec.Root()  # TODO: Fix this
+            slot=state.slot,
+            blob_kzg_commitments_root=state.latest_execution_payload_header.blob_kzg_commitments_root,
         )
 
     payload_header = spec.ExecutionPayloadHeader(
@@ -224,7 +222,7 @@ def compute_el_block_hash(spec, payload, pre_state):
 
         requests_trie_root = compute_trie_root_from_indexed_data(requests_encoded)
 
-    payload_header = get_execution_payload_header(spec, payload)
+    payload_header = get_execution_payload_header(spec, spec.BeaconState(), payload)
 
     return compute_el_header_block_hash(
         spec,
@@ -348,7 +346,7 @@ def build_state_with_incomplete_transition(spec, state):
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
-    payload_header = get_execution_payload_header(spec, pre_state_payload)
+    payload_header = get_execution_payload_header(spec, state, pre_state_payload)
 
     state = build_state_with_execution_payload_header(spec, state, payload_header)
     assert spec.is_merge_transition_complete(state)
@@ -359,7 +357,6 @@ def build_state_with_complete_transition(spec, state):
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):
     pre_state = state.copy()
     pre_state.latest_execution_payload_header = execution_payload_header
-
     return pre_state
 
 

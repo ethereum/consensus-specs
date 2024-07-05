@@ -47,13 +47,14 @@ def build_mock_validator(spec, i: int, balance: int):
 
 
 def get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash):
+    kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     header = spec.ExecutionPayloadHeader(
         parent_block_hash=b'\x30' * 32,
         parent_block_root=b'\x00' * 32,
         block_hash=eth1_block_hash,
         gas_limit=30000000,
         slot=slot,
-        blob_kzg_commitments_root=b'\x20' * 32,
+        blob_kzg_commitments_root=kzgs.hash_tree_root(),
     )
     return header
 
@@ -189,5 +190,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_balance_deposits = []
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
+
+    if is_post_eip7732(spec):
+        withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
+        state.latest_withdrawals_root = withdrawals.hash_tree_root()
 
     return state
