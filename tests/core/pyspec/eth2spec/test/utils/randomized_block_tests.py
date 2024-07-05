@@ -253,7 +253,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(
         spec, blob_count=rng.randint(0, spec.MAX_BLOBS_PER_BLOCK), rng=rng)
     block.body.execution_payload.transactions.append(opaque_tx)
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     block.body.blob_kzg_commitments = blob_kzg_commitments
 
     return block
