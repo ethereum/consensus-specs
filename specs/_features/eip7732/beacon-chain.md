@@ -622,7 +622,7 @@ def process_execution_payload(state: BeaconState,
 
     if not envelope.payload_withheld: 
         # Verify the withdrawals root
-        assert hash_tree_root(payload.withdrawals) == state.last_withdrawals_root
+        assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
 
         # Verify the gas_limit
         assert committed_header.gas_limit == payload.gas_limit
