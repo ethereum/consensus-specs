@@ -586,6 +586,7 @@ with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNE
 with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_deneb_and_before_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
+with_electra_and_before_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
 
 
 class quoted_str(str):
