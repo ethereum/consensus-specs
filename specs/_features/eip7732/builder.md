@@ -54,11 +54,12 @@ The builder assembles then `signed_execution_payload_header = SignedExecutionPay
 
 [Modified in EIP-7732]
 
-The `BlobSidecar` container is modified indirectly because the constant `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. Each sidecar is obtained from the modified 
+The `BlobSidecar` container is modified indirectly because the constant `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. The function `get_blob_sidecars` is modified because the KZG commitments are no longer included in the beacon block but rather in the `ExecutionPayloadEnvelope`, the builder has to send the commitments as parameters to this function. 
 
 ```python
 def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
+                      blob_kzg_commitments: Sequence[KZGCommitment],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
     block = signed_block.message
     block_header = BeaconBlockHeader(
@@ -73,7 +74,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
         BlobSidecar(
             index=index,
             blob=blob,
-            kzg_commitment=block.body.blob_kzg_commitments[index],
+            kzg_commitment=blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
             signed_block_header=signed_block_header,
             kzg_commitment_inclusion_proof=compute_merkle_proof(
