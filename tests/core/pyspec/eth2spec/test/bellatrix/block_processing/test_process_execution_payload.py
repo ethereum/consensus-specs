@@ -15,8 +15,9 @@ from eth2spec.test.context import (
     with_bellatrix_and_later,
     with_phases,
 )
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
-
+from eth2spec.test.helpers.forks import is_post_eip7732
 
 def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
     """
@@ -28,11 +29,31 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     If ``valid == False``, run expecting ``AssertionError``
     """
     # Before Deneb, only `body.execution_payload` matters. `BeaconBlockBody` is just a wrapper.
-    body = spec.BeaconBlockBody(execution_payload=execution_payload)
+    # after EIP-7732 the execution payload is no longer in the body
+    if is_post_eip7732(spec):
+        envelope = spec.ExecutionPayloadEnvelope(
+            payload=execution_payload,
+            beacon_block_root=state.latest_block_header.hash_tree_root(),
+            payload_withheld=False,
+            state_root=state.hash_tree_root(),
+        )
+        privkey = privkeys[0]
+        signature = spec.get_execution_payload_envelope_signature(
+            state,
+            envelope,
+            privkey,
+        )
+        signed_envelope = spec.SignedExecutionPayloadEnvelope(
+            message=envelope,
+            signature=signature,
+        )
+    else:
+        body = spec.BeaconBlockBody(execution_payload=execution_payload)
 
     yield 'pre', state
     yield 'execution', {'execution_valid': execution_valid}
-    yield 'body', body
+    if not is_post_eip7732(spec):
+        yield 'body', body
 
     called_new_block = False
 
@@ -40,15 +61,21 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
         def verify_and_notify_new_payload(self, new_payload_request) -> bool:
             nonlocal called_new_block, execution_valid
             called_new_block = True
-            assert new_payload_request.execution_payload == body.execution_payload
+            assert new_payload_request.execution_payload == execution_payload
             return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
+        if is_post_eip7732(spec):
+            expect_assertion_error(lambda: spec.process_execution_payload(state, signed_envelope, TestEngine()))
+        else:
+            expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, body, TestEngine())
+    if is_post_eip7732(spec):
+        spec.process_execution_payload(state, signed_envelope, TestEngine())
+    else:
+        spec.process_execution_payload(state, body, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block

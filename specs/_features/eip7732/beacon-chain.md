@@ -717,6 +717,8 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 ## Testing
 
+### Modified `initialize_beacon_state_from_eth1`
+
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-7732 testing only.
 Modifications include:
 1. Use `EIP7732_FORK_VERSION` as the previous and current fork version.
@@ -775,4 +777,17 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     state.latest_execution_payload_header = execution_payload_header
 
     return state
+```
+
+### Modified `is_merge_transition_complete` 
+
+The function `is_merge_transition_complete` is modified for test purposes only to include the hash tree root of the empty KZG commitment list
+
+```python
+def is_merge_transition_complete(state: BeaconState) -> bool:
+    header = ExecutionPayloadHeader()
+    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    return state.latest_execution_payload_header != header
 ```
