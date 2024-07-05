@@ -511,6 +511,10 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     n = FIELD_ELEMENTS_PER_CELL
     num_rows = len(row_commitments)
 
+    # Given zero cells, the result is true
+    if num_cells == 0:
+        return True
+
     # Step 1: Compute a challenge r and its powers r^0, ..., r^{num_cells-1}
     r = compute_verify_cell_kzg_proof_batch_challenge(
         row_commitments,
@@ -566,7 +570,6 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
         [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
     ]))
 ```
-
 
 ### Cell cosets
 
