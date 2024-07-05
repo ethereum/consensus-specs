@@ -616,7 +616,7 @@ def process_execution_payload(state: BeaconState,
     assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
 
     # Verify consistency with the committed header
-    committed_header = state.execution_payload_header
+    committed_header = state.latest_execution_payload_header
     assert envelope.builder_index == committed_header.builder_index
     assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
 
