@@ -260,7 +260,7 @@ def is_valid_block_hash(self: ExecutionEngine,
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
-    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
     ...
 ```
