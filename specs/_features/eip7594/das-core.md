@@ -195,27 +195,37 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
 
 ```python
 def get_data_column_sidecars(signed_block: SignedBeaconBlock,
-                             blobs: Sequence[Blob]) -> Sequence[DataColumnSidecar]:
+                             cells_and_kzg_proofs: Sequence[
+                                Tuple[
+                                    Vector[Cell, CELLS_PER_EXT_BLOB],
+                                    Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+                                ]) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block and the cells/proofs associated with each blob in the
+    blob, assemble the sidecars which can be distributed to peers.
+    
+    Since there is no method which converts cells back to a blob, this method
+    takes cells/proofs instead of blobs so that it can be re-create sidecars
+    after recovery.
+    """
+    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
+    assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
     signed_block_header = compute_signed_block_header(signed_block)
-    block = signed_block.message
     kzg_commitments_inclusion_proof = compute_merkle_proof(
-        block.body,
+        signed_block.message.body,
         get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
     )
-    cells_and_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    blob_count = len(blobs)
-    cells = [cells_and_proofs[i][0] for i in range(blob_count)]
-    proofs = [cells_and_proofs[i][1] for i in range(blob_count)]
+
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
-        column_cells = [cells[row_index][column_index]
-                        for row_index in range(blob_count)]
-        column_proofs = [proofs[row_index][column_index]
-                         for row_index in range(blob_count)]
+        column_cells, column_proofs = [], []
+        for cells, proofs in cells_and_kzg_proofs:
+            column_cells.append(cells[column_index])
+            column_proofs.append(proofs[column_index])
         sidecars.append(DataColumnSidecar(
             index=column_index,
             column=column_cells,
-            kzg_commitments=block.body.blob_kzg_commitments,
+            kzg_commitments=blob_kzg_commitments,
             kzg_proofs=column_proofs,
             signed_block_header=signed_block_header,
             kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
