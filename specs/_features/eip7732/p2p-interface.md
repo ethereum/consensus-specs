@@ -35,8 +35,9 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `0` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
-| `KZG_GENERALIZED_INDEX_PREFIX`           | `0` # TODO: Compute it when the spec stabilizes | Generalized index for the first item in the `blob_kzg_commitments` list | 
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
+| `KZG_GENERALIZED_INDEX_PREFIX`           | `13` # TODO: Compute it when the spec stabilizes | Generalized index for the first item in the `blob_kzg_commitments` list |
+
 
 ### Containers
 
