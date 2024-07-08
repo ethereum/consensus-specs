@@ -36,7 +36,6 @@ This document contains the consensus-layer networking specification for EIP7732.
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
-| `KZG_GENERALIZED_INDEX_PREFIX`           | `486` # TODO: Compute it when the spec stabilizes | Generalized index for the first item in the `blob_kzg_commitments` list |
 
 
 ### Containers
@@ -63,8 +62,17 @@ class BlobSidecar(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    # hardcoded here because the block does not include the commitments but only their root. 
-    gindex = GeneralizedIndex(KZG_GENERALIZED_INDEX_PREFIX + blob_sidecar.index)
+    inner_gindex = get_generalized_index(
+        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+        blob_sidecar.index
+    )
+    outer_gindex = get_generalized_index(
+        BeaconBlockBody,
+        "signed_execution_payload_header",
+        "message",
+        "blob_kzg_commitments_root",
+    )
+    gindex = get_subtree_index(concat_generalized_indices(outer_gindex, inner_gindex))
 
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),

@@ -73,6 +73,10 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
     sidecars: List[BlobSidecar] = []
     for index, blob in enumerate(blobs):
         proof = compute_merkle_proof(
+            blob_kzg_commitments,
+            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
+        )
+        proof += compute_merkle_proof(
             block.body,
             get_generalized_index(
                 BeaconBlockBody,
@@ -80,10 +84,6 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 "message",
                 "blob_kzg_commitments_root",
             ),
-        )
-        proof += compute_merkle_proof(
-            blob_kzg_commitments,
-            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
         )
         sidecars.append(
             BlobSidecar(
