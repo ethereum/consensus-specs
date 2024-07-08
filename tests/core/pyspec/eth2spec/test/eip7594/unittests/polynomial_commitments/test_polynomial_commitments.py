@@ -125,6 +125,20 @@ def test_verify_cell_kzg_proof(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
+def test_verify_cell_kzg_proof_batch_zero_cells(spec):
+    # Verify with zero cells should return true
+    assert spec.verify_cell_kzg_proof_batch(
+        row_commitments_bytes=[],
+        row_indices=[],
+        column_indices=[],
+        cells=[],
+        proofs_bytes=[],
+    )
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
 def test_verify_cell_kzg_proof_batch(spec):
 
     # test with a single blob / commitment
