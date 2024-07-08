@@ -85,6 +85,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 "blob_kzg_commitments_root",
             ),
         )
+        proof = Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH](outer_proof + inner_proof)
         sidecars.append(
             BlobSidecar(
                 index=index,
@@ -92,7 +93,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 kzg_commitment=blob_kzg_commitments[index],
                 kzg_proof=blob_kzg_proofs[index],
                 signed_block_header=signed_block_header,
-                kzg_commitment_inclusion_proof=outer_proof + inner_proof,
+                kzg_commitment_inclusion_proof=proof,
             )
         )
     return sidecars
