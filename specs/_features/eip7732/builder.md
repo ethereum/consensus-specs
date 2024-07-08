@@ -72,11 +72,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
     signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
     sidecars: List[BlobSidecar] = []
     for index, blob in enumerate(blobs):
-        inner_proof = compute_merkle_proof(
-            blob_kzg_commitments,
-            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
-        )
-        outer_proof = compute_merkle_proof(
+        proof = compute_merkle_proof(
             block.body,
             get_generalized_index(
                 BeaconBlockBody,
@@ -85,7 +81,10 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 "blob_kzg_commitments_root",
             ),
         )
-        proof = Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH](outer_proof + inner_proof)
+        proof += compute_merkle_proof(
+            blob_kzg_commitments,
+            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
+        )
         sidecars.append(
             BlobSidecar(
                 index=index,
@@ -93,7 +92,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 kzg_commitment=blob_kzg_commitments[index],
                 kzg_proof=blob_kzg_proofs[index],
                 signed_block_header=signed_block_header,
-                kzg_commitment_inclusion_proof=proof,
+                kzg_commitment_inclusion_proof=proof
             )
         )
     return sidecars
