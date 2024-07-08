@@ -195,18 +195,15 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
 
 ```python
 def get_data_column_sidecars(signed_block: SignedBeaconBlock,
-                             cells_and_kzg_proofs: Sequence[
-                                Tuple[
-                                    Vector[Cell, CELLS_PER_EXT_BLOB],
-                                    Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-                                ]) -> Sequence[DataColumnSidecar]:
+                             cells_and_kzg_proofs: Sequence[Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
-    blob, assemble the sidecars which can be distributed to peers.
+    block, assemble the sidecars which can be distributed to peers.
     
-    Since there is no method which converts cells back to a blob, this method
-    takes cells/proofs instead of blobs so that it can be re-create sidecars
-    after recovery.
+    Since there is no method which converts cells to a blob, this method takes
+    cells/proofs instead of blobs so it can re-create sidecars after recovery.
     """
     blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
     assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
