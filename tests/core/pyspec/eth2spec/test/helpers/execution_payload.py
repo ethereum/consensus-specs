@@ -280,6 +280,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
         prev_randao=randao_mix,
         gas_used=0,  # empty block, 0 gas
+        gas_limit=latest.gas_limit,
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
         transactions=empty_txs,

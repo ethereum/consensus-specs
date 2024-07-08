@@ -82,14 +82,21 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
         yield 'post', None
         return
 
-    spec.process_execution_payload(state, body, TestEngine())
+    if is_post_eip7732(spec):
+        spec.process_execution_payload(state, signed_envelope, TestEngine())
+    else:
+        spec.process_execution_payload(state, body, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
 
     yield 'post', state
 
-    assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
+    if is_post_eip7732(spec):
+        assert state.latest_block_hash == execution_payload.block_hash
+        assert state.latest_full_slot == state.slot
+    else:
+        assert state.latest_execution_payload_header == get_execution_payload_header(spec, state, execution_payload)
 
 
 """
@@ -113,6 +120,7 @@ def test_incorrect_blob_tx_type(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -130,6 +138,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -147,6 +156,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -164,6 +174,7 @@ def test_incorrect_transaction_length_empty(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -181,6 +192,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -197,6 +209,7 @@ def test_no_transactions_with_commitments(spec, state):
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -214,6 +227,7 @@ def test_incorrect_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -231,6 +245,7 @@ def test_incorrect_commitments_order(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -245,6 +260,7 @@ def test_incorrect_block_hash(spec, state):
     execution_payload.block_hash = b'\x12' * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -262,6 +278,7 @@ def test_zeroed_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
@@ -278,6 +295,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments,
                                                 valid=False, execution_valid=False)
 
@@ -292,4 +310,5 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments, valid=False)
