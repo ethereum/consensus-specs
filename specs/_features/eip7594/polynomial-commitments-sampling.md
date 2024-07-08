@@ -695,9 +695,9 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
         assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Get objects from bytes
-    row_commitments_bytes = list(set(commitments_bytes))
-    row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in row_commitments_bytes]
-    row_indices = [row_commitments_bytes.index(commitment_bytes) for commitment_bytes in commitments_bytes]
+    deduplicated_commitments = list(set(commitments_bytes))
+    row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in deduplicated_commitments]
+    row_indices = [deduplicated_commitments.index(commitment_bytes) for commitment_bytes in commitments_bytes]
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
