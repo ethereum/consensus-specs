@@ -194,5 +194,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     if is_post_eip7732(spec):
         withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
         state.latest_withdrawals_root = withdrawals.hash_tree_root()
+        state.latest_block_hash = state.latest_execution_payload_header.block_hash # last block is full
 
     return state
