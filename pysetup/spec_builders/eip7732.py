@@ -37,9 +37,3 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
         return set([
             'EXECUTION_PAYLOAD_GINDEX',
         ])
-
-    @classmethod
-    def deprecate_presets(cls) -> Set[str]:
-        return set([
-            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH',
-        ])
