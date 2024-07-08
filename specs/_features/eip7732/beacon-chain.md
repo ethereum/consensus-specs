@@ -445,7 +445,8 @@ def process_withdrawals(state: BeaconState) -> None:
         return
 
     withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals)
+    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
+    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
     for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
