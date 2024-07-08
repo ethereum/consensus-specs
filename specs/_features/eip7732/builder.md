@@ -59,7 +59,7 @@ The `BlobSidecar` container is modified indirectly because the constant `KZG_COM
 ```python
 def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],
-                      blob_kzg_commitments: Sequence[KZGCommitment],
+                      blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
                       blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
     block = signed_block.message
     block_header = BeaconBlockHeader(
@@ -70,20 +70,32 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
         body_root=hash_tree_root(block.body),
     )
     signed_block_header = SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
-    return [
-        BlobSidecar(
-            index=index,
-            blob=blob,
-            kzg_commitment=blob_kzg_commitments[index],
-            kzg_proof=blob_kzg_proofs[index],
-            signed_block_header=signed_block_header,
-            kzg_commitment_inclusion_proof=compute_merkle_proof(
-                block.body,
-                GeneralizedIndex(KZG_GENERALIZED_INDEX_PREFIX + index),
+    sidecars: List[BlobSidecar] = []
+    for index, blob in enumerate(blobs):
+        inner_proof = compute_merkle_proof(
+            blob_kzg_commitments,
+            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
+        )
+        outer_proof = compute_merkle_proof(
+            block.body,
+            get_generalized_index(
+                BeaconBlockBody,
+                "signed_execution_payload_header",
+                "message",
+                "blob_kzg_commitments_root",
             ),
         )
-        for index, blob in enumerate(blobs)
-    ]
+        sidecars.append(
+            BlobSidecar(
+                index=index,
+                blob=blob,
+                kzg_commitment=blob_kzg_commitments[index],
+                kzg_proof=blob_kzg_proofs[index],
+                signed_block_header=signed_block_header,
+                kzg_commitment_inclusion_proof=outer_proof + inner_proof,
+            )
+        )
+    return sidecars
 ```
 
 ### Constructing the execution payload envelope
