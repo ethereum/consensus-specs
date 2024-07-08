@@ -18,6 +18,10 @@ from eth2spec.electra import {preset_name} as electra
         return {
             'PTC_SIZE': spec_object.preset_vars['PTC_SIZE'].value,
             'MAX_PAYLOAD_ATTESTATIONS': spec_object.preset_vars['MAX_PAYLOAD_ATTESTATIONS'].value,
+            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732':
+                spec_object.preset_vars['KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732'].value,
+            'KZG_GENERALIZED_INDEX_PREFIX':
+                spec_object.preset_vars['KZG_GENERALIZED_INDEX_PREFIX'].value,
         }
 
     @classmethod

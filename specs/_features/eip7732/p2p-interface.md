@@ -35,8 +35,8 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
-| `KZG_GENERALIZED_INDEX_PREFIX`           | `13` # TODO: Compute it when the spec stabilizes | Generalized index for the first item in the `blob_kzg_commitments` list |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
+| `KZG_GENERALIZED_INDEX_PREFIX`           | `486` # TODO: Compute it when the spec stabilizes | Generalized index for the first item in the `blob_kzg_commitments` list |
 
 
 ### Containers
@@ -52,7 +52,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
 ```
 
 #### Helpers
@@ -69,7 +69,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.kzg_commitment_inclusion_proof,
-        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
+        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732,
         index=gindex,
         root=blob_sidecar.signed_block_header.message.body_root,
     )
