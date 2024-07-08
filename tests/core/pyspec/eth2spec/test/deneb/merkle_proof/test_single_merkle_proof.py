@@ -67,7 +67,7 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
             "signed_execution_payload_header",
             "message",
             "blob_kzg_commitments_root",
-            )
+        )
         gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
     else:
         gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', blob_index)

@@ -19,6 +19,7 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
 from eth2spec.test.helpers.forks import is_post_eip7732
 
+
 def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
     """
     Run ``process_execution_payload``, yielding:
@@ -89,7 +90,8 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
         assert state.latest_full_slot == state.slot
         assert state.latest_block_hash == execution_payload.block_hash
     else:
-        assert state.latest_execution_payload_header == get_execution_payload_header(spec, state, body.execution_payload)
+        assert state.latest_execution_payload_header == get_execution_payload_header(
+            spec, state, body.execution_payload)
 
 
 def run_success_test(spec, state):
