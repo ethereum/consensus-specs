@@ -176,8 +176,8 @@ def get_generalized_index(typ: SSZType, *path: PyUnion[int, SSZVariableName]) ->
     for p in path:
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
-            typ = uint64
             assert issubclass(typ, (List, ByteList))
+            typ = uint64
             root = GeneralizedIndex(root * 2 + 1)
         else:
             pos, _, _ = get_item_position(typ, p)
