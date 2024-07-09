@@ -483,13 +483,14 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     """
     Helper: Verify that a set of cells belong to their corresponding commitment.
 
-    Specifically, given a set of tuples ((`row_index`, `column_index`), `evals`, `proof`), for every tuple it verifies
-    `proof` which shows that `evals` are actually the evaluations of the polynomial behind the corresponding commitment.
+    Specifically, given a set of tuples (``row_index``, ``column_index``, ``evals``, ``proof``), for every tuple it
+    verifies ``proof`` which shows that ``evals`` are actually the evaluations of the polynomial behind the
+    corresponding commitment.
 
-    The value `row_index` points to the right commitment in the array `row_commitments`, while the value `column_index`
+    The value ``row_index`` points to a commitment in the array ``row_commitments``, while the value ``column_index``
     determines the evaluation domain of the polynomial.
 
-    This function is the internal implementation of verify_cell_kzg_proof_batch().
+    This function is the internal implementation of ``verify_cell_kzg_proof_batch``.
     """
     assert len(row_indices) == len(column_indices) == len(cosets_evals) == len(proofs)
     for row_index in row_indices:
@@ -705,7 +706,6 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
-    # Get objects from bytes
     # Create the list of unique commitments we are dealing with
     deduplicated_commitments = list(set(commitments_bytes))
     row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in deduplicated_commitments]
