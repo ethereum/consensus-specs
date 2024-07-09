@@ -481,12 +481,19 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
                                      cosets_evals: Sequence[CosetEvals],
                                      proofs: Sequence[KZGProof]) -> bool:
     """
-    Verify a set of cells, given their corresponding proofs and their coordinates (row_index, column_index) in the blob
-    matrix. The i-th cell is in row row_indices[i] and in column column_indices[i].
-    The list of all commitments is provided in row_commitments_bytes.
+    Helper: Verify that a set of cells belong to their corresponding commitment.
 
-    This function is the internal implementation of verify_cell_kzg_proof_batch.
+    Specifically, given a set of tuples ((`row_index`, `column_index`), `evals`, `proof`), for every tuple it verifies
+    `proof` which shows that `evals` are actually the evaluations of the polynomial behind the corresponding commitment.
+
+    The value `row_index` points to the right commitment in the array `row_commitments`, while the value `column_index`
+    determines the evaluation domain of the polynomial.
+
+    This function is the internal implementation of verify_cell_kzg_proof_batch().
     """
+    assert len(row_indices) == len(column_indices) == len(cosets_evals) == len(proofs)
+    for row_index in row_indices:
+        assert row_index < len(row_commitments)
 
     # The verification equation that we will check is pairing (LL, LR) = pairing (RL, [1]), where
     # LL = sum_k r^k proofs[k],
@@ -676,7 +683,11 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
                                 cells: Sequence[Cell],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
-    Verify a set of cells given their corresponding commitments/proofs/column_indices.
+    Verify that a set of cells belong to their corresponding commitments.
+
+    Specifically, given a set of tuples (`commitment`, `column_index`, `cell`, `proof`), for every tuple the function
+    verifies `proof` which shows that `cell` are the evaluations of the polynomial behind the `commitment`. The
+    evaluation domain is determined by `column_index`.
 
     This function implements the universal verification equation that has been introduced here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
@@ -695,9 +706,12 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
         assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Get objects from bytes
+    # Create the list of unique commitments we are dealing with
     deduplicated_commitments = list(set(commitments_bytes))
     row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in deduplicated_commitments]
+    # Create indices list mapping initial commitments (that potentially contains duplicates) to the unique commitments.
     row_indices = [deduplicated_commitments.index(commitment_bytes) for commitment_bytes in commitments_bytes]
+
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
