@@ -587,7 +587,7 @@ with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_R
 
 with_deneb_and_before_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
 with_electra_and_before_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
-
+with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
 
 class quoted_str(str):
     pass
