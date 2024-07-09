@@ -483,9 +483,10 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     """
     Helper: Verify that a set of cells belong to their corresponding commitment.
 
-    Given a list of ``row_commitments`` and four lists representing tuples of (``row_index``, ``column_index``,
-    ``evals``, ``proof``), the function verifies ``proof`` which shows that ``evals`` are the evaluations of
-    the polynomial associated with ``row_commitments[row_index]``, evaluated over the domain specified by ``column_index``.
+    Given a list of ``row_commitments`` and four lists representing tuples of (``row_index``,
+    ``column_index``, ``evals``, ``proof``), the function verifies ``proof`` which shows that
+    ``evals`` are the evaluations of the polynomial associated with ``row_commitments[row_index]``,
+    evaluated over the domain specified by ``column_index``.
 
     This function is the internal implementation of ``verify_cell_kzg_proof_batch``.
     """
