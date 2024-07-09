@@ -34,7 +34,10 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
             payload=execution_payload,
             beacon_block_root=state.latest_block_header.hash_tree_root(),
             payload_withheld=False,
+            blob_kzg_commitments=blob_kzg_commitments,
         )
+        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_kzg_commitments)
+        state.latest_execution_payload_header.blob_kzg_commitments_root = kzg_list.hash_tree_root()
         post_state = state.copy()
         post_state.latest_block_hash = execution_payload.block_hash
         post_state.latest_full_slot = state.slot
