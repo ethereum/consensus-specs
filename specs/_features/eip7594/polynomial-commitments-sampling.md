@@ -687,7 +687,7 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
     Verify that a set of cells belong to their corresponding commitments.
 
     Specifically, given a set of tuples (``commitment``, ``column_index``, ``cell``, ``proof``), for every tuple
-    the function verifies `proof` which shows that ``cell`` are the evaluations of the polynomial behind the
+    the function verifies ``proof`` which shows that ``cell`` are the evaluations of the polynomial behind the
     ``commitment``. The evaluation domain is determined by ``column_index``.
 
     This function implements the universal verification equation that has been introduced here:
