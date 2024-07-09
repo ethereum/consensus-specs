@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_and_later,
+    with_bellatrix_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.constants import (
@@ -28,7 +28,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_should_override_forkchoice_update__false(spec, state):
@@ -73,7 +73,7 @@ def test_should_override_forkchoice_update__false(spec, state):
     yield 'steps', test_steps
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_should_override_forkchoice_update__true(spec, state):
     test_steps = []

@@ -13,6 +13,7 @@ from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
     with_bellatrix_and_later,
+    with_bellatrix_until_eip7732,
     with_phases,
 )
 from eth2spec.test.helpers.keys import privkeys
@@ -291,14 +292,14 @@ def run_non_empty_extra_data_test(spec, state):
     assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_non_empty_extra_data_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_non_empty_extra_data_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -320,14 +321,14 @@ def run_non_empty_transactions_test(spec, state):
     assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_non_empty_transactions_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_non_empty_transactions_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -346,14 +347,14 @@ def run_zero_length_transaction_test(spec, state):
     assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_zero_length_transaction_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_zero_length_transaction_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_zero_length_transaction_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
