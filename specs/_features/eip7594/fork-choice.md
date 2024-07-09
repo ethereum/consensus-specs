@@ -28,16 +28,6 @@ This is the modification of the fork choice accompanying EIP-7594
 
 ### Helpers
 
-#### `get_custody_parameters`
-
-`def get_custody_parameters() -> Tuple[NodeID, uint64]`
-
-#### `get_sampling_columns`
-
-
-`def get_sampling_columns() -> Sequence[ColumnIndex]`
-
-
 #### `retrieve_column_sidecars`
 
 `def retrieve_column_sidecars(beacon_block_root: Root, columns_to_retrieve: Sequence[ColumnIndex]) -> Sequence[DataColumnSidecar]`
