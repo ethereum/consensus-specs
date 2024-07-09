@@ -943,7 +943,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         is_validator_exited = False
         is_validator_withdrawn = False
         validator_pubkeys = [v.pubkey for v in state.validators]
-        if deposit.pubkey:
+        if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
             is_validator_withdrawn = validator.withdrawable_epoch < get_current_epoch(state)
