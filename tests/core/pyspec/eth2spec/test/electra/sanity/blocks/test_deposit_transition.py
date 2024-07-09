@@ -103,7 +103,7 @@ def prepare_state_and_block(spec,
     # Assign deposits and deposit requests
     block.body.deposits = deposits
     block.body.execution_payload.deposit_requests = deposit_requests
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     return state, block
 
@@ -220,7 +220,7 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # Artificially assign deposit's pubkey to a deposit request of the same block
     top_up_keys = [block.body.deposits[0].data.pubkey]
     block.body.execution_payload.deposit_requests[0].pubkey = top_up_keys[0]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     pre_pending_deposits = len(state.pending_balance_deposits)
 

@@ -499,7 +499,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
 
     # Step 4.2: Compute RLI = [sum_k r^k interpolation_poly_k(s)]
     # Note: an efficient implementation would use the IDFT based method explained in the blog post
-    sum_interp_polys_coeff = [0]
+    sum_interp_polys_coeff = [0] * n
     for k in range(num_cells):
         interp_poly_coeff = interpolate_polynomialcoeff(coset_for_cell(column_indices[k]), cosets_evals[k])
         interp_poly_scaled_coeff = multiply_polynomialcoeff([r_powers[k]], interp_poly_coeff)
@@ -525,7 +525,6 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
         [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
     ]))
 ```
-
 
 ### Cell cosets
 
