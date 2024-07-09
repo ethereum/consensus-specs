@@ -5,7 +5,8 @@ from eth2spec.test.helpers.execution_payload import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_and_later
+    with_bellatrix_and_later,
+    with_bellatrix_until_eip7732,
 )
 
 
@@ -32,7 +33,7 @@ expected_results = [
 ]
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_is_merge_block_and_is_execution_enabled(spec, state):
     for result in expected_results:
