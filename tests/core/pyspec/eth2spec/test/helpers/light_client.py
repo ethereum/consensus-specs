@@ -89,11 +89,13 @@ def create_update(spec,
 
     if with_next:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = spec.compute_merkle_proof(attested_state, latest_next_sync_committee_gindex(spec))
+        update.next_sync_committee_branch = spec.compute_merkle_proof(
+            attested_state, latest_next_sync_committee_gindex(spec))
 
     if with_finality:
         update.finalized_header = spec.block_to_light_client_header(finalized_block)
-        update.finality_branch = spec.compute_merkle_proof(attested_state, latest_finalized_root_gindex(spec))
+        update.finality_branch = spec.compute_merkle_proof(
+            attested_state, latest_finalized_root_gindex(spec))
 
     update.sync_aggregate, update.signature_slot = get_sync_aggregate(
         spec, attested_state, num_participants)
