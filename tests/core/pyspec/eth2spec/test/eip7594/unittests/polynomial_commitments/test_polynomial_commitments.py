@@ -128,8 +128,7 @@ def test_verify_cell_kzg_proof(spec):
 def test_verify_cell_kzg_proof_batch_zero_cells(spec):
     # Verify with zero cells should return true
     assert spec.verify_cell_kzg_proof_batch(
-        row_commitments_bytes=[],
-        row_indices=[],
+        commitments_bytes=[],
         column_indices=[],
         cells=[],
         proofs_bytes=[],
