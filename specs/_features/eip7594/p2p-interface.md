@@ -73,12 +73,11 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     assert sidecar.index < NUMBER_OF_COLUMNS
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
-    commitments = [sidecar.kzg_commitments[i] for i in range(len(sidecar.column))]
     column_indices = [sidecar.index] * len(sidecar.column)
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
-        commitments_bytes=commitments,
+        commitments_bytes=sidecar.kzg_commitments,
         column_indices=column_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
