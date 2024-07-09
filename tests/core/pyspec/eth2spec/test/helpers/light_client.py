@@ -14,6 +14,24 @@ from eth2spec.test.helpers.sync_committee import (
 from math import floor
 
 
+def latest_finalized_root_gindex(spec):
+    if hasattr(spec, 'FINALIZED_ROOT_GINDEX_ELECTRA'):
+        return spec.FINALIZED_ROOT_GINDEX_ELECTRA
+    return spec.FINALIZED_ROOT_GINDEX
+
+
+def latest_current_sync_committee_gindex(spec):
+    if hasattr(spec, 'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA'):
+        return spec.CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return spec.CURRENT_SYNC_COMMITTEE_GINDEX
+
+
+def latest_next_sync_committee_gindex(spec):
+    if hasattr(spec, 'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA'):
+        return spec.NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return spec.NEXT_SYNC_COMMITTEE_GINDEX
+
+
 def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
     return spec.compute_start_slot_at_epoch(sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 
@@ -71,11 +89,11 @@ def create_update(spec,
 
     if with_next:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = spec.compute_merkle_proof(attested_state, spec.NEXT_SYNC_COMMITTEE_GINDEX)
+        update.next_sync_committee_branch = spec.compute_merkle_proof(attested_state, latest_next_sync_committee_gindex(spec))
 
     if with_finality:
         update.finalized_header = spec.block_to_light_client_header(finalized_block)
-        update.finality_branch = spec.compute_merkle_proof(attested_state, spec.FINALIZED_ROOT_GINDEX)
+        update.finality_branch = spec.compute_merkle_proof(attested_state, latest_finalized_root_gindex(spec))
 
     update.sync_aggregate, update.signature_slot = get_sync_aggregate(
         spec, attested_state, num_participants)
@@ -141,7 +159,7 @@ def check_lc_bootstrap_equal(spec, new_spec, data, upgraded):
         new_spec,
         data.current_sync_committee_branch,
         upgraded.current_sync_committee_branch,
-        new_spec.CURRENT_SYNC_COMMITTEE_GINDEX,
+        latest_current_sync_committee_gindex(new_spec),
     )
 
 
@@ -171,7 +189,7 @@ def check_lc_update_equal(spec, new_spec, data, upgraded):
         new_spec,
         data.next_sync_committee_branch,
         upgraded.next_sync_committee_branch,
-        new_spec.NEXT_SYNC_COMMITTEE_GINDEX,
+        latest_next_sync_committee_gindex(new_spec),
     )
     check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
     check_merkle_branch_equal(
@@ -179,7 +197,7 @@ def check_lc_update_equal(spec, new_spec, data, upgraded):
         new_spec,
         data.finality_branch,
         upgraded.finality_branch,
-        new_spec.FINALIZED_ROOT_GINDEX,
+        latest_finalized_root_gindex(new_spec),
     )
     assert upgraded.sync_aggregate == data.sync_aggregate
     assert upgraded.signature_slot == data.signature_slot
@@ -211,7 +229,7 @@ def check_lc_finality_update_equal(spec, new_spec, data, upgraded):
         new_spec,
         data.finality_branch,
         upgraded.finality_branch,
-        new_spec.FINALIZED_ROOT_GINDEX,
+        latest_finalized_root_gindex(new_spec),
     )
     assert upgraded.sync_aggregate == data.sync_aggregate
     assert upgraded.signature_slot == data.signature_slot

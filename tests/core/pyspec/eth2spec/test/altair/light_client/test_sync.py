@@ -157,8 +157,7 @@ def emit_update(test, spec, state, block, attested_state, attested_block, finali
     data = d_spec.create_light_client_update(state, block, attested_state, attested_block, finalized_block)
     if not with_next:
         data.next_sync_committee = spec.SyncCommittee()
-        data.next_sync_committee_branch = \
-            [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_GINDEX))]
+        data.next_sync_committee_branch = spec.NextSyncCommitteeBranch()
     current_slot = state.slot
 
     upgraded = upgrade_lc_update_to_new_spec(d_spec, test.s_spec, data, phases)

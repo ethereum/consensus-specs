@@ -28,13 +28,21 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
+## Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
+| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+
 ## Constants
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86) |
-| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87) |
+| `FINALIZED_ROOT_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86) |
+| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87) |
 
 ## Helper functions
 
@@ -46,8 +54,8 @@ def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
 
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
-        return FINALIZED_ROOT_GINDEX
-    return GeneralizedIndex(altair.FINALIZED_ROOT_GINDEX)
+        return FINALIZED_ROOT_GINDEX_ELECTRA
+    return GeneralizedIndex(FINALIZED_ROOT_GINDEX)
 ```
 
 ### Modified `current_sync_committee_gindex_at_slot`
@@ -58,8 +66,8 @@ def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
 
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
-        return CURRENT_SYNC_COMMITTEE_GINDEX
-    return GeneralizedIndex(altair.CURRENT_SYNC_COMMITTEE_GINDEX)
+        return CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return GeneralizedIndex(CURRENT_SYNC_COMMITTEE_GINDEX)
 ```
 
 ### Modified `next_sync_committee_gindex_at_slot`
@@ -70,8 +78,8 @@ def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
 
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
-        return NEXT_SYNC_COMMITTEE_GINDEX
-    return GeneralizedIndex(altair.NEXT_SYNC_COMMITTEE_GINDEX)
+        return NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return GeneralizedIndex(NEXT_SYNC_COMMITTEE_GINDEX)
 ```
 
 ### Modified `get_lc_execution_root`
