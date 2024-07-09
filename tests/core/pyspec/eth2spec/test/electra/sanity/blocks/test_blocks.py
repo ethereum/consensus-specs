@@ -3,7 +3,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_electra_and_before_eip7732,
+    with_electra_until_eip7732,
 )
 from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
@@ -22,7 +22,7 @@ from eth2spec.test.helpers.withdrawals import (
 )
 
 
-@with_electra_and_before_eip7732
+@with_electra_until_eip7732
 @spec_state_test
 def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -51,7 +51,7 @@ def test_basic_el_withdrawal_request(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_electra_and_before_eip7732
+@with_electra_until_eip7732
 @spec_state_test
 def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -93,7 +93,7 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     assert is_execution_address and is_correct_source_address
 
 
-@with_electra_and_before_eip7732
+@with_electra_until_eip7732
 @spec_state_test
 def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -140,7 +140,7 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_electra_and_before_eip7732
+@with_electra_until_eip7732
 @spec_state_test
 def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
