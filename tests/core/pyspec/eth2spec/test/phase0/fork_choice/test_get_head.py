@@ -25,7 +25,7 @@ from eth2spec.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair,
+    is_post_altair, is_post_eip7732,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
@@ -44,7 +44,11 @@ def test_genesis(spec, state):
     yield 'anchor_block', anchor_block
 
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        assert head.root == anchor_root
+    else:
+        assert head == anchor_root
     test_steps.append({
         'checks': {
             'genesis_time': int(store.genesis_time),
