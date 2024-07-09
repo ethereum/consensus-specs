@@ -251,7 +251,7 @@ def case_verify_cell_kzg_proof_batch():
     # Valid: Verify cells from multiple blobs
     cells0, proofs0 = VALID_CELLS_AND_PROOFS[0]
     cells1, proofs1 = VALID_CELLS_AND_PROOFS[1]
-    commitments = [VALID_CELLS_AND_PROOFS[0], VALID_COMMITMENTS[1]]
+    commitments = [VALID_COMMITMENTS[0], VALID_COMMITMENTS[1]]
     column_indices = [0, 0]
     cells = [cells0[0], cells1[0]]
     proofs = [proofs0[0], proofs1[0]]
