@@ -53,7 +53,7 @@ def test_pending_deposit_eth1_bridge_not_applied(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_pending_deposit_deposit_not_finalized(spec, state):
+def test_pending_deposit_not_finalized(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     # set slot to something not finalized
     slot=spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch+1)
@@ -75,6 +75,65 @@ def test_pending_deposit_deposit_not_finalized(spec, state):
     # deposit was postponed and not processed
     assert len(state.pending_deposits) == 1
 
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_validator_withdrawn(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+   
+    withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + spec.hash(state.validators[0].pubkey)[1:]
+    state.slot = spec.SLOTS_PER_EPOCH * 2
+    state.validators[0].withdrawal_credentials = withdrawal_credentials
+    # set validator to be withdrawable by current epoch
+    state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) - 1
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+    ))
+    # set deposit_requests_start_index to something low so that we skip the bridge validation
+    state.deposit_requests_start_index = 0
+    print("deposit indexes",state.eth1_deposit_index,state.deposit_requests_start_index)
+    # set deposit_balance_to_consume to some initial amount to see its removal later on in the test
+    state.deposit_balance_to_consume = amount
+    # reset balance for assert
+    state.balances[0] = 0
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was processed
+    assert state.pending_deposits == []
+    # balance increases because of withdraw
+    assert state.balances[0] == amount
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_validator_exiting_but_not_withdrawn(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+   
+    withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + spec.hash(state.validators[0].pubkey)[1:]
+    state.slot = spec.SLOTS_PER_EPOCH * 2
+    state.validators[0].withdrawal_credentials = withdrawal_credentials
+    # set validator to be withdrawable by current epoch
+    state.validators[0].exit_epoch = spec.get_current_epoch(state) - 1
+    state.validators[0].withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+    ))
+    # set deposit_requests_start_index to something low so that we skip the bridge validation
+    state.deposit_requests_start_index = 0
+    print("deposit indexes",state.eth1_deposit_index,state.deposit_requests_start_index)
+    # set deposit_balance_to_consume to some initial amount to see its removal later on in the test
+    state.deposit_balance_to_consume = amount
+
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+   # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
 
 
 @with_electra_and_later
