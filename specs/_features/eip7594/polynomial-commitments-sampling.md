@@ -79,11 +79,7 @@ The following is a list of the public methods:
 | `CosetEvals` | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The internal representation of a cell (the evaluations over its Coset) |
 | `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
 | `CellIndex` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
-
-## Constants
-
-| Name | Value | Notes |
-| - | - | - |
+| `CommitmentIndex` | `uint64` | The type which represents the index of an element in the list of commitments |
 
 ## Preset
 
@@ -228,46 +224,29 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
 #### `compute_verify_cell_kzg_proof_batch_challenge`
 
 ```python
-def compute_verify_cell_kzg_proof_batch_challenge(row_commitments: Sequence[KZGCommitment],
-                                                  row_indices: Sequence[RowIndex],
-                                                  column_indices: Sequence[ColumnIndex],
+def compute_verify_cell_kzg_proof_batch_challenge(commitments: Sequence[KZGCommitment],
+                                                  commitment_indices: Sequence[CommitmentIndex],
+                                                  cell_indices: Sequence[CellIndex],
                                                   cosets_evals: Sequence[CosetEvals],
                                                   proofs: Sequence[KZGProof]) -> BLSFieldElement:
     """
-    Compute a random challenge r used in the universal verification equation.
-    This is used in verify_cell_kzg_proof_batch_impl.
-
-    To compute the challenge, `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` is used as a hash prefix.
+    Compute a random challenge ``r`` used in the universal verification equation. To compute the
+    challenge, ``RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN`` and all data that can influence the
+    verification is hashed together to generate a deterministicly "random" BLS field element.
     """
-    # input the domain separator
     hashinput = RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN
-
-    # input the degree bound of the polynomial
     hashinput += int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, KZG_ENDIANNESS)
-
-    # input the field elements per cell
     hashinput += int.to_bytes(FIELD_ELEMENTS_PER_CELL, 8, KZG_ENDIANNESS)
-
-    # input the number of commitments
-    num_commitments = len(row_commitments)
-    hashinput += int.to_bytes(num_commitments, 8, KZG_ENDIANNESS)
-
-    # input the number of cells
-    num_cells = len(row_indices)
-    hashinput += int.to_bytes(num_cells, 8, KZG_ENDIANNESS)
-
-    # input all commitments
-    for commitment in row_commitments:
+    hashinput += int.to_bytes(len(commitments), 8, KZG_ENDIANNESS)
+    hashinput += int.to_bytes(len(cosets_evals), 8, KZG_ENDIANNESS)
+    for commitment in commitments:
         hashinput += commitment
-
-    # input each cell with its indices and proof
-    for k in range(num_cells):
-        hashinput += int.to_bytes(row_indices[k], 8, KZG_ENDIANNESS)
-        hashinput += int.to_bytes(column_indices[k], 8, KZG_ENDIANNESS)
-        for eval in cosets_evals[k]:
-            hashinput += bls_field_to_bytes(eval)
+    for k, coset_evals in enumerate(cosets_evals):
+        hashinput += int.to_bytes(commitment_indices[k], 8, KZG_ENDIANNESS)
+        hashinput += int.to_bytes(cell_indices[k], 8, KZG_ENDIANNESS)
+        for coset_eval in coset_evals:
+            hashinput += bls_field_to_bytes(coset_eval)
         hashinput += proofs[k]
-
     return hash_to_bls_field(hashinput)
 ```
 
@@ -475,24 +454,25 @@ def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
 #### `verify_cell_kzg_proof_batch_impl`
 
 ```python
-def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
-                                     row_indices: Sequence[RowIndex],
-                                     column_indices: Sequence[ColumnIndex],
+def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
+                                     commitment_indices: Sequence[CommitmentIndex],
+                                     cell_indices: Sequence[CellIndex],
                                      cosets_evals: Sequence[CosetEvals],
                                      proofs: Sequence[KZGProof]) -> bool:
     """
     Helper: Verify that a set of cells belong to their corresponding commitment.
 
-    Given a list of ``row_commitments`` and four lists representing tuples of (``row_index``,
-    ``column_index``, ``evals``, ``proof``), the function verifies ``proof`` which shows that
-    ``evals`` are the evaluations of the polynomial associated with ``row_commitments[row_index]``,
-    evaluated over the domain specified by ``column_index``.
+    Given a list of ``commitments`` (which contains no duplicates) and four lists representing
+    tuples of (``commitment_index``, ``cell_index``, ``evals``, ``proof``), the function
+    verifies ``proof`` which shows that ``evals`` are the evaluations of the polynomial associated
+    with ``commitments[commitment_index]``, evaluated over the domain specified by ``cell_index``.
 
     This function is the internal implementation of ``verify_cell_kzg_proof_batch``.
     """
-    assert len(row_indices) == len(column_indices) == len(cosets_evals) == len(proofs)
-    for row_index in row_indices:
-        assert row_index < len(row_commitments)
+    assert len(commitment_indices) == len(cell_indices) == len(cosets_evals) == len(proofs)
+    assert len(commitments) == len(list(set(commitments)))
+    for commitment_index in commitment_indices:
+        assert commitment_index < len(commitments)
 
     # The verification equation that we will check is pairing (LL, LR) = pairing (RL, [1]), where
     # LL = sum_k r^k proofs[k],
@@ -503,7 +483,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     #   RLP = sum_k (r^k * h_k^n) proofs[k]
     #
     # Here, the variables have the following meaning:
-    # - k < len(row_indices) is an index iterating over all cells in the input
+    # - k < len(cosets_evals) is an index iterating over all cells in the input
     # - r is a random coefficient, derived from hashing all data provided by the prover
     # - s is the secret embedded in the KZG setup
     # - n = FIELD_ELEMENTS_PER_CELL is the size of the evaluation domain
@@ -513,15 +493,15 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # - h_k is the coset shift specifying the evaluation domain of the kth cell
 
     # Preparation
-    num_cells = len(row_indices)
+    num_cells = len(cosets_evals)
     n = FIELD_ELEMENTS_PER_CELL
-    num_rows = len(row_commitments)
+    num_commitments = len(commitments)
 
     # Step 1: Compute a challenge r and its powers r^0, ..., r^{num_cells-1}
     r = compute_verify_cell_kzg_proof_batch_challenge(
-        row_commitments,
-        row_indices,
-        column_indices,
+        commitments,
+        commitment_indices,
+        cell_indices,
         cosets_evals,
         proofs
     )
@@ -537,18 +517,18 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # Step 4.1: Compute RLC = sum_i weights[i] commitments[i]
     # Step 4.1a: Compute weights[i]: the sum of all r^k for which cell k is in row i.
     # Note: we do that by iterating over all k and updating the correct weights[i] accordingly
-    weights = [0] * num_rows
+    weights = [0] * num_commitments
     for k in range(num_cells):
-        i = row_indices[k]
+        i = commitment_indices[k]
         weights[i] = (weights[i] + int(r_powers[k])) % BLS_MODULUS
     # Step 4.1b: Linearly combine the weights with the commitments to get RLC
-    rlc = bls.bytes48_to_G1(g1_lincomb(row_commitments, weights))
+    rlc = bls.bytes48_to_G1(g1_lincomb(commitments, weights))
 
     # Step 4.2: Compute RLI = [sum_k r^k interpolation_poly_k(s)]
     # Note: an efficient implementation would use the IDFT based method explained in the blog post
     sum_interp_polys_coeff = [0] * n
     for k in range(num_cells):
-        interp_poly_coeff = interpolate_polynomialcoeff(coset_for_cell(column_indices[k]), cosets_evals[k])
+        interp_poly_coeff = interpolate_polynomialcoeff(coset_for_cell(cell_indices[k]), cosets_evals[k])
         interp_poly_scaled_coeff = multiply_polynomialcoeff([r_powers[k]], interp_poly_coeff)
         sum_interp_polys_coeff = add_polynomialcoeff(sum_interp_polys_coeff, interp_poly_scaled_coeff)
     rli = bls.bytes48_to_G1(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:n], sum_interp_polys_coeff))
@@ -556,7 +536,7 @@ def verify_cell_kzg_proof_batch_impl(row_commitments: Sequence[KZGCommitment],
     # Step 4.3: Compute RLP = sum_k (r^k * h_k^n) proofs[k]
     weighted_r_powers = []
     for k in range(num_cells):
-        h_k = int(coset_shift_for_cell(column_indices[k]))
+        h_k = int(coset_shift_for_cell(cell_indices[k]))
         h_k_pow = pow(h_k, n, BLS_MODULUS)
         wrp = (int(r_powers[k]) * h_k_pow) % BLS_MODULUS
         weighted_r_powers.append(wrp)
@@ -677,15 +657,15 @@ def verify_cell_kzg_proof(commitment_bytes: Bytes48,
 
 ```python
 def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
-                                column_indices: Sequence[ColumnIndex],
+                                cell_indices: Sequence[CellIndex],
                                 cells: Sequence[Cell],
                                 proofs_bytes: Sequence[Bytes48]) -> bool:
     """
     Verify that a set of cells belong to their corresponding commitments.
 
-    Given four lists representing tuples of (``commitment``, ``column_index``, ``cell``, ``proof``),
+    Given four lists representing tuples of (``commitment``, ``cell_index``, ``cell``, ``proof``),
     the function verifies ``proof`` which shows that ``cell`` are the evaluations of the polynomial
-    associated with ``commitment``, evaluated over the domain specified by ``column_index``.
+    associated with ``commitment``, evaluated over the domain specified by ``cell_index``.
 
     This function implements the universal verification equation that has been introduced here:
     https://ethresear.ch/t/a-universal-verification-equation-for-data-availability-sampling/13240
@@ -693,27 +673,26 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
     Public method.
     """
 
-    assert len(commitments_bytes) == len(cells) == len(proofs_bytes) == len(column_indices)
+    assert len(commitments_bytes) == len(cells) == len(proofs_bytes) == len(cell_indices)
     for commitment_bytes in commitments_bytes:
         assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    for column_index in column_indices:
-        assert column_index < CELLS_PER_EXT_BLOB
+    for cell_index in cell_indices:
+        assert cell_index < CELLS_PER_EXT_BLOB
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
     for proof_bytes in proofs_bytes:
         assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Create the list of unique commitments we are dealing with
-    deduplicated_commitments = list(set(commitments_bytes))
-    row_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in deduplicated_commitments]
-    # Create indices list mapping initial commitments (that potentially contains duplicates) to the unique commitments.
-    row_indices = [deduplicated_commitments.index(commitment_bytes) for commitment_bytes in commitments_bytes]
+    unique_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in list(set(commitments_bytes))]
+    # Create indices list mapping initial commitments (that potentially contains duplicates) to the unique commitments
+    commitment_indices = [unique_commitments.index(commitment_bytes) for commitment_bytes in commitments_bytes]
 
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
     proofs = [bytes_to_kzg_proof(proof_bytes) for proof_bytes in proofs_bytes]
 
     # Do the actual verification
-    return verify_cell_kzg_proof_batch_impl(row_commitments, row_indices, column_indices, cosets_evals, proofs)
+    return verify_cell_kzg_proof_batch_impl(unique_commitments, commitment_indices, cell_indices, cosets_evals, proofs)
 ```
 
 ## Reconstruction

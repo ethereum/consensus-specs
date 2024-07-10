@@ -9,14 +9,14 @@ The test data is declared in a `data.yaml` file:
 ```yaml
 input:
   commitments: List[Bytes48] -- the KZG commitments for each cell
-  column_indices: List[ColumnIndex] -- the column index for each cell
+  cell_indices: List[CellIndex] -- the cell index for each cell
   cells: List[Cell] -- the cells
   proofs: List[Bytes48] -- the KZG proof for each cell
 output: bool -- true (all proofs are correct) or false (some proofs incorrect)
 ```
 
 - `Bytes48` is a 48-byte hexadecimal string, prefixed with `0x`.
-- `ColumnIndex` is an unsigned 64-bit integer.
+- `CellIndex` is an unsigned 64-bit integer.
 - `Cell` is a 2048-byte hexadecimal string, prefixed with `0x`.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
