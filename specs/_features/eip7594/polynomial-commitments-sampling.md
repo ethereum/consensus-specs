@@ -469,7 +469,7 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
     This function is the internal implementation of ``verify_cell_kzg_proof_batch``.
     """
     assert len(commitment_indices) == len(cell_indices) == len(cosets_evals) == len(proofs)
-    assert len(commitments) == len(list(set(commitments)))
+    assert len(commitments) == len(set(commitments))
     for commitment_index in commitment_indices:
         assert commitment_index < len(commitments)
 
@@ -683,7 +683,7 @@ def verify_cell_kzg_proof_batch(commitments_bytes: Sequence[Bytes48],
         assert len(proof_bytes) == BYTES_PER_PROOF
 
     # Create the list of unique commitments we are dealing with
-    unique_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in list(set(commitments_bytes))]
+    unique_commitments = [bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in set(commitments_bytes)]
     # Create indices list mapping initial commitments (that potentially contains duplicates) to the unique commitments
     commitment_indices = [unique_commitments.index(commitment_bytes) for commitment_bytes in commitments_bytes]
 
