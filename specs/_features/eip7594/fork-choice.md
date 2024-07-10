@@ -24,7 +24,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying EIP-7594
+This is the modification of the fork choice accompanying EIP-7594.
 
 ### Helpers
 
@@ -32,7 +32,7 @@ This is the modification of the fork choice accompanying EIP-7594
 
 `def retrieve_column_sidecars(beacon_block_root: Root, columns_to_retrieve: Sequence[ColumnIndex]) -> Sequence[DataColumnSidecar]`
 
-#### `is_data_available`
+#### Modified `is_data_available`
 
 ```python
 def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False) -> bool:
@@ -43,7 +43,7 @@ def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False
     )
 ```
 
-#### `is_chain_available`
+#### New `is_chain_available`
 
 ```python
 def is_chain_available(store: Store, beacon_block_root: Root) -> bool: 
@@ -90,7 +90,7 @@ def get_head(store: Store) -> Root:
         head = max(children, key=lambda root: (get_weight(store, root), root))
 ```
 
-#### `is_peer_sampling_required`
+#### New `is_peer_sampling_required`
 
 ```python
 def is_peer_sampling_required(store: Store, slot: Slot):
