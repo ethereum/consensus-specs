@@ -29,7 +29,7 @@ def get_block_with_blob(spec, state, rng=None):
     block = build_empty_block_for_next_slot(spec, state)
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_opaque_tx(spec, blob_count=1, rng=rng)
     block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     return block, blobs, blob_kzg_proofs
 
