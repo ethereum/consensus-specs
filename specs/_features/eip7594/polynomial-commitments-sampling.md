@@ -9,7 +9,6 @@
 - [Introduction](#introduction)
 - [Public Methods](#public-methods)
 - [Custom types](#custom-types)
-- [Constants](#constants)
 - [Preset](#preset)
   - [Cells](#cells)
 - [Helper functions](#helper-functions)
