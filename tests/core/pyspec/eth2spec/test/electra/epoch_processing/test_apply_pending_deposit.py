@@ -27,7 +27,7 @@ def test_apply_pending_deposit_add_validator_to_registry(spec, state):
         signature=deposit_data.signature,
         )
     old_validator_count = len(state.validators)
-    assert spec.apply_pending_deposit(state,deposit) == True
+    spec.apply_pending_deposit(state,deposit)
     # validator count should increase by 1
     assert len(state.validators) == old_validator_count+1
 
