@@ -62,7 +62,7 @@ def test_pending_deposit_not_finalized(spec, state):
         pubkey=state.validators[0].pubkey,
         withdrawal_credentials=state.validators[0].withdrawal_credentials,
         amount=amount,
-        slot=slot,
+        slot=spec.get_current_epoch(state),
     ))
     # set deposit_requests_start_index to something low so that we skip the bridge validation
     state.deposit_requests_start_index = 0
