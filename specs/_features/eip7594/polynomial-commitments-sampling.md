@@ -34,7 +34,6 @@
     - [`evaluate_polynomialcoeff`](#evaluate_polynomialcoeff)
   - [KZG multiproofs](#kzg-multiproofs)
     - [`compute_kzg_proof_multi_impl`](#compute_kzg_proof_multi_impl)
-    - [`verify_kzg_proof_multi_impl`](#verify_kzg_proof_multi_impl)
     - [`verify_cell_kzg_proof_batch_impl`](#verify_cell_kzg_proof_batch_impl)
   - [Cell cosets](#cell-cosets)
     - [`coset_shift_for_cell`](#coset_shift_for_cell)
@@ -43,7 +42,6 @@
   - [Cell computation](#cell-computation)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
   - [Cell verification](#cell-verification)
-    - [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
@@ -433,45 +431,6 @@ def compute_kzg_proof_multi_impl(
     return KZGProof(g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(quotient_polynomial)], quotient_polynomial)), ys
 ```
 
-#### `verify_kzg_proof_multi_impl`
-
-```python
-def verify_kzg_proof_multi_impl(commitment: KZGCommitment,
-                                zs: Coset,
-                                ys: CosetEvals,
-                                proof: KZGProof) -> bool:
-    """
-    Verify a KZG multi-evaluation proof for a set of `k` points.
-
-    This is done by checking if the following equation holds:
-        Q(x) Z(x) = f(X) - I(X)
-    Where:
-        f(X) is the polynomial that we want to verify opens at `k` points to `k` values
-        Q(X) is the quotient polynomial computed by the prover
-        I(X) is the degree k-1 polynomial that evaluates to `ys` at all `zs`` points
-        Z(X) is the polynomial that evaluates to zero on all `k` points
-
-    The verifier receives the commitments to Q(X) and f(X), so they check the equation
-    holds by using the following pairing equation:
-        e([Q(X)]_1, [Z(X)]_2) == e([f(X)]_1 - [I(X)]_1, [1]_2)
-    """
-
-    assert len(zs) == len(ys)
-
-    # Compute [Z(X)]_2
-    zero_poly = g2_lincomb(KZG_SETUP_G2_MONOMIAL[:len(zs) + 1], vanishing_polynomialcoeff(zs))
-    # Compute [I(X)]_1
-    interpolated_poly = g1_lincomb(KZG_SETUP_G1_MONOMIAL[:len(zs)], interpolate_polynomialcoeff(zs, ys))
-
-    return (bls.pairing_check([
-        [bls.bytes48_to_G1(proof), bls.bytes96_to_G2(zero_poly)],
-        [
-            bls.add(bls.bytes48_to_G1(commitment), bls.neg(bls.bytes48_to_G1(interpolated_poly))),
-            bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0])),
-        ],
-    ]))
-```
-
 #### `verify_cell_kzg_proof_batch_impl`
 
 ```python
@@ -646,32 +605,6 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
 ```
 
 ### Cell verification
-
-#### `verify_cell_kzg_proof`
-
-```python
-def verify_cell_kzg_proof(commitment_bytes: Bytes48,
-                          cell_index: CellIndex,
-                          cell: Cell,
-                          proof_bytes: Bytes48) -> bool:
-    """
-    Check a cell proof
-
-    Public method.
-    """
-    assert len(commitment_bytes) == BYTES_PER_COMMITMENT
-    assert cell_index < CELLS_PER_EXT_BLOB
-    assert len(cell) == BYTES_PER_CELL
-    assert len(proof_bytes) == BYTES_PER_PROOF
-
-    coset = coset_for_cell(cell_index)
-
-    return verify_kzg_proof_multi_impl(
-        bytes_to_kzg_commitment(commitment_bytes),
-        coset,
-        cell_to_coset_evals(cell),
-        bytes_to_kzg_proof(proof_bytes))
-```
 
 #### `verify_cell_kzg_proof_batch`
 
