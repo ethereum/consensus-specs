@@ -107,11 +107,11 @@ def is_peer_sampling_required(store: Store, slot: Slot):
 
 ## Updated fork-choice handlers
 
-### `on_block`
+### Modified `on_block`
 
 *Note*: The blob data availability check is removed and replaced with an availability
-check on the on the justified checkpoint in the "pulled up state" of the block, after
-applying `process_justification_and_finalization`.
+check on the justified checkpoint in the "pulled up state" of the block, which is
+the state after applying `process_justification_and_finalization`.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
