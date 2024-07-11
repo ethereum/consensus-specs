@@ -4,6 +4,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from tests.core.pyspec.eth2spec.test.helpers.deposits import build_deposit_data
+from eth2spec.test.helpers.state import next_epoch_via_block
 
 
 @with_electra_and_later
@@ -69,7 +70,8 @@ def test_apply_pending_deposit_switch_to_compounding(spec, state):
         spec.COMPOUNDING_WITHDRAWAL_PREFIX +
         spec.hash(pubkeys[index])[1:]
     )
-    state.slot = spec.SLOTS_PER_EPOCH * 2
+    # advance the state
+    next_epoch_via_block(spec, state)
     state.validators[index].withdrawal_credentials = withdrawal_credentials
     # set validator to be exited by current epoch
     state.validators[index].exit_epoch = spec.get_current_epoch(state) - 1
@@ -86,11 +88,11 @@ def test_apply_pending_deposit_switch_to_compounding(spec, state):
         slot=spec.GENESIS_SLOT,
         signature=deposit_data.signature,
     )
-    state.balances[0] = 0
+    state.balances[index] = 0
     # run test
     spec.apply_pending_deposit(state, deposit)
     # validator balance should increase
-    assert state.balances[0] == amount
+    assert state.balances[index] == amount
     current_credentials = state.validators[0].withdrawal_credentials
     assert current_credentials == compounding_credentials
 
@@ -124,10 +126,13 @@ def test_apply_pending_deposit_switch_to_compounding_not_exited(spec, state):
         slot=spec.GENESIS_SLOT,
         signature=deposit_data.signature,
     )
-    state.balances[0] = 0
+    state.balances[index] = 0
     # run test
     spec.apply_pending_deposit(state, deposit)
     # validator balance should increase
-    assert state.balances[0] == amount
+    assert state.balances[index] == amount
     # make sure validator did not switch to compounding if not exited
-    assert state.validators[0].withdrawal_credentials == withdrawal_credentials
+    current_credentials = state.validators[0].withdrawal_credentials
+    assert current_credentials == withdrawal_credentials
+    # postpone pending_deposit
+    assert len(state.pending_deposits) == 0

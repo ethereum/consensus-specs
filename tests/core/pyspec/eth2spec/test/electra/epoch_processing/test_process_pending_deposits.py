@@ -6,6 +6,10 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.deposits import (
     build_pending_deposit_top_up,
 )
+from tests.core.pyspec.eth2spec.test.helpers.deposits import build_deposit_data
+from eth2spec.test.helpers.state import next_epoch_via_block
+
+from eth2spec.test.helpers.keys import privkeys, pubkeys
 
 
 def run_process_pending_deposits(spec, state):
@@ -87,17 +91,37 @@ def test_pending_deposit_not_finalized(spec, state):
 @spec_state_test
 def test_pending_deposit_validator_withdrawn(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
-    hash = spec.hash(state.validators[0].pubkey)[1:]
-    withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + hash
-    state.slot = spec.SLOTS_PER_EPOCH * 2
-    state.validators[0].withdrawal_credentials = withdrawal_credentials
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    compounding_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    # advance the state
+    next_epoch_via_block(spec, state)
+    state.validators[index].withdrawal_credentials = withdrawal_credentials
+    previous_epoch = spec.get_current_epoch(state) - 1
+    # set validator to be exited by current epoch
+    state.validators[index].exit_epoch = previous_epoch
     # set validator to be withdrawable by current epoch
-    state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) - 1
+    state.validators[index].withdrawable_epoch = previous_epoch
+    deposit_data = build_deposit_data(spec,
+                                      pubkeys[index],
+                                      privkeys[index],
+                                      amount,
+                                      compounding_credentials,
+                                      signed=True)
+    # set withdrawal credentials to compounding but should not switch since
+    # validator is already withdrawing
     state.pending_deposits.append(spec.PendingDeposit(
-        pubkey=state.validators[0].pubkey,
-        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        pubkey=pubkeys[index],
+        withdrawal_credentials=compounding_credentials,
         amount=amount,
         slot=spec.GENESIS_SLOT,
+        signature=deposit_data.signature,
     ))
     # skip the bridge validation
     state.deposit_requests_start_index = 0
@@ -105,13 +129,19 @@ def test_pending_deposit_validator_withdrawn(spec, state):
     state.deposit_balance_to_consume = amount
     # reset balance for assert
     state.balances[0] = 0
+    old_validator_count = len(state.validators)
     yield from run_process_pending_deposits(spec, state)
+    btc = state.deposit_balance_to_consume
     # deposit_balance_to_consume was reset to 0
-    assert state.deposit_balance_to_consume == 0
+    assert btc == 0
     # deposit was processed
     assert state.pending_deposits == []
     # balance increases because of withdraw
     assert state.balances[0] == amount
+    # churn limit was not reached
+    assert not amount > spec.get_activation_exit_churn_limit(state)
+    # validator count should stay the same
+    assert len(state.validators) == old_validator_count
 
 
 @with_electra_and_later
@@ -120,7 +150,8 @@ def test_pending_deposit_validator_exiting_but_not_withdrawn(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     hash = spec.hash(state.validators[0].pubkey)[1:]
     withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + hash
-    state.slot = spec.SLOTS_PER_EPOCH * 2
+    # advance the state
+    next_epoch_via_block(spec, state)
     state.validators[0].withdrawal_credentials = withdrawal_credentials
     # set validator to be withdrawable by current epoch
     state.validators[0].exit_epoch = spec.get_current_epoch(state) - 1
@@ -445,8 +476,8 @@ def test_processing_deposit_of_withdrawable_validator_not_churned(spec, state):
     assert state.balances[1] == pre_balances[1]
     # Second deposit is not processed
     # First deposit does not consume any.
-    wantedLimit = spec.get_activation_exit_churn_limit(state)
-    assert state.deposit_balance_to_consume == wantedLimit
+    wanted_limit = spec.get_activation_exit_churn_limit(state)
+    assert state.deposit_balance_to_consume == wanted_limit
     assert state.pending_deposits == [
         build_pending_deposit_top_up(spec, state,
                                      validator_index=1, amount=amount)
