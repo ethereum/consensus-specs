@@ -12,9 +12,9 @@
     - [Modified `get_head`](#modified-get_head)
     - [New `is_peer_sampling_required`](#new-is_peer_sampling_required)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
-  - [`on_block`](#on_block)
+  - [Modified `on_block`](#modified-on_block)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
-      - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
+      - [Modified `compute_pulled_up_tip`](#modified-compute_pulled_up_tip)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
