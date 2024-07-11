@@ -63,3 +63,5 @@ def run_fork_test(post_spec, pre_state):
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield 'post', post_state
+
+    return post_state

@@ -28,7 +28,7 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [`custody_subnet_count`](#custody_subnet_count)
+      - [Custody subnet count](#custody-subnet-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -68,19 +68,17 @@ class DataColumnIdentifier(Container):
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct
+    Verify if the proofs are correct.
     """
     assert sidecar.index < NUMBER_OF_COLUMNS
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
-    row_indices = [RowIndex(i) for i in range(len(sidecar.column))]
     column_indices = [sidecar.index] * len(sidecar.column)
 
     # KZG batch verifies that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
-        row_commitments_bytes=sidecar.kzg_commitments,
-        row_indices=row_indices,  # all rows
-        column_indices=column_indices,  # specific column
+        commitments_bytes=sidecar.kzg_commitments,
+        column_indices=column_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
     )
@@ -284,10 +282,10 @@ After the initial data column sidecar, clients MAY stop in the process of respon
 
 #### ENR structure
 
-##### `custody_subnet_count`
+##### Custody subnet count
 
-A new field is added to the ENR under the key `custody_subnet_count` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key                    | Value        |
-|:-----------------------|:-------------|
-| `custody_subnet_count` | SSZ `uint64` |
+| Key   | Value                                    |
+|:------|:-----------------------------------------|
+| `csc` | Custody subnet count, big endian integer |
