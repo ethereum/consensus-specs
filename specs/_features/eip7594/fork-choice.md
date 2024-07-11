@@ -29,6 +29,10 @@ This is the modification of the fork choice accompanying EIP-7594.
 
 ```python
 def is_data_available(beacon_block_root: Root, require_peer_sampling: bool=False) -> bool:
+    # `retrieve_column_sidecars` is implementation and context dependent, replacing `retrieve_blobs_and_proofs`.
+    # For the given block root, it returns all column sidecars to custody, and, if `require_peer_sampling` is `True`,
+    # also all column sidecars selected for peer sampling, or raises an exception if they are not available. The p2p 
+    # network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
     column_sidecars = retrieve_column_sidecars(beacon_block_root, require_peer_sampling)
     return all(
         verify_data_column_sidecar_kzg_proofs(column_sidecar)
@@ -47,7 +51,7 @@ around Genesis, where `current_justified_checkpoint` and `parent_root` are initi
 def is_chain_available(store: Store, beacon_block_root: Root) -> bool: 
     """
     Checks if all ancestors of `beacon_block_root` within the custody period are 
-    available, as determined by `is_data_available` with peer sampling enabled
+    available, as determined by `is_data_available` with peer sampling enabled.
     """
     if beacon_block_root not in store.blocks:
         return True
@@ -167,9 +171,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
 #### Pull-up tip helpers
 
-##### `compute_pulled_up_tip`
+##### Modified `compute_pulled_up_tip`
 
-Modified to take `pulled_up_state`, the block's state after applying `processing_justification_and_finalization`.
+*Note*: Modified to take `pulled_up_state`, the block's state after applying `processing_justification_and_finalization`.
 The application of `processing_justification_and_finalization` now happens in `on_block`.
 
 ```python
