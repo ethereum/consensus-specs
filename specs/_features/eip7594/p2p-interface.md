@@ -17,6 +17,7 @@
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Blob subnets](#blob-subnets)
@@ -26,6 +27,7 @@
     - [Messages](#messages)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+      - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody subnet count](#custody-subnet-count)
@@ -109,6 +111,24 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
+
+### MetaData
+
+The `MetaData` stored locally by clients is updated with an additional field to communicate the custody subnet count.
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  custody_subnet_count: uint64
+)
+```
+
+Where
+
+- `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
+- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject ENRs with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
@@ -279,6 +299,22 @@ Of note, blocks from slots before the finalization MUST lead to the finalized bl
 Clients MUST respond with data column sidecars that are consistent from a single chain within the context of the request.
 
 After the initial data column sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+
+##### GetMetaData v3
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/3/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer, using the new `MetaData` definition given above that is extended from Altair. Other conditions for the `GetMetaData` protocol are unchanged from the Altair p2p networking document.
 
 ### The discovery domain: discv5
 
