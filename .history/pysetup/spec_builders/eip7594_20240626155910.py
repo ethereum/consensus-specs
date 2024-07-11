@@ -37,3 +37,4 @@ def retrieve_column_sidecars(beacon_block_root: Root,
             'KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH'].value,
         }
 
+
