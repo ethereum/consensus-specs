@@ -3,7 +3,6 @@ web3==5.4.0
 pytest==3.6.1
 # The eth2spec
 ../../
-
-
- dev
-
+snyk-fix-3f751c741087e8d5cd60e582cc80b917
+requests>=2.32.2 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
