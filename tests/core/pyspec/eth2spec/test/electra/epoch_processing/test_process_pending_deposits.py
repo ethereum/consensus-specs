@@ -15,6 +15,8 @@ from eth2spec.test.helpers.keys import privkeys, pubkeys
 def run_process_pending_deposits(spec, state):
     yield from run_epoch_processing_with(
         spec, state, 'process_pending_deposits')
+    
+
 
 
 @with_electra_and_later
@@ -172,6 +174,37 @@ def test_pending_deposit_validator_exiting_but_not_withdrawn(spec, state):
     assert state.deposit_balance_to_consume == 0
     # deposit was postponed and not processed
     assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_not_in_validator_set(spec, state):
+    index = 2000
+    amount = spec.MIN_ACTIVATION_BALANCE
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    deposit_data = build_deposit_data(spec,
+                                      pubkeys[index],
+                                      privkeys[index],
+                                      amount,
+                                      withdrawal_credentials,
+                                      signed=True)
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=pubkeys[index],
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+        signature=deposit_data.signature,
+    ))
+    value_error = False
+    try:
+        yield from run_process_pending_deposits(spec, state)
+    except ValueError:
+        value_error = True
+
+    assert value_error
 
 
 @with_electra_and_later
