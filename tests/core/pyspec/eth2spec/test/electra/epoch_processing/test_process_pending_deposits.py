@@ -15,8 +15,6 @@ from eth2spec.test.helpers.keys import privkeys, pubkeys
 def run_process_pending_deposits(spec, state):
     yield from run_epoch_processing_with(
         spec, state, 'process_pending_deposits')
-    
-
 
 
 @with_electra_and_later
