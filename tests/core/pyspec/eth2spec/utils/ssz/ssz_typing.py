@@ -10,3 +10,4 @@ from remerkleable.core import BasicView, View, Path
 
 
 Bytes20 = ByteVector[20]  # type: ignore
+Bytes31 = ByteVector[31]  # type: ignore

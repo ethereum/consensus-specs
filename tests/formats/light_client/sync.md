@@ -9,11 +9,15 @@ This series of tests provides reference test vectors for validating that a light
 ```yaml
 genesis_validators_root: Bytes32  -- string, hex encoded, with 0x prefix
 trusted_block_root: Bytes32       -- string, hex encoded, with 0x prefix
+bootstrap_fork_digest: string     -- Encoded `ForkDigest`-context of `bootstrap`
+store_fork_digest: string         -- Encoded `ForkDigest`-context of `store` object being tested
 ```
 
 ### `bootstrap.ssz_snappy`
 
-An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initialize a local `store` object of type `LightClientStore` using `initialize_light_client_store(trusted_block_rooot, bootstrap)`.
+An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initialize a local `store` object of type `LightClientStore` with `store_fork_digest` using `initialize_light_client_store(trusted_block_rooot, bootstrap)`. The SSZ type can be determined from `bootstrap_fork_digest`.
+
+If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap` object may need to be upgraded before initializing the store.
 
 ### `steps.yaml`
 
@@ -25,12 +29,14 @@ Each step includes checks to verify the expected impact on the `store` object.
 
 ```yaml
 finalized_header: {
-    slot: int,                -- Integer value from store.finalized_header.slot
-    beacon_root: string,      -- Encoded 32-byte value from store.finalized_header.hash_tree_root()
+    slot: int,                -- Integer value from store.finalized_header.beacon.slot
+    beacon_root: string,      -- Encoded 32-byte value from store.finalized_header.beacon.hash_tree_root()
+    execution_root: string,   -- From Capella onward; get_lc_execution_root(store.finalized_header)
 }
 optimistic_header: {
-    slot: int,                -- Integer value from store.optimistic_header.slot
-    beacon_root: string,      -- Encoded 32-byte value from store.optimistic_header.hash_tree_root()
+    slot: int,                -- Integer value from store.optimistic_header.beacon.slot
+    beacon_root: string,      -- Encoded 32-byte value from store.optimistic_header.beacon.hash_tree_root()
+    execution_root: string,   -- From Capella onward; get_lc_execution_root(store.optimistic_header)
 }
 ```
 
@@ -54,9 +60,25 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 
 ```yaml
 {
+    update_fork_digest: string         -- Encoded `ForkDigest`-context of `update`
     update: string                     -- name of the `*.ssz_snappy` file to load
                                           as a `LightClientUpdate` object
     current_slot: int                  -- integer, decimal
+    checks: {<store_attibute>: value}  -- the assertions.
+}
+```
+
+If `store_fork_digest` differs from `update_fork_digest`, the `update` object may need to be upgraded before processing the update.
+
+After this step, the `store` object may have been updated.
+
+#### `upgrade_store`
+
+The `store` should be upgraded to reflect the new `store_fork_digest`:
+
+```yaml
+{
+    store_fork_digest: string          -- Encoded `ForkDigest`-context of `store`
     checks: {<store_attibute>: value}  -- the assertions.
 }
 ```

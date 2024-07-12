@@ -4,6 +4,7 @@ venv
 .venvs
 .venv
 /.pytest_cache
+*.swp
 
 build/
 output/
@@ -19,7 +20,11 @@ tests/core/pyspec/eth2spec/phase0/
 tests/core/pyspec/eth2spec/altair/
 tests/core/pyspec/eth2spec/bellatrix/
 tests/core/pyspec/eth2spec/capella/
-tests/core/pyspec/eth2spec/eip4844/
+tests/core/pyspec/eth2spec/deneb/
+tests/core/pyspec/eth2spec/electra/
+tests/core/pyspec/eth2spec/whisk/
+tests/core/pyspec/eth2spec/eip7594/
+tests/core/pyspec/eth2spec/eip6800/
 
 # coverage reports
 .htmlcov
@@ -34,3 +39,14 @@ tests/core/pyspec/eth2spec/test_results.xml
 
 # TOC tool outputs temporary files
 *.tmp
+
+# docs reader build
+docs/specs
+docs/sync
+docs/ssz
+docs/fork_choice
+docs/README.md
+site
+
+# docker test results
+testResults

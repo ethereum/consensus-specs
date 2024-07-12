@@ -10,7 +10,8 @@
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
-  - [`compute_merkle_proof_for_state`](#compute_merkle_proof_for_state)
+  - [`compute_merkle_proof`](#compute_merkle_proof)
+  - [`block_to_light_client_header`](#block_to_light_client_header)
 - [Deriving light client data](#deriving-light-client-data)
   - [`create_light_client_bootstrap`](#create_light_client_bootstrap)
   - [`create_light_client_update`](#create_light_client_update)
@@ -26,12 +27,29 @@ This document provides helper functions to enable full nodes to serve light clie
 
 ## Helper functions
 
-### `compute_merkle_proof_for_state`
+### `compute_merkle_proof`
+
+This function return the Merkle proof of the given SSZ object `object` at generalized index `index`.
 
 ```python
-def compute_merkle_proof_for_state(state: BeaconState,
-                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
+def compute_merkle_proof(object: SSZObject,
+                         index: GeneralizedIndex) -> Sequence[Bytes32]:
     ...
+```
+
+### `block_to_light_client_header`
+
+```python
+def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
+    return LightClientHeader(
+        beacon=BeaconBlockHeader(
+            slot=block.message.slot,
+            proposer_index=block.message.proposer_index,
+            parent_root=block.message.parent_root,
+            state_root=block.message.state_root,
+            body_root=hash_tree_root(block.message.body),
+        ),
+    )
 ```
 
 ## Deriving light client data
@@ -55,15 +73,10 @@ def create_light_client_bootstrap(state: BeaconState,
     assert hash_tree_root(header) == hash_tree_root(block.message)
 
     return LightClientBootstrap(
-        header=BeaconBlockHeader(
-            slot=state.latest_block_header.slot,
-            proposer_index=state.latest_block_header.proposer_index,
-            parent_root=state.latest_block_header.parent_root,
-            state_root=hash_tree_root(state),
-            body_root=state.latest_block_header.body_root,
-        ),
+        header=block_to_light_client_header(block),
         current_sync_committee=state.current_sync_committee,
-        current_sync_committee_branch=compute_merkle_proof_for_state(state, CURRENT_SYNC_COMMITTEE_INDEX),
+        current_sync_committee_branch=CurrentSyncCommitteeBranch(
+            compute_merkle_proof(state, CURRENT_SYNC_COMMITTEE_GINDEX)),
     )
 ```
 
@@ -103,48 +116,36 @@ def create_light_client_update(state: BeaconState,
     assert hash_tree_root(attested_header) == hash_tree_root(attested_block.message) == block.message.parent_root
     update_attested_period = compute_sync_committee_period_at_slot(attested_block.message.slot)
 
+    update = LightClientUpdate()
+
+    update.attested_header = block_to_light_client_header(attested_block)
+
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
-        next_sync_committee = attested_state.next_sync_committee
-        next_sync_committee_branch = compute_merkle_proof_for_state(attested_state, NEXT_SYNC_COMMITTEE_INDEX)
-    else:
-        next_sync_committee = SyncCommittee()
-        next_sync_committee_branch = [Bytes32() for _ in range(floorlog2(NEXT_SYNC_COMMITTEE_INDEX))]
+        update.next_sync_committee = attested_state.next_sync_committee
+        update.next_sync_committee_branch = NextSyncCommitteeBranch(
+            compute_merkle_proof(attested_state, NEXT_SYNC_COMMITTEE_GINDEX))
 
     # Indicate finality whenever possible
     if finalized_block is not None:
         if finalized_block.message.slot != GENESIS_SLOT:
-            finalized_header = BeaconBlockHeader(
-                slot=finalized_block.message.slot,
-                proposer_index=finalized_block.message.proposer_index,
-                parent_root=finalized_block.message.parent_root,
-                state_root=finalized_block.message.state_root,
-                body_root=hash_tree_root(finalized_block.message.body),
-            )
-            assert hash_tree_root(finalized_header) == attested_state.finalized_checkpoint.root
+            update.finalized_header = block_to_light_client_header(finalized_block)
+            assert hash_tree_root(update.finalized_header.beacon) == attested_state.finalized_checkpoint.root
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
-            finalized_header = BeaconBlockHeader()
-        finality_branch = compute_merkle_proof_for_state(attested_state, FINALIZED_ROOT_INDEX)
-    else:
-        finalized_header = BeaconBlockHeader()
-        finality_branch = [Bytes32() for _ in range(floorlog2(FINALIZED_ROOT_INDEX))]
+        update.finality_branch = FinalityBranch(
+            compute_merkle_proof(attested_state, FINALIZED_ROOT_GINDEX))
 
-    return LightClientUpdate(
-        attested_header=attested_header,
-        next_sync_committee=next_sync_committee,
-        next_sync_committee_branch=next_sync_committee_branch,
-        finalized_header=finalized_header,
-        finality_branch=finality_branch,
-        sync_aggregate=block.message.body.sync_aggregate,
-        signature_slot=block.message.slot,
-    )
+    update.sync_aggregate = block.message.body.sync_aggregate
+    update.signature_slot = block.message.slot
+
+    return update
 ```
 
 Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `is_better_update`) for each sync committee period covering any epochs in range `[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]` where `current_epoch` is defined by the current wall-clock time. Full nodes MAY also provide `LightClientUpdate` for other sync committee periods.
 
-- `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.slot`
-- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
+- `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.beacon.slot`
+- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
 - Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
 
 ### `create_light_client_finality_update`
@@ -160,7 +161,7 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
     )
 ```
 
-Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes.
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes. If that `LightClientFinalityUpdate` does not have supermajority (> 2/3) sync committee participation, a second `LightClientFinalityUpdate` SHOULD be delivered for the same `finalized_header` once supermajority participation is obtained.
 
 ### `create_light_client_optimistic_update`
 
@@ -173,4 +174,4 @@ def create_light_client_optimistic_update(update: LightClientUpdate) -> LightCli
     )
 ```
 
-Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `attested_header.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.
+Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.

@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
 if __name__ == "__main__":
@@ -30,34 +30,35 @@ if __name__ == "__main__":
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 
     _new_capella_mods = {key: 'eth2spec.test.capella.block_processing.test_process_' + key for key in [
-        'deposit',
         'bls_to_execution_change',
+        'deposit',
+        'execution_payload',
         'withdrawals',
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
 
-    _new_eip4844_mods = {key: 'eth2spec.test.eip4844.block_processing.test_process_' + key for key in [
-        'bls_to_execution_change',
-        'withdrawals',
+    _new_deneb_mods = {key: 'eth2spec.test.deneb.block_processing.test_process_' + key for key in [
+        'execution_payload',
+        'voluntary_exit',
     ]}
-    eip4844_mods = combine_mods(_new_eip4844_mods, capella_mods)
+    deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
-    # TODO Custody Game testgen is disabled for now
-    # _new_custody_game_mods = {key: 'eth2spec.test.custody_game.block_processing.test_process_' + key for key in [
-    #     'attestation',
-    #     'chunk_challenge',
-    #     'custody_key_reveal',
-    #     'custody_slashing',
-    #     'early_derived_secret_reveal',
-    # ]}
-    # custody_game_mods = combine_mods(_new_custody_game_mods, phase0_mods)
+    _new_electra_mods = {key: 'eth2spec.test.electra.block_processing.test_process_' + key for key in [
+        'attestation',
+        'consolidation_request',
+        'deposit_request',
+        'voluntary_exit',
+        'withdrawal_request',
+    ]}
+    electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
-        EIP4844: eip4844_mods,
+        DENEB: deneb_mods,
+        ELECTRA: electra_mods,
     }
 
     run_state_test_generators(runner_name="operations", all_mods=all_mods)

@@ -53,6 +53,11 @@ to validator withdrawals. Including:
 * Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
 
+Another new feature is the new independent state and block historical accumulators
+that replace the original singular historical roots. With these accumulators, it becomes possible to validate
+the entire block history that led up to that particular state without any additional information
+beyond the state and the blocks.
+
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
@@ -237,7 +242,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Capella]
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex  # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex  # [New in Capella]
@@ -289,7 +294,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Epoch processing
 
-*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Bellatrix.
+*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Capella.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -326,9 +331,9 @@ def process_historical_summaries_update(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    if is_execution_enabled(state, block.body):
-        process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
-        process_execution_payload(state, block.body.execution_payload, EXECUTION_ENGINE)  # [Modified in Capella]
+    # [Modified in Capella] Removed `is_execution_enabled` check in Capella
+    process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Capella]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Capella]
@@ -399,19 +404,21 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type
+and removed the `is_merge_transition_complete` check.
 
 ```python
-def process_execution_payload(state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+    payload = body.execution_payload
+    # [Modified in Capella] Removed `is_merge_transition_complete` check in Capella
     # Verify consistency of the parent hash with respect to the previous execution payload header
-    if is_merge_transition_complete(state):
-        assert payload.parent_hash == state.latest_execution_payload_header.block_hash
+    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.notify_new_payload(payload)
+    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -467,7 +474,8 @@ def process_bls_to_execution_change(state: BeaconState,
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
     assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
 
-    domain = get_domain(state, DOMAIN_BLS_TO_EXECUTION_CHANGE)
+    # Fork-agnostic domain since address changes are valid across forks
+    domain = compute_domain(DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root)
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 

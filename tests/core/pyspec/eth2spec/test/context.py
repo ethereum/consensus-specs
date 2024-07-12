@@ -1,31 +1,37 @@
 import pytest
+from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
-from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
-from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
-from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.eip4844 import mainnet as spec_eip4844_mainnet, minimal as spec_eip4844_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, EIP4844,
-    MINIMAL, MAINNET,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
+    EIP7594,
+    WHISK,
+    MINIMAL,
     ALL_PHASES,
-    ALL_FORK_UPGRADES,
+    POST_FORK_OF,
+    ALLOWED_TEST_RUNNER_FORKS,
+    LIGHT_CLIENT_TESTING_FORKS,
 )
-from .helpers.forks import is_post_fork
-from .helpers.typing import SpecForkName, PresetBaseName
+from .helpers.forks import is_post_fork, is_post_electra
 from .helpers.genesis import create_genesis_state
+from .helpers.typing import (
+    Spec,
+    SpecForks,
+)
+from .helpers.specs import (
+    spec_targets,
+)
 from .utils import (
     vector_test,
     with_meta_tags,
 )
 
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
+from typing import Any, Callable, Sequence, Dict
 
 from lru import LRU
 
@@ -36,64 +42,11 @@ DEFAULT_TEST_PRESET = MINIMAL
 DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
-# TODO: currently phases are defined as python modules.
-# It would be better if they would be more well-defined interfaces for stronger typing.
-
-class Configuration(Protocol):
-    PRESET_BASE: str
-
-
-class Spec(Protocol):
-    fork: str
-    config: Configuration
-
-
-class SpecPhase0(Spec):
-    ...
-
-
-class SpecAltair(Spec):
-    ...
-
-
-class SpecBellatrix(Spec):
-    ...
-
-
-class SpecCapella(Spec):
-    ...
-
-
 @dataclass(frozen=True)
 class ForkMeta:
     pre_fork_name: str
     post_fork_name: str
     fork_epoch: int
-
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        PHASE0: spec_phase0_minimal,
-        ALTAIR: spec_altair_minimal,
-        BELLATRIX: spec_bellatrix_minimal,
-        CAPELLA: spec_capella_minimal,
-        EIP4844: spec_eip4844_minimal,
-    },
-    MAINNET: {
-        PHASE0: spec_phase0_mainnet,
-        ALTAIR: spec_altair_mainnet,
-        BELLATRIX: spec_bellatrix_mainnet,
-        CAPELLA: spec_capella_mainnet,
-        EIP4844: spec_eip4844_mainnet
-    },
-}
-
-
-class SpecForks(TypedDict, total=False):
-    PHASE0: SpecPhase0
-    ALTAIR: SpecAltair
-    BELLATRIX: SpecBellatrix
-    CAPELLA: SpecCapella
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -133,7 +86,10 @@ def default_activation_threshold(spec: Spec):
     Helper method to use the default balance activation threshold for state creation for tests.
     Usage: `@with_custom_state(threshold_fn=default_activation_threshold, ...)`
     """
-    return spec.MAX_EFFECTIVE_BALANCE
+    if is_post_electra(spec):
+        return spec.MIN_ACTIVATION_BALANCE
+    else:
+        return spec.MAX_EFFECTIVE_BALANCE
 
 
 def zero_activation_threshold(spec: Spec):
@@ -153,15 +109,59 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
-def scaled_churn_balances(spec: Spec):
+def default_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of default balances for Electra.
+    Usage: `@with_custom_state(balances_fn=default_balances_electra, ...)`
+    """
+    if not is_post_electra(spec):
+        return default_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
+
+def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     See the second argument of ``max`` in ``get_validator_churn_limit``.
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (2 + spec.config.MIN_PER_EPOCH_CHURN_LIMIT)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = (
+        2 * spec.config.CHURN_LIMIT_QUOTIENT
+        * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
+        // spec.MIN_ACTIVATION_BALANCE)
+    return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
 
 with_state = with_custom_state(default_balances, default_activation_threshold)
@@ -185,6 +185,21 @@ def misc_balances(spec: Spec):
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
     balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
+    rng = Random(1234)
+    rng.shuffle(balances)
+    return balances
+
+
+def misc_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of balances that includes some misc. balances for Electra.
+    Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
+    """
+    if not is_post_electra(spec):
+        return misc_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    balances = [spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)]
     rng = Random(1234)
     rng.shuffle(balances)
     return balances
@@ -309,14 +324,18 @@ def config_fork_epoch_overrides(spec, state):
             return overrides
 
 
-def spec_state_test_with_matching_config(fn):
+def with_matching_spec_config(emitted_fork=None):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            conf = config_fork_epoch_overrides(spec, kw['state'])
-            overrides = with_config_overrides(conf)
-            return overrides(fn)(*args, spec=spec, **kw)
+            overrides = config_fork_epoch_overrides(spec, kw['state'])
+            deco = with_config_overrides(overrides, emitted_fork)
+            return deco(fn)(*args, spec=spec, **kw)
         return wrapper
-    return spec_test(with_state(decorator(single_phase(fn))))
+    return decorator
+
+
+def spec_state_test_with_matching_config(fn):
+    return spec_test(with_state(with_matching_spec_config()(single_phase(fn))))
 
 
 def expect_assertion_error(fn):
@@ -401,12 +420,12 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
-def with_all_phases_from(earliest_phase):
+def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
     def decorator(fn):
-        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
+        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
     return decorator
 
 
@@ -417,12 +436,6 @@ def with_all_phases_except(exclusion_phases):
     def decorator(fn):
         return with_phases([phase for phase in ALL_PHASES if phase not in exclusion_phases])(fn)
     return decorator
-
-
-with_altair_and_later = with_all_phases_from(ALTAIR)
-with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
-with_capella_and_later = with_all_phases_from(CAPELLA)
-with_eip4844_and_later = with_all_phases_from(EIP4844)
 
 
 def _get_preset_targets(kw):
@@ -498,7 +511,7 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw['phase']
                     _phases = [phase]
-                    _other_phases = [ALL_FORK_UPGRADES[phase]]
+                    _other_phases = [POST_FORK_OF[phase]]
                     ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
                 else:
                     # When running pytest, go through `fork_metas` instead of using `phases`
@@ -530,6 +543,17 @@ def with_presets(preset_bases, reason=None):
     return decorator
 
 
+with_light_client = with_phases(LIGHT_CLIENT_TESTING_FORKS)
+
+with_altair_and_later = with_all_phases_from(ALTAIR)
+with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
+with_capella_and_later = with_all_phases_from(CAPELLA)
+with_deneb_and_later = with_all_phases_from(DENEB)
+with_electra_and_later = with_all_phases_from(ELECTRA)
+with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+
 class quoted_str(str):
     pass
 
@@ -550,17 +574,37 @@ def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _get_copy_of_spec(spec):
+def get_copy_of_spec(spec):
     fork = spec.fork
     preset = spec.config.PRESET_BASE
     module_path = f"eth2spec.{fork}.{preset}"
     module_spec = importlib.util.find_spec(module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
+
+    # Preserve existing config overrides
+    module.config = deepcopy(spec.config)
+
     return module
 
 
-def with_config_overrides(config_overrides):
+def spec_with_config_overrides(spec, config_overrides):
+    # apply our overrides to a copy of it, and apply it to the spec
+    config = spec.config._asdict()
+    config.update((k, config_overrides[k]) for k in config.keys() & config_overrides.keys())
+    config_types = spec.Configuration.__annotations__
+    modified_config = {k: config_types[k](v) for k, v in config.items()}
+
+    spec.config = spec.Configuration(**modified_config)
+
+    # To output the changed config in a format compatible with yaml test vectors,
+    # the dict SSZ objects have to be converted into Python built-in types.
+    output_config = _get_basic_dict(modified_config)
+
+    return spec, output_config
+
+
+def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
     This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
@@ -570,23 +614,26 @@ def with_config_overrides(config_overrides):
     """
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            spec = _get_copy_of_spec(spec)
+            # Apply config overrides to spec
+            spec, output_config = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
 
-            # apply our overrides to a copy of it, and apply it to the spec
-            config = spec.config._asdict()
-            config.update(config_overrides)
-            config_types = spec.Configuration.__annotations__
-            modified_config = {k: config_types[k](v) for k, v in config.items()}
+            # Apply config overrides to additional phases, if present
+            if 'phases' in kw:
+                phases = {}
+                for fork in kw['phases']:
+                    phases[fork], output = spec_with_config_overrides(
+                        get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                    if emitted_fork == fork:
+                        output_config = output
+                kw['phases'] = phases
 
-            # To output the changed config to could be serialized with yaml test vectors,
-            # the dict SSZ objects have to be converted into Python built-in types.
-            output_config = _get_basic_dict(modified_config)
-            yield 'config', 'cfg', output_config
-
-            spec.config = spec.Configuration(**modified_config)
+            # Emit requested spec (with overrides)
+            if emit:
+                yield 'config', 'cfg', output_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
+
             # If it's not returning None like a normal test function,
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:

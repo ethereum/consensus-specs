@@ -1,6 +1,6 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
-[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
 
 To learn more about proof-of-stake and sharding, see the [PoS documentation](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/), [sharding documentation](https://ethereum.org/en/upgrades/sharding/) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
@@ -20,15 +20,16 @@ Features are researched and developed in parallel, and then consolidated into se
 | 0 | **Phase0** |`0` | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> |
 | 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md) ([full node](specs/altair/light-client/full-node.md), [light client](specs/altair/light-client/light-client.md), [networking](specs/altair/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
 | 2 | **Bellatrix** <br/> (["The Merge"](https://ethereum.org/en/upgrades/merge/)) | `144896` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> |
+| 3 | **Capella** | `194048` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/capella/light-client/sync-protocol.md) ([fork](specs/capella/light-client/fork.md), [full node](specs/capella/light-client/full-node.md), [networking](specs/capella/light-client/p2p-interface.md))</li></ul><ul><li>[Validator additions](specs/capella/validator.md)</li><li>[P2P networking](specs/capella/p2p-interface.md)</li></ul></ul> |
+| 4 | **Deneb** | `269568` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/deneb/beacon-chain.md)</li><li>[Deneb fork](specs/deneb/fork.md)</li><li>[Polynomial commitments](specs/deneb/polynomial-commitments.md)</li><li>[Fork choice changes](specs/deneb/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/deneb/light-client/sync-protocol.md) ([fork](specs/deneb/light-client/fork.md), [full node](specs/deneb/light-client/full-node.md), [networking](specs/deneb/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/deneb/validator.md)</li><li>[P2P networking](specs/deneb/p2p-interface.md)</li></ul></ul> |
 
 ### In-development Specifications
 | Code Name or Topic | Specs | Notes |
 | - | - | - |
-| Capella (tentative) | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Validator additions](specs/capella/validator.md)</li><li>[P2P networking](specs/capella/p2p-interface.md)</li></ul></ul> |
-| EIP4844 (tentative) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/eip4844/beacon-chain.md)</li><li>[EIP-4844 fork](specs/eip4844/fork.md)</li><li>[Polynomial commitments](specs/eip4844/polynomial-commitments.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/eip4844/validator.md)</li><li>[P2P networking](specs/eip4844/p2p-interface.md)</li></ul></ul> |
-| Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/sharding/p2p-interface.md)</li></ul></ul> |
-| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
-| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/das/das-core.md)</li><li>[Fork choice changes](specs/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/das/p2p-interface.md)</li><li>[Sampling process](specs/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
+| Electra | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[EIP-6110 fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/electra/validator.md)</li></ul></ul> |
+| Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/_features/sharding/p2p-interface.md)</li></ul></ul> |
+| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
+| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/_features/das/das-core.md)</li><li>[Fork choice changes](specs/_features/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/_features/das/p2p-interface.md)</li><li>[Sampling process](specs/_features/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -41,6 +42,7 @@ Features are researched and developed in parallel, and then consolidated into se
 Additional specifications and standards outside of requisite client functionality can be found in the following repos:
 
 * [Beacon APIs](https://github.com/ethereum/beacon-apis)
+* [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 * [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
 
 ## Design goals
@@ -63,6 +65,10 @@ The following are the broad design goals for the Ethereum proof-of-stake consens
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](tests/generators/README.md)
 * [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
+
+## Online viewer of the latest release (latest `master` branch)
+
+[Ethereum Consensus Specs](https://ethereum.github.io/consensus-specs/)
 
 ## Consensus spec tests
 

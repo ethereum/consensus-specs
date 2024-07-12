@@ -1,20 +1,37 @@
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, EIP4844,
+    PHASE0,
+    PREVIOUS_FORK_OF,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
 
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
     withdrawal_pubkey = pubkeys[-1 - i]
-    # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+    if is_post_electra(spec):
+        if balance > spec.MIN_ACTIVATION_BALANCE:
+            # use compounding withdrawal credentials if the balance is higher than MIN_ACTIVATION_BALANCE
+            withdrawal_credentials = (
+                spec.COMPOUNDING_WITHDRAWAL_PREFIX
+                + b'\x00' * 11
+                + spec.hash(withdrawal_pubkey)[12:]
+            )
+        else:
+            # insecurely use pubkey as withdrawal key as well
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        # insecurely use pubkey as withdrawal key as well
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE
+
     validator = spec.Validator(
         pubkey=active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -22,7 +39,7 @@ def build_mock_validator(spec, i: int, balance: int):
         activation_epoch=spec.FAR_FUTURE_EPOCH,
         exit_epoch=spec.FAR_FUTURE_EPOCH,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balace)
     )
 
     return validator
@@ -47,17 +64,24 @@ def get_sample_genesis_execution_payload_header(spec,
     )
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    withdrawals_trie_root = None
+    parent_beacon_block_root = None
+    requests_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    else:
-        withdrawals_trie_root = None
+    if is_post_deneb(spec):
+        parent_beacon_block_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
+    if is_post_electra(spec):
+        requests_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
+        parent_beacon_block_root,
+        requests_trie_root,
     )
     return payload_header
 
@@ -69,17 +93,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
-    if spec.fork == ALTAIR:
-        current_version = spec.config.ALTAIR_FORK_VERSION
-    elif spec.fork == BELLATRIX:
-        previous_version = spec.config.ALTAIR_FORK_VERSION
-        current_version = spec.config.BELLATRIX_FORK_VERSION
-    elif spec.fork == CAPELLA:
-        previous_version = spec.config.BELLATRIX_FORK_VERSION
-        current_version = spec.config.CAPELLA_FORK_VERSION
-    elif spec.fork == EIP4844:
-        previous_version = spec.config.CAPELLA_FORK_VERSION
-        current_version = spec.config.EIP4844_FORK_VERSION
+    if spec.fork != PHASE0:
+        previous_fork = PREVIOUS_FORK_OF[spec.fork]
+        if previous_fork == PHASE0:
+            previous_version = spec.config.GENESIS_FORK_VERSION
+        else:
+            previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+        current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -128,5 +148,30 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             spec,
             eth1_block_hash=eth1_block_hash,
         )
+
+    if is_post_electra(spec):
+        state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+
+    if is_post_whisk(spec):
+        vc = len(state.validators)
+        for i in range(vc):
+            state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
+            state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
+
+        for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
+
+        for i in range(spec.WHISK_PROPOSER_TRACKERS_COUNT):
+            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
+
+    if is_post_electra(spec):
+        state.deposit_balance_to_consume = 0
+        state.exit_balance_to_consume = 0
+        state.earliest_exit_epoch = spec.GENESIS_EPOCH
+        state.consolidation_balance_to_consume = 0
+        state.earliest_consolidation_epoch = 0
+        state.pending_balance_deposits = []
+        state.pending_partial_withdrawals = []
+        state.pending_consolidations = []
 
     return state

@@ -6,15 +6,13 @@ defaults:
 
 env:
   TEST_PRESET_TYPE: "minimal"
-  DEFAULT_BRANCH: "dev"
 
-# Run tests on workflow_Dispatch
-on: 
+on:
   push:
     branches:
-      - dev 
+      - dev
       - master
-  pull_request:    
+  pull_request:
   workflow_dispatch:
     inputs:
       test_preset_type:
@@ -22,90 +20,79 @@ on:
         description: Type of test to run, either mainnet or minimal
         type: string
         required: true
-      commitRef:
-        description: The branch, tag or SHA to checkout and build from
-        default: dev
-        required: true  
   schedule:
     - cron: '0 0 * * *'
 
 jobs:
-  precleanup:
-      runs-on: self-hosted
-      if: always()
-      steps:
-        - name: 'Cleanup build folder'
-          run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-  setup-env:
-    runs-on: self-hosted
-    needs: precleanup
-    steps:
-      - name: Checkout this repo
-        uses: actions/checkout@v3.2.0
-        with:
-          ref: ${{ github.event.inputs.commitRef || env.DEFAULT_BRANCH }}
-      - uses: actions/cache@v3.2.2
-        id: cache-git
-        with:
-          path: ./*
-          key: ${{ github.sha }}
-
   table_of_contents:
-   runs-on: self-hosted
-   needs: setup-env
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
-      - uses: actions/cache@v3.2.2
-        id: restore-build
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ./*
-          key: ${{ github.sha }}
+          node-version: '20'
+          cache: ''
       - name: Check table of contents
-        run: sudo npm install -g doctoc@2 && make check_toc
+        run: npm install -g doctoc@2.2.0 && make check_toc
 
   codespell:
-   runs-on: self-hosted
-   needs: setup-env
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: ''
       - name: Check codespell
-        run: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
+        run: make codespell
 
   lint:
-    runs-on: self-hosted
-    needs: setup-env
+    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: ''
+      - name: Install pyspec requirements
+        run: make install_test
       - name: Run linter for pyspec
         run: make lint
       - name: Run linter for test generators
         run: make lint_generators
 
   pyspec-tests:
-    runs-on: self-hosted
-    needs: [setup-env,lint,codespell,table_of_contents]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    needs: [lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "eip4844"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
     steps:
-      - uses: actions/cache@v3.2.2
-        id: restore-build
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          path: ./*
-          key: ${{ github.sha }}
+          python-version: '3.10'
+          cache: ''
       - name: set TEST_PRESET_TYPE
-        if: github.event.inputs.test_preset_type != ''        
+        if: github.event.inputs.test_preset_type != ''
         run: |
           echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
-          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV    
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
-          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV    
+          echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
       - name: set TEST_PRESET_TYPE
         if: github.event.schedule=='0 0 * * *'
         run: |
@@ -114,20 +101,8 @@ jobs:
         run: make install_test
       - name: test-${{ matrix.version }}
         run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-${{ matrix.version }}
+          name: test-reports-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
-
-  cleanup:
-      runs-on: self-hosted
-      needs: [setup-env,pyspec-tests,codespell,lint,table_of_contents]
-      if: always()
-      steps:
-        - name: 'Cleanup build folder'
-          run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
