@@ -211,6 +211,47 @@ def test_pending_deposit_balance_equal_churn(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_pending_deposit_balance_equal_churn_with_compounding(spec, state):
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    compounding_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    amount = spec.get_activation_exit_churn_limit(state)
+    state.validators[index].withdrawal_credentials = withdrawal_credentials
+    deposit_data = build_deposit_data(spec,
+                                      pubkeys[index],
+                                      privkeys[index],
+                                      amount,
+                                      compounding_credentials,
+                                      signed=True)
+    # set withdrawal credentials to compounding but should not switch since
+    # validator is already withdrawing
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=pubkeys[index],
+        withdrawal_credentials=compounding_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+        signature=deposit_data.signature,
+    ))
+    pre_balance = state.balances[index]
+
+    yield from run_process_pending_deposits(spec, state)
+
+    assert state.balances[index] == pre_balance + amount
+    assert state.deposit_balance_to_consume == 0
+    assert state.pending_deposits == []
+    current_credentials = state.validators[0].withdrawal_credentials
+    # validator is not exited, so it should not switch to compounding
+    assert current_credentials == withdrawal_credentials
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_deposit_balance_above_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state) + 1
