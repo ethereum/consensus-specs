@@ -231,7 +231,8 @@ def compute_verify_cell_kzg_proof_batch_challenge(commitments: Sequence[KZGCommi
     """
     Compute a random challenge ``r`` used in the universal verification equation. To compute the
     challenge, ``RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN`` and all data that can influence the
-    verification is hashed together to generate a deterministicly "random" BLS field element.
+    verification is hashed together to deterministically generate a "random" field element via
+    the Fiat-Shamir heuristic.
     """
     hashinput = RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN
     hashinput += int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, KZG_ENDIANNESS)
@@ -486,8 +487,9 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
     # - r is a random coefficient, derived from hashing all data provided by the prover
     # - s is the secret embedded in the KZG setup
     # - n = FIELD_ELEMENTS_PER_CELL is the size of the evaluation domain
-    # - i ranges over all rows that are touched
-    # - weights[i] is a weight computed for row i. It depends on r and on which cells are in row i
+    # - i ranges over all provided commitments
+    # - weights[i] is a weight computed for commitment i
+    #   - It depends on r and on which cells are associated with commitment i
     # - interpolation_poly_k is the interpolation polynomial for the kth cell
     # - h_k is the coset shift specifying the evaluation domain of the kth cell
 
@@ -514,7 +516,7 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
 
     # Step 4: Compute RL = RLC - RLI + RLP
     # Step 4.1: Compute RLC = sum_i weights[i] commitments[i]
-    # Step 4.1a: Compute weights[i]: the sum of all r^k for which cell k is in row i.
+    # Step 4.1a: Compute weights[i]: the sum of all r^k for which cell k is associated with commitment i.
     # Note: we do that by iterating over all k and updating the correct weights[i] accordingly
     weights = [0] * num_commitments
     for k in range(num_cells):
