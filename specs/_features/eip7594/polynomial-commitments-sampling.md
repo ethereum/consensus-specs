@@ -237,7 +237,7 @@ def compute_verify_cell_kzg_proof_batch_challenge(commitments: Sequence[KZGCommi
     hashinput += int.to_bytes(FIELD_ELEMENTS_PER_BLOB, 8, KZG_ENDIANNESS)
     hashinput += int.to_bytes(FIELD_ELEMENTS_PER_CELL, 8, KZG_ENDIANNESS)
     hashinput += int.to_bytes(len(commitments), 8, KZG_ENDIANNESS)
-    hashinput += int.to_bytes(len(cosets_evals), 8, KZG_ENDIANNESS)
+    hashinput += int.to_bytes(len(cell_indices), 8, KZG_ENDIANNESS)
     for commitment in commitments:
         hashinput += commitment
     for k, coset_evals in enumerate(cosets_evals):
@@ -482,7 +482,7 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
     #   RLP = sum_k (r^k * h_k^n) proofs[k]
     #
     # Here, the variables have the following meaning:
-    # - k < len(cosets_evals) is an index iterating over all cells in the input
+    # - k < len(cell_indices) is an index iterating over all cells in the input
     # - r is a random coefficient, derived from hashing all data provided by the prover
     # - s is the secret embedded in the KZG setup
     # - n = FIELD_ELEMENTS_PER_CELL is the size of the evaluation domain
@@ -492,7 +492,7 @@ def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
     # - h_k is the coset shift specifying the evaluation domain of the kth cell
 
     # Preparation
-    num_cells = len(cosets_evals)
+    num_cells = len(cell_indices)
     n = FIELD_ELEMENTS_PER_CELL
     num_commitments = len(commitments)
 
