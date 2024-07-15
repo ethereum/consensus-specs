@@ -117,6 +117,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
         current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
+    genesis_block_body = spec.BeaconBlockBody()
+    if is_post_eip7732(spec):
+        genesis_block_body.signed_execution_payload_header.message.block_hash = eth1_block_hash
+
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
@@ -130,7 +134,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             current_version=current_version,
             epoch=spec.GENESIS_EPOCH,
         ),
-        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(genesis_block_body)),
         randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
 

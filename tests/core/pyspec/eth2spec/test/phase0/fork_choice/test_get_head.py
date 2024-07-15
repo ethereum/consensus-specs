@@ -1,5 +1,6 @@
 import random
 
+from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -30,9 +31,16 @@ from eth2spec.test.helpers.forks import (
 from eth2spec.test.helpers.state import (
     next_slots,
     next_epoch,
+    payload_state_transition,
     state_transition_and_sign_block,
 )
 
+def check_head_against_root(spec, store, root):
+    head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        assert head.root == root
+    else:
+        assert head == root
 
 @with_altair_and_later
 @spec_state_test
@@ -44,11 +52,8 @@ def test_genesis(spec, state):
     yield 'anchor_block', anchor_block
 
     anchor_root = get_anchor_root(spec, state)
-    head = spec.get_head(store)
-    if is_post_eip7732(spec):
-        assert head.root == anchor_root
-    else:
-        assert head == anchor_root
+    check_head_against_root(spec, store, anchor_root)
+
     test_steps.append({
         'checks': {
             'genesis_time': int(store.genesis_time),
@@ -72,20 +77,21 @@ def test_chain_no_attestations(spec, state):
     yield 'anchor_block', anchor_block
 
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
-
+   
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-
+    payload_state_transition(spec, store, state, signed_block_1.message)
+   
     # On receiving a block of next epoch
     block_2 = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
 
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps

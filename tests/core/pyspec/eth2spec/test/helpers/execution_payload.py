@@ -238,6 +238,7 @@ def build_empty_post_eip7732_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
+    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     return spec.ExecutionPayloadHeader(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
@@ -246,7 +247,7 @@ def build_empty_post_eip7732_execution_payload_header(spec, state):
         builder_index=spec.ValidatorIndex(0),
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=spec.Root()
+        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
     )
 
 

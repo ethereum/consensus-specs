@@ -1,6 +1,7 @@
+from eth_utils import encode_hex
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
-from eth2spec.test.helpers.forks import is_post_altair
+from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7732
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 
@@ -89,6 +90,20 @@ def get_state_root(spec, state, slot) -> bytes:
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+
+
+def payload_state_transition(spec, store, state, block):
+    if is_post_eip7732(spec):
+        # cache the latest block header
+        previous_state_root = state.hash_tree_root()
+        if state.latest_block_header.state_root == spec.Root():
+            state.latest_block_header.state_root = previous_state_root
+        # also perform the state transition as if the payload was revealed
+        state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
+        state.latest_full_slot = block.slot
+        root = block.hash_tree_root()
+        store.execution_payload_states[root] = store.block_states[root].copy()
+    return state
 
 
 def state_transition_and_sign_block(spec, state, block, expect_fail=False):

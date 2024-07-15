@@ -122,7 +122,12 @@ def get_genesis_forkchoice_store(spec, genesis_state):
 def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    return spec.get_forkchoice_store(genesis_state, genesis_block), genesis_block
+    if is_post_eip7732(spec):
+        genesis_block.body.signed_execution_payload_header.message.block_hash = genesis_state.latest_block_hash
+    store = spec.get_forkchoice_store(genesis_state, genesis_block)
+    if is_post_eip7732(spec):
+        store.execution_payload_states = store.block_states.copy()
+    return store, genesis_block
 
 
 def get_block_file_name(block):
@@ -161,7 +166,8 @@ def run_on_block(spec, store, signed_block, valid=True):
             assert False
 
     spec.on_block(store, signed_block)
-    assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
+    root = signed_block.message.hash_tree_root()
+    assert store.blocks[root] == signed_block.message
 
 
 def add_block(spec,
