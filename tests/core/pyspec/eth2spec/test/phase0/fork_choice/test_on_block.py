@@ -18,6 +18,7 @@ from eth2spec.test.helpers.block import (
     transition_unsigned_block,
     sign_block,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -62,14 +63,14 @@ def test_basic(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
     # On receiving a block of next epoch
     store.time = current_time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
     yield 'steps', test_steps
 
@@ -96,7 +97,7 @@ def test_on_block_checkpoints(spec, state):
     state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
         spec, state, store, True, False, test_steps=test_steps)
     last_block_root = hash_tree_root(last_signed_block.message)
-    assert spec.get_head(store) == last_block_root
+    check_head_against_root(spec, store, last_block_root)
 
     # Forward 1 epoch
     next_epoch(spec, state)
@@ -109,7 +110,7 @@ def test_on_block_checkpoints(spec, state):
     block = build_empty_block_for_next_slot(spec, fin_state)
     signed_block = state_transition_and_sign_block(spec, fin_state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     yield 'steps', test_steps
 
 
@@ -469,14 +470,28 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block),
+                    slot=block.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
             spec.config.SECONDS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block),
+                    slot=block.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
     next_slots(spec, state, 3)
     block = build_empty_block_for_next_slot(spec, state)
@@ -487,14 +502,28 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block),
+                    slot=block.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
 
     # Ensure that boost is removed after slot is over
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT +
             spec.config.SECONDS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block),
+                    slot=block.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
     test_steps.append({
         'checks': {
@@ -564,7 +593,14 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_a, test_steps)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    assert spec.get_weight(store, spec.hash_tree_root(block_a)) > 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block_a),
+                    slot=block_a.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block_a)) > 0
     test_steps.append({
         'checks': {
             'proposer_boost_root': encode_hex(store.proposer_boost_root),
@@ -579,7 +615,14 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_b, test_steps)
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0
+    if is_post_eip7732(spec):
+        node = spec.ChildNode(
+                    root=spec.hash_tree_root(block_b),
+                    slot=block_b.slot,
+                )
+        assert spec.get_weight(store, node) > 0
+    else:
+        assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0
     test_steps.append({
         'checks': {
             'proposer_boost_root': encode_hex(store.proposer_boost_root),
@@ -656,7 +699,7 @@ def test_justification_withholding(spec, state):
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-    assert spec.get_head(store) == hash_tree_root(honest_block)
+    check_head_against_root(spec, store, hash_tree_root(honest_block))
     assert is_ready_to_justify(spec, honest_state)
 
     # ------------
@@ -666,7 +709,7 @@ def test_justification_withholding(spec, state):
     yield from tick_and_add_block(spec, store, attacker_signed_blocks[-1], test_steps)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
-    assert spec.get_head(store) == hash_tree_root(honest_block)
+    check_head_against_root(spec, store, hash_tree_root(honest_block))
 
     yield 'steps', test_steps
 
@@ -712,7 +755,7 @@ def test_justification_withholding_reverse_order(spec, state):
     assert attacker_state.current_justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(attacker_state) == 4
     attackers_head = hash_tree_root(attacker_signed_blocks[-1].message)
-    assert spec.get_head(store) == attackers_head
+    check_head_against_root(spec, store, attackers_head)
 
     # ------------
 
@@ -743,7 +786,7 @@ def test_justification_withholding_reverse_order(spec, state):
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
-    assert spec.get_head(store) == hash_tree_root(honest_block)
+    check_head_against_root(spec, store, hash_tree_root(honest_block))
 
     yield 'steps', test_steps
 
@@ -791,7 +834,7 @@ def test_justification_update_beginning_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert store.justified_checkpoint.epoch == 4
 
     yield 'steps', test_steps
@@ -841,7 +884,7 @@ def test_justification_update_end_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert store.justified_checkpoint.epoch == 4
 
     yield 'steps', test_steps
@@ -1048,7 +1091,7 @@ def test_justified_update_not_realized_finality(spec, state):
     finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
-    assert spec.get_head(store) == finalized_root
+    check_head_against_root(spec, store, finalized_root)
     # Copy the post-state to use later
     another_state = state.copy()
 
@@ -1124,7 +1167,7 @@ def test_justified_update_monotonic(spec, state):
     finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
-    assert spec.get_head(store) == finalized_root
+    check_head_against_root(spec, store, finalized_root)
     # Copy into another variable so we can use `state` later
     another_state = state.copy()
 
@@ -1203,7 +1246,7 @@ def test_justified_update_always_if_better(spec, state):
     finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
-    assert spec.get_head(store) == finalized_root
+    check_head_against_root(spec, store, finalized_root)
     # Copy into another variable to use later
     another_state = state.copy()
 
@@ -1283,7 +1326,7 @@ def test_pull_up_past_epoch_block(spec, state):
     # Add the previously created chain to the store and check for updates
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 4
     assert store.finalized_checkpoint.epoch == 3
@@ -1332,7 +1375,7 @@ def test_not_pull_up_current_epoch_block(spec, state):
     # Add the previously created chain to the store and check that store does not apply pull-up updates
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
@@ -1382,7 +1425,7 @@ def test_pull_up_on_tick(spec, state):
     # since the previous epoch was not justified
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2

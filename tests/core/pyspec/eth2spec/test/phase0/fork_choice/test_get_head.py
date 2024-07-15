@@ -108,7 +108,7 @@ def test_split_tie_breaker_no_attestations(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
     # Create block at slot 1
@@ -127,10 +127,13 @@ def test_split_tie_breaker_no_attestations(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
 
     yield from add_block(spec, store, signed_block_1, test_steps)
+    post_state_1 = state.copy()
+    payload_state_transition(spec, store, state, signed_block_1.message)
     yield from add_block(spec, store, signed_block_2, test_steps)
+    payload_state_transition(spec, store, post_state_1, signed_block_2.message)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
-    assert spec.get_head(store) == highest_root
+    check_head_against_root(spec, store, highest_root)
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -147,7 +150,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
     # build longer tree
@@ -156,6 +159,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
         long_block = build_empty_block_for_next_slot(spec, long_state)
         signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
         yield from tick_and_add_block(spec, store, signed_long_block, test_steps)
+        payload_state_transition(spec, store, long_state, signed_long_block.message)
 
     # build short tree
     short_state = genesis_state.copy()
@@ -163,14 +167,15 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     short_block.body.graffiti = b'\x42' * 32
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
     yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
+    payload_state_transition(spec, store, short_state, signed_short_block.message)
 
     # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
-    assert spec.get_head(store) == spec.hash_tree_root(long_block)
+    check_head_against_root(spec, store, spec.hash_tree_root(long_block))
 
     short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
     yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
 
-    assert spec.get_head(store) == spec.hash_tree_root(short_block)
+    check_head_against_root(spec, store, spec.hash_tree_root(short_block))
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -186,7 +191,7 @@ def test_filtered_block_tree(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
     # transition state past initial couple of epochs
@@ -201,12 +206,13 @@ def test_filtered_block_tree(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
         yield from add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, state, signed_block.message)
 
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # the last block in the branch should be the head
     expected_head_root = spec.hash_tree_root(signed_blocks[-1].message)
-    assert spec.get_head(store) == expected_head_root
+    check_head_against_root(spec, store, expected_head_root)
     output_head_check(spec, store, test_steps)
 
     #
@@ -242,12 +248,13 @@ def test_filtered_block_tree(spec, state):
 
     # include rogue block and associated attestations in the store
     yield from add_block(spec, store, signed_rogue_block, test_steps)
+    payload_state_transition(spec, store, non_viable_state, rogue_block.message)
 
     for attestation in attestations:
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
 
     # ensure that get_head still returns the head from the previous branch
-    assert spec.get_head(store) == expected_head_root
+    check_head_against_root(spec, store, expected_head_root)
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -264,7 +271,7 @@ def test_proposer_boost_correct_head(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
     # Build block that serves as head ONLY on timely arrival, and ONLY in that slot
@@ -291,19 +298,19 @@ def test_proposer_boost_correct_head(spec, state):
     # Process block_2
     yield from add_block(spec, store, signed_block_2, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
 
     # Process block_1 on timely arrival
     # The head should temporarily change to block_1
     yield from add_block(spec, store, signed_block_1, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block_1)
-    assert spec.get_head(store) == spec.hash_tree_root(block_1)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_1))
 
     # After block_1.slot, the head should revert to block_2
     time = store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -320,7 +327,7 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
     anchor_root = get_anchor_root(spec, state)
-    assert spec.get_head(store) == anchor_root
+    check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
     # Build block that serves as head before discarding equivocations
@@ -360,23 +367,23 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     # Process block_2
     yield from add_block(spec, store, signed_block_2, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
 
     # Process block_1
     # The head should remain block_2
     yield from add_block(spec, store, signed_block_1, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
 
     # Process attestation
     # The head should change to block_1
     yield from add_attestation(spec, store, attestation, test_steps)
-    assert spec.get_head(store) == spec.hash_tree_root(block_1)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_1))
 
     # Process attester_slashing
     # The head should revert to block_2
     yield from add_attester_slashing(spec, store, attester_slashing, test_steps)
-    assert spec.get_head(store) == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -462,7 +469,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # Check that block with higher root wins
-    assert spec.get_head(store) == block_high_root
+    check_head_against_root(spec, store, block_high_root)
 
     # Create attestation for block with lower root
     attestation = get_valid_attestation(spec, block_low_root_post_state, slot=eqv_slot, index=0, signed=True)
@@ -473,7 +480,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     # Add attestation to the store
     yield from add_attestation(spec, store, attestation, test_steps)
     # Check that block with higher root still wins
-    assert spec.get_head(store) == block_high_root
+    check_head_against_root(spec, store, block_high_root)
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -550,7 +557,7 @@ def test_voting_source_within_two_epoch(spec, state):
         last_fork_block_root,
         store.finalized_checkpoint.epoch
     )
-    assert spec.get_head(store) == last_fork_block_root
+    check_head_against_root(spec, store, last_fork_block_root)
 
     yield 'steps', test_steps
 
@@ -634,7 +641,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
         last_fork_block_root,
         store.finalized_checkpoint.epoch
     )
-    assert spec.get_head(store) == correct_head
+    check_head_against_root(spec, store, correct_head)
 
     yield 'steps', test_steps
 
@@ -739,7 +746,7 @@ def test_incorrect_finalized(spec, state):
         store.finalized_checkpoint.epoch
     )
     assert spec.get_head(store) != last_fork_block_root
-    assert spec.get_head(store) == head_root
+    check_head_against_root(spec, store, head_root)
 
     yield 'steps', test_steps
 """
