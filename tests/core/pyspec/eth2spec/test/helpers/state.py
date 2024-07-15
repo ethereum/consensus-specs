@@ -102,7 +102,7 @@ def payload_state_transition(spec, store, state, block):
         state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
         state.latest_full_slot = block.slot
         root = block.hash_tree_root()
-        store.execution_payload_states[root] = store.block_states[root].copy()
+        store.execution_payload_states[root] = state.copy()
     return state
 
 

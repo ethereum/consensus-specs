@@ -54,7 +54,7 @@ def get_anchor_root(spec, state):
 def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
                        merge_block=False, block_not_found=False, is_optimistic=False,
                        blob_data=None):
-    pre_state = store.block_states[signed_block.message.parent_root]
+    pre_state = store.execution_payload_states[signed_block.message.parent_root]
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
