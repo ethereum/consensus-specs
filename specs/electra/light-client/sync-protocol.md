@@ -43,7 +43,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ### Frozen constants
 
-Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol#constants) values.
+Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol.md#constants) values.
 
 | Name | Value |
 | - | - |
