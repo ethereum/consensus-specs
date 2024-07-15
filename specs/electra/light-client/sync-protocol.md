@@ -70,7 +70,7 @@ def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
         return FINALIZED_ROOT_GINDEX_ELECTRA
-    return GeneralizedIndex(FINALIZED_ROOT_GINDEX)
+    return FINALIZED_ROOT_GINDEX
 ```
 
 ### Modified `current_sync_committee_gindex_at_slot`
@@ -82,7 +82,7 @@ def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
         return CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
-    return GeneralizedIndex(CURRENT_SYNC_COMMITTEE_GINDEX)
+    return CURRENT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### Modified `next_sync_committee_gindex_at_slot`
@@ -94,7 +94,7 @@ def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     # [Modified in Electra]
     if epoch >= ELECTRA_FORK_EPOCH:
         return NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
-    return GeneralizedIndex(NEXT_SYNC_COMMITTEE_GINDEX)
+    return NEXT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### Modified `get_lc_execution_root`
