@@ -52,6 +52,8 @@
         - [`process_payload_attestation`](#process_payload_attestation)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
       - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+    - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
+    - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
