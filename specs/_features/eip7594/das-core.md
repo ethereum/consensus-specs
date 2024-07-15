@@ -201,9 +201,6 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     """
     Given a signed block and the cells/proofs associated with each blob in the
     block, assemble the sidecars which can be distributed to peers.
-    
-    Since there is no method which converts cells to a blob, this method takes
-    cells/proofs instead of blobs so it can re-create sidecars after recovery.
     """
     blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
     assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
