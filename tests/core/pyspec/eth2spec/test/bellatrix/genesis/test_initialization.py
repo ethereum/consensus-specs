@@ -107,7 +107,10 @@ def test_initialize_post_transition(spec):
 
     # initialize beacon_state *with* an execution_payload_header
     yield 'execution_payload_header', 'meta', True
-    genesis_execution_payload_header = get_sample_genesis_execution_payload_header(spec)
+    genesis_execution_payload_header = get_sample_genesis_execution_payload_header(
+        spec,
+        spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH)
+    )
     state = spec.initialize_beacon_state_from_eth1(
         eth1_block_hash,
         eth1_timestamp,

@@ -6,11 +6,11 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_whisk,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb,
+    is_post_electra, is_post_whisk, is_post_eip7732
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
-
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
@@ -45,10 +45,24 @@ def build_mock_validator(spec, i: int, balance: int):
     return validator
 
 
-def get_sample_genesis_execution_payload_header(spec,
+def get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash):
+    header = spec.ExecutionPayloadHeader(
+        parent_block_hash=b'\x30' * 32,
+        parent_block_root=b'\x00' * 32,
+        block_hash=eth1_block_hash,
+        gas_limit=30000000,
+        slot=slot,
+        blob_kzg_commitments_root=b'\x20' * 32,
+    )
+    return header
+
+
+def get_sample_genesis_execution_payload_header(spec, slot,
                                                 eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b'\x55' * 32
+    if is_post_eip7732(spec):
+        return get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         fee_recipient=b'\x42' * 20,
@@ -146,6 +160,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,
+            spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH),
             eth1_block_hash=eth1_block_hash,
         )
 
