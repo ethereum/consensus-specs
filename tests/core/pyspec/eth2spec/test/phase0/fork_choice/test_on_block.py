@@ -20,6 +20,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
+    check_head_against_root,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     add_block,
@@ -34,7 +35,6 @@ from eth2spec.test.helpers.state import (
     next_slots,
     state_transition_and_sign_block,
 )
-
 
 rng = random.Random(2020)
 
@@ -472,9 +472,9 @@ def test_proposer_boost(spec, state):
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block),
-                    slot=block.slot,
-                )
+            root=spec.hash_tree_root(block),
+            slot=block.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
@@ -486,9 +486,9 @@ def test_proposer_boost(spec, state):
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block),
-                    slot=block.slot,
-                )
+            root=spec.hash_tree_root(block),
+            slot=block.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
@@ -504,9 +504,9 @@ def test_proposer_boost(spec, state):
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block),
-                    slot=block.slot,
-                )
+            root=spec.hash_tree_root(block),
+            slot=block.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
@@ -518,9 +518,9 @@ def test_proposer_boost(spec, state):
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block),
-                    slot=block.slot,
-                )
+            root=spec.hash_tree_root(block),
+            slot=block.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
@@ -595,9 +595,9 @@ def test_proposer_boost_is_first_block(spec, state):
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block_a),
-                    slot=block_a.slot,
-                )
+            root=spec.hash_tree_root(block_a),
+            slot=block_a.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block_a)) > 0
@@ -617,9 +617,9 @@ def test_proposer_boost_is_first_block(spec, state):
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
-                    root=spec.hash_tree_root(block_b),
-                    slot=block_b.slot,
-                )
+            root=spec.hash_tree_root(block_b),
+            slot=block_b.slot,
+        )
         assert spec.get_weight(store, node) > 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0

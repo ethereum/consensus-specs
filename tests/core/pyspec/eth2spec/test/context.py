@@ -590,6 +590,7 @@ with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
 with_deneb_until_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
 with_electra_until_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
 
+
 class quoted_str(str):
     pass
 

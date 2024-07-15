@@ -10,6 +10,14 @@ from eth2spec.test.helpers.attestations import (
 )
 
 
+def check_head_against_root(spec, store, root):
+    head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        assert head.root == root
+    else:
+        assert head == root
+
+
 class BlobData(NamedTuple):
     """
     The return values of ``retrieve_blobs_and_proofs`` helper.

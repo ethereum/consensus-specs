@@ -1,4 +1,3 @@
-from eth_utils import encode_hex
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
 from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7732

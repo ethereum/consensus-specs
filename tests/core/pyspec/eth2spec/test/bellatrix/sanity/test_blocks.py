@@ -11,7 +11,6 @@ from eth2spec.test.helpers.execution_payload import (
 )
 from eth2spec.test.context import (
     BELLATRIX,
-    with_bellatrix_and_later,
     with_bellatrix_until_eip7732,
     with_phases,
     spec_state_test,
