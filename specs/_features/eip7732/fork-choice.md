@@ -344,8 +344,7 @@ def get_head(store: Store) -> ChildNode:
         children = [
             ChildNode(root=root, slot=block.slot, is_payload_present=present) for (root, block) in blocks.items()
             if block.parent_root == best_child.root and 
-            is_parent_node_full(store, block) == best_child.is_payload_present if 
-            root != store.justified_checkpoint.root
+            (best_child.root == justified_root or is_parent_node_full(store, block) == best_child.is_payload_present)
             for present in (True, False) if root in store.execution_payload_states or not present
         ]
         if len(children) == 0:

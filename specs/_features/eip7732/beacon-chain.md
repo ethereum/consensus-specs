@@ -613,6 +613,11 @@ def process_execution_payload(state: BeaconState,
         assert verify_execution_payload_envelope_signature(state, signed_envelope)
     envelope = signed_envelope.message
     payload = envelope.payload
+    # Cache latest block header state root
+    previous_state_root = hash_tree_root(state)
+    if state.latest_block_header.state_root == Root():
+        state.latest_block_header.state_root = previous_state_root
+    
     # Verify consistency with the beacon block
     assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
 
@@ -664,4 +669,46 @@ def process_execution_payload(state: BeaconState,
     # Verify the state root
     if verify: 
         assert envelope.state_root == hash_tree_root(state)
+```
+
+#### Modified `is_merge_transition_complete`
+
+`is_merge_transition_complete` is modified only for testing purposes to add the blob kzg commitments root for an empty list
+
+```python
+def is_merge_transition_complete(state: BeaconState) -> bool:
+    header = ExecutionPayloadHeader()
+    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    return state.latest_execution_payload_header != header
+```
+
+#### Modified `validate_merge_block`
+`validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
+
+```python
+def validate_merge_block(block: BeaconBlock) -> None:
+    """
+    Check the parent PoW block of execution payload is a valid terminal PoW block.
+
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
+    """
+    if config.TERMINAL_BLOCK_HASH != Hash32():
+        # If `config.TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= config.TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        assert block.body.signed_execution_payload_header.message.parent_block_hash == config.TERMINAL_BLOCK_HASH
+        return
+
+    # Modified in EIP-7732
+    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
+    # Check if `pow_block` is available
+    assert pow_block is not None
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    # Check if `pow_parent` is available
+    assert pow_parent is not None
+    # Check if `pow_block` is a valid terminal PoW block
+    assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
