@@ -698,10 +698,10 @@ def validate_merge_block(block: BeaconBlock) -> None:
     and a client software MAY delay a call to ``validate_merge_block``
     until the PoW block(s) become available.
     """
-    if config.TERMINAL_BLOCK_HASH != Hash32():
-        # If `config.TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        assert compute_epoch_at_slot(block.slot) >= config.TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert block.body.signed_execution_payload_header.message.parent_block_hash == config.TERMINAL_BLOCK_HASH
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
         return
 
     # Modified in EIP-7732
