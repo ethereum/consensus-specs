@@ -683,7 +683,7 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
 def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
                             cells: Sequence[Cell]) -> Sequence[BLSFieldElement]:
     """
-    Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended blob.
+    Recover the polynomial in coefficient form that when evaluated at the roots of unity will give the extended blob.
     """
     # Get the extended domain. This will be referred to as the FFT domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
@@ -697,7 +697,7 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    # Compute Z(x) in monomial form
+    # Compute Z(x) in coefficient form
     # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
     missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
                             if cell_index not in cell_indices]
@@ -710,7 +710,7 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    # Convert (E*Z)(x) to monomial form
+    # Convert (E*Z)(x) to coefficient form
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
     # Convert (E*Z)(x) to evaluation form over a coset of the FFT domain
