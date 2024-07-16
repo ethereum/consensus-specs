@@ -28,6 +28,7 @@ def test_networking(spec):
         if is_post_eip7732(spec):
             inner_gindex = spec.get_generalized_index(
                 spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK],
+                i
             )
             outer_gindex = spec.get_generalized_index(
                 spec.BeaconBlockBody,
