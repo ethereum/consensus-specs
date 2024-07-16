@@ -8,6 +8,7 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+from eth2spec.test.helpers.state import payload_state_transition
 
 
 def check_head_against_root(spec, store, root):
@@ -336,6 +337,7 @@ def apply_next_epoch_with_attestations(spec,
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, state, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -358,6 +360,7 @@ def apply_next_slots_with_attestations(spec,
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, state, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
