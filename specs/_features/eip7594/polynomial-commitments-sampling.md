@@ -672,8 +672,7 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
 
 ```python
 def recover_polynomial_coeff(cell_indices: Sequence[CellIndex],
-                             cells: Sequence[Cell],
-                            ) -> Sequence[BLSFieldElement]:
+                             cells: Sequence[Cell]) -> Sequence[BLSFieldElement]:
     """
     Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended_blob.
     """
