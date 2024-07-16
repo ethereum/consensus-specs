@@ -39,12 +39,13 @@
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
+    - [`compute_cells_and_kzg_proofs_polynomialcoeff`](#compute_cells_and_kzg_proofs_polynomialcoeff)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
   - [Cell verification](#cell-verification)
     - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [Reconstruction](#reconstruction)
   - [`construct_vanishing_polynomial`](#construct_vanishing_polynomial)
-  - [`recover_polynomial_coeff`](#recover_polynomial_coeff)
+  - [`recover_polynomialcoeff`](#recover_polynomialcoeff)
   - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -555,6 +556,24 @@ def coset_for_cell(cell_index: CellIndex) -> Coset:
 
 ### Cell computation
 
+#### `compute_cells_and_kzg_proofs_polynomialcoeff`
+
+```python
+def compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff: PolynomialCoeff) -> Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+    """
+    Helper function which computes cells/proofs for a polynomial in coefficient form.
+    """
+    cells, proofs = [], []
+    for i in range(CELLS_PER_EXT_BLOB):
+        coset = coset_for_cell(CellIndex(i))
+        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+        cells.append(coset_evals_to_cell(ys))
+        proofs.append(proof)
+    return cells, proofs
+```
+
 #### `compute_cells_and_kzg_proofs`
 
 ```python
@@ -572,17 +591,7 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[
 
     polynomial = blob_to_polynomial(blob)
     polynomial_coeff = polynomial_eval_to_coeff(polynomial)
-
-    cells = []
-    proofs = []
-
-    for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(CellIndex(i))
-        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-        cells.append(coset_evals_to_cell(ys))
-        proofs.append(proof)
-
-    return cells, proofs
+    return compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff)
 ```
 
 ### Cell verification
@@ -668,20 +677,19 @@ def construct_vanishing_polynomial(missing_cell_indices: Sequence[CellIndex]) ->
     return zero_poly_coeff
 ```
 
-### `recover_polynomial_coeff`
+### `recover_polynomialcoeff`
 
 ```python
-def recover_polynomial_coeff(cell_indices: Sequence[CellIndex],
-                             cells: Sequence[Cell]) -> Sequence[BLSFieldElement]:
+def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
+                            cells: Sequence[Cell]) -> Sequence[BLSFieldElement]:
     """
-    Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended_blob.
+    Recover the polynomial in monomial form that when evaluated at the roots of unity will give the extended blob.
     """
-
-    # Get the extended domain. This will be referred to as the FFT domain.
+    # Get the extended domain. This will be referred to as the FFT domain
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
-    # Flatten the cells into evaluations.
-    # If a cell is missing, then its evaluation is zero.
+    # Flatten the cells into evaluations
+    # If a cell is missing, then its evaluation is zero
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_index, cell in zip(cell_indices, cells):
         start = cell_index * FIELD_ELEMENTS_PER_CELL
@@ -712,15 +720,12 @@ def recover_polynomial_coeff(cell_indices: Sequence[CellIndex],
     zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
     # Compute Q_3(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
-    reconstructed_poly_over_coset = [
-        div(a, b)
-        for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)
-    ]
+    reconstructed_poly_over_coset = [div(a, b) for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)]
 
-    # Convert Q_3(x) to monomial form
+    # Convert Q_3(x) to coefficient form
     reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
-    return reconstructed_poly_coeff
+    return reconstructed_poly_coeff[:FIELD_ELEMENTS_PER_BLOB]
 ```
 
 ### `recover_cells_and_kzg_proofs`
@@ -741,6 +746,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
 
     Public method.
     """
+    # Check we have the same number of cells and indices
     assert len(cell_indices) == len(cells)
     # Check we have enough cells to be able to perform the reconstruction
     assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
@@ -757,16 +763,8 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
     # Given the coset evaluations, recover the polynomial in coefficient form 
-    polynomial_coeff = recover_polynomial_coeff(cell_indices, cosets_evals)
-
-    # Recompute cells/proofs for the polynomial
-    recovered_cells = [None] * CELLS_PER_EXT_BLOB
-    recovered_proofs = [None] * CELLS_PER_EXT_BLOB
-    for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(CellIndex(i))
-        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-        recovered_proofs[i] = proof
-        recovered_cells[i] = ys
- 
-    return recovered_cells, recovered_proofs
+    polynomial_coeff = recover_polynomialcoeff(cell_indices, cosets_evals)
+    
+    # Recompute all cells/proofs
+    return compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff)
 ```
