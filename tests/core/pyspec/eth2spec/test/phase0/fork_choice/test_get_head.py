@@ -243,7 +243,7 @@ def test_filtered_block_tree(spec, state):
 
     # include rogue block and associated attestations in the store
     yield from add_block(spec, store, signed_rogue_block, test_steps)
-    payload_state_transition(spec, store, non_viable_state, rogue_block.message)
+    payload_state_transition(spec, store, non_viable_state, signed_rogue_block.message)
 
     for attestation in attestations:
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
