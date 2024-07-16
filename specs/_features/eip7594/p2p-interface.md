@@ -68,19 +68,18 @@ class DataColumnIdentifier(Container):
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct
+    Verify if the proofs are correct.
     """
     assert sidecar.index < NUMBER_OF_COLUMNS
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
-    row_indices = [RowIndex(i) for i in range(len(sidecar.column))]
-    column_indices = [sidecar.index] * len(sidecar.column)
+    # The column index also represents the cell index
+    cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
-    # KZG batch verifies that the cells match the corresponding commitments and proofs
+    # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
-        row_commitments_bytes=sidecar.kzg_commitments,
-        row_indices=row_indices,  # all rows
-        column_indices=column_indices,  # specific column
+        commitments_bytes=sidecar.kzg_commitments,
+        cell_indices=cell_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
     )

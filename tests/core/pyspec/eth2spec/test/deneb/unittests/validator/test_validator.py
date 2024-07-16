@@ -26,7 +26,7 @@ def _get_sample_sidecars(spec, state, rng):
 
     block.body.blob_kzg_commitments = blob_kzg_commitments_1 + blob_kzg_commitments_2
     block.body.execution_payload.transactions = [opaque_tx_1, opaque_tx_2]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     blobs = blobs_1 + blobs_2
     proofs = proofs_1 + proofs_2
