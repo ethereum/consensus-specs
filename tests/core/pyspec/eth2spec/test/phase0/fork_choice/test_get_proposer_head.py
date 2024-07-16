@@ -41,7 +41,7 @@ def test_basic_is_head_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
     # Proposer of next slot
     head_root = spec.get_head(store)
