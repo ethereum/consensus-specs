@@ -27,6 +27,7 @@ from eth2spec.test.helpers.fork_choice import (
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
+    is_post_eip7732,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
@@ -418,11 +419,15 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     anchor_state = state.copy()
     # Generate an anchor block with correct state root
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
+    if is_post_eip7732(spec):
+        anchor_block.body.signed_execution_payload_header.message.block_hash = anchor_state.latest_block_hash
     yield 'anchor_state', anchor_state
     yield 'anchor_block', anchor_block
 
     # Get a new store with the anchor state & anchor block
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
+    if is_post_eip7732(spec):
+        store.execution_payload_states = store.block_states.copy()
 
     # Now generate the store checks
     current_time = anchor_state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
@@ -446,7 +451,9 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
 
     # Add both blocks to the store
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
+    payload_state_transition(spec, store, state_1, signed_block_1.message)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
+    payload_state_transition(spec, store, state_2, signed_block_2.message)
 
     # Find out which block will win in tie breaking
     if spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2):
