@@ -732,7 +732,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
-    Given at least 50% of cells/proofs for a blob, recover all the cells/proofs.
+    Given at least 50% of cells for a blob, recover all the cells/proofs.
     This algorithm uses FFTs to recover cells faster than using Lagrange
     implementation, as can be seen here:
     https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039
@@ -754,11 +754,13 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
 
-    # Convert cells to coset evals
+    # Convert cells to coset evaluations
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
+    # Given the coset evaluations, recover the polynomial in coefficient form 
     polynomial_coeff = recover_polynomial_coeff(cell_indices, cosets_evals)
 
+    # Recompute cells/proofs for the polynomial
     recovered_cells = [None] * CELLS_PER_EXT_BLOB
     recovered_proofs = [None] * CELLS_PER_EXT_BLOB
     for i in range(CELLS_PER_EXT_BLOB):
