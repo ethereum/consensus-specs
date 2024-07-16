@@ -18,7 +18,7 @@ def test_invariants(spec):
     assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
         spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.NUMBER_OF_COLUMNS
     )
-    assert spec.config.MAX_CELLS_IN_EXTENDED_MATRIX == spec.MAX_BLOBS_PER_BLOCK * spec.config.NUMBER_OF_COLUMNS
+    assert spec.config.MAX_CELLS_IN_EXTENDED_MATRIX == spec.config.MAX_BLOBS_PER_BLOCK * spec.config.NUMBER_OF_COLUMNS
 
 
 @with_eip7594_and_later
