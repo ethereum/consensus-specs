@@ -68,6 +68,11 @@
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+    - [Engine APIs](#engine-apis)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
@@ -179,6 +184,13 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
+
+### Blobs
+
+| Name | Value | Description |
+| - | - | - |
+| `TARGET_BLOBS_PER_BLOCK` | `uint64(3)` | *[New in Electra]* Target number of blobs per block |
+
 
 ## Configuration
 
@@ -332,7 +344,7 @@ class ExecutionPayload(Container):
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
-    excess_blob_gas: uint64
+    excess_blob_gas: uint64 # [Deprecated in Electra: compute blob gas in CL]
     deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     # [New in Electra:EIP7002:EIP7251]
     withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
@@ -362,7 +374,7 @@ class ExecutionPayloadHeader(Container):
     transactions_root: Root
     withdrawals_root: Root
     blob_gas_used: uint64
-    excess_blob_gas: uint64
+    excess_blob_gas: uint64 # [Deprecated in Electra: compute blob gas in CL]
     deposit_requests_root: Root  # [New in Electra:EIP6110]
     withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
     consolidation_requests_root: Root  # [New in Electra:EIP7251]
@@ -423,9 +435,49 @@ class BeaconState(Container):
     # [New in Electra:EIP7251]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in Electra:EIP7251]
+    # [New in Electra: compute blob gas in CL]
+    excess_blob_gas: uint64
+    base_fee_per_blob_gas: uint64
 ```
 
 ## Helper functions
+
+### Blob gas fee computation
+
+#### `fake_exponential`
+
+```python
+def fake_exponential(factor: int, numerator: int, denominator: int) -> int:
+    i = 1
+    output = 0
+    numerator_accum = factor * denominator
+    while numerator_accum > 0:
+        output += numerator_accum
+        numerator_accum = (numerator_accum * numerator) // (denominator * i)
+        i += 1
+    return output // denominator
+```
+
+#### `get_blob_base_fee_update_fraction`
+
+```python
+def get_blob_base_fee_update_fraction(max_blobs: int, target_blobs:int)) -> int:
+    max_excess_per_block = (max_blobs - target_blobs) * BLOB_GAS_PER_BLOB
+    # 1 / ln(9 / 8) ~= 8.49 = 849 / 100
+    return max_excess_per_block * 849 // 100
+```
+
+
+#### `get_base_fee_per_blob_gas`
+
+```python
+def get_base_fee_per_blob_gas(state: BeaconState) -> int:
+    return fake_exponential(
+        MIN_BASE_FEE_PER_BLOB_GAS,
+        state.excess_blob_gas,
+        get_blob_base_fee_update_fraction(MAX_BLOBS, TARGET_BLOBS_PER_BLOCK)
+    )
+```
 
 ### Predicates
 
@@ -800,6 +852,56 @@ def slash_validator(state: BeaconState,
 ```
 
 ## Beacon chain state transition function
+
+### Execution engine
+
+#### Request data
+
+#### Engine APIs
+
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the blob gas fee.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       parent_beacon_block_root: Root,
+                       base_fee_per_blob_gas: uint64) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  state: BeaconState,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    execution_payload = new_payload_request.execution_payload
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+        return False
+
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    # [Modified in Electra]
+    if not self.notify_new_payload(execution_payload,
+                                   parent_beacon_block_root,
+                                   get_base_fee_per_blob_gas(state)):
+        return False
+    
+    state.excess_blob_gas += execution_payload.blob_gas_used
+
+    return True
+```
 
 ### Epoch processing
 
