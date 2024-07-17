@@ -75,7 +75,7 @@ def test_all_valid(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps, merge_block=True)
         # valid
@@ -107,7 +107,7 @@ def test_block_lookup_failed(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True,
                                       block_not_found=True)
@@ -141,7 +141,7 @@ def test_too_early_for_merge(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True)
 
@@ -174,7 +174,7 @@ def test_too_late_for_merge(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True)
 
