@@ -17,6 +17,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
+    check_head_against_root,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     add_attestations,
@@ -298,6 +299,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         block_a = build_empty_block_for_next_slot(spec, state)
         signed_block_a = state_transition_and_sign_block(spec, state, block_a)
         yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+        payload_state_transition(spec, store, state, signed_block_a.message)
         assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 3
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 2
     else:
@@ -306,10 +308,12 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
             spec, state, store, True, True, test_steps=test_steps)
         signed_block_a = state_transition_with_full_block(spec, state, True, True)
         yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
+        payload_state_transition(spec, store, state, signed_block_a.message)
         assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-    spec.get_head(store) == signed_block_a.message.hash_tree_root()
-    state = store.block_states[spec.get_head(store)].copy()
+    root_a = signed_block_a.message.hash_tree_root()
+    check_head_against_root(spec, store, root_a)
+    state = store.block_states[root_a].copy()
     state_a = state.copy()
 
     if is_justifying_previous_epoch:
@@ -363,8 +367,10 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         # apply chain y, the empty chain
         if slot <= last_slot_of_y and len(signed_blocks_of_y) > 0:
             signed_block_y = signed_blocks_of_y.pop(0)
+            state_of_y = states_of_empty_chain.pop(0)
             assert signed_block_y.message.slot == slot
             yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
+            payload_state_transition(spec, store, state_of_y, signed_block_y.message)
 
         # apply chain z, a fork chain that includes these attestations_for_y
         block = build_empty_block(spec, state, slot=slot)
@@ -378,6 +384,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         signed_block_z = state_transition_and_sign_block(spec, state, block)
         if signed_block_y != signed_block_z:
             yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
+            payload_state_transition(spec, store, state, signed_block_z.message)
         if is_ready_to_justify(spec, state):
             break
 
