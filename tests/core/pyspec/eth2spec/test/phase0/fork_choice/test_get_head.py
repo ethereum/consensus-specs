@@ -625,6 +625,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Now add the fork to the store
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, state, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert store.finalized_checkpoint.epoch == 4
