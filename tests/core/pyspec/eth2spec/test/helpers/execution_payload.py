@@ -59,6 +59,7 @@ def compute_el_header_block_hash(spec,
                                  payload_header,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
+                                 parent_beacon_block_root=None,
                                  requests_trie_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
@@ -106,8 +107,7 @@ def compute_el_header_block_hash(spec,
         # excess_blob_gas
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
         # parent_beacon_root
-        empty_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
-        execution_payload_header_rlp.append((Binary(32, 32), empty_root))
+        execution_payload_header_rlp.append((Binary(32, 32), parent_beacon_block_root))
     if is_post_electra(spec):
         # requests_root
         execution_payload_header_rlp.append((Binary(32, 32), requests_trie_root))
@@ -186,15 +186,18 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
     return b"\x02" + encode(values, sedes)
 
 
-def compute_el_block_hash(spec, payload):
+def compute_el_block_hash(spec, payload, pre_state):
     transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
 
     withdrawals_trie_root = None
+    parent_beacon_block_root = None
     requests_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
+    if is_post_deneb(spec):
+        parent_beacon_block_root = pre_state.latest_block_header.hash_tree_root()
     if is_post_electra(spec):
         requests_encoded = []
         requests_encoded += [get_deposit_request_rlp_bytes(request) for request in payload.deposit_requests]
@@ -210,6 +213,7 @@ def compute_el_block_hash(spec, payload):
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
+        parent_beacon_block_root,
         requests_trie_root,
     )
 
@@ -250,7 +254,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.withdrawal_requests = []
         payload.consolidation_requests = []
 
-    payload.block_hash = compute_el_block_hash(spec, payload)
+    payload.block_hash = compute_el_block_hash(spec, payload, state)
 
     return payload
 
@@ -263,9 +267,9 @@ def build_randomized_execution_payload(spec, state, rng):
     execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
         get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
     )
-    execution_payload.block_number = rng.randint(0, 10e10)
-    execution_payload.gas_limit = rng.randint(0, 10e10)
-    execution_payload.gas_used = rng.randint(0, 10e10)
+    execution_payload.block_number = rng.randint(0, int(10e10))
+    execution_payload.gas_limit = rng.randint(0, int(10e10))
+    execution_payload.gas_used = rng.randint(0, int(10e10))
     extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
     execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
         get_random_bytes_list(rng, extra_data_length)
@@ -278,7 +282,7 @@ def build_randomized_execution_payload(spec, state, rng):
         for _ in range(num_transactions)
     ]
 
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     return execution_payload
 

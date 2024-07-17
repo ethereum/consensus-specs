@@ -13,6 +13,7 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -77,12 +78,17 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | Name | Value | Description |
 | - | - | - |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+
+## Configuration
+
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
 | `MAX_BLOBS_PER_BLOCK`            | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
 and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
-
-## Configuration
 
 ### Validator cycle
 
@@ -260,7 +266,7 @@ def is_valid_block_hash(self: ExecutionEngine,
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
-    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
     ...
 ```
