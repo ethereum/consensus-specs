@@ -1,6 +1,6 @@
 # Test format: Recover cells and KZG proofs
 
-Recover all cells/proofs given at least 50% of the original `cells` and `proofs`.
+Recover all cells/proofs given at least 50% of the original `cells`.
 
 ## Test case format
 
