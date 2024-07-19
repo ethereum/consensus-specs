@@ -1,4 +1,4 @@
-# Deneb Light Client -- Full Node
+# Electra Light Client -- Full Node
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-Execution payload data is updated to account for the Deneb upgrade.
+Execution payload data is updated to account for the Electra upgrade.
 
 ## Helper functions
 
@@ -46,11 +46,15 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             transactions_root=hash_tree_root(payload.transactions),
             withdrawals_root=hash_tree_root(payload.withdrawals),
         )
-
-        # [New in Deneb:EIP4844]
         if epoch >= DENEB_FORK_EPOCH:
             execution_header.blob_gas_used = payload.blob_gas_used
             execution_header.excess_blob_gas = payload.excess_blob_gas
+
+        # [New in Electra:EIP6110:EIP7002:EIP7251]
+        if epoch >= ELECTRA_FORK_EPOCH:
+            execution_header.deposit_requests_root = hash_tree_root(payload.deposit_requests)
+            execution_header.withdrawal_requests_root = hash_tree_root(payload.withdrawal_requests)
+            execution_header.consolidation_requests_root = hash_tree_root(payload.consolidation_requests)
 
         execution_branch = ExecutionBranch(
             compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX))
