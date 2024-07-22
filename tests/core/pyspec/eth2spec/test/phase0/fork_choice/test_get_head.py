@@ -85,8 +85,8 @@ def test_chain_no_attestations(spec, state):
     block_2 = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
-
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
+    payload_state_transition(spec, store, signed_block_2.message)
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
@@ -543,6 +543,7 @@ def test_voting_source_within_two_epoch(spec, state):
     # Now add the fork to the store
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.finalized_checkpoint.epoch == 3
@@ -723,6 +724,7 @@ def test_incorrect_finalized(spec, state):
     # Now add the fork to the store
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 7
     assert store.justified_checkpoint.epoch == 6
     assert store.finalized_checkpoint.epoch == 3

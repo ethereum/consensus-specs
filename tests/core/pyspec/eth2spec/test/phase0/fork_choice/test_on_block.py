@@ -682,6 +682,7 @@ def test_justification_withholding(spec, state):
 
     for signed_block in honest_signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
 
     last_honest_block = honest_signed_blocks[-1].message
     honest_state = store.block_states[hash_tree_root(last_honest_block)].copy()
@@ -698,6 +699,7 @@ def test_justification_withholding(spec, state):
     honest_block.body.attestations = attacker_signed_blocks[-1].message.body.attestations
     signed_block = state_transition_and_sign_block(spec, honest_state, honest_block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     check_head_against_root(spec, store, hash_tree_root(honest_block))
@@ -708,6 +710,7 @@ def test_justification_withholding(spec, state):
     # When the attacker's block is received, the honest block is still the head
     # This relies on the honest block's LMD score increasing due to proposer boost
     yield from tick_and_add_block(spec, store, attacker_signed_blocks[-1], test_steps)
+    payload_state_transition(spec, store, attacker_signed_blocks[-1].message)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
     check_head_against_root(spec, store, hash_tree_root(honest_block))
@@ -751,6 +754,7 @@ def test_justification_withholding_reverse_order(spec, state):
         assert len(signed_blocks) == 1
         attacker_signed_blocks += signed_blocks
         yield from tick_and_add_block(spec, store, signed_blocks[0], test_steps)
+        payload_state_transition(spec, store, signed_blocks[0].message)
 
     assert attacker_state.finalized_checkpoint.epoch == 2
     assert attacker_state.current_justified_checkpoint.epoch == 3
@@ -785,6 +789,7 @@ def test_justification_withholding_reverse_order(spec, state):
     # When the honest block is received, the honest block becomes the head
     # This relies on the honest block's LMD score increasing due to proposer boost
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
     check_head_against_root(spec, store, hash_tree_root(honest_block))
@@ -835,6 +840,7 @@ def test_justification_update_beginning_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     assert store.justified_checkpoint.epoch == 4
 
@@ -886,6 +892,7 @@ def test_justification_update_end_of_epoch(spec, state):
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     assert store.justified_checkpoint.epoch == 4
 
     yield 'steps', test_steps
