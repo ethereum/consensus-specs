@@ -11,6 +11,8 @@ The specification of these changes continues in the same format as the network s
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Modifications in Electra](#modifications-in-electra)
+  - [Preset](#preset)
+  - [Custom types](#custom-types)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -22,6 +24,26 @@ The specification of these changes continues in the same format as the network s
 <!-- /TOC -->
 
 ## Modifications in Electra
+
+### Preset
+
+Existing `PROOF_DEPTH` presets are frozen at their [Deneb](../../deneb/p2p-interface.md#preset) values.
+
+| Name                                     | Value                             |
+|------------------------------------------|-----------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(deneb.BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) |
+
+*[New in Electra:EIP7688]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 20) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+
+### Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `KZGCommitmentInclusionProof` | `Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA]` | Merkle branch of a single `blob_kzg_commitments` list item within `BeaconBlockBody` |
 
 ### The gossip domain: gossipsub
 
