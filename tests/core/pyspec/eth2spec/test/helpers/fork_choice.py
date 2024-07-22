@@ -17,6 +17,7 @@ from eth2spec.test.helpers.state import (
 def check_head_against_root(spec, store, root):
     head = spec.get_head(store)
     if is_post_eip7732(spec):
+        print("Obtained head: ", encode_hex(head.root))
         assert head.root == root
     else:
         assert head == root

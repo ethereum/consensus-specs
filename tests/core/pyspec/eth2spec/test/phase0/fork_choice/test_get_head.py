@@ -1,5 +1,6 @@
 import random
 
+from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -216,7 +217,10 @@ def test_filtered_block_tree(spec, state):
     #
 
     # build a chain without attestations off of previous justified block
-    non_viable_state = store.block_states[store.justified_checkpoint.root].copy()
+    if is_post_eip7732(spec):
+        non_viable_state = store.execution_payload_states[store.justified_checkpoint.root].copy()
+    else:
+        non_viable_state = store.block_states[store.justified_checkpoint.root].copy()
 
     # ensure that next wave of votes are for future epoch
     next_epoch(spec, non_viable_state)
