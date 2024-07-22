@@ -22,6 +22,7 @@ from eth2spec.test.helpers.fork_choice import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
+    payload_state_transition,
 )
 
 
