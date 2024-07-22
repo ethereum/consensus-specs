@@ -783,7 +783,7 @@ def test_justification_withholding_reverse_order(spec, state):
     assert len(honest_signed_blocks) > 0
 
     last_honest_block = honest_signed_blocks[-1].message
-    honest_state = store.block_states[hash_tree_root(last_honest_block)].copy()
+    honest_state = get_store_full_state(spec, store, hash_tree_root(last_honest_block)).copy()
 
     assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
