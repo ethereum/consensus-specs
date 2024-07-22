@@ -4,7 +4,7 @@
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 - [Constants](#constants)
 - [Typing](#typing)
   - [Basic types](#basic-types)
@@ -27,10 +27,10 @@
 - [Summaries and expansions](#summaries-and-expansions)
 - [Implementations](#implementations)
 - [JSON mapping](#json-mapping)
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 ## Constants
 
 | Name | Value | Description |
@@ -45,7 +45,7 @@
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `byte`: 8-bit opaque data container, equivalent in serialization and hashing to `uint8`
 * `boolean`: `True` or `False`
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 ### Composite types
 
 * **container**: ordered heterogeneous collection of values
@@ -65,11 +65,11 @@
     * notation `Bitlist[N]`
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 *Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due to their different serialization requirements. Similarly, both `List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization efficiencies.
 
 ### Variable-size and fixed-size
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 We recursively define "variable-size" types to be lists, unions, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Byte
@@ -79,7 +79,7 @@ Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the f
 ### Aliases
 
 For convenience we alias:
-
+0x84e8277c938102f42FC2D9625Fc75049A86c99Ae
 * `bit` to `boolean`
 * `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
 * `ByteList[N]` to `List[byte, N]`
