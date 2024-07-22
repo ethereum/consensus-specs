@@ -500,7 +500,7 @@ def test_proposer_boost(spec, state):
             root=spec.hash_tree_root(block),
             slot=block.slot,
         )
-        assert spec.get_weight(store, node) > 0
+        assert spec.get_weight(store, node) == 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
@@ -533,7 +533,7 @@ def test_proposer_boost(spec, state):
             root=spec.hash_tree_root(block),
             slot=block.slot,
         )
-        assert spec.get_weight(store, node) > 0
+        assert spec.get_weight(store, node) == 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
 
