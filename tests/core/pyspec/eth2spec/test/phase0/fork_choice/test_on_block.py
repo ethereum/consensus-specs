@@ -22,6 +22,7 @@ from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
     check_head_against_root,
     get_genesis_forkchoice_store_and_block,
+    get_store_full_state,
     on_tick_and_append_step,
     add_block,
     tick_and_add_block,
@@ -428,7 +429,7 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     all_blocks = []
     slot = spec.compute_start_slot_at_epoch(3)
     block_root = spec.get_block_root_at_slot(state, slot)
-    another_state = store.block_states[block_root].copy()
+    another_state = get_store_full_state(spec, store, block_root).copy()
     for _ in range(2):
         _, signed_blocks, another_state = next_epoch_with_attestations(spec, another_state, True, True)
         all_blocks += signed_blocks

@@ -626,6 +626,8 @@ def test_voting_source_beyond_two_epoch(spec, state):
 
     # Store the head before adding the fork to the store
     correct_head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        correct_head = correct_head.root
 
     # Now add the fork to the store
     for signed_block in signed_blocks:
