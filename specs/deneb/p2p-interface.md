@@ -187,6 +187,16 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
+The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))`.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                 | Chunk SSZ type                |
+|--------------------------------|-------------------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
+
 ##### Attestation subnets
 
 ###### `beacon_attestation_{subnet_id}`
@@ -241,7 +251,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+[0]: # (eth2spec: skip)
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -262,14 +272,6 @@ Clients SHOULD NOT respond with blocks that fail the beacon chain state transiti
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 *[New in Deneb:EIP4844]*
-
-The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[1]: # (eth2spec: skip)
-
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 
 Request Content:
 
@@ -309,19 +311,22 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                 | Chunk SSZ type                |
+|--------------------------------|-------------------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
+
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
 *[New in Deneb:EIP4844]*
-
-The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[1]: # (eth2spec: skip)
-
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 
 Request Content:
 ```
@@ -388,6 +393,16 @@ Of note, blocks from slots before the finalization MUST lead to the finalized bl
 Clients MUST respond with blob sidecars that are consistent from a single chain within the context of the request.
 
 After the initial blob sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                 | Chunk SSZ type                |
+|--------------------------------|-------------------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
 
 ## Design decision rationale
 
