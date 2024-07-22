@@ -91,7 +91,7 @@ def get_state_root(spec, state, slot) -> bytes:
     return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
 
-def payload_state_transition(spec, store, state, block):
+def payload_state_transition_no_store(spec, state, block):
     if is_post_eip7732(spec):
         # cache the latest block header
         previous_state_root = state.hash_tree_root()
@@ -100,8 +100,15 @@ def payload_state_transition(spec, store, state, block):
         # also perform the state transition as if the payload was revealed
         state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
         state.latest_full_slot = block.slot
-        root = block.hash_tree_root()
-        store.execution_payload_states[root] = state.copy()
+    return state
+
+
+def payload_state_transition(spec, store, block):
+    root = block.hash_tree_root()
+    state = store.block_states[root].copy()
+    if is_post_eip7732(spec):
+        payload_state_transition_no_store(spec, state, block)
+        store.execution_payload_states[root] = state
     return state
 
 

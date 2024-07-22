@@ -79,7 +79,7 @@ def test_chain_no_attestations(spec, state):
     block_1 = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    payload_state_transition(spec, store, state, signed_block_1.message)
+    payload_state_transition(spec, store, signed_block_1.message)
 
     # On receiving a block of next epoch
     block_2 = build_empty_block_for_next_slot(spec, state)
@@ -123,9 +123,9 @@ def test_split_tie_breaker_no_attestations(spec, state):
 
     yield from add_block(spec, store, signed_block_1, test_steps)
     post_state_1 = state.copy()
-    payload_state_transition(spec, store, state, signed_block_1.message)
+    payload_state_transition(spec, store, signed_block_1.message)
     yield from add_block(spec, store, signed_block_2, test_steps)
-    payload_state_transition(spec, store, post_state_1, signed_block_2.message)
+    payload_state_transition(spec, store, signed_block_2.message)
 
     highest_root = max(spec.hash_tree_root(block_1), spec.hash_tree_root(block_2))
     check_head_against_root(spec, store, highest_root)
@@ -154,7 +154,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
         long_block = build_empty_block_for_next_slot(spec, long_state)
         signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
         yield from tick_and_add_block(spec, store, signed_long_block, test_steps)
-        payload_state_transition(spec, store, long_state, signed_long_block.message)
+        payload_state_transition(spec, store, signed_long_block.message)
 
     # build short tree
     short_state = genesis_state.copy()
@@ -162,7 +162,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     short_block.body.graffiti = b'\x42' * 32
     signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
     yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
-    payload_state_transition(spec, store, short_state, signed_short_block.message)
+    payload_state_transition(spec, store, signed_short_block.message)
 
     # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
     check_head_against_root(spec, store, spec.hash_tree_root(long_block))
@@ -201,7 +201,7 @@ def test_filtered_block_tree(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     for signed_block in signed_blocks:
         yield from add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, state, signed_block.message)
+        payload_state_transition(spec, store, signed_block.message)
 
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
@@ -243,7 +243,7 @@ def test_filtered_block_tree(spec, state):
 
     # include rogue block and associated attestations in the store
     yield from add_block(spec, store, signed_rogue_block, test_steps)
-    payload_state_transition(spec, store, non_viable_state, signed_rogue_block.message)
+    payload_state_transition(spec, store, signed_rogue_block.message)
 
     for attestation in attestations:
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
@@ -361,13 +361,13 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
 
     # Process block_1
     yield from add_block(spec, store, signed_block_1, test_steps)
-    payload_state_transition(spec, store, state_1, signed_block_1.message)
+    payload_state_transition(spec, store, signed_block_1.message)
     assert store.proposer_boost_root == spec.Root()
     check_head_against_root(spec, store, spec.hash_tree_root(block_1))
 
     # Process block_2 head should switch to block_2
     yield from add_block(spec, store, signed_block_2, test_steps)
-    payload_state_transition(spec, store, state_2, signed_block_2.message)
+    payload_state_transition(spec, store, signed_block_2.message)
     assert store.proposer_boost_root == spec.Root()
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
 
@@ -451,9 +451,9 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
 
     # Add both blocks to the store
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    payload_state_transition(spec, store, state_1, signed_block_1.message)
+    payload_state_transition(spec, store, signed_block_1.message)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
-    payload_state_transition(spec, store, state_2, signed_block_2.message)
+    payload_state_transition(spec, store, signed_block_2.message)
 
     # Find out which block will win in tie breaking
     if spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2):
@@ -625,7 +625,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Now add the fork to the store
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, state, signed_block.message)
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert store.finalized_checkpoint.epoch == 4

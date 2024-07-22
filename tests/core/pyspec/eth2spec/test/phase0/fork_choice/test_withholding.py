@@ -1,3 +1,4 @@
+from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -16,6 +17,7 @@ from eth2spec.test.helpers.fork_choice import (
     check_head_against_root,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
+    payload_state_transition,
     tick_and_add_block,
     apply_next_epoch_with_attestations,
     find_next_justifying_slot,
@@ -62,10 +64,12 @@ def test_withholding_attack(spec, state):
     assert len(signed_blocks) > 1
     signed_attack_block = signed_blocks[-1]
     for signed_block in signed_blocks[:-1]:
-        yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
-    check_head_against_root(spec, store, signed_blocks[-2].message.hash_tree_root())
-    state = store.block_states[spec.get_head(store)].copy()
+        current_root = signed_block.message.hash_tree_root()
+        state = yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        state = payload_state_transition(spec, store, signed_block.message)
+        check_head_against_root(spec, store, current_root)
+    head_root = signed_blocks[-2].message.hash_tree_root()
+    check_head_against_root(spec, store, head_root)
     assert spec.compute_epoch_at_slot(state.slot) == 4
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -74,16 +78,18 @@ def test_withholding_attack(spec, state):
     next_epoch(spec, state)
     assert spec.compute_epoch_at_slot(state.slot) == 5
     assert state.current_justified_checkpoint.epoch == 3
-    # Create two block in the honest chain with full attestations, and add to the store
+    # Create two blocks in the honest chain with full attestations, and add to the store
     for _ in range(2):
         signed_block = state_transition_with_full_block(spec, state, True, False)
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     # Create final block in the honest chain that includes the justifying attestations from the attack block
     honest_block = build_empty_block_for_next_slot(spec, state)
     honest_block.body.attestations = signed_attack_block.message.body.attestations
     signed_honest_block = state_transition_and_sign_block(spec, state, honest_block)
     # Add the honest block to the store
     yield from tick_and_add_block(spec, store, signed_honest_block, test_steps)
+    payload_state_transition(spec, store, signed_honest_block.message)
     check_head_against_root(spec, store, signed_honest_block.message.hash_tree_root())
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3

@@ -8,7 +8,10 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
-from eth2spec.test.helpers.state import payload_state_transition
+from eth2spec.test.helpers.state import (
+    payload_state_transition,
+    payload_state_transition_no_store,
+)
 
 
 def check_head_against_root(spec, store, root):
@@ -337,7 +340,7 @@ def apply_next_epoch_with_attestations(spec,
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, state, signed_block.message)
+        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -360,7 +363,7 @@ def apply_next_slots_with_attestations(spec,
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, state, signed_block.message)
+        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -389,6 +392,7 @@ def find_next_justifying_slot(spec,
     signed_blocks = []
     justifying_slot = None
     while justifying_slot is None:
+        previous_header_root = temp_state.latest_block_header.hash_tree_root()
         signed_block = state_transition_with_full_block(
             spec,
             temp_state,
@@ -397,6 +401,8 @@ def find_next_justifying_slot(spec,
             participation_fn,
         )
         signed_blocks.append(signed_block)
+        payload_state_transition_no_store(spec, temp_state, signed_block.message)
+
         if is_ready_to_justify(spec, temp_state):
             justifying_slot = temp_state.slot
 
