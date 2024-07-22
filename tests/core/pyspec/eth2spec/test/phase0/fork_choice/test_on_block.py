@@ -635,7 +635,7 @@ def test_proposer_boost_is_first_block(spec, state):
             root=spec.hash_tree_root(block_b),
             slot=block_b.slot,
         )
-        assert spec.get_weight(store, node) > 0
+        assert spec.get_weight(store, node) == 0
     else:
         assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0
     test_steps.append({
