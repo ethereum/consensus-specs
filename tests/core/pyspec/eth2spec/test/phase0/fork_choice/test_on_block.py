@@ -33,6 +33,7 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slots,
+    payload_state_transition,
     state_transition_and_sign_block,
 )
 
@@ -956,6 +957,7 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     finalized_checkpoint_block = spec.get_checkpoint_block(
         store,
         last_block_root,
