@@ -1151,6 +1151,9 @@ def test_justified_update_not_realized_finality(spec, state):
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
     ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
+    if is_post_eip7732(spec):
+        ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
+
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
     yield 'steps', test_steps
