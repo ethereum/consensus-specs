@@ -1043,6 +1043,7 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     finalized_checkpoint_block = spec.get_checkpoint_block(
         store,
         last_block_root,
@@ -1124,6 +1125,7 @@ def test_justified_update_not_realized_finality(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     assert store.justified_checkpoint.epoch == 6
     assert store.finalized_checkpoint.epoch == 4
     last_block = signed_blocks[-1]
@@ -1191,6 +1193,7 @@ def test_justified_update_monotonic(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 7
     assert store.justified_checkpoint.epoch == 6
     assert store.finalized_checkpoint.epoch == 2
@@ -1245,7 +1248,10 @@ def test_justified_update_always_if_better(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    finalized_root = spec.get_head(store)
+    if is_post_eip7732(spec):
+        finalized_root = spec.get_head(store).root
+    else:
+        finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)
@@ -1278,6 +1284,7 @@ def test_justified_update_always_if_better(spec, state):
     # Now add the blocks & check that justification update was triggered
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 7
     assert store.justified_checkpoint.epoch == 6
     assert store.finalized_checkpoint.epoch == 4
@@ -1329,6 +1336,7 @@ def test_pull_up_past_epoch_block(spec, state):
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 4
     assert store.finalized_checkpoint.epoch == 3
@@ -1378,6 +1386,7 @@ def test_not_pull_up_current_epoch_block(spec, state):
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
@@ -1428,6 +1437,7 @@ def test_pull_up_on_tick(spec, state):
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
