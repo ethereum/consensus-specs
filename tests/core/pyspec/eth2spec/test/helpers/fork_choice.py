@@ -169,6 +169,7 @@ def on_tick_and_append_step(spec, store, time, test_steps):
 
 
 def run_on_block(spec, store, signed_block, valid=True):
+    print("In run_on_block: ", encode_hex(signed_block.message.hash_tree_root()))
     if not valid:
         try:
             spec.on_block(store, signed_block)

@@ -79,6 +79,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     for signed_block in signed_blocks[:-2]:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     state = store.block_states[spec.get_head(store)].copy()
     assert state.current_justified_checkpoint.epoch == 3
     next_slot(spec, state)
@@ -120,17 +121,21 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     # (i) slot block_a.slot + 1
     signed_block_y = signed_blocks_of_y.pop(0)
     yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
+    payload_state_transition(spec, store, signed_block_y.message)
     # apply block of chain `z`
     signed_block_z = signed_blocks_of_z.pop(0)
     yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
+    payload_state_transition(spec, store, signed_block_z.message)
 
     # (ii) slot block_a.slot + 2
     # apply block of chain `z`
     signed_block_z = signed_blocks_of_z.pop(0)
     yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
+    payload_state_transition(spec, store, signed_block_z.message)
     # apply block of chain `y`
     signed_block_y = signed_blocks_of_y.pop(0)
     yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
+    payload_state_transition(spec, store, signed_block_y.message)
     # chain `y` remains the winner since it arrives earlier than `z`
     check_head_against_root(spec, store, signed_block_y.message.hash_tree_root())
     assert len(signed_blocks_of_y) == len(signed_blocks_of_z) == 0
@@ -216,6 +221,7 @@ def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previo
     else:
         signed_block_y = state_transition_with_full_block(spec, state, True, True)
     yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
+    payload_state_transition(spec, store, signed_block_y.message)
     check_head_against_root(spec, store, signed_block_y.message.hash_tree_root())
     if is_justifying_previous_epoch:
         assert store.justified_checkpoint.epoch == 2
@@ -240,6 +246,7 @@ def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previo
         assert spec.compute_epoch_at_slot(block_z.slot) == 5
         signed_block_z = state_transition_and_sign_block(spec, state, block_z)
         yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
+        payload_state_transition(spec, store, signed_block_z.message)
     else:
         # next epoch
         state = state_b.copy()

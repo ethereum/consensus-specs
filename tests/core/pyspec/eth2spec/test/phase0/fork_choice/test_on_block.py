@@ -65,6 +65,7 @@ def test_basic(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+    payload_state_transition(spec, store, signed_block.message)
 
     # On receiving a block of next epoch
     store.time = current_time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
@@ -72,6 +73,7 @@ def test_basic(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+    payload_state_transition(spec, store, signed_block.message)
 
     yield 'steps', test_steps
 
@@ -112,6 +114,7 @@ def test_on_block_checkpoints(spec, state):
     signed_block = state_transition_and_sign_block(spec, fin_state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+    payload_state_transition(spec, store, signed_block.message)
     yield 'steps', test_steps
 
 
@@ -237,6 +240,7 @@ def test_on_block_finalized_skip_slots(spec, state):
     block = build_empty_block_for_next_slot(spec, target_state)
     signed_block = state_transition_and_sign_block(spec, target_state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
 
     yield 'steps', test_steps
 
@@ -432,6 +436,7 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     pre_store_justified_checkpoint_root = store.justified_checkpoint.root
     for block in all_blocks:
         yield from tick_and_add_block(spec, store, block, test_steps)
+        payload_state_transition(spec, store, block.message)
 
     ancestor_at_finalized_slot = spec.get_checkpoint_block(
         store,
@@ -470,6 +475,7 @@ def test_proposer_boost(spec, state):
             spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
@@ -502,6 +508,7 @@ def test_proposer_boost(spec, state):
     time = (store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
         node = spec.ChildNode(
@@ -557,6 +564,7 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
             spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
+    payload_state_transition(spec, store, signed_block.message)
 
     assert store.proposer_boost_root == spec.Root()
 
@@ -592,6 +600,7 @@ def test_proposer_boost_is_first_block(spec, state):
             spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT - 1)
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_a, test_steps)
+    payload_state_transition(spec, store, signed_block_a.message)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
@@ -614,6 +623,7 @@ def test_proposer_boost_is_first_block(spec, state):
     block_b.body.graffiti = b'\x34' * 32
     signed_block_b = state_transition_and_sign_block(spec, state, block_b)
     yield from add_block(spec, store, signed_block_b, test_steps)
+    payload_state_transition(spec, store, signed_block_b.message)
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
@@ -1098,7 +1108,10 @@ def test_justified_update_not_realized_finality(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # We'll make the current head block the finalized block
-    finalized_root = spec.get_head(store)
+    if is_post_eip7732(spec):
+        finalized_root = spec.get_head(store).root
+    else:
+        finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)
@@ -1175,7 +1188,10 @@ def test_justified_update_monotonic(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    finalized_root = spec.get_head(store)
+    if is_post_eip7732(spec):
+        finalized_root = spec.get_head(store).root
+    else:
+        finalized_root = spec.get_head(store)
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)
