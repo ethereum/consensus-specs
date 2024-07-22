@@ -17,7 +17,6 @@ from eth2spec.test.helpers.state import (
 def check_head_against_root(spec, store, root):
     head = spec.get_head(store)
     if is_post_eip7732(spec):
-        print("Obtained head: ", encode_hex(head.root))
         assert head.root == root
     else:
         assert head == root
@@ -183,6 +182,12 @@ def run_on_block(spec, store, signed_block, valid=True):
     assert store.blocks[root] == signed_block.message
 
 
+def get_store_full_state(spec, store, root):
+    if is_post_eip7732(spec):
+        return store.execution_payload_states[root]
+    return store.block_states[root]
+
+
 def add_block(spec,
               store,
               signed_block,
@@ -346,7 +351,10 @@ def apply_next_epoch_with_attestations(spec,
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    if is_post_eip7732(spec):
+        assert store.execution_payload_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    else:
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -369,7 +377,10 @@ def apply_next_slots_with_attestations(spec,
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    if is_post_eip7732(spec):
+        assert store.execution_payload_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    else:
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 

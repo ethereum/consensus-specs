@@ -107,9 +107,12 @@ def test_on_block_checkpoints(spec, state):
     on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
 
     # Mock the finalized_checkpoint and build a block on it
-    fin_state = store.block_states[last_block_root].copy()
-    fin_state.finalized_checkpoint = store.block_states[last_block_root].current_justified_checkpoint.copy()
+    if is_post_eip7732(spec):
+        fin_state = store.execution_payload_states[last_block_root].copy()
+    else:
+        fin_state = store.block_states[last_block_root].copy()
 
+    fin_state.finalized_checkpoint = store.block_states[last_block_root].current_justified_checkpoint.copy()
     block = build_empty_block_for_next_slot(spec, fin_state)
     signed_block = state_transition_and_sign_block(spec, fin_state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
@@ -904,6 +907,7 @@ def test_justification_update_end_of_epoch(spec, state):
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
         payload_state_transition(spec, store, signed_block.message)
     assert store.justified_checkpoint.epoch == 4
+    assert 1 == 0
 
     yield 'steps', test_steps
 

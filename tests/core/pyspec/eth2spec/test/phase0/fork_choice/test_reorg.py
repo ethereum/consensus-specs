@@ -19,6 +19,7 @@ from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
     check_head_against_root,
     get_genesis_forkchoice_store_and_block,
+    get_store_full_state,
     on_tick_and_append_step,
     add_attestations,
     tick_and_add_block,
@@ -26,6 +27,7 @@ from eth2spec.test.helpers.fork_choice import (
     find_next_justifying_slot,
     is_ready_to_justify,
     payload_state_transition,
+    payload_state_transition_no_store,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
@@ -325,7 +327,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     root_a = signed_block_a.message.hash_tree_root()
     check_head_against_root(spec, store, root_a)
-    state = store.block_states[root_a].copy()
+    state = get_store_full_state(spec, store, root_a).copy()
     state_a = state.copy()
 
     if is_justifying_previous_epoch:
@@ -358,6 +360,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     for slot in range(state.slot + 1, last_slot_of_y + 1):
         block = build_empty_block(spec, state, slot=slot)
         signed_block = state_transition_and_sign_block(spec, state, block)
+        payload_state_transition_no_store(spec, state, signed_block.message)
         signed_blocks_of_empty_chain.append(signed_block)
         states_of_empty_chain.append(state.copy())
         signed_blocks_of_y.append(signed_block)
