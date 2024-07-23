@@ -343,13 +343,14 @@ def get_head(store: Store) -> ChildNode:
     while True:
         children = [
             ChildNode(root=root, slot=block.slot, is_payload_present=present) for (root, block) in blocks.items()
-            if block.parent_root == best_child.root and 
+            if block.parent_root == best_child.root and block.slot > best_child.slot and 
             (best_child.root == justified_root or is_parent_node_full(store, block) == best_child.is_payload_present)
             for present in (True, False) if root in store.execution_payload_states or not present
         ]
         if len(children) == 0:
             return best_child
         # if we have children we consider the current head advanced as a possible head 
+        highest_child_slot = max(child.slot for child in children)
         children += [
             ChildNode(root=best_child.root, slot=best_child.slot + 1, is_payload_present=best_child.is_payload_present)
         ]
@@ -366,7 +367,7 @@ def get_head(store: Store) -> ChildNode:
             child.root
         )
         )
-        if new_best_child.root == best_child.root:
+        if new_best_child.root == best_child.root and new_best_child.slot >= highest_child_slot:
             return new_best_child
         best_child = new_best_child
 ```
