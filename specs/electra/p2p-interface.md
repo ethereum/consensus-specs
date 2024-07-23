@@ -87,6 +87,6 @@ Response Content:
 
 Extends behaviour of BeaconBlocksByRange v2 as defined in [the altair p2p spec](../altair/p2p-interface.md).
 
-Requests beacon blocks in the slot range `[start_slot, start_slot + count)`, leading up to `block_root`. If the block with `block_root` is unknown the responder MUST respond with `3: ResourceUnavailable`. If the slot of the block with `block_root` is less than `start_slot` the responder MUST respond with `1: InvalidRequest`.
+Requests beacon blocks in the slot range `[start_slot, start_slot + count)`, leading up to `block_root`. If the block with `block_root` is unknown the responder MUST respond with `3: ResourceUnavailable`. If the slot of the block with `block_root` is less than `start_slot + count` the responder MUST respond with `1: InvalidRequest`.
 
 
