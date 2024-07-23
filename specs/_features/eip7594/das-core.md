@@ -83,7 +83,6 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `1` | Minimum number of subnets an honest node custodies and serves samples from |
-| `TARGET_NUMBER_OF_PEERS` | `70` | Suggested minimum peer count |
 
 ### Containers
 
@@ -289,9 +288,7 @@ The particular columns that a node custodies are selected pseudo-randomly as a f
 
 At each slot, a node needs to be able to readily sample from *any* set of columns. To this end, a node SHOULD find and maintain a set of diverse and reliable peers that can regularly satisfy their sampling demands.
 
-A node runs a background peer discovery process, maintaining at least `TARGET_NUMBER_OF_PEERS` of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible.
-
-`TARGET_NUMBER_OF_PEERS` should be tuned upward in the event of failed sampling.
+A node runs a background peer discovery process, maintaining at least 70 of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible. A node may increase its peer count in the event of failed sampling.
 
 *Note*: while high-capacity and super-full nodes are high value with respect to satisfying sampling requirements, a node SHOULD maintain a distribution across node capacities as to not centralize the p2p graph too much (in the extreme becomes hub/spoke) and to distribute sampling load better across all nodes.
 
