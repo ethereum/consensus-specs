@@ -115,7 +115,7 @@ def test_on_block_checkpoints(spec, state):
 
     fin_state.finalized_checkpoint = store.block_states[last_block_root].current_justified_checkpoint.copy()
     block = build_empty_block_for_next_slot(spec, fin_state)
-    signed_block = state_transition_and_sign_block(spec, fin_state.copy(), block)
+    signed_block = state_transition_and_sign_block(spec, fin_state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     payload_state_transition(spec, store, signed_block.message)
