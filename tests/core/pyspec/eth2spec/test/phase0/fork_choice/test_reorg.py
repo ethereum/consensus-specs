@@ -1,3 +1,4 @@
+from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -355,16 +356,14 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
     signed_blocks_of_y = []
 
     # build an empty chain to the slot prior epoch boundary
-    signed_blocks_of_empty_chain = []
     states_of_empty_chain = []
     for slot in range(state.slot + 1, last_slot_of_y + 1):
         block = build_empty_block(spec, state, slot=slot)
         signed_block = state_transition_and_sign_block(spec, state, block)
         payload_state_transition_no_store(spec, state, signed_block.message)
-        signed_blocks_of_empty_chain.append(signed_block)
         states_of_empty_chain.append(state.copy())
         signed_blocks_of_y.append(signed_block)
-    signed_block_y = signed_blocks_of_empty_chain[-1]
+    signed_block_y = signed_blocks_of_y[-1]
     assert spec.compute_epoch_at_slot(signed_block_y.message.slot) == 4
 
     # create 2/3 votes for the empty chain
@@ -382,7 +381,6 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         # apply chain y, the empty chain
         if slot <= last_slot_of_y and len(signed_blocks_of_y) > 0:
             signed_block_y = signed_blocks_of_y.pop(0)
-            state_of_y = states_of_empty_chain.pop(0)
             assert signed_block_y.message.slot == slot
             yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
             payload_state_transition(spec, store, signed_block_y.message)
@@ -397,9 +395,10 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         ):
             block.body.attestations = attestations_for_y.pop(0)
         signed_block_z = state_transition_and_sign_block(spec, state, block)
+        print("Trying to import block: ", signed_block_z.message.slot)
         if signed_block_y != signed_block_z:
             yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
-            payload_state_transition(spec, store, signed_block_z.message)
+            state = payload_state_transition(spec, store, signed_block_z.message).copy()
         if is_ready_to_justify(spec, state):
             break
 

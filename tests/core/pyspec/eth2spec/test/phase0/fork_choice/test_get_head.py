@@ -4,6 +4,7 @@ from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
+    with_altair_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
@@ -258,8 +259,8 @@ def test_filtered_block_tree(spec, state):
 
     yield 'steps', test_steps
 
-
-@with_altair_and_later
+# This test is skipped in EIP-7732 because the block's slot decides first on weight ties
+@with_altair_until_eip7732
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
     test_steps = []
