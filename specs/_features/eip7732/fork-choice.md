@@ -354,16 +354,16 @@ def get_head(store: Store) -> ChildNode:
         children += [
             ChildNode(root=best_child.root, slot=best_child.slot + 1, is_payload_present=best_child.is_payload_present)
         ]
-        # Sort by latest attesting balance with ties broken lexicographically
-        # Ties broken by favoring full blocks according to the PTC vote
+        # Sort by latest attesting balance with
+        # Ties broken by the block's slot
+        # Ties are broken by the PTC vote
         # Ties are then broken by favoring full blocks
-        # Ties broken then by favoring higher slot numbers
         # Ties then broken by favoring block with lexicographically higher root
         new_best_child = max(children, key=lambda child: (
             get_weight(store, child), 
+            blocks[child.root].slot,
             is_payload_present(store, child.root), 
             child.is_payload_present, 
-            child.slot, 
             child.root
         )
         )
