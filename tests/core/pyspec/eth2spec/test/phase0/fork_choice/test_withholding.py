@@ -65,8 +65,8 @@ def test_withholding_attack(spec, state):
     signed_attack_block = signed_blocks[-1]
     for signed_block in signed_blocks[:-1]:
         current_root = signed_block.message.hash_tree_root()
-        state = yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        state = payload_state_transition(spec, store, signed_block.message)
+        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
         check_head_against_root(spec, store, current_root)
     head_root = signed_blocks[-2].message.hash_tree_root()
     check_head_against_root(spec, store, head_root)
@@ -79,10 +79,12 @@ def test_withholding_attack(spec, state):
     assert spec.compute_epoch_at_slot(state.slot) == 5
     assert state.current_justified_checkpoint.epoch == 3
     # Create two blocks in the honest chain with full attestations, and add to the store
+    honest_state = state.copy()
     for _ in range(2):
-        signed_block = state_transition_with_full_block(spec, state, True, False)
+        print("Trying slot", honest_state.slot)
+        signed_block = state_transition_with_full_block(spec, honest_state, True, False)
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, signed_block.message)
+        honest_state = payload_state_transition(spec, store, signed_block.message).copy()
     # Create final block in the honest chain that includes the justifying attestations from the attack block
     honest_block = build_empty_block_for_next_slot(spec, state)
     honest_block.body.attestations = signed_attack_block.message.body.attestations

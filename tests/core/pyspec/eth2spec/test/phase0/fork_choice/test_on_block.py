@@ -908,8 +908,6 @@ def test_justification_update_end_of_epoch(spec, state):
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
         payload_state_transition(spec, store, signed_block.message)
     assert store.justified_checkpoint.epoch == 4
-    assert 1 == 0
-
     yield 'steps', test_steps
 
 
