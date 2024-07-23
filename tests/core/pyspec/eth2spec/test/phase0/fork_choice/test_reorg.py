@@ -102,6 +102,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     block_y = build_empty_block_for_next_slot(spec, state)
     signed_block_y = state_transition_and_sign_block(spec, state, block_y)
     signed_blocks_of_y.append(signed_block_y)
+    payload_state_transition_no_store(spec, state, signed_block_y.message)
 
     # chain y has some on-chain attestations, but not enough to justify c4
     signed_block_y = state_transition_with_full_block(spec, state, True, True)
@@ -117,6 +118,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     block_z.body.attestations = [attestation]
     signed_block_z = state_transition_and_sign_block(spec, state, block_z)
     signed_blocks_of_z.append(signed_block_z)
+    payload_state_transition_no_store(spec, state, signed_block_z.message)
 
     # add an empty block on chain z
     block_z = build_empty_block_for_next_slot(spec, state)
@@ -395,7 +397,6 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         ):
             block.body.attestations = attestations_for_y.pop(0)
         signed_block_z = state_transition_and_sign_block(spec, state, block)
-        print("Trying to import block: ", signed_block_z.message.slot)
         if signed_block_y != signed_block_z:
             yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
             state = payload_state_transition(spec, store, signed_block_z.message).copy()
