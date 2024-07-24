@@ -75,14 +75,14 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
     yield 'execution_payload', execution_payload
 
     if not valid:
-        if is_post_eip7732:
+        if is_post_eip7732(spec):
             expect_assertion_error(lambda: spec.process_withdrawals(state))
         else:
             expect_assertion_error(lambda: spec.process_withdrawals(state, execution_payload))
         yield 'post', None
         return
 
-    if is_post_eip7732:
+    if is_post_eip7732(spec):
         spec.process_withdrawals(state)
     else:
         spec.process_withdrawals(state, execution_payload)

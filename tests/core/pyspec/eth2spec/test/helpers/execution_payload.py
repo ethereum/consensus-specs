@@ -336,7 +336,7 @@ def build_randomized_execution_payload(spec, state, rng):
 
 def build_state_with_incomplete_transition(spec, state):
     header = spec.ExecutionPayloadHeader()
-    if is_post_eip7732:
+    if is_post_eip7732(spec):
         kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
         header.blob_kzg_commitments_root = kzgs.hash_tree_root()
 
