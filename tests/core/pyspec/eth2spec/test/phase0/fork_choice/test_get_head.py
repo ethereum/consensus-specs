@@ -1,6 +1,4 @@
 import random
-
-from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -124,7 +122,6 @@ def test_split_tie_breaker_no_attestations(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
 
     yield from add_block(spec, store, signed_block_1, test_steps)
-    post_state_1 = state.copy()
     payload_state_transition(spec, store, signed_block_1.message)
     yield from add_block(spec, store, signed_block_2, test_steps)
     payload_state_transition(spec, store, signed_block_2.message)
@@ -258,6 +255,7 @@ def test_filtered_block_tree(spec, state):
     output_head_check(spec, store, test_steps)
 
     yield 'steps', test_steps
+
 
 # This test is skipped in EIP-7732 because the block's slot decides first on weight ties
 @with_altair_until_eip7732

@@ -1,4 +1,3 @@
-from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -397,9 +396,10 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         ):
             block.body.attestations = attestations_for_y.pop(0)
         signed_block_z = state_transition_and_sign_block(spec, state, block)
+        payload_state_transition_no_store(spec, state, block)
         if signed_block_y != signed_block_z:
             yield from tick_and_add_block(spec, store, signed_block_z, test_steps)
-            state = payload_state_transition(spec, store, signed_block_z.message).copy()
+            payload_state_transition(spec, store, signed_block_z.message)
         if is_ready_to_justify(spec, state):
             break
 

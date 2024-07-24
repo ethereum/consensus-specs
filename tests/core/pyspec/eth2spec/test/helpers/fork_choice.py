@@ -292,7 +292,7 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
-    if is_post_eip7732:
+    if is_post_eip7732(spec):
         return {
             'slot': int(head.slot),
             'root': encode_hex(head.root),
@@ -404,7 +404,6 @@ def find_next_justifying_slot(spec,
     signed_blocks = []
     justifying_slot = None
     while justifying_slot is None:
-        previous_header_root = temp_state.latest_block_header.hash_tree_root()
         signed_block = state_transition_with_full_block(
             spec,
             temp_state,

@@ -34,7 +34,7 @@ def _apply_base_block_a(spec, state, store, test_steps):
     payload_state_transition(spec, store, signed_block_a.message)
     head = spec.get_head(store)
     expected_root = signed_block_a.message.hash_tree_root()
-    if is_post_eip7732:
+    if is_post_eip7732(spec):
         assert head.root == expected_root
     else:
         check_head_against_root(spec, store, signed_block_a.message.hash_tree_root())
