@@ -13,11 +13,14 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
     check_head_against_root,
     get_genesis_forkchoice_store_and_block,
+    get_store_full_state,
     on_tick_and_append_step,
     payload_state_transition,
+    payload_state_transition_no_store,
     tick_and_add_block,
     apply_next_epoch_with_attestations,
     find_next_justifying_slot,
@@ -81,7 +84,6 @@ def test_withholding_attack(spec, state):
     # Create two blocks in the honest chain with full attestations, and add to the store
     honest_state = state.copy()
     for _ in range(2):
-        print("Trying slot", honest_state.slot)
         signed_block = state_transition_with_full_block(spec, honest_state, True, False)
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         honest_state = payload_state_transition(spec, store, signed_block.message).copy()
@@ -159,8 +161,8 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     for signed_block in signed_blocks[:-1]:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
-    check_head_against_root(spec, store, signed_blocks[-2].message.hash_tree_root())
-    state = store.block_states[spec.get_head(store)].copy()
+        payload_state_transition(spec, store, signed_block.message)
+    state = get_store_full_state(spec, store, signed_block.message.hash_tree_root()).copy()
     assert spec.compute_epoch_at_slot(state.slot) == 5
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -169,11 +171,14 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     next_epoch(spec, state)
     assert spec.compute_epoch_at_slot(state.slot) == 6
     assert state.current_justified_checkpoint.epoch == 3
-    # Create two block in the honest chain with full attestations, and add to the store
+    # Create two blocks in the honest chain with full attestations, and add to the store
     for _ in range(2):
         signed_block = state_transition_with_full_block(spec, state, True, False)
+        payload_state_transition_no_store(spec, state, signed_block.message)
         assert state.current_justified_checkpoint.epoch == 3
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        check_head_against_root(spec, store, signed_block.message.hash_tree_root())
+        payload_state_transition(spec, store, signed_block.message)
     # Create final block in the honest chain that includes the justifying attestations from the attack block
     honest_block = build_empty_block_for_next_slot(spec, state)
     honest_block.body.attestations = signed_attack_block.message.body.attestations
@@ -182,6 +187,7 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     assert state.current_justified_checkpoint.epoch == 3
     # Add the honest block to the store
     yield from tick_and_add_block(spec, store, signed_honest_block, test_steps)
+    payload_state_transition(spec, store, signed_honest_block.message)
     current_epoch = spec.compute_epoch_at_slot(spec.get_current_slot(store))
     assert current_epoch == 6
     # assert store.voting_source[honest_block_root].epoch == 3
@@ -197,10 +203,16 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # Upon revealing the withheld attack block, it should become the head
+    # Except in EIP-7732 in which it's parent becomes head because of the
+    # attestations during the attacker's block's committee.
     yield from tick_and_add_block(spec, store, signed_attack_block, test_steps)
+    payload_state_transition(spec, store, signed_attack_block.message)
     # The attack block is pulled up and store.justified_checkpoint is updated
     assert store.justified_checkpoint.epoch == 5
-    attack_block_root = signed_attack_block.message.hash_tree_root()
+    if is_post_eip7732(spec):
+        attack_block_root = signed_attack_block.message.parent_root
+    else:
+        attack_block_root = signed_attack_block.message.hash_tree_root()
     check_head_against_root(spec, store, attack_block_root)
 
     # After going to the next epoch, the honest block should become the head
