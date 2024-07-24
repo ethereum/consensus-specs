@@ -76,6 +76,7 @@ def test_withholding_attack(spec, state):
     assert spec.compute_epoch_at_slot(state.slot) == 4
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
+    state = get_store_full_state(spec, store, head_root).copy()
 
     # Create an honest chain in epoch 5 that includes the justifying attestations from the attack block
     next_epoch(spec, state)
@@ -88,9 +89,9 @@ def test_withholding_attack(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         honest_state = payload_state_transition(spec, store, signed_block.message).copy()
     # Create final block in the honest chain that includes the justifying attestations from the attack block
-    honest_block = build_empty_block_for_next_slot(spec, state)
+    honest_block = build_empty_block_for_next_slot(spec, honest_state)
     honest_block.body.attestations = signed_attack_block.message.body.attestations
-    signed_honest_block = state_transition_and_sign_block(spec, state, honest_block)
+    signed_honest_block = state_transition_and_sign_block(spec, honest_state, honest_block)
     # Add the honest block to the store
     yield from tick_and_add_block(spec, store, signed_honest_block, test_steps)
     payload_state_transition(spec, store, signed_honest_block.message)
