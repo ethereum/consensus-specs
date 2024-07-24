@@ -54,6 +54,9 @@
       - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
+- [Testing](#testing)
+  - [Modified `initialize_beacon_state_from_eth1`](#modified-initialize_beacon_state_from_eth1)
+  - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->

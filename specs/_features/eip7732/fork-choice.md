@@ -32,6 +32,7 @@
   - [`seconds_into_slot`](#seconds_into_slot)
   - [Modified `on_tick_per_slot`](#modified-on_tick_per_slot)
   - [`on_payload_attestation_message`](#on_payload_attestation_message)
+  - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
