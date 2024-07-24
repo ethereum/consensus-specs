@@ -336,6 +336,9 @@ workflows:
       - test-eip7594:
           requires:
             - install_pyspec_test
+      - test-eip7732:
+          requires:
+            - install_pyspec_test
       - table_of_contents
       - codespell
       - lint:
