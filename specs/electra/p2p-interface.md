@@ -19,6 +19,7 @@ The specification of these changes continues in the same format as the network s
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [BeaconBlocksByRange v3](#beaconblocksbyrange-v3)
+    - [BlobSidecarsByRange v2](#blobsidecarsbyrange-v2)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -89,4 +90,27 @@ Extends behaviour of BeaconBlocksByRange v2 as defined in [the altair p2p spec](
 
 Requests beacon blocks in the slot range `[start_slot, start_slot + count)`, leading up to `block_root`. If the block with `block_root` is unknown the responder MUST respond with `3: ResourceUnavailable`. If the slot of the block with `block_root` is less than `start_slot + count` the responder MUST respond with `1: InvalidRequest`.
 
+#### BlobSidecarsByRange v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
+
+Request Content:
+```
+(
+  block_root: Root
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+)
+```
+
+Extends behaviour of BlobSidecarByRange v2 as defined in [the deneb p2p spec](../deneb/p2p-interface.md).
+
+Requests blob sidecars in the slot range `[start_slot, start_slot + count)`, leading up to `block_root`. If the block with `block_root` is unknown the responder MUST respond with `3: ResourceUnavailable`. If the slot of the block with `block_root` is less than `start_slot + count` the responder MUST respond with `1: InvalidRequest`.
 
