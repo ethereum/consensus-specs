@@ -110,8 +110,6 @@ def test_apply_pending_deposit_switch_to_compounding_not_exited(spec, state):
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + spec.hash(pubkeys[index])[1:]
     )
     state.validators[index].withdrawal_credentials = withdrawal_credentials
-    # set validator to not be exited
-    state.validators[index].exit_epoch = spec.FAR_FUTURE_EPOCH
     deposit_data = build_deposit_data(spec,
                                       pubkeys[index],
                                       privkeys[index],
