@@ -13,7 +13,7 @@ def test_apply_pending_deposit_add_validator_to_registry(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
 
     # select validator set outside of the mainnet preset of 256
-    index = 2000
+    index = len(state.validators)
     withdrawal_credentials = (
         spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[index])[1:]
     )
