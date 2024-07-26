@@ -40,7 +40,6 @@ def test_apply_pending_deposit_add_validator_to_registry(spec, state):
 @spec_state_test
 def test_apply_pending_deposit_increases_balance(spec, state):
     amount = 100
-    state.validators[0].exit_epoch = spec.FAR_FUTURE_EPOCH
     # signature doesn't matter here as it's interpreted as a top-up
     deposit = spec.PendingDeposit(
         pubkey=state.validators[0].pubkey,
