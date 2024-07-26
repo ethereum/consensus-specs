@@ -10,7 +10,7 @@ from eth2spec.test.helpers.state import next_epoch_via_block
 @with_electra_and_later
 @spec_state_test
 def test_apply_pending_deposit_add_validator_to_registry(spec, state):
-    amount = 100
+    amount = spec.MIN_ACTIVATION_BALANCE
 
     # select validator set outside of the mainnet preset of 256
     index = 2000
