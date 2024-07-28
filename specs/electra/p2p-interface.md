@@ -106,7 +106,7 @@ Request Content:
 Response Content:
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
 )
 ```
 
