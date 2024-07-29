@@ -69,7 +69,7 @@ def is_chain_available(store: Store, beacon_block_root: Root) -> bool:
 
 #### Modified `get_head`
 
-*Note*: children of the current `head` are required to be available in order to be consider by the fork-choice.
+*Note*: children of the current `head` are required to be available in order to be considered by the fork-choice.
 For blocks from the current or previous epoch (which cannot yet be finalized), this is established through 
 a custody check, while for blocks older than two epochs through a full peer sampling check.
 
