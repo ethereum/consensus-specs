@@ -87,7 +87,6 @@ def test_apply_pending_deposit_switch_to_compounding(spec, state):
         slot=spec.GENESIS_SLOT,
         signature=deposit_data.signature,
     )
-    state.balances[index] = 0
     # run test
     spec.apply_pending_deposit(state, deposit)
     # validator balance should increase
