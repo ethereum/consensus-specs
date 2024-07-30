@@ -1,3 +1,4 @@
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.context import (
     spec_state_test,
     with_electra_and_later,
@@ -5,6 +6,11 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from tests.core.pyspec.eth2spec.test.helpers.deposits import build_deposit_data
 from eth2spec.test.helpers.state import next_epoch_via_block
+
+
+def run_process_pending_deposits(spec, state):
+    yield from run_epoch_processing_with(
+        spec, state, 'process_pending_deposits')
 
 
 @with_electra_and_later
@@ -31,7 +37,8 @@ def test_apply_pending_deposit_add_validator_to_registry(spec, state):
         signature=deposit_data.signature,
     )
     old_validator_count = len(state.validators)
-    spec.apply_pending_deposit(state, deposit)
+    state.pending_deposits.append(deposit)
+    yield from run_process_pending_deposits(spec, state)
     # validator count should increase by 1
     assert len(state.validators) == old_validator_count + 1
 
