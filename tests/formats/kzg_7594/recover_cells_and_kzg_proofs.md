@@ -15,7 +15,6 @@ output: Tuple[List[Cell], List[KZGProof]] -- all cells and proofs
 
 - `CellIndex` is an unsigned 64-bit integer.
 - `Cell` is a 2048-byte hexadecimal string, prefixed with `0x`.
-- `KZGProof` is a 48-byte hexadecimal string, prefixed with `0x`.
 
 All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 
