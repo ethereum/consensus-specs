@@ -685,13 +685,13 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
     """
     Recover the polynomial in coefficient form that when evaluated at the roots of unity will give the extended blob.
     """
-    # Get the extended domain. This will be referred to as the FFT domain
+    # Get the extended domain. This will be referred to as the FFT domain.
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     # Flatten the cells into evaluations
-    # If a cell is missing, then its evaluation is zero
+    # If a cell is missing, then its evaluation is zero.
     # We let E(x) be a polynomial of degree FIELD_ELEMENTS_PER_EXT_BLOB - 1
-    # that interpolates the evaluations including the zeros for missing ones
+    # that interpolates the evaluations including the zeros for missing ones.
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_index, cell in zip(cell_indices, cells):
         start = cell_index * FIELD_ELEMENTS_PER_CELL
@@ -699,8 +699,8 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    # Compute the vanishing polynomial Z(x) in coefficient form
-    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
+    # Compute the vanishing polynomial Z(x) in coefficient form.
+    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing.
     missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
                             if cell_index not in cell_indices]
     zero_poly_coeff = construct_vanishing_polynomial(missing_cell_indices)
@@ -710,18 +710,18 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
 
     # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
     # Note: over the FFT domain, the polynomials (E*Z)(x) and (P*Z)(x) agree, where
-    # P(x) is the polynomial we want to reconstruct (degree FIELD_ELEMENTS_PER_BLOB - 1)
+    # P(x) is the polynomial we want to reconstruct (degree FIELD_ELEMENTS_PER_BLOB - 1).
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    # We know that (E*Z)(x) and (P*Z)(x) agree over the FFT domain
-    # and we know that (P*Z)(x) has degree at most FIELD_ELEMENTS_PER_EXT_BLOB - 1
+    # We know that (E*Z)(x) and (P*Z)(x) agree over the FFT domain,
+    # and we know that (P*Z)(x) has degree at most FIELD_ELEMENTS_PER_EXT_BLOB - 1.
     # Thus, an inverse FFT of the evaluations of (E*Z)(x) (= evaluations of (P*Z)(x))
     # yields the coefficient form of (P*Z)(x).
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    # Next step is to divide the polynomial (P*Z)(x) by polynomial Z(x) to get P(x)
-    # Do this in evaluation form over a coset of the FFT domain to avoid division by 0
+    # Next step is to divide the polynomial (P*Z)(x) by polynomial Z(x) to get P(x).
+    # We do this in evaluation form over a coset of the FFT domain to avoid division by 0.
 
     # Convert (P*Z)(x) to evaluation form over a coset of the FFT domain
     extended_evaluations_over_coset = coset_fft_field(extended_evaluation_times_zero_coeffs, roots_of_unity_extended)
