@@ -296,7 +296,7 @@ Before consuming the next response chunk, the response reader SHOULD verify the 
 
 No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
 
-`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing). In addition, it is possible to retrieve recent blobs by quering the Execution Layer via `engine_getBlobsV1` engine API method.
+`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing). In addition, it is possible to retrieve recent blobs by querying the Execution Layer via `engine_getBlobsV1` engine API method.
 
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
