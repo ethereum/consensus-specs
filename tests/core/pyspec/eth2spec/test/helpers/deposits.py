@@ -235,6 +235,42 @@ def build_pending_deposit_top_up(spec, state, validator_index, amount, slot=None
         slot=slot,
     )
 
+
+def build_pending_deposit(spec, validator_index, amount,
+                          index=None,
+                          pubkey=None,
+                          privkey=None,
+                          withdrawal_credentials=None,
+                          slot=None,
+                          signed=False):
+    if index is None:
+        index = validator_index
+
+    if pubkey is None:
+        pubkey = pubkeys[validator_index]
+
+    if privkey is None:
+        privkey = privkeys[validator_index]
+
+    if slot is None:
+        slot = spec.GENESIS_SLOT
+
+    pending_deposit = spec.PendingDeposit(
+        pubkey=pubkeys[index],
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        slot=slot,
+    )
+    if signed:
+        deposit_data = build_deposit_data(spec,
+                                          pubkeys[index],
+                                          privkeys[index],
+                                          amount,
+                                          withdrawal_credentials,
+                                          signed=True)
+        pending_deposit.signature = deposit_data.signature
+    return pending_deposit
+
 #
 # Run processing
 #

@@ -4,17 +4,70 @@ from eth2spec.test.context import (
     with_electra_and_later,
 )
 from eth2spec.test.helpers.deposits import (
+    build_pending_deposit,
     build_pending_deposit_top_up,
 )
-from tests.core.pyspec.eth2spec.test.helpers.deposits import build_deposit_data
 from eth2spec.test.helpers.state import next_epoch_via_block
 
-from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def run_process_pending_deposits(spec, state):
     yield from run_epoch_processing_with(
         spec, state, 'process_pending_deposits')
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_under_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100
+    undermax = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING - 1
+    for i in range(undermax):
+        print(i)
+        state.pending_deposits.append(
+            spec.PendingDeposit(
+                pubkey=state.validators[i].pubkey,
+                withdrawal_credentials=(
+                    state.validators[i].withdrawal_credentials
+                ),
+                amount=amount,
+                slot=spec.GENESIS_SLOT,
+            )
+        )
+    assert len(state.pending_deposits) == undermax, \
+        "pending deposits is not undermax"
+    yield from run_process_pending_deposits(spec, state)
+    assert len(state.pending_deposits) == 0
+    assert state.balances[0] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[undermax - 1] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[undermax] == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100
+    max = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING
+    for i in range(max):
+        state.pending_deposits.append(
+            spec.PendingDeposit(
+                pubkey=state.validators[i].pubkey,
+                withdrawal_credentials=(
+                    state.validators[i].withdrawal_credentials
+                ),
+                amount=amount,
+                slot=spec.GENESIS_SLOT,
+            )
+        )
+    assert len(state.pending_deposits) == max, \
+        "pending deposits is not max"
+    yield from run_process_pending_deposits(spec, state)
+    assert len(state.pending_deposits) == 0
+    assert state.balances[0] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[max - 1] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[max] == spec.MIN_ACTIVATION_BALANCE
 
 
 @with_electra_and_later
@@ -36,10 +89,47 @@ def test_pending_deposit_over_max(spec, state):
         )
     assert len(state.pending_deposits) == overmax, \
         "pending deposits is not overmax"
-    # the remaining deposit over MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING
-    # should remain in pending_deposits
     yield from run_process_pending_deposits(spec, state)
     assert len(state.pending_deposits) == 1
+    assert state.balances[overmax - 1] == spec.MIN_ACTIVATION_BALANCE + amount
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_eth1_withdrawal_credentials(spec, state):
+    state.validators[0].withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=1,
+    ))
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
+    state.validators[0].withdrawal_credentials = (
+        b'\xFF'  # Non specified withdrawal credentials version
+        + b'\x02' * 31  # Garabage bytes
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=1,
+    ))
+
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -108,21 +198,13 @@ def test_pending_deposit_validator_withdrawn(spec, state):
     state.validators[index].exit_epoch = previous_epoch
     # set validator to be withdrawable by current epoch
     state.validators[index].withdrawable_epoch = previous_epoch
-    deposit_data = build_deposit_data(spec,
-                                      pubkeys[index],
-                                      privkeys[index],
-                                      amount,
-                                      compounding_credentials,
-                                      signed=True)
     # set withdrawal credentials to compounding but should not switch since
     # validator is already withdrawing
-    state.pending_deposits.append(spec.PendingDeposit(
-        pubkey=pubkeys[index],
-        withdrawal_credentials=compounding_credentials,
-        amount=amount,
-        slot=spec.GENESIS_SLOT,
-        signature=deposit_data.signature,
-    ))
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=compounding_credentials,
+                               signed=True)
+    state.pending_deposits.append(pd)
     # skip the bridge validation
     state.deposit_requests_start_index = 0
     # set deposit_balance_to_consume to some initial amount
@@ -179,30 +261,20 @@ def test_pending_deposit_validator_exiting_but_not_withdrawn(spec, state):
 def test_pending_deposit_not_in_validator_set(spec, state):
     index = 2000
     amount = spec.MIN_ACTIVATION_BALANCE
-    withdrawal_credentials = (
+    wc = (
         spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
         spec.hash(pubkeys[index])[1:]
     )
-    deposit_data = build_deposit_data(spec,
-                                      pubkeys[index],
-                                      privkeys[index],
-                                      amount,
-                                      withdrawal_credentials,
-                                      signed=True)
-    state.pending_deposits.append(spec.PendingDeposit(
-        pubkey=pubkeys[index],
-        withdrawal_credentials=withdrawal_credentials,
-        amount=amount,
-        slot=spec.GENESIS_SLOT,
-        signature=deposit_data.signature,
-    ))
-    value_error = False
-    try:
-        yield from run_process_pending_deposits(spec, state)
-    except ValueError:
-        value_error = True
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
 
-    assert value_error
+    state.pending_deposits.append(pd)
+    old_length = len(state.validators)
+    yield from run_process_pending_deposits(spec, state)
+    # new validator activated
+    assert len(state.validators) == old_length + 1
 
 
 @with_electra_and_later
@@ -254,21 +326,14 @@ def test_pending_deposit_balance_equal_churn_with_compounding(spec, state):
     )
     amount = spec.get_activation_exit_churn_limit(state)
     state.validators[index].withdrawal_credentials = withdrawal_credentials
-    deposit_data = build_deposit_data(spec,
-                                      pubkeys[index],
-                                      privkeys[index],
-                                      amount,
-                                      compounding_credentials,
-                                      signed=True)
+
     # set withdrawal credentials to compounding but should not switch since
     # validator is already withdrawing
-    state.pending_deposits.append(spec.PendingDeposit(
-        pubkey=pubkeys[index],
-        withdrawal_credentials=compounding_credentials,
-        amount=amount,
-        slot=spec.GENESIS_SLOT,
-        signature=deposit_data.signature,
-    ))
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=compounding_credentials,
+                               signed=True)
+    state.pending_deposits.append(pd)
     pre_balance = state.balances[index]
 
     yield from run_process_pending_deposits(spec, state)
