@@ -179,6 +179,27 @@ def test_pending_deposit_not_finalized(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_process_pending_deposits_limit_is_reached(spec, state):
+    amount = 5000
+    cumulative_amount = 0
+    # set pending deposits to the maximum
+    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING+1):
+        wc = state.validators[i].withdrawal_credentials
+        pd = build_pending_deposit(spec, i,
+                                   amount=amount,
+                                   withdrawal_credentials=wc,
+                                   signed=True)
+        state.pending_deposits.append(pd)
+        cumulative_amount += amount
+    # churn limit was not reached
+    assert cumulative_amount < spec.get_activation_exit_churn_limit(state)
+    yield from run_process_pending_deposits(spec, state)
+    # no deposits above limit were processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_deposit_validator_withdrawn(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     index = 0
