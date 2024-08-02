@@ -12,7 +12,7 @@ This document represents the changes and additions to the Honest validator guide
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
-    - [Constructing the new `signed_execution_payload_header_envelope` field in  `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header_envelope-field-in--beaconblockbody)
+    - [Constructing the new `signed_execution_payload_header` field in  `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header-field-in--beaconblockbody)
     - [Constructing the new `payload_attestations` field in  `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in--beaconblockbody)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
@@ -71,7 +71,7 @@ Sync committee duties are not changed for validators, however the submission dea
 
 Validators are still expected to propose `SignedBeaconBlock` at the beginning of any slot during which `is_proposer(state, validator_index)` returns `true`. The mechanism to prepare this beacon block and related sidecars differs from previous forks as follows
 
-#### Constructing the new `signed_execution_payload_header_envelope` field in  `BeaconBlockBody`
+#### Constructing the new `signed_execution_payload_header` field in  `BeaconBlockBody`
 
 To obtain `signed_execution_payload_header`, a block proposer building a block on top of a `state` must take the following actions:
 * Listen to the `execution_payload_header` gossip global topic and save an accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain these signed messages by other off-protocol means. 
