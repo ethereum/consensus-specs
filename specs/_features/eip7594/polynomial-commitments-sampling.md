@@ -64,7 +64,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 The following is a list of the public methods:
 
 - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
-- [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
