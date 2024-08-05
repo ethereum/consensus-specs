@@ -81,7 +81,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `SAMPLES_PER_SLOT` | `16` | Number of `DataColumn` random samples a node queries per slot |
+| `SAMPLES_PER_SLOT` | `16` | Number of `DataColumnSidecar` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
 | `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
 | `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
