@@ -395,6 +395,71 @@ def test_pending_deposit_balance_equal_churn_with_compounding(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_top_up__zero_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    val = state.validators[validator_index]
+    val.effective_balance = initial_effective_balance
+    wc = val.withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+    deposits_len = len(state.pending_deposits)
+    assert state.pending_deposits[deposits_len - 1].amount == amount
+    # unchanged effective balance
+    assert val.effective_balance == initial_effective_balance
+
+
+@with_electra_and_later
+@spec_state_test
+def test_incorrect_sig_top_up(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    val = state.validators[validator_index]
+    wc = val.withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=False)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_incorrect_withdrawal_credentials_top_up(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    val = state.validators[validator_index]
+    val.effective_balance = initial_effective_balance
+    wc = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
+
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_deposit_balance_above_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state) + 1
@@ -414,6 +479,49 @@ def test_pending_deposit_balance_above_churn(spec, state):
     assert state.pending_deposits == [
         build_pending_deposit_top_up(spec, state, index, amount)
     ]
+
+
+@with_electra_and_later
+@spec_state_test
+def test_top_up__max_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    wc = state.validators[validator_index].withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
+    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+
+    yield from run_process_pending_deposits(spec, state)
+
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_top_up__less_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    wc = state.validators[validator_index].withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
+    initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_process_pending_deposits(spec, state)
+
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
 @with_electra_and_later
