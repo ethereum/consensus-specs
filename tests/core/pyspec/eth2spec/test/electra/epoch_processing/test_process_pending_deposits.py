@@ -871,3 +871,68 @@ def test_key_validate_invalid_decompression(spec, state):
                                signed=True)
     state.pending_deposits.append(pd)
     yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_previous_fork_version(spec, state):
+    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
+    assert state.fork.previous_version != state.fork.current_version
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=state.fork.previous_version,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_genesis_fork_version(spec, state):
+    assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
+
+    assert state.fork.previous_version != state.fork.current_version
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=spec.GENESIS_FORK_VERSION,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_bad_fork_version(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=spec.Version('0xAaBbCcDd'),
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
