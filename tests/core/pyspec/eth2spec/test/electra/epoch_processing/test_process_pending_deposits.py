@@ -134,6 +134,33 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_pending_deposit_eth1_bridge_pending(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    # There are pending Eth1 bridge deposits
+    # state.eth1_deposit_index < state.deposit_requests_start_index 
+    state.deposit_requests_start_index = state.eth1_deposit_index + 1
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=withdrawal_credentials,
+                               signed=True,
+                               slot=1)
+    state.pending_deposits.append(pd)
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_deposit_eth1_bridge_not_applied(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     # deposit is not finalized yet, so it is postponed
@@ -156,7 +183,7 @@ def test_pending_deposit_eth1_bridge_not_applied(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_no_pending_deposit_eth1_bridge(spec, state):
+def test_pending_deposit_no_eth1_bridge_pending(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     # there is no pending eth1 bridge deposits
     # state.eth1_deposit_index == state.deposit_requests_start_index
