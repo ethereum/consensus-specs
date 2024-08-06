@@ -137,7 +137,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 def test_pending_deposit_eth1_bridge_pending(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     # There are pending Eth1 bridge deposits
-    # state.eth1_deposit_index < state.deposit_requests_start_index 
+    # state.eth1_deposit_index < state.deposit_requests_start_index
     state.deposit_requests_start_index = state.eth1_deposit_index + 1
     index = 0
     withdrawal_credentials = (

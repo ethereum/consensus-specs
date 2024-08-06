@@ -103,6 +103,48 @@ def test_apply_pending_deposit_switch_to_compounding(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_apply_pending_deposit_switch_to_compounding_no_compounding(spec, state):
+    amount = 100
+
+    # choose a value public key that's in the validator set
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    # wrong compounding
+    compounding_credentials = (
+        spec.hash(b"wrong compounding address")[:]
+    )
+    # advance the state
+    next_epoch_via_block(spec, state)
+    state.validators[index].withdrawal_credentials = withdrawal_credentials
+    # set validator to be exited by current epoch
+    state.validators[index].exit_epoch = spec.get_current_epoch(state) - 1
+    deposit_data = build_deposit_data(spec,
+                                      pubkeys[index],
+                                      privkeys[index],
+                                      amount,
+                                      compounding_credentials,
+                                      signed=True)
+    deposit = spec.PendingDeposit(
+        pubkey=pubkeys[index],
+        withdrawal_credentials=compounding_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+        signature=deposit_data.signature,
+    )
+    state.balances[index] = 0
+    # run test
+    spec.apply_pending_deposit(state, deposit)
+    # validator balance should increase
+    assert state.balances[index] == amount
+    current_credentials = state.validators[0].withdrawal_credentials
+    assert current_credentials ==  withdrawal_credentials
+
+
+@with_electra_and_later
+@spec_state_test
 def test_apply_pending_deposit_switch_to_compounding_has_bls(spec, state):
     amount = 100
 
