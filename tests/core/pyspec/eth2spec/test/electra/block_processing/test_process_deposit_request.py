@@ -6,6 +6,12 @@ from eth2spec.test.helpers.deposits import (
 )
 from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+
+
+def run_process_pending_deposits(spec, state):
+    yield from run_epoch_processing_with(
+        spec, state, 'process_pending_deposits')
 
 
 @with_electra_and_later
@@ -18,6 +24,7 @@ def test_new_deposit_under_max(spec, state):
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -30,6 +37,7 @@ def test_new_deposit_max(spec, state):
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -42,6 +50,7 @@ def test_new_deposit_over_max(spec, state):
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -64,6 +73,7 @@ def test_new_deposit_eth1_withdrawal_credentials(spec, state):
     )
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -85,6 +95,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     )
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -177,6 +188,7 @@ def test_incorrect_sig_top_up(spec, state):
 
     # invalid signatures, in top-ups, are allowed!
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -194,6 +206,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -208,6 +221,7 @@ def test_key_validate_invalid_subgroup(spec, state):
     deposit_request = prepare_deposit_request(spec, validator_index, amount, pubkey=pubkey, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later
@@ -224,6 +238,7 @@ def test_key_validate_invalid_decompression(spec, state):
     deposit_request = prepare_deposit_request(spec, validator_index, amount, pubkey=pubkey, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    yield from run_process_pending_deposits(spec, state)
 
 
 @with_electra_and_later

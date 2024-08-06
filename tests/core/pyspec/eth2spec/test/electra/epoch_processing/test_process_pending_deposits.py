@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.context import (
     spec_state_test,
+    always_bls,
     with_electra_and_later,
 )
 from eth2spec.test.helpers.deposits import (
@@ -801,3 +802,72 @@ def test_processing_deposit_of_withdrawable_validator_not_churned(spec, state):
         build_pending_deposit_top_up(spec, state,
                                      validator_index=1, amount=amount)
     ]
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_correct_sig_but_forked_state(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    # deposits will always be valid, regardless of the current fork
+    state.fork.current_version = spec.Version('0x1234abcd')
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_key_validate_invalid_subgroup(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey = b'\x00' * 48
+
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkey)[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               pubkey=pubkey,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_key_validate_invalid_decompression(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = 'c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkey)[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               pubkey=pubkey,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
