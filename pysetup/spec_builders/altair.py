@@ -35,7 +35,7 @@ def get_generalized_index(ssz_class: Any, *path: PyUnion[int, SSZVariableName]) 
 
 
 def compute_merkle_proof(object: SSZObject,
-                         index: GeneralizedIndex) -> Sequence[Bytes32]:
+                         index: GeneralizedIndex) -> list[Bytes32]:
     return build_proof(object.get_backing(), index)'''
 
 
