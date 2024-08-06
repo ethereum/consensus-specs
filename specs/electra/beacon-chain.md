@@ -854,6 +854,7 @@ def process_registry_updates(state: BeaconState) -> None:
 
 ```python
 def process_pending_balance_deposits(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
@@ -863,7 +864,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
         validator = state.validators[deposit.index]
         # Validator is exiting, postpone the deposit until after withdrawable epoch
         if validator.exit_epoch < FAR_FUTURE_EPOCH:
-            if get_current_epoch(state) <= validator.withdrawable_epoch:
+            if next_epoch <= validator.withdrawable_epoch:
                 deposits_to_postpone.append(deposit)
             # Deposited balance will never become active. Increase balance but do not consume churn
             else:

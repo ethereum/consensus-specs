@@ -256,14 +256,12 @@ def test_pending_consolidation_compounding_creds(spec, state):
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set the source and the target withdrawal credential to compounding
-    compounding_withdrawal_credential_1 = (
+    state.validators[source_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
-    compounding_withdrawal_credential_2 = (
+    state.validators[target_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x12" * 20
     )
-    state.validators[source_index].withdrawal_credentials = compounding_withdrawal_credential_1
-    state.validators[target_index].withdrawal_credentials = compounding_withdrawal_credential_2
 
     # Advance to withdrawable_epoch - 1 with full participation
     target_epoch = state.validators[source_index].withdrawable_epoch - spec.Epoch(1)
@@ -289,3 +287,57 @@ def test_pending_consolidation_compounding_creds(spec, state):
 
     # Pending balance deposit to the target is not created
     assert len(state.pending_balance_deposits) == 0
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_with_pending_deposit(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    # initiate source exit
+    spec.initiate_validator_exit(state, source_index)
+    # set withdrawable_epoch to exit_epoch + 1
+    state.validators[source_index].withdrawable_epoch = state.validators[source_index].exit_epoch + spec.Epoch(1)
+    # append pending consolidation
+    state.pending_consolidations.append(
+        spec.PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+    # append pending deposit
+    state.pending_balance_deposits.append(
+        spec.PendingBalanceDeposit(index=source_index, amount=spec.MIN_ACTIVATION_BALANCE)
+    )
+    # Set the source and the target withdrawal credential to compounding
+    state.validators[source_index].withdrawal_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    state.validators[target_index].withdrawal_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x12" * 20
+    )
+
+    # Advance to withdrawable_epoch - 1 with full participation
+    target_epoch = state.validators[source_index].withdrawable_epoch - spec.Epoch(1)
+    while spec.get_current_epoch(state) < target_epoch:
+        next_epoch_with_full_participation(spec, state)
+
+    # Obtain state before the call to process_pending_balance_deposits
+    state_before_consolidation = compute_state_by_epoch_processing_to(spec, state, "process_pending_balance_deposits")
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
+
+    # Pending consolidation was successfully processed
+    expected_target_balance = (
+        state_before_consolidation.balances[source_index] + state_before_consolidation.balances[target_index]
+    )
+    assert (
+        state.validators[target_index].withdrawal_credentials[:1]
+        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
+    )
+    assert state.balances[target_index] == expected_target_balance
+    assert state.balances[source_index] == 0
+    assert state.pending_consolidations == []
+
+    # Pending balance deposit to the source was not processed
+    assert len(state.pending_balance_deposits) == 1
+    assert state.pending_balance_deposits[0] == spec.PendingBalanceDeposit(
+        index=source_index, amount=spec.MIN_ACTIVATION_BALANCE)
