@@ -1,15 +1,355 @@
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.context import (
     spec_state_test,
+    always_bls,
     with_electra_and_later,
 )
 from eth2spec.test.helpers.deposits import (
+    build_pending_deposit,
     build_pending_deposit_top_up,
 )
+from eth2spec.test.helpers.state import next_epoch_via_block
+
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def run_process_pending_deposits(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_pending_deposits')
+    yield from run_epoch_processing_with(
+        spec, state, 'process_pending_deposits')
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_under_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100
+    undermax = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING - 1
+    for i in range(undermax):
+        print(i)
+        state.pending_deposits.append(
+            spec.PendingDeposit(
+                pubkey=state.validators[i].pubkey,
+                withdrawal_credentials=(
+                    state.validators[i].withdrawal_credentials
+                ),
+                amount=amount,
+                slot=spec.GENESIS_SLOT,
+            )
+        )
+    assert len(state.pending_deposits) == undermax, \
+        "pending deposits is not undermax"
+    yield from run_process_pending_deposits(spec, state)
+    assert len(state.pending_deposits) == 0
+    assert state.balances[0] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[undermax - 1] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[undermax] == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100
+    max = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING
+    for i in range(max):
+        state.pending_deposits.append(
+            spec.PendingDeposit(
+                pubkey=state.validators[i].pubkey,
+                withdrawal_credentials=(
+                    state.validators[i].withdrawal_credentials
+                ),
+                amount=amount,
+                slot=spec.GENESIS_SLOT,
+            )
+        )
+    assert len(state.pending_deposits) == max, \
+        "pending deposits is not max"
+    yield from run_process_pending_deposits(spec, state)
+    assert len(state.pending_deposits) == 0
+    assert state.balances[0] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[max - 1] == amount + spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[max] == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_over_max(spec, state):
+    # pick an amount that adds to less than churn limit
+    amount = 100
+    overmax = spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING + 1
+    for i in range(overmax):
+        state.pending_deposits.append(
+            spec.PendingDeposit(
+                pubkey=state.validators[i].pubkey,
+                withdrawal_credentials=(
+                    state.validators[i].withdrawal_credentials
+                ),
+                amount=amount,
+                slot=spec.GENESIS_SLOT,
+            )
+        )
+    assert len(state.pending_deposits) == overmax, \
+        "pending deposits is not overmax"
+    yield from run_process_pending_deposits(spec, state)
+    assert len(state.pending_deposits) == 1
+    assert state.balances[overmax - 1] == spec.MIN_ACTIVATION_BALANCE + amount
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_eth1_withdrawal_credentials(spec, state):
+    state.validators[0].withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=1,
+    ))
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
+    state.validators[0].withdrawal_credentials = (
+        b'\xFF'  # Non specified withdrawal credentials version
+        + b'\x02' * 31  # Garabage bytes
+    )
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=1,
+    ))
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_eth1_bridge_pending(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    # There are pending Eth1 bridge deposits
+    # state.eth1_deposit_index < state.deposit_requests_start_index
+    state.deposit_requests_start_index = state.eth1_deposit_index + 1
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=withdrawal_credentials,
+                               signed=True,
+                               slot=1)
+    state.pending_deposits.append(pd)
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_eth1_bridge_not_applied(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    # deposit is not finalized yet, so it is postponed
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=1,
+    ))
+    # set deposit_requests_start_index to something high
+    state.deposit_requests_start_index = 100000000000000000
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_no_eth1_bridge_pending(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    # there is no pending eth1 bridge deposits
+    # state.eth1_deposit_index == state.deposit_requests_start_index
+    state.deposit_requests_start_index = state.eth1_deposit_index
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=withdrawal_credentials,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # all pending deposits processed
+    assert len(state.pending_deposits) == 0
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_not_finalized(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    # set slot to something not finalized
+    # deposit is not finalized yet, so it is postponed
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=spec.get_current_epoch(state) + 1,
+    ))
+    # skip the bridge validation
+    state.deposit_requests_start_index = 0
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_process_pending_deposits_limit_is_reached(spec, state):
+    amount = 5000
+    cumulative_amount = 0
+    # set pending deposits to the maximum
+    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING+1):
+        wc = state.validators[i].withdrawal_credentials
+        pd = build_pending_deposit(spec, i,
+                                   amount=amount,
+                                   withdrawal_credentials=wc,
+                                   signed=True)
+        state.pending_deposits.append(pd)
+        cumulative_amount += amount
+    # churn limit was not reached
+    assert cumulative_amount < spec.get_activation_exit_churn_limit(state)
+    yield from run_process_pending_deposits(spec, state)
+    # no deposits above limit were processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_validator_withdrawn(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    compounding_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    # advance the state
+    next_epoch_via_block(spec, state)
+    state.validators[index].withdrawal_credentials = withdrawal_credentials
+    previous_epoch = spec.get_current_epoch(state) - 1
+    # set validator to be exited by current epoch
+    state.validators[index].exit_epoch = previous_epoch
+    # set validator to be withdrawable by current epoch
+    state.validators[index].withdrawable_epoch = previous_epoch
+    # set withdrawal credentials to compounding but should not switch since
+    # validator is already withdrawing
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=compounding_credentials,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    # skip the bridge validation
+    state.deposit_requests_start_index = 0
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+    # reset balance for assert
+    state.balances[0] = 0
+    old_validator_count = len(state.validators)
+    yield from run_process_pending_deposits(spec, state)
+    btc = state.deposit_balance_to_consume
+    # deposit_balance_to_consume was reset to 0
+    assert btc == 0
+    # deposit was processed
+    assert state.pending_deposits == []
+    # balance increases because of withdraw
+    assert state.balances[0] == amount
+    # churn limit was not reached
+    assert not amount > spec.get_activation_exit_churn_limit(state)
+    # validator count should stay the same
+    assert len(state.validators) == old_validator_count
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_validator_exiting_but_not_withdrawn(spec, state):
+    amount = spec.MIN_ACTIVATION_BALANCE
+    hash = spec.hash(state.validators[0].pubkey)[1:]
+    withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + hash
+    # advance the state
+    next_epoch_via_block(spec, state)
+    state.validators[0].withdrawal_credentials = withdrawal_credentials
+    # set validator to be withdrawable by current epoch
+    state.validators[0].exit_epoch = spec.get_current_epoch(state) - 1
+    state.validators[0].withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+    state.pending_deposits.append(spec.PendingDeposit(
+        pubkey=state.validators[0].pubkey,
+        withdrawal_credentials=state.validators[0].withdrawal_credentials,
+        amount=amount,
+        slot=spec.GENESIS_SLOT,
+    ))
+    # skip the bridge validation
+    state.deposit_requests_start_index = 0
+    # set deposit_balance_to_consume to some initial amount
+    state.deposit_balance_to_consume = amount
+
+    yield from run_process_pending_deposits(spec, state)
+    # deposit_balance_to_consume was reset to 0
+    assert state.deposit_balance_to_consume == 0
+    # deposit was postponed and not processed
+    assert len(state.pending_deposits) == 1
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_deposit_not_in_validator_set(spec, state):
+    index = 2000
+    amount = spec.MIN_ACTIVATION_BALANCE
+    wc = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+
+    state.pending_deposits.append(pd)
+    old_length = len(state.validators)
+    yield from run_process_pending_deposits(spec, state)
+    # new validator activated
+    assert len(state.validators) == old_length + 1
 
 
 @with_electra_and_later
@@ -25,7 +365,7 @@ def test_pending_deposit_min_activation_balance(spec, state):
     yield from run_process_pending_deposits(spec, state)
 
     assert state.balances[index] == pre_balance + amount
-    # No leftover deposit balance to consume when there are no deposits left to process
+    # No leftover deposit balance to consume
     assert state.deposit_balance_to_consume == 0
     assert state.pending_deposits == []
 
@@ -49,6 +389,105 @@ def test_pending_deposit_balance_equal_churn(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_pending_deposit_balance_equal_churn_with_compounding(spec, state):
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    compounding_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    amount = spec.get_activation_exit_churn_limit(state)
+    state.validators[index].withdrawal_credentials = withdrawal_credentials
+
+    # set withdrawal credentials to compounding but should not switch since
+    # validator is already withdrawing
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=compounding_credentials,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    pre_balance = state.balances[index]
+
+    yield from run_process_pending_deposits(spec, state)
+
+    assert state.balances[index] == pre_balance + amount
+    assert state.deposit_balance_to_consume == 0
+    assert state.pending_deposits == []
+    current_credentials = state.validators[0].withdrawal_credentials
+    # validator is not exited, so it should not switch to compounding
+    assert current_credentials == withdrawal_credentials
+
+
+@with_electra_and_later
+@spec_state_test
+def test_top_up__zero_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    val = state.validators[validator_index]
+    val.effective_balance = initial_effective_balance
+    wc = val.withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+    deposits_len = len(state.pending_deposits)
+    assert state.pending_deposits[deposits_len - 1].amount == amount
+    # unchanged effective balance
+    assert val.effective_balance == initial_effective_balance
+
+
+@with_electra_and_later
+@spec_state_test
+def test_incorrect_sig_top_up(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    val = state.validators[validator_index]
+    wc = val.withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=False)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_incorrect_withdrawal_credentials_top_up(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+
+    initial_balance = 0
+    initial_effective_balance = 0
+    state.balances[validator_index] = initial_balance
+    val = state.validators[validator_index]
+    val.effective_balance = initial_effective_balance
+    wc = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
+
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_deposit_balance_above_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state) + 1
@@ -62,13 +501,55 @@ def test_pending_deposit_balance_above_churn(spec, state):
     # deposit was above churn, balance hasn't changed
     assert state.balances[index] == pre_balance
     # deposit balance to consume is the full churn limit
-    assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(
-        state
-    )
+    wantedBalanceToConsume = spec.get_activation_exit_churn_limit(state)
+    assert state.deposit_balance_to_consume == wantedBalanceToConsume
     # deposit is still in the queue
     assert state.pending_deposits == [
         build_pending_deposit_top_up(spec, state, index, amount)
     ]
+
+
+@with_electra_and_later
+@spec_state_test
+def test_top_up__max_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    wc = state.validators[validator_index].withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
+    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+
+    yield from run_process_pending_deposits(spec, state)
+
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_top_up__less_effective_balance(spec, state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    wc = state.validators[validator_index].withdrawal_credentials
+    pd = build_pending_deposit(spec, validator_index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
+    initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.balances[validator_index] = initial_balance
+    state.validators[validator_index].effective_balance = initial_effective_balance
+
+    yield from run_process_pending_deposits(spec, state)
+
+    # unchanged effective balance
+    assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
 @with_electra_and_later
@@ -86,7 +567,7 @@ def test_pending_deposit_preexisting_churn(spec, state):
 
     # balance was deposited correctly
     assert state.balances[index] == pre_balance + amount
-    # No leftover deposit balance to consume when there are no deposits left to process
+    # No leftover deposit balance to consume
     assert state.deposit_balance_to_consume == 0
     # queue emptied
     assert state.pending_deposits == []
@@ -97,10 +578,12 @@ def test_pending_deposit_preexisting_churn(spec, state):
 def test_multiple_pending_deposits_below_churn(spec, state):
     amount = 10**9
     state.pending_deposits.append(
-        build_pending_deposit_top_up(spec, state, validator_index=0, amount=amount)
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=0, amount=amount)
     )
     state.pending_deposits.append(
-        build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount)
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=1, amount=amount)
     )
     pre_balances = state.balances.copy()
 
@@ -108,7 +591,7 @@ def test_multiple_pending_deposits_below_churn(spec, state):
 
     for i in [0, 1]:
         assert state.balances[i] == pre_balances[i] + amount
-    # No leftover deposit balance to consume when there are no deposits left to process
+    # No leftover deposit balance to consume
     assert state.deposit_balance_to_consume == 0
     assert state.pending_deposits == []
 
@@ -120,7 +603,8 @@ def test_multiple_pending_deposits_above_churn(spec, state):
     amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
     for i in [0, 1, 2]:
         state.pending_deposits.append(
-            build_pending_deposit_top_up(spec, state, validator_index=i, amount=amount)
+            build_pending_deposit_top_up(spec, state,
+                                         validator_index=i, amount=amount)
         )
     pre_balances = state.balances.copy()
 
@@ -137,7 +621,8 @@ def test_multiple_pending_deposits_above_churn(spec, state):
     )
     # third deposit is still in the queue
     assert state.pending_deposits == [
-        build_pending_deposit_top_up(spec, state, validator_index=2, amount=amount)
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=2, amount=amount)
     ]
 
 
@@ -146,7 +631,10 @@ def test_multiple_pending_deposits_above_churn(spec, state):
 def test_skipped_deposit_exiting_validator(spec, state):
     index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
-    state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=index, amount=amount))
+    state.pending_deposits.append(
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=index, amount=amount)
+    )
     pre_pending_deposits = state.pending_deposits.copy()
     pre_balance = state.balances[index]
     # Initiate the validator's exit
@@ -156,7 +644,7 @@ def test_skipped_deposit_exiting_validator(spec, state):
 
     # Deposit is skipped because validator is exiting
     assert state.balances[index] == pre_balance
-    # All deposits either processed or postponed, no leftover deposit balance to consume
+    # All deposits either processed or postponed
     assert state.deposit_balance_to_consume == 0
     # The deposit is still in the queue
     assert state.pending_deposits == pre_pending_deposits
@@ -168,7 +656,10 @@ def test_multiple_skipped_deposits_exiting_validators(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     for i in [0, 1, 2]:
         # Append pending deposit for validator i
-        state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=i, amount=amount))
+        state.pending_deposits.append(
+            build_pending_deposit_top_up(spec, state,
+                                         validator_index=i, amount=amount)
+        )
 
         # Initiate the exit of validator i
         spec.initiate_validator_exit(state, i)
@@ -190,7 +681,10 @@ def test_multiple_skipped_deposits_exiting_validators(spec, state):
 def test_multiple_pending_one_skipped(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     for i in [0, 1, 2]:
-        state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=i, amount=amount))
+        state.pending_deposits.append(
+            build_pending_deposit_top_up(spec, state,
+                                         validator_index=i, amount=amount)
+        )
     pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
@@ -201,10 +695,13 @@ def test_multiple_pending_one_skipped(spec, state):
     for i in [0, 2]:
         assert state.balances[i] == pre_balances[i] + amount
     assert state.balances[1] == pre_balances[1]
-    # All deposits either processed or postponed, no leftover deposit balance to consume
+    # All deposits either processed or postponed
     assert state.deposit_balance_to_consume == 0
     # second deposit is still in the queue
-    assert state.pending_deposits == [build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount)]
+    assert state.pending_deposits == [
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=1, amount=amount)
+    ]
 
 
 @with_electra_and_later
@@ -214,8 +711,16 @@ def test_mixture_of_skipped_and_above_churn(spec, state):
     amount2 = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     # First two validators have small deposit, third validators a large one
     for i in [0, 1]:
-        state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=i, amount=amount01))
-    state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=2, amount=amount2))
+        state.pending_deposits.append(
+            build_pending_deposit_top_up(spec, state,
+                                         validator_index=i,
+                                         amount=amount01)
+        )
+    state.pending_deposits.append(
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=2,
+                                     amount=amount2)
+    )
     pre_balances = state.balances.copy()
     # Initiate the second validator's exit
     spec.initiate_validator_exit(state, 1)
@@ -228,11 +733,16 @@ def test_mixture_of_skipped_and_above_churn(spec, state):
     for i in [1, 2]:
         assert state.balances[i] == pre_balances[i]
     # First deposit consumes some deposit balance
-    # Deposit balance to consume is not reset because third deposit is not processed
-    assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state) - amount01
-    # second and third deposit still in the queue, but second is appended at the end
-    assert state.pending_deposits == [build_pending_deposit_top_up(spec, state, validator_index=2, amount=amount2),
-                                      build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount01)]
+    # Deposit is not processed
+    wanted_balance = spec.get_activation_exit_churn_limit(state) - amount01
+    assert state.deposit_balance_to_consume == wanted_balance
+    # second and third deposit still in the queue
+    assert state.pending_deposits == [
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=2, amount=amount2),
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=1, amount=amount01)
+    ]
 
 
 @with_electra_and_later
@@ -240,42 +750,189 @@ def test_mixture_of_skipped_and_above_churn(spec, state):
 def test_processing_deposit_of_withdrawable_validator(spec, state):
     index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
-    state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=index, amount=amount))
+    state.pending_deposits.append(
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=index,
+                                     amount=amount)
+    )
     pre_balance = state.balances[index]
     # Initiate the validator's exit
     spec.initiate_validator_exit(state, index)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
-    state.slot = spec.SLOTS_PER_EPOCH * (state.validators[index].withdrawable_epoch + 1)
+    withdrawable_epoch = state.validators[index].withdrawable_epoch
+    state.slot = spec.SLOTS_PER_EPOCH * (withdrawable_epoch + 1)
 
     yield from run_process_pending_deposits(spec, state)
 
     # Deposit is correctly processed
     assert state.balances[index] == pre_balance + amount
-    # No leftover deposit balance to consume when there are no deposits left to process
+    # No leftover deposit balance to consume
     assert state.deposit_balance_to_consume == 0
     assert state.pending_deposits == []
 
 
 @with_electra_and_later
 @spec_state_test
-def test_processing_deposit_of_withdrawable_validator_does_not_get_churned(spec, state):
+def test_processing_deposit_of_withdrawable_validator_not_churned(spec, state):
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     for i in [0, 1]:
-        state.pending_deposits.append(build_pending_deposit_top_up(spec, state, validator_index=i, amount=amount))
+        state.pending_deposits.append(
+            build_pending_deposit_top_up(spec, state,
+                                         validator_index=i, amount=amount)
+        )
     pre_balances = state.balances.copy()
     # Initiate the first validator's exit
     spec.initiate_validator_exit(state, 0)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
-    state.slot = spec.SLOTS_PER_EPOCH * (state.validators[0].withdrawable_epoch + 1)
+    withdraw_epoch = state.validators[0].withdrawable_epoch
+    state.slot = spec.SLOTS_PER_EPOCH * (withdraw_epoch + 1)
     # Don't use run_epoch_processing_with to avoid penalties being applied
     yield 'pre', state
     spec.process_pending_deposits(state)
     yield 'post', state
-    # First deposit is processed though above churn limit, because validator is withdrawable
+    # First deposit is processed though above churn limit
     assert state.balances[0] == pre_balances[0] + amount
     # Second deposit is not processed because above churn
     assert state.balances[1] == pre_balances[1]
-    # Second deposit is not processed, so there's leftover deposit balance to consume.
+    # Second deposit is not processed
     # First deposit does not consume any.
-    assert state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state)
-    assert state.pending_deposits == [build_pending_deposit_top_up(spec, state, validator_index=1, amount=amount)]
+    wanted_limit = spec.get_activation_exit_churn_limit(state)
+    assert state.deposit_balance_to_consume == wanted_limit
+    assert state.pending_deposits == [
+        build_pending_deposit_top_up(spec, state,
+                                     validator_index=1, amount=amount)
+    ]
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_correct_sig_but_forked_state(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    # deposits will always be valid, regardless of the current fork
+    state.fork.current_version = spec.Version('0x1234abcd')
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_key_validate_invalid_subgroup(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey = b'\x00' * 48
+
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkey)[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               pubkey=pubkey,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_key_validate_invalid_decompression(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = 'c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkey)[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               pubkey=pubkey,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_previous_fork_version(spec, state):
+    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
+    assert state.fork.previous_version != state.fork.current_version
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=state.fork.previous_version,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_genesis_fork_version(spec, state):
+    assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
+
+    assert state.fork.previous_version != state.fork.current_version
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=spec.GENESIS_FORK_VERSION,
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_with_bad_fork_version(spec, state):
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    index = 0
+    withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX +
+        spec.hash(pubkeys[index])[1:]
+    )
+    wc = withdrawal_credentials
+    pd = build_pending_deposit(spec, index,
+                               amount=amount,
+                               withdrawal_credentials=wc,
+                               fork_version=spec.Version('0xAaBbCcDd'),
+                               signed=True)
+    state.pending_deposits.append(pd)
+    yield from run_process_pending_deposits(spec, state)

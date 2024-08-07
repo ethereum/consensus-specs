@@ -23,23 +23,26 @@ def mock_deposit(spec, state, index):
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
 
-def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=False):
+def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, fork_version, signed=False):
     deposit_data = spec.DepositData(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         amount=amount,
     )
     if signed:
-        sign_deposit_data(spec, deposit_data, privkey)
+        sign_deposit_data(spec, deposit_data, privkey, fork_version)
     return deposit_data
 
 
-def sign_deposit_data(spec, deposit_data, privkey):
+def sign_deposit_data(spec, deposit_data, privkey, fork_version):
     deposit_message = spec.DepositMessage(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount)
-    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    if fork_version is not None:
+        domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=fork_version)
+    else:
+        domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
     signing_root = spec.compute_signing_root(deposit_message, domain)
     deposit_data.signature = bls.Sign(privkey, signing_root)
 
@@ -234,6 +237,44 @@ def build_pending_deposit_top_up(spec, state, validator_index, amount, slot=None
         signature=bls.G2_POINT_AT_INFINITY,
         slot=slot,
     )
+
+
+def build_pending_deposit(spec, validator_index, amount,
+                          index=None,
+                          pubkey=None,
+                          privkey=None,
+                          withdrawal_credentials=None,
+                          fork_version=None,
+                          slot=None,
+                          signed=False):
+    if index is None:
+        index = validator_index
+
+    if pubkey is None:
+        pubkey = pubkeys[validator_index]
+
+    if privkey is None:
+        privkey = privkeys[validator_index]
+
+    if slot is None:
+        slot = spec.GENESIS_SLOT
+
+    pending_deposit = spec.PendingDeposit(
+        pubkey=pubkeys[index],
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        slot=slot,
+    )
+    if signed:
+        deposit_data = build_deposit_data(spec,
+                                          pubkeys[index],
+                                          privkeys[index],
+                                          amount,
+                                          withdrawal_credentials,
+                                          fork_version,
+                                          signed=True)
+        pending_deposit.signature = deposit_data.signature
+    return pending_deposit
 
 #
 # Run processing
