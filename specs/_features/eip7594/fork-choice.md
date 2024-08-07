@@ -51,7 +51,7 @@ def get_head(store: Store) -> Root:
         # Get available children for the current slot
         children = [
             root for (root, block) in blocks.items()
-            if block.parent_root == head and is_data_available(root):
+            if block.parent_root == head and is_data_available(root)
         ]
         if len(children) == 0:
             return head
