@@ -18,11 +18,11 @@
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
-  - [Helper functions](#helper-functions)
-    - [`get_custody_columns`](#get_custody_columns)
-    - [`compute_extended_matrix`](#compute_extended_matrix)
-    - [`recover_matrix`](#recover_matrix)
-    - [`get_data_column_sidecars`](#get_data_column_sidecars)
+- [Helper functions](#helper-functions)
+  - [`get_custody_columns`](#get_custody_columns)
+  - [`compute_extended_matrix`](#compute_extended_matrix)
+  - [`recover_matrix`](#recover_matrix)
+  - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
   - [Public, deterministic selection](#public-deterministic-selection)
@@ -101,9 +101,9 @@ class MatrixEntry(Container):
     row_index: RowIndex
 ```
 
-### Helper functions
+## Helper functions
 
-#### `get_custody_columns`
+### `get_custody_columns`
 
 ```python
 def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
@@ -133,7 +133,7 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     ])
 ```
 
-#### `compute_extended_matrix`
+### `compute_extended_matrix`
 
 ```python
 def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX]:
@@ -156,7 +156,7 @@ def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELL
     return extended_matrix
 ```
 
-#### `recover_matrix`
+### `recover_matrix`
 
 ```python
 def recover_matrix(partial_matrix: Sequence[MatrixEntry],
@@ -183,7 +183,7 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
     return extended_matrix
 ```
 
-#### `get_data_column_sidecars`
+### `get_data_column_sidecars`
 
 ```python
 def get_data_column_sidecars(signed_block: SignedBeaconBlock,

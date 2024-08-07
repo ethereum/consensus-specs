@@ -8,8 +8,9 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-  - [Helper functions](#helper-functions)
-    - [`get_extended_sample_count`](#get_extended_sample_count)
+- [Introduction](#introduction)
+- [Helper functions](#helper-functions)
+  - [`get_extended_sample_count`](#get_extended_sample_count)
 - [Peer discovery](#peer-discovery)
 - [Peer sampling](#peer-sampling)
   - [Sample selection](#sample-selection)
@@ -20,11 +21,13 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
+## Introduction
+
 The purpose of this document is to complement [EIP-7594 -- Data Availability Sampling Core](das-core.md), by specifying the peer sampling functionality of the full PeerDAS protocol. This functionality may initially not be implemented, or only implemented by some clients, in which case it is replaced by [subnet sampling](das-core.md#subnet-sampling), an extension of the custody component of the protocol.
 
-### Helper functions
+## Helper functions
 
-#### `get_extended_sample_count`
+### `get_extended_sample_count`
 
 ```python
 def get_extended_sample_count(allowed_failures: uint64) -> uint64:

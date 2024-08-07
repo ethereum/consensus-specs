@@ -6,9 +6,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Helpers](#helpers)
-    - [Modified `is_data_available`](#modified-is_data_available)
-    - [Modified `get_head`](#modified-get_head)
+- [Helpers](#helpers)
+  - [Modified `is_data_available`](#modified-is_data_available)
+  - [Modified `get_head`](#modified-get_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 
@@ -19,9 +19,9 @@
 
 This is the modification of the fork choice accompanying EIP-7594.
 
-### Helpers
+## Helpers
 
-#### Modified `is_data_available`
+### Modified `is_data_available`
 
 ```python
 def is_data_available(beacon_block_root: Root) -> bool:
@@ -37,7 +37,7 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-#### Modified `get_head`
+### Modified `get_head`
 
 *Note*: children of the current `head` are required to be available in order to be considered by the fork-choice.
 
