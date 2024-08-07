@@ -283,12 +283,12 @@ def test_pending_consolidation_compounding_creds(spec, state):
         == spec.COMPOUNDING_WITHDRAWAL_PREFIX
     )
     assert state.balances[target_index] == expected_target_balance
-    # All source balance is active and moved to the target, 
+    # All source balance is active and moved to the target,
     # because the source validator has compounding credentials
     assert state.balances[source_index] == 0
     assert state.pending_consolidations == []
 
-    # Pending balance deposit to the target is not created, 
+    # Pending balance deposit to the target is not created,
     # because the target already has compounding credentials
     assert len(state.pending_balance_deposits) == 0
 
