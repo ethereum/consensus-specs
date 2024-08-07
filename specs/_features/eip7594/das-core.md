@@ -26,6 +26,7 @@
     - [`get_extended_sample_count`](#get_extended_sample_count)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
+  - [Validator custody](#validator-custody)
   - [Public, deterministic selection](#public-deterministic-selection)
 - [Peer discovery](#peer-discovery)
 - [Extended data](#extended-data)
