@@ -23,7 +23,7 @@
 
 ## Introduction
 
-The purpose of this document is to complement [EIP-7594 -- Data Availability Sampling Core](das-core.md), by specifying the peer sampling functionality of the full PeerDAS protocol. This functionality may initially not be implemented, or only implemented by some clients, in which case it is replaced by [subnet sampling](das-core.md#subnet-sampling), an extension of the custody component of the protocol.
+The purpose of this document is to complement [EIP-7594 -- Data Availability Sampling Core](das-core.md) by specifying the peer sampling functionality of the full PeerDAS protocol. Initially, this functionality may not be implemented by all clients. In such cases, it is replaced by [subnet sampling](das-core.md#subnet-sampling), which is an extension of the custody component of the protocol.
 
 ## Helper functions
 
