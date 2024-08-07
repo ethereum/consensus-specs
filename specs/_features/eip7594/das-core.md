@@ -194,21 +194,18 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry],
 #### `get_data_column_sidecars`
 
 ```python
-def get_data_column_sidecars(signed_block: SignedBeaconBlock,
+def get_data_column_sidecars(signed_block_header: SignedBeaconBlockHeader,
+                             blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+                             kzg_commitments_inclusion_proof: Sequence[Bytes32],
                              cells_and_kzg_proofs: Sequence[Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
     """
-    Given a signed block and the cells/proofs associated with each blob in the
-    block, assemble the sidecars which can be distributed to peers.
+    Given a signed block header, the blob KZG commitments, the KZG commitments inclusion proof,
+    and the cells/proofs associated with each blob in the block, assemble the sidecars which can be
+    distributed to peers.
     """
-    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
     assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
-    signed_block_header = compute_signed_block_header(signed_block)
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
-    )
 
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
