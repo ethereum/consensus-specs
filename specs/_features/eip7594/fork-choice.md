@@ -27,7 +27,7 @@ This is the modification of the fork choice accompanying EIP-7594.
 def is_data_available(beacon_block_root: Root) -> bool:
     # `retrieve_column_sidecars` is implementation and context dependent, replacing
     # `retrieve_blobs_and_proofs`. For the given block root, it returns all column 
-    # sidecars to custody, or raises an exception if they are not available. 
+    # sidecars to sample, or raises an exception if they are not available. 
     # The p2p network does not guarantee sidecar retrieval outside of 
     # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
