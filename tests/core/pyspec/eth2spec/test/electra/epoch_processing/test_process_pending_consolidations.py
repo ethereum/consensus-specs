@@ -233,7 +233,8 @@ def test_pending_consolidation_future_epoch(spec, state):
     assert state.balances[source_index] == expected_source_balance
     assert state.pending_consolidations == []
 
-    # Pending balance deposit to the target is created
+    # Pending balance deposit to the target is created as part of `switch_to_compounding_validator`.
+    # The excess balance to queue are the rewards accumulated over the previous epoch transitions.
     expected_pending_balance = state_before_consolidation.balances[target_index] - spec.MIN_ACTIVATION_BALANCE
     assert len(state.pending_balance_deposits) > 0
     pending_balance_deposit = state.pending_balance_deposits[len(state.pending_balance_deposits) - 1]
@@ -282,10 +283,13 @@ def test_pending_consolidation_compounding_creds(spec, state):
         == spec.COMPOUNDING_WITHDRAWAL_PREFIX
     )
     assert state.balances[target_index] == expected_target_balance
+    # All source balance is active and moved to the target, 
+    # because the source validator has compounding credentials
     assert state.balances[source_index] == 0
     assert state.pending_consolidations == []
 
-    # Pending balance deposit to the target is not created
+    # Pending balance deposit to the target is not created, 
+    # because the target already has compounding credentials
     assert len(state.pending_balance_deposits) == 0
 
 
@@ -337,7 +341,8 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     assert state.balances[source_index] == 0
     assert state.pending_consolidations == []
 
-    # Pending balance deposit to the source was not processed
+    # Pending balance deposit to the source was not processed.
+    # It should only be processed in the next epoch transition
     assert len(state.pending_balance_deposits) == 1
     assert state.pending_balance_deposits[0] == spec.PendingBalanceDeposit(
         index=source_index, amount=spec.MIN_ACTIVATION_BALANCE)
