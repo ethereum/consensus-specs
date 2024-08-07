@@ -8,13 +8,9 @@
 - [Introduction](#introduction)
   - [Helpers](#helpers)
     - [Modified `is_data_available`](#modified-is_data_available)
-    - [New `is_chain_available`](#new-is_chain_available)
     - [Modified `get_head`](#modified-get_head)
-    - [New `is_peer_sampling_required`](#new-is_peer_sampling_required)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
-    - [Pull-up tip helpers](#pull-up-tip-helpers)
-      - [Modified `compute_pulled_up_tip`](#modified-compute_pulled_up_tip)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -29,8 +25,11 @@ This is the modification of the fork choice accompanying EIP-7594.
 
 ```python
 def is_data_available(beacon_block_root: Root) -> bool:
-    # `retrieve_column_sidecars` is implementation and context dependent, replacing `retrieve_blobs_and_proofs`.
-    # For the given block root, it returns all column sidecars to custody, or raises an exception if they are not available. # The p2p network does not guarantee sidecar retrieval outside of `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
+    # `retrieve_column_sidecars` is implementation and context dependent, replacing
+    # `retrieve_blobs_and_proofs`. For the given block root, it returns all column 
+    # sidecars to custody, or raises an exception if they are not available. 
+    # The p2p network does not guarantee sidecar retrieval outside of 
+    # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
     return all(
         verify_data_column_sidecar_kzg_proofs(column_sidecar)
@@ -68,7 +67,8 @@ def get_head(store: Store) -> Root:
 
 ### Modified `on_block`
 
-*Note*: The blob data availability check is removed.
+*Note*: The blob data availability check is removed. We import blocks regardless
+of their availability status, and move all filtering to the fork-choice (`get_head`).
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
