@@ -154,13 +154,13 @@ This topic is used to propagate signed payload attestation message.
 
 The following validations MUST pass before forwarding the `payload_attestation_message` on the network, assuming the alias `data = payload_attestation_message.data`:
 
-- _[IGNORE]_ `data.slot` is the current slot. 
-- _[REJECT]_ `data.payload_status < PAYLOAD_INVALID_STATUS`
-- _[IGNORE]_ the `payload_attestation_message` is the first valid payload attestation message received from the validator index.
-- _[IGNORE]_ The attestation's `data.beacon_block_root` has been seen (via both gossip and non-gossip sources) (a client MAY queue attestation for processing once the block is retrieved. Note a client might want to request payload after).
-_ _[REJECT]_ The beacon block with root `data.beacon_block_root` passes validation. 
-- _[REJECT]_ The validator index is within the payload committee in `get_ptc(state, data.slot)`. For the current's slot head state. 
-- _[REJECT]_ The signature of `payload_attestation_message.signature` is valid with respect to the validator index.
+- _[IGNORE]_ The message's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`. 
+- _[REJECT]_ The message's payload status is a valid status, i.e. `data.payload_status < PAYLOAD_INVALID_STATUS`. 
+- _[IGNORE]_ The `payload_attestation_message` is the first valid message received from the validator with index `payload_attestation_message.validate_index`. 
+- _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via both gossip and non-gossip sources) (a client MAY queue attestation for processing once the block is retrieved. Note a client might want to request payload after). 
+- _[REJECT]_ The message's block `data.beacon_block_root` passes validation. 
+- _[REJECT]_ The message's validator index is within the payload committee in `get_ptc(state, data.slot)`. The `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice. 
+- _[REJECT]_ The message's signature of `payload_attestation_message.signature` is valid with respect to the validator index. 
     
 ###### `execution_payload_header`
 
