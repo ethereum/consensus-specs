@@ -22,6 +22,8 @@ def get_process_calls(spec):
         'charge_confirmed_header_fees',  # sharding
         'reset_pending_headers',  # sharding
         'process_eth1_data_reset',
+        'process_pending_balance_deposits',  # electra
+        'process_pending_consolidations',  # electra
         'process_effective_balance_updates',
         'process_slashings_reset',
         'process_randao_mixes_reset',
@@ -72,3 +74,9 @@ def run_epoch_processing_with(spec, state, process_name: str):
     yield 'pre', state
     getattr(spec, process_name)(state)
     yield 'post', state
+
+
+def compute_state_by_epoch_processing_to(spec, state, process_name: str):
+    state_copy = state.copy()
+    run_epoch_processing_to(spec, state_copy, process_name)
+    return state_copy
