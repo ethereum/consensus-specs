@@ -8,7 +8,6 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `is_data_available`](#modified-is_data_available)
-  - [Modified `get_head`](#modified-get_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 
@@ -37,35 +36,11 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-### Modified `get_head`
-
-*Note*: children of the current `head` are required to be available in order to be considered by the fork-choice.
-
-```python
-def get_head(store: Store) -> Root:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_block_tree(store)
-    # Execute the LMD-GHOST fork choice
-    head = store.justified_checkpoint.root
-    while True:
-        # Get available children for the current slot
-        children = [
-            root for (root, block) in blocks.items()
-            if block.parent_root == head and is_data_available(root)
-        ]
-        if len(children) == 0:
-            return head
-        # Sort by latest attesting balance with ties broken lexicographically
-        # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda root: (get_weight(store, root), root))
-```
-
 ## Updated fork-choice handlers
 
 ### Modified `on_block`
 
-*Note*: The blob data availability check is removed. We import blocks regardless
-of their availability status, and move all filtering to the fork-choice (`get_head`).
+*Note*: The only modification is that `is_data_available` does not take `blob_kzg_commitments` as input.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -90,6 +65,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         store.finalized_checkpoint.epoch,
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
+
+    # [Modified in EIP7594]
+    assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state
     block_root = hash_tree_root(block)
