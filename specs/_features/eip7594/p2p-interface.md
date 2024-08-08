@@ -39,19 +39,18 @@
 
 ### Preset
 
-| Name | Value | Description |
-| - | - | - |
+| Name                                    | Value                                                                                     | Description                                                       |
+|-----------------------------------------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
-
 
 ### Configuration
 
-*[New in Deneb:EIP4844]*
+*[New in EIP7594]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars  |
+| Name                                           | Value                                          | Description                                                               |
+|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -180,8 +179,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version` | Chunk SSZ type |
-| - | - |
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
@@ -228,9 +227,9 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `EIP7594_FORK_VERSION`   | `eip7594.DataColumnSidecar` |
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
 ```
@@ -323,6 +322,6 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 
 A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key   | Value                                    |
-|:------|:-----------------------------------------|
-| `csc` | Custody subnet count, big endian integer |
+| Key    | Value                                    |
+|--------|------------------------------------------|
+| `csc`  | Custody subnet count, big endian integer |
