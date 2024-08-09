@@ -970,7 +970,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state, block.body.execution_payload_envelope.execution_payload)  # [Modified in Electra:EIP7251:EIP????]
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110:EIP????]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Electra:EIP6110:EIP7002:EIP7549:EIP7251]
@@ -1075,11 +1075,11 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` and `ExecutionPayloadEnveloped` types.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
-    payload = body.execution_payload_envelope.execution_payload
+    payload = body.execution_payload_envelope.execution_payload   # [Modified in EIP????]
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
     assert payload.parent_hash == state.latest_execution_payload_header.block_hash
