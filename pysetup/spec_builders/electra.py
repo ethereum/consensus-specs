@@ -12,12 +12,10 @@ class ElectraSpecBuilder(BaseSpecBuilder):
 from eth2spec.deneb import {preset_name} as deneb
 '''
 
-## TODO: deal with changed gindices
-
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {
-            'FINALIZED_ROOT_GINDEX': 'GeneralizedIndex(169)',
-            'CURRENT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(86)',
-            'NEXT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(87)',
+            'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(169)',
+            'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(86)',
+            'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(87)',
         }

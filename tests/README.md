@@ -121,7 +121,7 @@ of return values. Here we add two values, the string `'pre'` and the initial sta
 ```
 
 The state contains the last block, which is necessary for building up the next block (every block needs to
-have the hash of the previous one in a blockchain).
+have the root of the previous one in a blockchain).
 
 ```python
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -291,8 +291,8 @@ not execute EVM programs or store user data. It exists to provide a secure sourc
 information about the latest verified block hash of the execution layer.
 
 For every slot a validator is randomly selected as the proposer. The proposer proposes a block
-for the current head of the consensus layer chain (built on the previous block). That block 
-includes the hash of the proposed new head of the execution layer.
+for the current head of the consensus layer chain (built on the previous block). That block
+includes the block hash of the proposed new head of the execution layer.
 
 For every slot there is also a randomly selected committee of validators that needs to vote whether
 the new consensus layer block is valid, which requires the proposed head of the execution chain to

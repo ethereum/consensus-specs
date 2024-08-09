@@ -111,21 +111,22 @@ def test_construct_vanishing_polynomial(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_kzg_proof(spec):
-    blob = get_sample_blob(spec)
-    commitment = spec.blob_to_kzg_commitment(blob)
-    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
-
-    cell_index = 0
-    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
-    cell_index = 1
-    assert spec.verify_cell_kzg_proof(commitment, cell_index, cells[cell_index], proofs[cell_index])
+def test_verify_cell_kzg_proof_batch_zero_cells(spec):
+    # Verify with zero cells should return true
+    assert spec.verify_cell_kzg_proof_batch(
+        commitments_bytes=[],
+        cell_indices=[],
+        cells=[],
+        proofs_bytes=[],
+    )
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch(spec):
+
+    # test with a single blob / commitment
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
@@ -133,11 +134,97 @@ def test_verify_cell_kzg_proof_batch(spec):
     assert len(cells) == len(proofs)
 
     assert spec.verify_cell_kzg_proof_batch(
-        row_commitments_bytes=[commitment],
-        row_indices=[0, 0],
-        column_indices=[0, 4],
+        commitments_bytes=[commitment, commitment],
+        cell_indices=[0, 4],
         cells=[cells[0], cells[4]],
         proofs_bytes=[proofs[0], proofs[4]],
+    )
+
+    # now test with three blobs / commitments
+    all_blobs = []
+    all_commitments = []
+    all_cells = []
+    all_proofs = []
+    for _ in range(3):
+        blob = get_sample_blob(spec)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
+
+        assert len(cells) == len(proofs)
+
+        all_blobs.append(blob)
+        all_commitments.append(commitment)
+        all_cells.append(cells)
+        all_proofs.append(proofs)
+
+    # the cells of interest
+    commitment_indices = [0, 0, 1, 2, 1]
+    cell_indices = [0, 4, 0, 1, 2]
+    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    commitments = [all_commitments[i] for i in commitment_indices]
+
+    # do the check
+    assert spec.verify_cell_kzg_proof_batch(
+        commitments_bytes=commitments,
+        cell_indices=cell_indices,
+        cells=cells,
+        proofs_bytes=proofs,
+    )
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_verify_cell_kzg_proof_batch_invalid(spec):
+
+    # test with a single blob / commitment
+    blob = get_sample_blob(spec)
+    commitment = spec.blob_to_kzg_commitment(blob)
+    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
+
+    assert len(cells) == len(proofs)
+
+    assert not spec.verify_cell_kzg_proof_batch(
+        commitments_bytes=[commitment, commitment],
+        cell_indices=[0, 4],
+        cells=[cells[0], cells[5]],  # Note: this is where it should go wrong
+        proofs_bytes=[proofs[0], proofs[4]],
+    )
+
+    # now test with three blobs / commitments
+    all_blobs = []
+    all_commitments = []
+    all_cells = []
+    all_proofs = []
+    for _ in range(3):
+        blob = get_sample_blob(spec)
+        commitment = spec.blob_to_kzg_commitment(blob)
+        cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
+
+        assert len(cells) == len(proofs)
+
+        all_blobs.append(blob)
+        all_commitments.append(commitment)
+        all_cells.append(cells)
+        all_proofs.append(proofs)
+
+    # the cells of interest
+    commitment_indices = [0, 0, 1, 2, 1]
+    cell_indices = [0, 4, 0, 1, 2]
+    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    commitments = [all_commitments[i] for i in commitment_indices]
+
+    # let's change one of the cells. Then it should not verify
+    cells[1] = all_cells[1][3]
+
+    # do the check
+    assert not spec.verify_cell_kzg_proof_batch(
+        commitments_bytes=commitments,
+        cell_indices=cell_indices,
+        cells=cells,
+        proofs_bytes=proofs,
     )
 
 
@@ -164,12 +251,11 @@ def test_recover_cells_and_kzg_proofs(spec):
         while j in cell_indices:
             j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
         cell_indices.append(j)
-    # Now the cells/proofs themselves
+    # Now the cells themselves
     known_cells = [cells[cell_index] for cell_index in cell_indices]
-    known_proofs = [proofs[cell_index] for cell_index in cell_indices]
 
     # Recover the missing cells and proofs
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells, known_proofs)
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells)
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
