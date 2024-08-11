@@ -26,9 +26,14 @@ Execution payload data is updated to account for the Electra upgrade.
 ```python
 def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
     epoch = compute_epoch_at_slot(block.message.slot)
-
+    
     if epoch >= CAPELLA_FORK_EPOCH:
-        payload = block.message.body.execution_payload
+        # [New in Electra:EIP6110:EIP7002:EIP7251:EIP????]
+        if epoch >= ELECTRA_FORK_EPOCH:
+            payload = block.message.body.execution_payload_envelope.execution_payload
+        else:
+            payload = block.message.body.execution_payload
+
         execution_header = ExecutionPayloadHeader(
             parent_hash=payload.parent_hash,
             fee_recipient=payload.fee_recipient,
@@ -50,11 +55,12 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             execution_header.blob_gas_used = payload.blob_gas_used
             execution_header.excess_blob_gas = payload.excess_blob_gas
 
-        # [New in Electra:EIP6110:EIP7002:EIP7251]
+        # [New in Electra:EIP6110:EIP7002:EIP7251:EIP????]
         if epoch >= ELECTRA_FORK_EPOCH:
-            execution_header.deposit_requests_root = hash_tree_root(payload.deposit_requests)
-            execution_header.withdrawal_requests_root = hash_tree_root(payload.withdrawal_requests)
-            execution_header.consolidation_requests_root = hash_tree_root(payload.consolidation_requests)
+            requests = block.message.body.execution_payload_envelope.requests
+            execution_header.deposit_requests_root = hash_tree_root(requests.deposit_requests)
+            execution_header.withdrawal_requests_root = hash_tree_root(requests.withdrawal_requests)
+            execution_header.consolidation_requests_root = hash_tree_root(requests.consolidation_requests)
 
         execution_branch = ExecutionBranch(
             compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX))
