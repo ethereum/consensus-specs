@@ -18,4 +18,5 @@ from eth2spec.deneb import {preset_name} as deneb
             'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(169)',
             'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(86)',
             'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(87)',
+            'EXECUTION_PAYLOAD_GINDEX': 'GeneralizedIndex(50)',
         }
