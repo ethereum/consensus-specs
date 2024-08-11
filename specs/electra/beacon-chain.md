@@ -356,11 +356,6 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
-    # [New in Electra:EIP7002:EIP7251]
-    withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    # [New in Electra:EIP7251]
-    consolidation_requests: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
 ```
 
 #### `ExecutionPayloadHeader`
