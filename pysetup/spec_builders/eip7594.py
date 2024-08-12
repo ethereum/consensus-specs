@@ -12,6 +12,15 @@ class EIP7594SpecBuilder(BaseSpecBuilder):
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
 '''
+    
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return """
+def retrieve_column_sidecars(beacon_block_root: Root,
+                             require_peer_sampling: bool) -> Sequence[DataColumnSidecar]:
+    return []
+"""
 
     @classmethod
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
@@ -27,3 +36,4 @@ from eth2spec.deneb import {preset_name} as deneb
         return {
             'KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH'].value,
         }
+

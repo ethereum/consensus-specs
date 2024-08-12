@@ -75,15 +75,17 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `32` | The number of data column sidecar subnets used in the gossipsub protocol |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `128` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
 | Name | Value | Description |
 | - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
-| `CUSTODY_REQUIREMENT` | `1` | Minimum number of subnets an honest node custodies and serves samples from |
-| `TARGET_NUMBER_OF_PEERS` | `70` | Suggested minimum peer count |
+| `SAMPLES_PER_SLOT` | `16` | Number of `DataColumnSidecar` random samples a node queries per slot |
+| `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
+| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
+| `TARGET_NUMBER_OF_PEERS` | `100` | Suggested minimum peer count |
 
 ### Containers
 
@@ -273,7 +275,16 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
 
 ### Custody requirement
 
-Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
+Each node *without attached validators* downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. A node with validators attached downloads and custodies a higher minimum of subnets per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` subnets per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `DATA_COLUMN_SIDECAR_SUBNET_COUNT`.
+
+```python
+def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
+    total_node_balance = sum(state.balances[index] for index in validator_indices)
+    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET
+    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+```
+
+The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
 A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_subnet_count: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
 
