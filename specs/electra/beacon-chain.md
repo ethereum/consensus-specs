@@ -381,9 +381,7 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    deposit_requests_root: Root  # [New in Electra:EIP6110]
-    withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
-    consolidation_requests_root: Root  # [New in Electra:EIP7251]
+    requests_root: Root  # [New in Electra:EIP6110:EIP7002:EIP7251]
 ```
 
 #### `BeaconState`
@@ -1112,9 +1110,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        deposit_requests_root=hash_tree_root(payload.deposit_requests),  # [New in Electra:EIP6110]
-        withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
-        consolidation_requests_root=hash_tree_root(payload.consolidation_requests),  # [New in Electra:EIP7251]
+        requests_root=hash_tree_root(body.execution_payload_envelope.requests),  # [New in Electra:EIP6110:EIP7002:EIP7251]
     )
 ```
 
