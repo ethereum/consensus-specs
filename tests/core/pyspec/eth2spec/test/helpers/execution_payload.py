@@ -7,12 +7,7 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
-from eth2spec.test.helpers.forks import (
-    is_post_capella,
-    is_post_deneb,
-    is_post_electra,
-    is_post_eip7732,
-)
+from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb, is_post_eip7732
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -201,7 +196,6 @@ def compute_el_block_hash(spec, payload, pre_state):
 
     withdrawals_trie_root = None
     parent_beacon_block_root = None
-    requests_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
