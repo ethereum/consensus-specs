@@ -41,10 +41,6 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ## Constants
 
-| Name | Value |
-| - | - |
-| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload_envelope', 'execution_payload')` (= 50) |
-
 ### Frozen constants
 
 Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol.md#constants) values.
