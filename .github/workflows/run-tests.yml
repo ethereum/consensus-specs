@@ -54,7 +54,7 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.
+        uses: actions/checkout@v4
       - name: Setup Rust for dependencies
         uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Setup Python
