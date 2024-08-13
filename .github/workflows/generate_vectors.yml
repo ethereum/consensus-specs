@@ -32,7 +32,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12.5'
+          python-version: '3.12.4'
           cache: ''
       - name: Clean up Spec Repository
         run: |
