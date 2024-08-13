@@ -1,5 +1,5 @@
 # Rename the build stage from 'base' to 'builder' for clarification and code readability
-FROM python:3.11.0-slim-bullseye as builder
+FROM python:3.12.5-slim-bullseye as builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     WORKDIR=/consensus-specs  \
