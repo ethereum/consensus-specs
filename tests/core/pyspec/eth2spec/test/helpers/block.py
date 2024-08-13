@@ -127,9 +127,9 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     if is_post_electra(spec):
-        empty_block.body.requests.deposit_requests = []
-        empty_block.body.requests.withdrawal_requests = []
-        empty_block.body.requests.consolidation_requests = []
+        empty_block.body.requests.deposits = []
+        empty_block.body.requests.withdrawals = []
+        empty_block.body.requests.consolidations = []
 
     if is_post_whisk(spec):
         # Whisk opening proof

@@ -30,7 +30,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
-    - [`ValidatorRequests`](#validatorrequests)
+    - [`ExecutionLayerRequests`](#executionlayerrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -256,13 +256,16 @@ class PendingConsolidation(Container):
     target_index: ValidatorIndex
 ```
 
-#### `ValidatorRequests`
+#### `ExecutionLayerRequests`
+
+*Note*: This container contains request from the execution layer that are received in the Execution Payload via
+Engine API. These requests are required for CL state transition (see **BeaconBlockBody**).
 
 ```python
-class ValidatorRequests(Container):
-    deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
-    withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
-    consolidation_requests: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+class ExecutionLayerRequests(Container):
+    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
+    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 ### Modified Containers
@@ -293,7 +296,7 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: ValidatorRequests # [New in Electra:EIP????]
+    requests: ExecutionLayerRequests # [New in Electra]
 ```
 
 ### Extended Containers
@@ -921,8 +924,8 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawals(state, block.body.execution_payload)  # [Modified in Electra:EIP7251:EIP????]
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110:EIP????]
+    process_withdrawals(state, block.body.execution_payload)  # [Modified in Electra:EIP7251]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Electra:EIP6110]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in Electra:EIP6110:EIP7002:EIP7549:EIP7251]
@@ -1048,11 +1051,11 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)  # [Modified in Electra:EIP7251]
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    for_ops(body.requests.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110:EIP????]
-    # [New in Electra:EIP7002:EIP7251:EIP????]
-    for_ops(body.requests.withdrawal_requests, process_withdrawal_request)
-    # [New in Electra:EIP7251:EIP????]
-    for_ops(body.requests.consolidation_requests, process_consolidation_request)
+    for_ops(body.requests.deposits, process_deposit_request)  # [New in Electra:EIP6110]
+    # [New in Electra:EIP7002:EIP7251]
+    for_ops(body.requests.withdrawals, process_withdrawal_request)
+    # [New in Electra:EIP7251]
+    for_ops(body.requests.consolidations, process_consolidation_request)
 ```
 
 ##### Attestations
