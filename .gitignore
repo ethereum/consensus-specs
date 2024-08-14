@@ -25,6 +25,7 @@ tests/core/pyspec/eth2spec/electra/
 tests/core/pyspec/eth2spec/whisk/
 tests/core/pyspec/eth2spec/eip7594/
 tests/core/pyspec/eth2spec/eip6800/
+tests/core/pyspec/eth2spec/eip7732/
 
 # coverage reports
 .htmlcov

@@ -8,6 +8,7 @@ ELECTRA = 'electra'
 EIP7594 = 'eip7594'
 EIP6800 = 'eip6800'
 WHISK = 'whisk'
+EIP7732 = 'eip7732'
 
 
 # The helper functions that are used when defining constants

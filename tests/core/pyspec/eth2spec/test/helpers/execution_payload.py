@@ -3,16 +3,31 @@ from trie import HexaryTrie
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
+from eth2spec.test.helpers.keys import privkeys
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_electra,
+    is_post_eip7732,
 )
 
 
 def get_execution_payload_header(spec, execution_payload):
+    if is_post_eip7732(spec):
+        return spec.ExecutionPayloadHeader(
+            parent_block_hash=execution_payload.parent_hash,
+            parent_block_root=spec.Root(),  # TODO: Fix this
+            block_hash=execution_payload.block_hash,
+            gas_limit=execution_payload.gas_limit,
+            builder_index=spec.ValidatorIndex(0),  # TODO: Fix this
+            slot=spec.Slot(0),  # TODO: Fix this
+            value=spec.Gwei(0),  # TODO: Fix this
+            blob_kzg_commitments_root=spec.Root()  # TODO: Fix this
+        )
+
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
         fee_recipient=execution_payload.fee_recipient,
@@ -64,6 +79,9 @@ def compute_el_header_block_hash(spec,
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
+    if is_post_eip7732(spec):
+        return spec.Hash32()
+
     execution_payload_header_rlp = [
         # parent_hash
         (Binary(32, 32), payload_header.parent_hash),
@@ -218,6 +236,34 @@ def compute_el_block_hash(spec, payload, pre_state):
     )
 
 
+def build_empty_post_eip7732_execution_payload_header(spec, state):
+    if not is_post_eip7732(spec):
+        return
+    parent_block_root = hash_tree_root(state.latest_block_header)
+    return spec.ExecutionPayloadHeader(
+        parent_block_hash=state.latest_block_hash,
+        parent_block_root=parent_block_root,
+        block_hash=spec.Hash32(),
+        gas_limit=spec.uint64(0),
+        builder_index=spec.ValidatorIndex(0),
+        slot=state.slot,
+        value=spec.Gwei(0),
+        blob_kzg_commitments_root=spec.Root()
+    )
+
+
+def build_empty_signed_execution_payload_header(spec, state):
+    if not is_post_eip7732(spec):
+        return
+    message = build_empty_post_eip7732_execution_payload_header(spec, state)
+    privkey = privkeys[0]
+    signature = spec.get_execution_payload_header_signature(state, message, privkey)
+    return spec.SignedExecutionPayloadHeader(
+        message=message,
+        signature=signature,
+    )
+
+
 def build_empty_execution_payload(spec, state, randao_mix=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
@@ -232,18 +278,19 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     payload = spec.ExecutionPayload(
         parent_hash=latest.block_hash,
         fee_recipient=spec.ExecutionAddress(),
-        state_root=latest.state_root,  # no changes to the state
         receipts_root=spec.Bytes32(bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        block_number=latest.block_number + 1,
         prev_randao=randao_mix,
-        gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
         transactions=empty_txs,
     )
+    if not is_post_eip7732(spec):
+        payload.state_root = latest.state_root  # no changes to the state
+        payload.block_number = latest.block_number + 1
+        payload.gas_limit = latest.gas_limit  # retain same limit
+        payload.base_fee_per_gas = latest.base_fee_per_gas  # retain same base_fee
     if is_post_capella(spec):
         payload.withdrawals = get_expected_withdrawals(spec, state)
     if is_post_deneb(spec):
