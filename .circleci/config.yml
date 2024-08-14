@@ -63,12 +63,12 @@ jobs:
       - image: cimg/python:3.12.4
     working_directory: ~/specs-repo
     steps:
-#      # Restore git repo at point close to target branch/revision, to speed up checkout
-#      - restore_cache:
-#          keys:
-#            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-#            - v3-specs-repo-{{ .Branch }}-
-#            - v3-specs-repo-
+      # Restore git repo at point close to target branch/revision, to speed up checkout
+      - restore_cache:
+          keys:
+            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+            - v3-specs-repo-{{ .Branch }}-
+            - v3-specs-repo-
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
@@ -86,6 +86,7 @@ jobs:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
+      - checkout
       - run:
           name: Install pyspec requirements
           command: make install_test
