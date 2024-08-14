@@ -75,7 +75,7 @@ jobs:
           command: git gc
       # Save the git checkout as a cache, to make cloning next time faster.
       - save_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}-date "+%Y/%m/%d"
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}"
           paths:
             - ~/specs-repo
   install_pyspec_test:
