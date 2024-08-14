@@ -88,6 +88,12 @@ jobs:
       - restore_pyspec_cached_venv
       - checkout
       - run:
+          name:  pwd
+          command: pwd
+      - run:
+          name: ls contents
+          command: ls
+      - run:
           name: Install pyspec requirements
           command: make install_test
       - save_pyspec_cached_venv
