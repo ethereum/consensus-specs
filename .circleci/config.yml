@@ -66,9 +66,9 @@ jobs:
       # Restore git repo at point close to target branch/revision, to speed up checkout
       - restore_cache:
           keys:
-            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}-date "+%Y/%m/%d"
-            - v3-specs-repo-{{ .Branch }}-date "+%Y/%m/%d"
-            - v3-specs-repo-date "+%Y/%m/%d"
+            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}"
+            - v3-specs-repo-{{ .Branch }}"
+            - v3-specs-repo-date"
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
@@ -83,19 +83,23 @@ jobs:
       - image: cimg/python:3.12.4
     working_directory: ~/specs-repo
     steps:
+      - restore_cache:
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}"
+      - restore_pyspec_cached_venv
       - checkout
-#      - run:
-#          name:  pwd
-#          command: cd venv/bin && pwd && ls -l
-#      - run:
-#          name: call python3
-#          command: /home/circleci/specs-repo/venv/bin/python3 --help
+      - run:
+          name:  pwd
+          command: cd venv/bin && pwd && ls -l
+      - run:
+          name: call python3
+          command: /home/circleci/specs-repo/venv/bin/python3 --help
       - run:
           name: call py3
           command: python3 -m venv venv && . venv/bin/activate
       - run:
           name: Install pyspec requirements
           command: make install_test
+      - save_pyspec_cached_venv
   test-phase0:
     docker:
       - image: cimg/python:3.12.4
