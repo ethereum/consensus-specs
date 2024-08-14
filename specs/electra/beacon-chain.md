@@ -71,6 +71,7 @@
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
+    - [Modified `process_slashings`](#modified-process_slashings)
     - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
