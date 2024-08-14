@@ -65,6 +65,8 @@ def test_invalid_proposer_index(spec, state):
 def test_invalid_parent_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     block.parent_root = b'\12' * 32  # invalid prev root
+    if is_post_bellatrix(spec):
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     yield from run_block_header_processing(spec, state, block, valid=False)
 
@@ -81,6 +83,8 @@ def test_invalid_multiple_blocks_single_slot(spec, state):
 
     child_block = block.copy()
     child_block.parent_root = block.hash_tree_root()
+    if is_post_bellatrix(spec):
+        child_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, child_block)
 
     yield from run_block_header_processing(spec, state, child_block, prepare_state=False, valid=False)
 
