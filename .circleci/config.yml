@@ -92,7 +92,7 @@ jobs:
           command: cd venv/bin && pwd && ls -l
       - run:
           name: call python3
-          command: /home/circleci/specs-repo/venv/bin/python3 --help
+          command: rm -rf ~/specs-repo
       - run:
           name: call py3
           command: python3 -m venv venv && . venv/bin/activate
