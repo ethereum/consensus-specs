@@ -64,7 +64,7 @@ def compute_trie_root_from_indexed_data(data):
     t = HexaryTrie(db={})
     for i, obj in enumerate(data):
         k = encode(i, big_endian_int)
-        t.set(k, obj)
+        t.set(k, obj)  # Implicitly skipped if `obj == b''` (invalid RLP)
     return t.root_hash
 
 
@@ -359,4 +359,4 @@ def build_state_with_execution_payload_header(spec, state, execution_payload_hea
 
 
 def get_random_tx(rng):
-    return get_random_bytes_list(rng, rng.randint(0, 1000))
+    return get_random_bytes_list(rng, rng.randint(1, 1000))
