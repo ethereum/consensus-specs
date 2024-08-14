@@ -89,13 +89,13 @@ jobs:
       - checkout
       - run:
           name:  pwd
-          command: cd venv && pwd && ls
+          command: cd venv/bin && pwd && ls
       - run:
           name: call python3
           command: which python3
       - run:
           name: call py3
-          command: python3 -m venv venv && . venv/bin/activate && which python3
+          command: python3 -m venv venv && . venv/bin/activate
       - run:
           name: Install pyspec requirements
           command: make install_test
