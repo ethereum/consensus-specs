@@ -88,15 +88,15 @@ jobs:
       - restore_pyspec_cached_venv
       - checkout
       - run:
-          name:  pwd
-          command: cd venv/bin && pwd && ls -l
+          name: call python3
+          command: rm -rf ~/specs-repo
+      - save_pyspec_cached_venv
       - run:
           name: call py3
           command: python3 -m venv venv && . venv/bin/activate
       - run:
           name: Install pyspec requirements
           command: make install_test
-      - save_pyspec_cached_venv
   test-phase0:
     docker:
       - image: cimg/python:3.12.4
