@@ -89,7 +89,7 @@ jobs:
       - checkout
       - run:
           name: call python3
-          command: rm -rf ~/specs-repo
+          command: rm -rf ~/specs-repo/venv
       - save_pyspec_cached_venv
       - run:
           name: call py3
