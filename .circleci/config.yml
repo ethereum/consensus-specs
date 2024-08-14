@@ -86,13 +86,9 @@ jobs:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}"
       - restore_pyspec_cached_venv
-      - checkout
-      - run:
-          name: call py3
-          command: python3 -m venv venv && . venv/bin/activate
       - run:
           name: Install pyspec requirements
-          command: make install_test
+          command: make install_test && make preinstallation
       - save_pyspec_cached_venv
   test-phase0:
     docker:
