@@ -66,16 +66,16 @@ jobs:
       # Restore git repo at point close to target branch/revision, to speed up checkout
       - restore_cache:
           keys:
-            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-            - v3-specs-repo-{{ .Branch }}-
-            - v3-specs-repo-
+            - v3-specs-repo-{{ .Branch }}-{{ .Revision }}-date "+%Y/%m/%d"
+            - v3-specs-repo-{{ .Branch }}-date "+%Y/%m/%d"
+            - v3-specs-repo-date "+%Y/%m/%d"
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
           command: git gc
       # Save the git checkout as a cache, to make cloning next time faster.
       - save_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}-date "+%Y/%m/%d"
           paths:
             - ~/specs-repo
   install_pyspec_test:
@@ -84,7 +84,7 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}-date "+%Y/%m/%d"
       - restore_pyspec_cached_venv
       - checkout
       - run:
