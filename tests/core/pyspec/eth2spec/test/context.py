@@ -429,6 +429,13 @@ def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     return decorator
 
 
+def with_all_phases_from_except(earliest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+
+
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
