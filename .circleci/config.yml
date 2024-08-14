@@ -84,12 +84,12 @@ jobs:
     working_directory: ~/specs-repo
     steps:
       - checkout
-      - run:
-          name:  pwd
-          command: cd venv/bin && pwd && ls -l
-      - run:
-          name: call python3
-          command: /home/circleci/specs-repo/venv/bin/python3 --help
+#      - run:
+#          name:  pwd
+#          command: cd venv/bin && pwd && ls -l
+#      - run:
+#          name: call python3
+#          command: /home/circleci/specs-repo/venv/bin/python3 --help
       - run:
           name: call py3
           command: python3 -m venv venv && . venv/bin/activate
