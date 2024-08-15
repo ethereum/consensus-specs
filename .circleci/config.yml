@@ -221,10 +221,6 @@ jobs:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
-          name: Clear venv
-          command: rm -rf /home/circleci/specs-repo/venv
-      - save_cached_venv
-      - run:
           name: Run linter for pyspec
           command: make lint
       - run:
