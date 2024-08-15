@@ -17,6 +17,7 @@ def test_invariants(spec):
     assert spec.config.NUMBER_OF_COLUMNS % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT == 0
     assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
         spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.NUMBER_OF_COLUMNS
+    )
 
 
 @with_eip7594_and_later
