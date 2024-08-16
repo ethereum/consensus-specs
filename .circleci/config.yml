@@ -80,7 +80,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: ethpandaops/circleci-python-rust:3.12.4
+      - image: ethpandaops/circleci-python-rust:latest
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
