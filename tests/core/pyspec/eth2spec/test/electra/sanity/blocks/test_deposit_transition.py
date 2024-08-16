@@ -38,7 +38,7 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
     # Check that deposits are applied
     if valid:
         expected_pubkeys = [d.data.pubkey for d in block.body.deposits]
-        deposit_requests = block.body.requests.deposits
+        deposit_requests = block.body.execution_requests.deposits
         expected_pubkeys = expected_pubkeys + [d.pubkey for d in deposit_requests if (d.pubkey not in top_up_keys)]
         actual_pubkeys = [v.pubkey for v in state.validators[len(state.validators) - len(expected_pubkeys):]]
 
@@ -102,7 +102,7 @@ def prepare_state_and_block(spec,
 
     # Assign deposits and deposit requests
     block.body.deposits = deposits
-    block.body.requests.deposits = deposit_requests
+    block.body.execution_requests.deposits = deposit_requests
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     return state, block
@@ -120,7 +120,7 @@ def test_deposit_transition__start_index_is_set(spec, state):
     yield from run_deposit_transition_block(spec, state, block)
 
     # deposit_requests_start_index must be set to the index of the first request
-    assert state.deposit_requests_start_index == block.body.requests.deposits[0].index
+    assert state.deposit_requests_start_index == block.body.execution_requests.deposits[0].index
 
 
 @with_phases([ELECTRA])
@@ -219,7 +219,7 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
 
     # Artificially assign deposit's pubkey to a deposit request of the same block
     top_up_keys = [block.body.deposits[0].data.pubkey]
-    block.body.requests.deposits[0].pubkey = top_up_keys[0]
+    block.body.execution_requests.deposits[0].pubkey = top_up_keys[0]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     pre_pending_deposits = len(state.pending_balance_deposits)
@@ -229,5 +229,5 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # Check the top up
     assert len(state.pending_balance_deposits) == pre_pending_deposits + 2
     assert state.pending_balance_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
-    amount_from_deposit = block.body.requests.deposits[0].amount
+    amount_from_deposit = block.body.execution_requests.deposits[0].amount
     assert state.pending_balance_deposits[pre_pending_deposits + 1].amount == amount_from_deposit

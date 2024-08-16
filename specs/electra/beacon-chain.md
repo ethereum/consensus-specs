@@ -296,7 +296,7 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: ExecutionLayerRequests  # [New in Electra]
+    execution_requests: ExecutionLayerRequests  # [New in Electra]
 ```
 
 ### Extended Containers
@@ -1026,9 +1026,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)  # [Modified in Electra:EIP7251]
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    for_ops(body.requests.deposits, process_deposit_request)  # [New in Electra:EIP6110]
-    for_ops(body.requests.withdrawals, process_withdrawal_request)  # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.requests.consolidations, process_consolidation_request)  # [New in Electra:EIP7251]
+    for_ops(body.execution_requests.deposits, process_deposit_request)  # [New in Electra:EIP6110]
+    for_ops(body.execution_requests.withdrawals, process_withdrawal_request)  # [New in Electra:EIP7002:EIP7251]
+    for_ops(body.execution_requests.consolidations, process_consolidation_request)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations
