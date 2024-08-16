@@ -257,8 +257,9 @@ class PendingConsolidation(Container):
 
 #### `ExecutionLayerRequests`
 
-*Note*: This container contains request from the execution layer that are received in the Execution Payload via
-Engine API. These requests are required for CL state transition (see **BeaconBlockBody**).
+*Note*: This container holds requests from the execution layer that are received in [
+`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
+the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
 
 ```python
 class ExecutionLayerRequests(Container):
@@ -1026,10 +1027,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.requests.deposits, process_deposit_request)  # [New in Electra:EIP6110]
-    # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.requests.withdrawals, process_withdrawal_request)
-    # [New in Electra:EIP7251]
-    for_ops(body.requests.consolidations, process_consolidation_request)
+    for_ops(body.requests.withdrawals, process_withdrawal_request)  # [New in Electra:EIP7002:EIP7251]
+    for_ops(body.requests.consolidations, process_consolidation_request)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations
