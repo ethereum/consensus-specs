@@ -42,9 +42,9 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 *[New in EIP-7732]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_PAYLOADS`   | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          | Description                                                       |
+|------------------------|----------------|-------------------------------------------------------------------|
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
 
 
 ### Containers
