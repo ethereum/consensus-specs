@@ -23,7 +23,7 @@ This document contains the consensus-layer networking specification for EIP7732.
       - [BeaconBlocksByRange v3](#beaconblocksbyrange-v3)
       - [BeaconBlocksByRoot v3](#beaconblocksbyroot-v3)
       - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
-      - [ExecutionPayloadEnvelopeByRoot v1](#executionpayloadenvelopebyroot-v1)
+      - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -36,6 +36,14 @@ This document contains the consensus-layer networking specification for EIP7732.
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
+
+### Configuration
+
+*[Modified in EIP-7732]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `MAX_REQUEST_PAYLOADS`   | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
 
 
 ### Containers
@@ -225,9 +233,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
 
 
-##### ExecutionPayloadEnvelopeByRoot v1
+##### ExecutionPayloadEnvelopesByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelope_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -241,7 +249,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_PAYLOAD]
+  List[Root, MAX_REQUEST_PAYLOADS]
 )
 ```
 
@@ -249,14 +257,14 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOAD]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
-Requests execution payload envelope by `signed_execution_payload_envelope.message.block_root`. The response is a list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the number of requested execution payload envelopes. It may be less in the case that the responding peer is missing payload envelopes.
+Requests execution payload envelopes by `signed_execution_payload_envelope.message.block_root`. The response is a list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the number of requested execution payload envelopes. It may be less in the case that the responding peer is missing payload envelopes.
 
-No more than `MAX_REQUEST_PAYLOAD` may be requested at a time.
+No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
-ExecutionPayloadEnvelopeByRoot is primarily used to recover recent execution payload envelope (e.g. when receiving a payload attestation with revealed status as true but never received a payload).
+ExecutionPayloadEnvelopesByRoot is primarily used to recover recent execution payload envelopes (e.g. when receiving a payload attestation with revealed status as true but never received a payload).
 
 The request MUST be encoded as an SSZ-field.
 
