@@ -7,6 +7,7 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 - [Modification in EIP-7732](#modification-in-eip-7732)
   - [Preset](#preset)
+  - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
     - [Helpers](#helpers)
