@@ -40,7 +40,7 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 ### Configuration
 
-*[Modified in EIP-7732]*
+*[New in EIP-7732]*
 
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
