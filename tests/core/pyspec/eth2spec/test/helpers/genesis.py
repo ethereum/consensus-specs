@@ -12,6 +12,7 @@ from eth2spec.test.helpers.forks import (
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
 
+
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
     withdrawal_pubkey = pubkeys[-1 - i]

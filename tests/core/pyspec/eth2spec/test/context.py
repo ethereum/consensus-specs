@@ -8,7 +8,7 @@ from eth2spec.utils import bls
 from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
-    EIP7594,
+    EIP7594, EIP7732,
     WHISK,
     MINIMAL,
     ALL_PHASES,
@@ -422,7 +422,8 @@ def with_all_phases(fn):
 
 def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
-    A decorator factory for running a tests with every phase except the ones listed
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    excluding the ones listed.
     """
     def decorator(fn):
         return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
@@ -434,6 +435,30 @@ def with_all_phases_from_except(earliest_phase, except_phases=None):
     A decorator factory for running a tests with every phase except the ones listed
     """
     return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+
+
+def with_all_phases_from_to(earliest_phase, latest_phase, all_phases=ALL_PHASES):
+    """
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    and ending at `latest_phase` excluding the ones listed.
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in all_phases if
+                            is_post_fork(phase, earliest_phase) and not
+                            is_post_fork(phase, latest_phase)])(fn)
+    return decorator
+
+
+def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    and ending at `latest_phase` excluding the ones listed.
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in ALL_PHASES if phase not in except_phases and
+                            is_post_fork(phase, earliest_phase) and not
+                            is_post_fork(phase, latest_phase)])(fn)
+    return decorator
 
 
 def with_all_phases_except(exclusion_phases):
@@ -559,6 +584,8 @@ with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+with_deneb_and_before_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
 
 
 class quoted_str(str):
