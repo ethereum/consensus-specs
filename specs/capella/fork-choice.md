@@ -75,8 +75,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
-    # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -92,7 +90,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
-    state = pre_state.copy()
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
