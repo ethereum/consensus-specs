@@ -1,7 +1,9 @@
 import random
 from eth2spec.test.context import (
+    expect_assertion_error,
     spec_test,
     single_phase,
+    with_config_overrides,
     with_eip7594_and_later,
 )
 from eth2spec.test.helpers.sharding import (
@@ -17,15 +19,15 @@ def chunks(lst, n):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_compute_extended_matrix(spec):
+def test_compute_matrix(spec):
     rng = random.Random(5566)
 
     blob_count = 2
     input_blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
-    extended_matrix = spec.compute_extended_matrix(input_blobs)
-    assert len(extended_matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
+    matrix = spec.compute_matrix(input_blobs)
+    assert len(matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
 
-    rows = chunks(extended_matrix, spec.CELLS_PER_EXT_BLOB)
+    rows = chunks(matrix, spec.CELLS_PER_EXT_BLOB)
     assert len(rows) == blob_count
     for row in rows:
         assert len(row) == spec.CELLS_PER_EXT_BLOB
@@ -51,11 +53,11 @@ def test_recover_matrix(spec):
     # Compute an extended matrix with two blobs
     blob_count = 2
     blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
-    extended_matrix = spec.compute_extended_matrix(blobs)
+    matrix = spec.compute_matrix(blobs)
 
     # Construct a matrix with some entries missing
     partial_matrix = []
-    for blob_entries in chunks(extended_matrix, spec.CELLS_PER_EXT_BLOB):
+    for blob_entries in chunks(matrix, spec.CELLS_PER_EXT_BLOB):
         rng.shuffle(blob_entries)
         partial_matrix.extend(blob_entries[:N_SAMPLES])
 
@@ -63,4 +65,81 @@ def test_recover_matrix(spec):
     recovered_matrix = spec.recover_matrix(partial_matrix, blob_count)
 
     # Ensure that the recovered matrix matches the original matrix
-    assert recovered_matrix == extended_matrix
+    assert recovered_matrix == matrix
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__1(spec):
+    rng = random.Random(1111)
+    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
+    spec.get_extended_sample_count(allowed_failures)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__2(spec):
+    rng = random.Random(2222)
+    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
+    spec.get_extended_sample_count(allowed_failures)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__3(spec):
+    rng = random.Random(3333)
+    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
+    spec.get_extended_sample_count(allowed_failures)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__lower_bound(spec):
+    allowed_failures = 0
+    spec.get_extended_sample_count(allowed_failures)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__upper_bound(spec):
+    allowed_failures = spec.config.NUMBER_OF_COLUMNS // 2
+    spec.get_extended_sample_count(allowed_failures)
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_get_extended_sample_count__upper_bound_exceed(spec):
+    allowed_failures = spec.config.NUMBER_OF_COLUMNS // 2 + 1
+    expect_assertion_error(lambda: spec.get_extended_sample_count(allowed_failures))
+
+
+@with_eip7594_and_later
+@spec_test
+@with_config_overrides({
+    'NUMBER_OF_COLUMNS': 128,
+    'SAMPLES_PER_SLOT': 16,
+})
+@single_phase
+def test_get_extended_sample_count__table_in_spec(spec):
+    table = dict(
+        # (allowed_failures, expected_extended_sample_count)
+        {
+            0: 16,
+            1: 20,
+            2: 24,
+            3: 27,
+            4: 29,
+            5: 32,
+            6: 35,
+            7: 37,
+            8: 40,
+        }
+    )
+    for allowed_failures, expected_extended_sample_count in table.items():
+        assert spec.get_extended_sample_count(allowed_failures=allowed_failures) == expected_extended_sample_count

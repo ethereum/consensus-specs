@@ -1,6 +1,6 @@
 # Test format: Recover cells and KZG proofs
 
-Recover all cells/proofs given at least 50% of the original `cells` and `proofs`.
+Recover all cells/proofs given at least 50% of the original `cells`.
 
 ## Test case format
 
@@ -21,4 +21,4 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 
 ## Condition
 
-The `recover_cells_and_kzg_proofs` handler should recover missing cells and proofs, and the result should match the expected `output`. If any cell is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element), any proof is invalid (e.g. not on the curve or not in the G1 subgroup of the BLS curve), or any `cell_index` is invalid (e.g. greater than the number of cells for an extended blob), it should error, i.e. the output should be `null`.
+The `recover_cells_and_kzg_proofs` handler should recover missing cells and proofs, and the result should match the expected `output`. If any cell is invalid (e.g. incorrect length or one of the 32-byte blocks does not represent a BLS field element), or any `cell_index` is invalid (e.g. greater than the number of cells for an extended blob), it should error, i.e. the output should be `null`.
