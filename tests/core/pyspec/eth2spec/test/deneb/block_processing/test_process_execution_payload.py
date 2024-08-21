@@ -76,7 +76,7 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
 
     if not valid:
         if is_post_eip7732(spec):
-            expect_assertion_error(lambda: spec.process_execution_payload(state, signed_envelope, body, TestEngine()))
+            expect_assertion_error(lambda: spec.process_execution_payload(state, signed_envelope, TestEngine()))
         else:
             expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
         yield 'post', None

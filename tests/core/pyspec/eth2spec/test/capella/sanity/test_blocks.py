@@ -1,6 +1,6 @@
 import random
 from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_eip7732
 from eth2spec.test.context import (
     with_capella_and_later,
     with_capella_until_eip7732,

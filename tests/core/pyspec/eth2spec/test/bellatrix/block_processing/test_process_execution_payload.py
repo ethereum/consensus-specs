@@ -102,7 +102,7 @@ def run_success_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_success_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
@@ -110,7 +110,7 @@ def test_success_first_payload(spec, state):
     yield from run_success_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_success_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -126,14 +126,14 @@ def run_gap_slot_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_success_first_payload_with_gap_slot(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_gap_slot_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_success_regular_payload_with_gap_slot(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -148,14 +148,14 @@ def run_bad_execution_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_invalid_bad_execution_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_invalid_bad_execution_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)

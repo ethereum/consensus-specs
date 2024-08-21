@@ -10,6 +10,7 @@ from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.genesis import (
     get_sample_genesis_execution_payload_header,
 )
@@ -72,6 +73,10 @@ def test_initialize_pre_transition_empty_payload(spec):
     # initialize beacon_state *with* an *empty* execution_payload_header
     yield 'execution_payload_header', 'meta', True
     execution_payload_header = spec.ExecutionPayloadHeader()
+    if is_post_eip7732(spec):
+        kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        execution_payload_header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
     state = spec.initialize_beacon_state_from_eth1(
         eth1_block_hash,
         eth1_timestamp,
