@@ -85,7 +85,6 @@ jobs:
     steps:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      #- restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
           command: make install_test
