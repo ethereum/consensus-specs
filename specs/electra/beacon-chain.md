@@ -909,9 +909,9 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 @dataclass
 class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
-    execution_requests: ExecutionLayerRequests
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
+    execution_requests: ExecutionLayerRequests  # [New in Electra]
 ```
 
 ### Block processing
@@ -1067,7 +1067,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
-        excess_blob_gas=payload.excess_blob_gas
+        excess_blob_gas=payload.excess_blob_gas,
     )
 ```
 
