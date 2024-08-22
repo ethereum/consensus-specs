@@ -123,8 +123,8 @@ def upgrade_to_eip7594(pre: electra.BeaconState) -> BeaconState:
         historical_summaries=pre.historical_summaries,
         # On-chain deposits
         deposit_requests_start_index=pre.deposit_requests_start_index,
-        deposit_balance_to_consume=pre.deposit_balance_to_consume,
         # Consolidations
+        deposit_balance_to_consume=pre.deposit_balance_to_consume,
         exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
