@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
           venv_path: ./venv
   restore_deposit_contract_tester_cached_venv:
@@ -80,7 +80,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: ethpandaops/circleci-python-rust:latest
+      - image: cimg/python:3.12.4
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -88,7 +88,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
-          command: make install_test && make preinstallation
+          command: make install_test
       - save_pyspec_cached_venv
   test-phase0:
     docker:
