@@ -18,6 +18,7 @@ from eth2spec.deneb import {preset_name} as deneb
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:
+    # pylint: disable=unused-argument
     return []
 """
 
