@@ -15,6 +15,7 @@ The specification of these changes continues in the same format as the network s
     - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
       - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+    - [Attestation subnets](#attestation-subnets)
       - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -48,6 +49,8 @@ The following convenience variables are re-defined
 The following validations are added:
 * [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
 * [REJECT] `aggregate.data.index == 0`
+
+#### Attestation subnets
 
 ##### `beacon_attestation_{subnet_id}`
 

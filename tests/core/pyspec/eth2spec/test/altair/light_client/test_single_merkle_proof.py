@@ -3,6 +3,11 @@ from eth2spec.test.context import (
     with_light_client,
     with_test_suite_name,
 )
+from eth2spec.test.helpers.light_client import (
+    latest_current_sync_committee_gindex,
+    latest_finalized_root_gindex,
+    latest_next_sync_committee_gindex,
+)
 
 
 @with_test_suite_name("BeaconState")
@@ -10,17 +15,18 @@ from eth2spec.test.context import (
 @spec_state_test
 def test_current_sync_committee_merkle_proof(spec, state):
     yield "object", state
-    current_sync_committee_branch = spec.compute_merkle_proof(state, spec.CURRENT_SYNC_COMMITTEE_GINDEX)
+    gindex = latest_current_sync_committee_gindex(spec)
+    branch = spec.compute_merkle_proof(state, gindex)
     yield "proof", {
         "leaf": "0x" + state.current_sync_committee.hash_tree_root().hex(),
-        "leaf_index": spec.CURRENT_SYNC_COMMITTEE_GINDEX,
-        "branch": ['0x' + root.hex() for root in current_sync_committee_branch]
+        "leaf_index": gindex,
+        "branch": ['0x' + root.hex() for root in branch]
     }
     assert spec.is_valid_merkle_branch(
         leaf=state.current_sync_committee.hash_tree_root(),
-        branch=current_sync_committee_branch,
-        depth=spec.floorlog2(spec.CURRENT_SYNC_COMMITTEE_GINDEX),
-        index=spec.get_subtree_index(spec.CURRENT_SYNC_COMMITTEE_GINDEX),
+        branch=branch,
+        depth=spec.floorlog2(gindex),
+        index=spec.get_subtree_index(gindex),
         root=state.hash_tree_root(),
     )
 
@@ -30,17 +36,18 @@ def test_current_sync_committee_merkle_proof(spec, state):
 @spec_state_test
 def test_next_sync_committee_merkle_proof(spec, state):
     yield "object", state
-    next_sync_committee_branch = spec.compute_merkle_proof(state, spec.NEXT_SYNC_COMMITTEE_GINDEX)
+    gindex = latest_next_sync_committee_gindex(spec)
+    branch = spec.compute_merkle_proof(state, gindex)
     yield "proof", {
         "leaf": "0x" + state.next_sync_committee.hash_tree_root().hex(),
-        "leaf_index": spec.NEXT_SYNC_COMMITTEE_GINDEX,
-        "branch": ['0x' + root.hex() for root in next_sync_committee_branch]
+        "leaf_index": gindex,
+        "branch": ['0x' + root.hex() for root in branch]
     }
     assert spec.is_valid_merkle_branch(
         leaf=state.next_sync_committee.hash_tree_root(),
-        branch=next_sync_committee_branch,
-        depth=spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_GINDEX),
-        index=spec.get_subtree_index(spec.NEXT_SYNC_COMMITTEE_GINDEX),
+        branch=branch,
+        depth=spec.floorlog2(gindex),
+        index=spec.get_subtree_index(gindex),
         root=state.hash_tree_root(),
     )
 
@@ -50,17 +57,18 @@ def test_next_sync_committee_merkle_proof(spec, state):
 @spec_state_test
 def test_finality_root_merkle_proof(spec, state):
     yield "object", state
-    finality_branch = spec.compute_merkle_proof(state, spec.FINALIZED_ROOT_GINDEX)
+    gindex = latest_finalized_root_gindex(spec)
+    branch = spec.compute_merkle_proof(state, gindex)
     yield "proof", {
         "leaf": "0x" + state.finalized_checkpoint.root.hex(),
-        "leaf_index": spec.FINALIZED_ROOT_GINDEX,
-        "branch": ['0x' + root.hex() for root in finality_branch]
+        "leaf_index": gindex,
+        "branch": ['0x' + root.hex() for root in branch]
     }
 
     assert spec.is_valid_merkle_branch(
         leaf=state.finalized_checkpoint.root,
-        branch=finality_branch,
-        depth=spec.floorlog2(spec.FINALIZED_ROOT_GINDEX),
-        index=spec.get_subtree_index(spec.FINALIZED_ROOT_GINDEX),
+        branch=branch,
+        depth=spec.floorlog2(gindex),
+        index=spec.get_subtree_index(gindex),
         root=state.hash_tree_root(),
     )

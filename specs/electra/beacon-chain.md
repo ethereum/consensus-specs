@@ -915,6 +915,7 @@ Iterating over `pending_deposits` queue this function runs the following checks 
 
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
@@ -947,7 +948,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
-            is_validator_withdrawn = validator.withdrawable_epoch < get_current_epoch(state)
+            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
 
         if is_validator_withdrawn:
             # Deposited balance will never become active. Increase balance but do not consume churn
@@ -983,13 +984,14 @@ def process_pending_deposits(state: BeaconState) -> None:
 
 ```python
 def process_pending_consolidations(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
     next_pending_consolidation = 0
     for pending_consolidation in state.pending_consolidations:
         source_validator = state.validators[pending_consolidation.source_index]
         if source_validator.slashed:
             next_pending_consolidation += 1
             continue
-        if source_validator.withdrawable_epoch > get_current_epoch(state):
+        if source_validator.withdrawable_epoch > next_epoch:
             break
 
         # Churn any target excess active balance of target and raise its max
