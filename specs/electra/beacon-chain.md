@@ -87,6 +87,7 @@
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposits](#deposits)
+        - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
         - [Modified `apply_deposit`](#modified-apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
       - [Voluntary exits](#voluntary-exits)
@@ -1267,6 +1268,31 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```
 
 ##### Deposits
+
+###### Modified `get_validator_from_deposit`
+
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` for compounding withdrawal credential.
+
+```python
+def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
+    if is_compounding_withdrawal_credential(withdrawal_credentials):
+        max_effective_balance = MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        max_effective_balance = MIN_ACTIVATION_BALANCE
+
+    # [Modified in Electra:EIP7251]
+    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
+
+    return Validator(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+        effective_balance=effective_balance,
+    )
+```
 
 ###### Modified `apply_deposit`
 
