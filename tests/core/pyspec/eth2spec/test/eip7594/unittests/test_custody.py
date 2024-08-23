@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     single_phase,
     with_eip7594_and_later,
 )
-
+from eth2spec.utils.ssz.ssz_typing import uint8
 
 def run_get_custody_columns(spec, peer_count, custody_subnet_count):
     assignments = [spec.get_custody_columns(node_id, custody_subnet_count) for node_id in range(peer_count)]
