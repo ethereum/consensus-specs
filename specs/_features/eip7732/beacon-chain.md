@@ -52,7 +52,7 @@
         - [`process_payload_attestation`](#process_payload_attestation)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
-   - [Execution payload processing](#execution-payload-processing)
+  - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
 
