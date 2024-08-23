@@ -638,7 +638,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 ### Execution payload processing
 
-##### New `verify_execution_payload_envelope_signature`
+#### New `verify_execution_payload_envelope_signature`
 
 ```python
 def verify_execution_payload_envelope_signature(
