@@ -307,12 +307,6 @@ def divide_polynomialcoeff(a: Sequence[BLSFieldElement], b: Sequence[BLSFieldEle
     """
     Long polynomial division for two coefficient form polynomials ``a`` and ``b``.
     """
-    def fast_div(x: int, y: int) -> int:
-        """
-        A helper which does BLSFieldElement division faster.
-        """
-        return (x * pow(y, -1, BLS_MODULUS)) % BLS_MODULUS
-
     a_int = [int(val) for val in a]
     b_int = [int(val) for val in b]
 
@@ -321,7 +315,7 @@ def divide_polynomialcoeff(a: Sequence[BLSFieldElement], b: Sequence[BLSFieldEle
     bpos = len(b) - 1
     diff = apos - bpos
     while diff >= 0:
-        quot = fast_div(a_int[apos], b_int[bpos])
+        quot = (a_int[apos] * pow(b_int[bpos], -1, BLS_MODULUS)) % BLS_MODULUS
         o.insert(0, quot)
         for i in range(bpos, -1, -1):
             a_int[diff + i] = (a_int[diff + i] - (b_int[i] + BLS_MODULUS) * quot) % BLS_MODULUS
