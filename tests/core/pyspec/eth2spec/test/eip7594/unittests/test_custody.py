@@ -6,6 +6,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.utils.ssz.ssz_typing import uint8
 
+
 def run_get_custody_columns(spec, peer_count, custody_subnet_count):
     assignments = [spec.get_custody_columns(node_id, custody_subnet_count) for node_id in range(peer_count)]
 
@@ -51,6 +52,7 @@ def test_get_custody_columns_custody_size_more_than_number_of_columns(spec):
     node_id = 1
     custody_subnet_count = spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT + 1
     expect_assertion_error(lambda: spec.get_custody_columns(node_id, custody_subnet_count))
+
 
 @with_eip7594_and_later
 @spec_test
