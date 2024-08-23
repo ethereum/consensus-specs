@@ -50,10 +50,11 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Payload Attestations](#payload-attestations)
         - [`process_payload_attestation`](#process_payload_attestation)
-    - [Modified `process_execution_payload`](#modified-process_execution_payload)
-      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
+   - [Execution payload processing](#execution-payload-processing)
+    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+    - [New `process_execution_payload`](#new-process_execution_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -427,7 +428,8 @@ The post-state corresponding to a pre-state `state` and a signed execution paylo
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state)  # [Modified in EIP-7732]
-    process_execution_payload_header(state, block)  # [Modified in EIP-7732, removed process_execution_payload]
+    # Removed `process_execution_payload` in EIP-7732
+    process_execution_payload_header(state, block)  # [New in EIP-7732]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP-7732]
@@ -592,7 +594,49 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     increase_balance(state, proposer_index, proposer_reward)
 ```
 
-#### Modified `process_execution_payload`
+#### Modified `is_merge_transition_complete`
+
+`is_merge_transition_complete` is modified only for testing purposes to add the blob kzg commitments root for an empty list
+
+```python
+def is_merge_transition_complete(state: BeaconState) -> bool:
+    header = ExecutionPayloadHeader()
+    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    return state.latest_execution_payload_header != header
+```
+
+#### Modified `validate_merge_block`
+`validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
+
+```python
+def validate_merge_block(block: BeaconBlock) -> None:
+    """
+    Check the parent PoW block of execution payload is a valid terminal PoW block.
+
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
+    """
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
+        return
+
+    # Modified in EIP-7732
+    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
+    # Check if `pow_block` is available
+    assert pow_block is not None
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    # Check if `pow_parent` is available
+    assert pow_parent is not None
+    # Check if `pow_block` is a valid terminal PoW block
+    assert is_valid_terminal_pow_block(pow_block, pow_parent)
+```
+
+### Execution payload processing
 
 ##### New `verify_execution_payload_envelope_signature`
 
@@ -603,6 +647,8 @@ def verify_execution_payload_envelope_signature(
     signing_root = compute_signing_root(signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER))
     return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
 ```
+
+#### New `process_execution_payload`
 
 *Note*: `process_execution_payload` is now an independent check in state transition. It is called when importing a signed execution payload proposed by the builder of the current slot.
 
@@ -671,46 +717,4 @@ def process_execution_payload(state: BeaconState,
     # Verify the state root
     if verify: 
         assert envelope.state_root == hash_tree_root(state)
-```
-
-#### Modified `is_merge_transition_complete`
-
-`is_merge_transition_complete` is modified only for testing purposes to add the blob kzg commitments root for an empty list
-
-```python
-def is_merge_transition_complete(state: BeaconState) -> bool:
-    header = ExecutionPayloadHeader()
-    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
-    return state.latest_execution_payload_header != header
-```
-
-#### Modified `validate_merge_block`
-`validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
-
-```python
-def validate_merge_block(block: BeaconBlock) -> None:
-    """
-    Check the parent PoW block of execution payload is a valid terminal PoW block.
-
-    Note: Unavailable PoW block(s) may later become available,
-    and a client software MAY delay a call to ``validate_merge_block``
-    until the PoW block(s) become available.
-    """
-    if TERMINAL_BLOCK_HASH != Hash32():
-        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
-        return
-
-    # Modified in EIP-7732
-    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
-    # Check if `pow_block` is available
-    assert pow_block is not None
-    pow_parent = get_pow_block(pow_block.parent_hash)
-    # Check if `pow_parent` is available
-    assert pow_parent is not None
-    # Check if `pow_block` is a valid terminal PoW block
-    assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
