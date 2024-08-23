@@ -57,5 +57,5 @@ def test_get_custody_columns_custody_size_more_than_number_of_columns(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_custody_subnet_count_int_bitlength(custody_subnet_count):
+def test_custody_subnet_count_int_bitlength(spec, custody_subnet_count):
     assert uint8(custody_subnet_count) == custody_subnet_count
