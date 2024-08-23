@@ -51,3 +51,9 @@ def test_get_custody_columns_custody_size_more_than_number_of_columns(spec):
     node_id = 1
     custody_subnet_count = spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT + 1
     expect_assertion_error(lambda: spec.get_custody_columns(node_id, custody_subnet_count))
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_custody_subnet_count_int_bitlength(custody_subnet_count):
+    assert uint8(custody_subnet_count) == custody_subnet_count
