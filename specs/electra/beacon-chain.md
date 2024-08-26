@@ -30,6 +30,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
+    - [`SingleAttestation`](#singleattestation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
   - [Extended Containers](#extended-containers)
@@ -256,6 +257,17 @@ class ConsolidationRequest(Container):
 class PendingConsolidation(Container):
     source_index: ValidatorIndex
     target_index: ValidatorIndex
+```
+
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Modified Containers
@@ -875,7 +887,7 @@ def process_pending_balance_deposits(state: BeaconState) -> None:
             if processed_amount + deposit.amount > available_for_processing:
                 break
             # Deposit fits in the churn, process it. Increase balance and consume churn.
-            else: 
+            else:
                 increase_balance(state, deposit.index, deposit.amount)
                 processed_amount += deposit.amount
         # Regardless of how the deposit was handled, we move on in the queue.

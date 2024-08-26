@@ -54,9 +54,10 @@ The following validations are added:
 
 ##### `beacon_attestation_{subnet_id}`
 
+The topic is updated to propagate `SingleAttestation` objects.
+
 The following convenience variables are re-defined
-- `index = get_committee_indices(attestation.committee_bits)[0]`
+- `index = attestation.committee_index`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(attestation)`.
 * [REJECT] `attestation.data.index == 0`
