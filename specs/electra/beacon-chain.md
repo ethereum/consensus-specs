@@ -889,20 +889,6 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
         validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
         # Increase balance
         increase_balance(state, validator_index, deposit.amount)
-        # If validator has not exited, check if valid deposit switch to compounding credentials.
-        validator = state.validators[validator_index]
-        if (
-            validator.exit_epoch < get_current_epoch(state)
-            and is_compounding_withdrawal_credential(deposit.withdrawal_credentials)
-            and has_eth1_withdrawal_credential(validator)
-            and is_valid_deposit_signature(
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature
-            )
-        ):
-            switch_to_compounding_validator(state, validator_index)
 ```
 
 #### New `process_pending_deposits`
@@ -1453,6 +1439,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
         state.deposit_requests_start_index = deposit_request.index
 
+    # Create pending deposit
     state.pending_deposits.append(PendingDeposit(
         pubkey=deposit_request.pubkey,
         withdrawal_credentials=deposit_request.withdrawal_credentials,
@@ -1460,6 +1447,24 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
         signature=deposit_request.signature,
         slot=state.slot,
     ))
+
+    # If validator is active, check switch to compounding
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if deposit_request.pubkey in validator_pubkeys:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit_request.pubkey))
+        validator = state.validators[validator_index]
+        if (
+            validator.exit_epoch > get_current_epoch(state)
+            and is_compounding_withdrawal_credential(deposit_request.withdrawal_credentials)
+            and has_eth1_withdrawal_credential(validator)
+            and is_valid_deposit_signature(
+                deposit_request.pubkey,
+                deposit_request.withdrawal_credentials,
+                deposit_request.amount,
+                deposit_request.signature
+            )
+        ):
+            switch_to_compounding_validator(state, validator_index)
 ```
 
 ##### Execution layer consolidation requests
