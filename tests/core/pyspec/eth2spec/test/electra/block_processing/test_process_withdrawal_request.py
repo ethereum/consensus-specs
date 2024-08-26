@@ -41,6 +41,7 @@ def test_basic_withdrawal_request(spec, state):
         spec, state, withdrawal_request
     )
 
+
 @with_electra_and_later
 @spec_state_test
 def test_basic_withdrawal_request_with_first_validator(spec, state):
@@ -63,6 +64,7 @@ def test_basic_withdrawal_request_with_first_validator(spec, state):
     yield from run_withdrawal_request_processing(
         spec, state, withdrawal_request
     )
+
 
 @with_electra_and_later
 @spec_state_test
