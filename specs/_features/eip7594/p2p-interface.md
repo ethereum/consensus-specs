@@ -322,6 +322,6 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 
 A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key    | Value                                          |
-|--------|------------------------------------------------|
-| `csc`  | Custody subnet count, big endian uint8 integer |
+| Key    | Value                               |
+|--------|-------------------------------------|
+| `csc`  | Custody subnet count, uint8 integer |
