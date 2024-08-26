@@ -4,6 +4,7 @@ from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
@@ -23,7 +24,7 @@ def mock_deposit(spec, state, index):
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
 
-def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, fork_version, signed=False):
+def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, fork_version=None, signed=False):
     deposit_data = spec.DepositData(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -276,6 +277,47 @@ def build_pending_deposit(spec, validator_index, amount,
         pending_deposit.signature = deposit_data.signature
     return pending_deposit
 
+
+def prepare_pending_deposit(spec, validator_index, amount,
+                            pubkey=None,
+                            privkey=None,
+                            withdrawal_credentials=None,
+                            fork_version=None,
+                            signed=False,
+                            slot=None):
+    """
+    Create a pending deposit for the given validator, depositing the given amount.
+    """
+    if pubkey is None:
+        pubkey = pubkeys[validator_index]
+
+    if privkey is None:
+        privkey = privkeys[validator_index]
+
+    # insecurely use pubkey as withdrawal key if no credentials provided
+    if withdrawal_credentials is None:
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+
+    # use GENESIS_SLOT which is always finalized if no slot provided
+    if slot is None:
+        slot = spec.GENESIS_SLOT
+
+    deposit_data = build_deposit_data(spec,
+                                      pubkey,
+                                      privkey,
+                                      amount,
+                                      withdrawal_credentials,
+                                      fork_version,
+                                      signed)
+
+    return spec.PendingDeposit(
+        pubkey=deposit_data.pubkey,
+        amount=deposit_data.amount,
+        withdrawal_credentials=deposit_data.withdrawal_credentials,
+        signature=deposit_data.signature,
+        slot=slot,
+    )
+
 #
 # Run processing
 #
@@ -381,14 +423,24 @@ def run_deposit_processing_with_specific_fork_version(
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=valid, effective=effective)
 
 
-def run_deposit_request_processing(spec, state, deposit_request, validator_index, valid=True, effective=True):
+def run_deposit_request_processing(
+        spec,
+        state,
+        deposit_request,
+        validator_index,
+        effective=True,
+        switches_to_compounding=False):
+
     """
     Run ``process_deposit_request``, yielding:
       - pre-state ('pre')
       - deposit_request ('deposit_request')
       - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
     """
+    assert is_post_electra(spec)
+    if switches_to_compounding:
+        assert effective
+
     pre_validator_count = len(state.validators)
     pre_balance = 0
     is_top_up = False
@@ -403,71 +455,103 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
     yield 'pre', state
     yield 'deposit_request', deposit_request
 
-    if not valid:
-        expect_assertion_error(lambda: spec.process_deposit_request(state, deposit_request))
-        yield 'post', None
-        return
-
     spec.process_deposit_request(state, deposit_request)
 
     yield 'post', state
 
-    if not effective or not bls.KeyValidate(deposit_request.pubkey):
+    # New validator is only created after the pending_deposits processing
+    assert len(state.validators) == pre_validator_count
+    assert len(state.balances) == pre_validator_count
+
+    if is_top_up:
+        assert state.validators[validator_index].effective_balance == pre_effective_balance
+        if switches_to_compounding and pre_balance > spec.MIN_ACTIVATION_BALANCE:
+            assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE
+        else:
+            assert state.balances[validator_index] == pre_balance
+
+    pending_deposit = spec.PendingDeposit(
+        pubkey=deposit_request.pubkey,
+        withdrawal_credentials=deposit_request.withdrawal_credentials,
+        amount=deposit_request.amount,
+        signature=deposit_request.signature,
+        slot=state.slot,
+    )
+
+    if switches_to_compounding and pre_balance > spec.MIN_ACTIVATION_BALANCE:
+        validator = state.validators[validator_index]
+        excess_amount = pre_balance - spec.MIN_ACTIVATION_BALANCE
+        pending_excess = spec.PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=excess_amount,
+            signature=spec.bls.G2_POINT_AT_INFINITY,
+            slot=spec.GENESIS_SLOT,
+        )
+        assert state.pending_deposits == [pending_deposit, pending_excess]
+    else:
+        assert state.pending_deposits == [pending_deposit]
+
+
+def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, effective=True):
+    """
+    Enqueue ``pending_deposit`` and run epoch processing with ``process_pending_deposits``, yielding:
+      - pre-state ('pre')
+      - post-state ('post').
+    """
+    assert is_post_electra(spec)
+
+    # ensure the transition from eth1 bridge is complete
+    state.deposit_requests_start_index = state.eth1_deposit_index
+
+    # ensure there is enough churn to apply the deposit
+    if pending_deposit.amount > spec.get_activation_exit_churn_limit(state):
+        state.deposit_balance_to_consume = pending_deposit.amount - spec.get_activation_exit_churn_limit(state)
+
+    # append pending deposit
+    state.pending_deposits.append(pending_deposit)
+
+    # run to the very beginning of the epoch processing to avoid
+    # any updates to the validator registry (e.g. ejections)
+    run_epoch_processing_to(spec, state, "process_justification_and_finalization")
+
+    pre_validator_count = len(state.validators)
+    pre_balance = 0
+    pre_effective_balance = 0
+    is_top_up = False
+    # is a top-up
+    if validator_index < pre_validator_count:
+        is_top_up = True
+        pre_balance = get_balance(state, validator_index)
+        pre_effective_balance = state.validators[validator_index].effective_balance
+
+    yield 'pre', state
+
+    spec.process_pending_deposits(state)
+
+    yield 'post', state
+
+    if effective:
+        if is_top_up:
+            # Top-ups don't add validators
+            assert len(state.validators) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
+            # Top-ups do not change effective balance
+            assert state.validators[validator_index].effective_balance == pre_effective_balance
+        else:
+            # new validator is added
+            assert len(state.validators) == pre_validator_count + 1
+            assert len(state.balances) == pre_validator_count + 1
+            # effective balance is set correctly
+            max_effective_balace = spec.get_validator_max_effective_balance(state.validators[validator_index])
+            effective_balance = min(max_effective_balace, pending_deposit.amount)
+            effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
+            assert state.validators[validator_index].effective_balance == effective_balance
+        assert get_balance(state, validator_index) == pre_balance + pending_deposit.amount
+    else:
         assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
         if is_top_up:
             assert get_balance(state, validator_index) == pre_balance
-    else:
-        if is_top_up:
-            # Top-ups do not change effective balance
-            assert state.validators[validator_index].effective_balance == pre_effective_balance
-            assert len(state.validators) == pre_validator_count
-            assert len(state.balances) == pre_validator_count
-        else:
-            # new validator is only created after the pending_deposits processing
-            assert len(state.validators) == pre_validator_count
-            assert len(state.balances) == pre_validator_count
-
-        assert len(state.pending_deposits) == pre_pending_deposits + 1
-        assert state.pending_deposits[pre_pending_deposits].pubkey == deposit_request.pubkey
-        assert state.pending_deposits[
-            pre_pending_deposits].withdrawal_credentials == deposit_request.withdrawal_credentials
-        assert state.pending_deposits[pre_pending_deposits].amount == deposit_request.amount
-        assert state.pending_deposits[pre_pending_deposits].signature == deposit_request.signature
-        assert state.pending_deposits[pre_pending_deposits].slot == state.slot
-
-
-def run_deposit_request_processing_with_specific_fork_version(
-        spec,
-        state,
-        fork_version,
-        valid=True,
-        effective=True):
-    validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
-
-    pubkey = pubkeys[validator_index]
-    privkey = privkeys[validator_index]
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
-
-    deposit_message = spec.DepositMessage(pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount)
-    domain = spec.compute_domain(domain_type=spec.DOMAIN_DEPOSIT, fork_version=fork_version)
-    deposit_data = spec.DepositData(
-        pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount,
-        signature=bls.Sign(privkey, spec.compute_signing_root(deposit_message, domain))
-    )
-    deposit_request = spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=validator_index)
-
-    yield from run_deposit_request_processing(
-        spec,
-        state,
-        deposit_request,
-        validator_index,
-        valid=valid,
-        effective=effective
-    )
+    
+    assert len(state.pending_deposits) == 0
