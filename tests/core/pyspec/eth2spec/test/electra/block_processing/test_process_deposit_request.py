@@ -204,7 +204,7 @@ def test_process_deposit_request_switch_to_compounding_normal(spec, state):
 @spec_state_test
 def test_process_deposit_request_switch_to_compounding_with_excess(spec, state):
     validator_index = 0
-    # there is excess balace that will be enqueued to pending deposits
+    # there is excess balance that will be enqueued to pending deposits
     initial_balance = initial_effective_balance = (
         spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT // 2)
     initial_withdrawal_credentials = (
