@@ -222,7 +222,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_subnet_count` as known as `csc: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `csc` (custody subnet count) field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
