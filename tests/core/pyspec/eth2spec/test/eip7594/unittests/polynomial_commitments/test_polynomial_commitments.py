@@ -125,7 +125,7 @@ def test_verify_cell_kzg_proof_batch_zero_cells(spec):
 @spec_test
 @single_phase
 def test_compute_verify_recover(spec):
-    rng = random.Random(5566)
+    rng = random.Random(1234)
 
     # Get a blob and a commitment to that blob
     blob = get_sample_blob(spec)
