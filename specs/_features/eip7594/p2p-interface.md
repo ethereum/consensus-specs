@@ -119,7 +119,7 @@ The `MetaData` stored locally by clients is updated with an additional field to 
   seq_number: uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  csc: uint8
+  custody_subnet_count: uint8 # csc
 )
 ```
 
