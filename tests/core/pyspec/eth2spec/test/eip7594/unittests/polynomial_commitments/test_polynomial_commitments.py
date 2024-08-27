@@ -124,21 +124,23 @@ def test_verify_cell_kzg_proof_batch_zero_cells(spec):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_verify_cell_kzg_proof_batch(spec):
+def test_compute_verify_recover(spec):
     rng = random.Random(5566)
 
-    # Compute commitment/cells/proofs for a blob
+    # Get a blob and a commitment to that blob
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
+
+    # Compute cells/proofs for the blob
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
     assert len(cells) == len(proofs)
 
-    # Verify five random cells/proofs
+    # Randomly select half of the cells/proofs
     cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
     rng.shuffle(cell_indices)
-    cell_indices = cell_indices[:5]
+    cell_indices = cell_indices[:spec.CELLS_PER_EXT_BLOB // 2]
 
-    # This should return true
+    # Verify the cells/proofs
     assert spec.verify_cell_kzg_proof_batch(
         commitments_bytes=[commitment] * len(cell_indices),
         cell_indices=cell_indices,
@@ -146,44 +148,20 @@ def test_verify_cell_kzg_proof_batch(spec):
         proofs_bytes=[proofs[i] for i in cell_indices],
     )
 
-
-@with_eip7594_and_later
-@spec_test
-@single_phase
-def test_recover_cells_and_kzg_proofs(spec):
-    rng = random.Random(5566)
-
-    # Number of samples we will be recovering from
-    N_SAMPLES = spec.CELLS_PER_EXT_BLOB // 2
-
-    # Get the data we will be working with
-    blob = get_sample_blob(spec)
-
-    # Extend data with Reed-Solomon and split the extended data in cells
-    cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
-
-    # Compute the cells we will be recovering from
-    cell_indices = []
-    # First figure out just the indices of the cells
-    for i in range(N_SAMPLES):
-        j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        while j in cell_indices:
-            j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        cell_indices.append(j)
-    # Now the cells themselves
-    known_cells = [cells[cell_index] for cell_index in cell_indices]
-
-    # Recover the missing cells and proofs
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells)
-    recovered_data = [x for xs in recovered_cells for x in xs]
-
-    # Check that the original data match the non-extended portion of the recovered data
-    blob_byte_array = [b for b in blob]
-    assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
+    # Recover the missing cells/proofs
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(
+        cell_indices,
+        cells=[cells[i] for i in cell_indices],
+    )
 
     # Check that the recovered cells/proofs match the original cells/proofs
     assert cells == recovered_cells
     assert proofs == recovered_proofs
+
+    # Check that the original data matches the non-extended portion of the recovered data
+    recovered_data = [x for xs in recovered_cells for x in xs]
+    blob_byte_array = [b for b in blob]
+    assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
 
 
 @with_eip7594_and_later
