@@ -555,6 +555,19 @@ def coset_for_cell(cell_index: CellIndex) -> Coset:
 
 ### Cell computation
 
+#### `compute_cell_and_kzg_proof`
+
+```python
+def compute_cell_and_kzg_proof(polynomial_coeff: PolynomialCoeff, cell_index: CellIndex) -> Tuple[Cell, KZGProof]:
+    """
+    Helper function which computes a single cell/proof for a polynomial in coefficient form.
+    """
+    coset = coset_for_cell(cell_index)
+    proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
+    cell = coset_evals_to_cell(ys)
+    return cell, proof
+```
+
 #### `compute_cells_and_kzg_proofs_polynomialcoeff`
 
 ```python
@@ -563,14 +576,18 @@ def compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff: PolynomialCoe
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
     """
     Helper function which computes cells/proofs for a polynomial in coefficient form.
+    
+    This method splits each cell/proof computation up into a separate task to
+    improve performance. The order of results will match the order of inputs.
     """
-    cells, proofs = [], []
-    for i in range(CELLS_PER_EXT_BLOB):
-        coset = coset_for_cell(CellIndex(i))
-        proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
-        cells.append(coset_evals_to_cell(ys))
-        proofs.append(proof)
-    return cells, proofs
+    import multiprocessing
+    
+    with multiprocessing.Pool() as pool:
+        inputs = [(polynomial_coeff, CellIndex(i)) for i in range(CELLS_PER_EXT_BLOB)]
+        results = pool.starmap(compute_cell_and_kzg_proof, inputs)
+        
+    cells, proofs = zip(*results)
+    return Vector[Cell, CELLS_PER_EXT_BLOB](cells), Vector[KZGProof, CELLS_PER_EXT_BLOB](proofs)
 ```
 
 #### `compute_cells_and_kzg_proofs`
