@@ -184,8 +184,8 @@ class BeaconBlockBody(Container):
     graffiti: Bytes32  # Arbitrary data
     # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
@@ -662,7 +662,7 @@ def process_execution_payload(state: BeaconState,
 
         for_ops(payload.deposit_requests, process_deposit_request)
         for_ops(payload.withdrawal_requests, process_withdrawal_request)
-        for_ops(payload, process_consolidation_request)
+        for_ops(payload.consolidation_requests, process_consolidation_request)
 
         # Cache the execution payload header and proposer
         state.latest_block_hash = payload.block_hash
