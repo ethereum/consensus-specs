@@ -334,6 +334,7 @@ def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, sta
 
 @with_electra_and_later
 @spec_state_test
+@always_bls
 def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -348,6 +349,7 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+@always_bls
 def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -366,13 +368,13 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, state):
-    validator_index=len(state.validators)
-    fork_version=spec.Version('0xAaBbCcDd')
+    validator_index = len(state.validators)
+    fork_version = spec.Version('0xAaBbCcDd')
     pending_deposit = prepare_pending_deposit(
         spec,
         validator_index=validator_index,
         amount=spec.MIN_ACTIVATION_BALANCE,
-        fork_version=fork_version, 
+        fork_version=fork_version,
         signed=True
     )
 
@@ -388,13 +390,13 @@ def test_apply_pending_deposit_with_previous_fork_version(spec, state):
     # NOTE: it was effective in Altair.
     assert state.fork.previous_version != state.fork.current_version
 
-    validator_index=len(state.validators)
-    fork_version=state.fork.previous_version
+    validator_index = len(state.validators)
+    fork_version = state.fork.previous_version
     pending_deposit = prepare_pending_deposit(
         spec,
         validator_index=validator_index,
         amount=spec.MIN_ACTIVATION_BALANCE,
-        fork_version=fork_version, 
+        fork_version=fork_version,
         signed=True
     )
 
@@ -405,13 +407,13 @@ def test_apply_pending_deposit_with_previous_fork_version(spec, state):
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_current_fork_version(spec, state):
-    validator_index=len(state.validators)
-    fork_version=state.fork.current_version
+    validator_index = len(state.validators)
+    fork_version = state.fork.current_version
     pending_deposit = prepare_pending_deposit(
         spec,
         validator_index=validator_index,
         amount=spec.MIN_ACTIVATION_BALANCE,
-        fork_version=fork_version, 
+        fork_version=fork_version,
         signed=True
     )
 
@@ -424,13 +426,13 @@ def test_ineffective_deposit_with_current_fork_version(spec, state):
 def test_apply_pending_deposit_effective_deposit_with_genesis_fork_version(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
 
-    validator_index=len(state.validators)
-    fork_version=state.fork.previous_version
+    validator_index = len(state.validators)
+    fork_version = spec.config.GENESIS_FORK_VERSION
     pending_deposit = prepare_pending_deposit(
         spec,
         validator_index=validator_index,
         amount=spec.MIN_ACTIVATION_BALANCE,
-        fork_version=spec.config.GENESIS_FORK_VERSION, 
+        fork_version=fork_version,
         signed=True
     )
 

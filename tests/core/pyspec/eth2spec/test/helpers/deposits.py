@@ -35,7 +35,7 @@ def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, fo
     return deposit_data
 
 
-def sign_deposit_data(spec, deposit_data, privkey, fork_version):
+def sign_deposit_data(spec, deposit_data, privkey, fork_version=None):
     deposit_message = spec.DepositMessage(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
@@ -175,22 +175,6 @@ def prepare_state_and_deposit(spec, state, validator_index, amount,
     return deposit
 
 
-def build_deposit_request(spec,
-                          index,
-                          pubkey,
-                          privkey,
-                          amount,
-                          withdrawal_credentials,
-                          signed):
-    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed)
-    return spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=index)
-
-
 def prepare_deposit_request(spec, validator_index, amount,
                             index=None,
                             pubkey=None,
@@ -213,69 +197,14 @@ def prepare_deposit_request(spec, validator_index, amount,
     if withdrawal_credentials is None:
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
 
-    return build_deposit_request(
-        spec,
-        index,
-        pubkey,
-        privkey,
-        amount,
-        withdrawal_credentials,
-        signed,
+    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed)
+    return spec.DepositRequest(
+        pubkey=deposit_data.pubkey,
+        withdrawal_credentials=deposit_data.withdrawal_credentials,
+        amount=deposit_data.amount,
+        signature=deposit_data.signature,
+        index=index
     )
-
-
-def build_pending_deposit_top_up(spec, state, validator_index, amount, slot=None):
-    """
-    Create a pending deposit which is a top up to an existing validator
-    """
-    if slot is None:
-        slot = spec.GENESIS_SLOT
-
-    return spec.PendingDeposit(
-        pubkey=state.validators[validator_index].pubkey,
-        withdrawal_credentials=state.validators[validator_index].withdrawal_credentials,
-        amount=amount,
-        signature=bls.G2_POINT_AT_INFINITY,
-        slot=slot,
-    )
-
-
-def build_pending_deposit(spec, validator_index, amount,
-                          index=None,
-                          pubkey=None,
-                          privkey=None,
-                          withdrawal_credentials=None,
-                          fork_version=None,
-                          slot=None,
-                          signed=False):
-    if index is None:
-        index = validator_index
-
-    if pubkey is None:
-        pubkey = pubkeys[validator_index]
-
-    if privkey is None:
-        privkey = privkeys[validator_index]
-
-    if slot is None:
-        slot = spec.GENESIS_SLOT
-
-    pending_deposit = spec.PendingDeposit(
-        pubkey=pubkeys[index],
-        withdrawal_credentials=withdrawal_credentials,
-        amount=amount,
-        slot=slot,
-    )
-    if signed:
-        deposit_data = build_deposit_data(spec,
-                                          pubkeys[index],
-                                          privkeys[index],
-                                          amount,
-                                          withdrawal_credentials,
-                                          fork_version,
-                                          signed=True)
-        pending_deposit.signature = deposit_data.signature
-    return pending_deposit
 
 
 def prepare_pending_deposit(spec, validator_index, amount,
@@ -450,8 +379,6 @@ def run_deposit_request_processing(
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
-    pre_pending_deposits = len(state.pending_deposits)
-
     yield 'pre', state
     yield 'deposit_request', deposit_request
 
@@ -553,5 +480,5 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
         assert len(state.balances) == pre_validator_count
         if is_top_up:
             assert get_balance(state, validator_index) == pre_balance
-    
+
     assert len(state.pending_deposits) == 0

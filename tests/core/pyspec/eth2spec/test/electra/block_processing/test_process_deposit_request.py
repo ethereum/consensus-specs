@@ -189,7 +189,7 @@ def test_process_deposit_request_switch_to_compounding_normal(spec, state):
         + b'\x00' * 11  # specified 0s
         + b'\x59' * 20  # a 20-byte eth1 address
     )
- 
+
     yield from _run_deposit_request_switching_to_compounding(
         spec,
         state,
@@ -219,7 +219,7 @@ def test_process_deposit_request_switch_to_compounding_with_excess(spec, state):
     )
     state.balances[validator_index] = initial_balance
     state.validators[validator_index].effective_balance = initial_effective_balance
- 
+
     yield from _run_deposit_request_switching_to_compounding(
         spec,
         state,
