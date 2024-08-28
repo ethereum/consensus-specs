@@ -67,7 +67,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `128` | The number of data column sidecar subnets used in the gossipsub protocol |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint8(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
@@ -105,7 +105,7 @@ class MatrixEntry(Container):
 ### `get_custody_columns`
 
 ```python
-def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
+def get_custody_columns(node_id: NodeID, custody_subnet_count: uint8) -> Sequence[ColumnIndex]:
     assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
 
     subnet_ids: List[uint64] = []
@@ -113,7 +113,7 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     while len(subnet_ids) < custody_subnet_count:
         subnet_id = (
             bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
-            % DATA_COLUMN_SIDECAR_SUBNET_COUNT
+            % int(DATA_COLUMN_SIDECAR_SUBNET_COUNT)
         )
         if subnet_id not in subnet_ids:
             subnet_ids.append(subnet_id)
@@ -124,9 +124,9 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
 
     assert len(subnet_ids) == len(set(subnet_ids))
 
-    columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    columns_per_subnet = NUMBER_OF_COLUMNS // int(DATA_COLUMN_SIDECAR_SUBNET_COUNT)
     return sorted([
-        ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
+        ColumnIndex(int(DATA_COLUMN_SIDECAR_SUBNET_COUNT) * i + subnet_id)
         for i in range(columns_per_subnet)
         for subnet_id in subnet_ids
     ])
@@ -222,7 +222,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_subnet_count: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
