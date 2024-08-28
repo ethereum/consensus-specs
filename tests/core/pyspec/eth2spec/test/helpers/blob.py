@@ -1,57 +1,28 @@
 import random
-from eth2spec.utils.ssz.ssz_typing import (
-    Container,
-    Bytes20, Bytes32,
-    ByteList,
-    List,
-    Union,
-    boolean,
-    uint256, uint64,
-    uint8,
-)
-from eth2spec.utils.ssz.ssz_impl import serialize
+from rlp import encode, Serializable
+from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
 
 
-#
-# Containers from EIP-4844
-#
-MAX_CALLDATA_SIZE = 2**24
-MAX_VERSIONED_HASHES_LIST_SIZE = 2**24
-MAX_ACCESS_LIST_STORAGE_KEYS = 2**24
-MAX_ACCESS_LIST_SIZE = 2**24
-
-
-BLOB_TX_TYPE = uint8(0x03)
-
-
-class AccessTuple(Container):
-    address: Bytes20  # Address = Bytes20
-    storage_keys: List[Bytes32, MAX_ACCESS_LIST_STORAGE_KEYS]
-
-
-class ECDSASignature(Container):
-    y_parity: boolean
-    r: uint256
-    s: uint256
-
-
-class BlobTransaction(Container):
-    chain_id: uint256
-    nonce: uint64
-    max_priority_fee_per_gas: uint256
-    max_fee_per_gas: uint256
-    gas: uint64
-    to: Union[None, Bytes20]  # Address = Bytes20
-    value: uint256
-    data: ByteList[MAX_CALLDATA_SIZE]
-    access_list: List[AccessTuple, MAX_ACCESS_LIST_SIZE]
-    max_fee_per_blob_gas: uint256
-    blob_versioned_hashes: List[Bytes32, MAX_VERSIONED_HASHES_LIST_SIZE]
-
-
-class SignedBlobTransaction(Container):
-    message: BlobTransaction
-    signature: ECDSASignature
+class Eip4844RlpTransaction(Serializable):
+    fields = (
+        ('chain_id', big_endian_int),
+        ('nonce', big_endian_int),
+        ('max_priority_fee_per_gas', big_endian_int),
+        ('max_fee_per_gas', big_endian_int),
+        ('gas_limit', big_endian_int),
+        ('to', Binary(20, 20)),
+        ('value', big_endian_int),
+        ('data', binary),
+        ('access_list', CountableList(RLPList([
+            Binary(20, 20),
+            CountableList(Binary(32, 32)),
+        ]))),
+        ('max_fee_per_blob_gas', big_endian_int),
+        ('blob_versioned_hashes', CountableList(Binary(32, 32))),
+        ('signature_y_parity', big_endian_int),
+        ('signature_r', big_endian_int),
+        ('signature_s', big_endian_int),
+    )
 
 
 def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
@@ -99,7 +70,7 @@ def get_poly_in_both_forms(spec, rng=None):
     return coeffs, evals
 
 
-def get_sample_opaque_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blob=True):
+def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blob=True):
     blobs = []
     blob_kzg_commitments = []
     blob_kzg_proofs = []
@@ -118,11 +89,21 @@ def get_sample_opaque_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_b
         blob_kzg_proofs.append(blob_kzg_proof)
         blob_versioned_hashes.append(blob_versioned_hash)
 
-    signed_blob_tx = SignedBlobTransaction(
-        message=BlobTransaction(
-            blob_versioned_hashes=blob_versioned_hashes,
-        )
+    signed_blob_tx = Eip4844RlpTransaction(
+        chain_id=0,
+        nonce=0,
+        max_priority_fee_per_gas=0,
+        max_fee_per_gas=0,
+        gas_limit=0,
+        to=bytes.fromhex("0000000000000000000000000000000000000000"),
+        value=0,
+        data=bytes.fromhex(""),
+        access_list=[],
+        max_fee_per_blob_gas=0,
+        blob_versioned_hashes=[bytes(h) for h in blob_versioned_hashes],
+        signature_y_parity=0,
+        signature_r=0,
+        signature_s=0,
     )
-    serialized_tx = serialize(signed_blob_tx)
-    opaque_tx = spec.uint_to_bytes(BLOB_TX_TYPE) + serialized_tx
+    opaque_tx = bytes([0x03]) + encode(signed_blob_tx)
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
