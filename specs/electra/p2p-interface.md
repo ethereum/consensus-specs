@@ -61,7 +61,7 @@ The following convenience variables are re-defined:
 
 The following validations are added:
 - _[REJECT]_ `attestation.data.index == 0`
-- _[REJECT]_ The attester is a member of the committtee -- i.e.
+- _[REJECT]_ The attester is a member of the committee -- i.e.
   `atestation.attester_index in get_beacon_committee(state, attestation.data.slot, index)`.
 
 The following validations are removed:
