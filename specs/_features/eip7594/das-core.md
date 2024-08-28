@@ -67,7 +67,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `128` | The number of data column sidecar subnets used in the gossipsub protocol |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint8(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
@@ -113,7 +113,7 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint8) -> Sequenc
     while len(subnet_ids) < custody_subnet_count:
         subnet_id = (
             bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
-            % DATA_COLUMN_SIDECAR_SUBNET_COUNT
+            % int(DATA_COLUMN_SIDECAR_SUBNET_COUNT)
         )
         if subnet_id not in subnet_ids:
             subnet_ids.append(subnet_id)
@@ -124,9 +124,9 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint8) -> Sequenc
 
     assert len(subnet_ids) == len(set(subnet_ids))
 
-    columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    columns_per_subnet = NUMBER_OF_COLUMNS // int(DATA_COLUMN_SIDECAR_SUBNET_COUNT)
     return sorted([
-        ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
+        ColumnIndex(int(DATA_COLUMN_SIDECAR_SUBNET_COUNT) * i + subnet_id)
         for i in range(columns_per_subnet)
         for subnet_id in subnet_ids
     ])
