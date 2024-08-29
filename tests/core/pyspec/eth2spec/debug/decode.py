@@ -2,7 +2,7 @@ from typing import Any
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
     uint, Container, List, boolean,
-    Vector, ByteVector, ByteList, View
+    Vector, ByteVector, ByteList
 )
 
 
