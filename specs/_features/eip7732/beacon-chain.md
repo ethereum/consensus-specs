@@ -493,9 +493,12 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     signed_header = block.body.signed_execution_payload_header
     assert verify_execution_payload_header_signature(state, signed_header)
 
-    # Check that the builder has funds to cover the bid
+    # Check that the builder is active non-slashed has funds to cover the bid
     header = signed_header.message
     builder_index = header.builder_index
+    builder = state.validators[builder_index]
+    assert is_active_validator(builder, get_current_epoch(state))
+    assert not builder.slashed
     amount = header.value
     assert state.balances[builder_index] >= amount
 
