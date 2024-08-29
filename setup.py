@@ -257,7 +257,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
+                        if value.startswith(("uint", "Bytes", "ByteList", "Vector", "List", "ByteVector")):
                             custom_types[name] = value
                         continue
 

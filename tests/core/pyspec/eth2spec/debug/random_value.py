@@ -5,7 +5,7 @@ from typing import Type
 
 from eth2spec.utils.ssz.ssz_typing import (
     View, BasicView, uint, Container, List, boolean,
-    Vector, ByteVector, ByteList, Bitlist, Bitvector, Union
+    Vector, ByteVector, ByteList, Bitlist, Bitvector
 )
 
 # in bytes
@@ -115,22 +115,6 @@ def get_random_ssz_object(rng: Random,
                 get_random_ssz_object(rng, field_type, max_bytes_length, max_list_length, mode, chaos)
             for field_name, field_type in fields.items()
         })
-    elif issubclass(typ, Union):
-        options = typ.options()
-        selector: int
-        if mode == RandomizationMode.mode_zero:
-            selector = 0
-        elif mode == RandomizationMode.mode_max:
-            selector = len(options) - 1
-        else:
-            selector = rng.randrange(0, len(options))
-        elem_type = options[selector]
-        elem: View
-        if elem_type is None:
-            elem = None
-        else:
-            elem = get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
-        return typ(selector=selector, value=elem)
     else:
         raise Exception(f"Type not recognized: typ={typ}")
 
