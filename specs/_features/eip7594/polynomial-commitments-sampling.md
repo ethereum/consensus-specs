@@ -64,7 +64,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 The following is a list of the public methods:
 
 - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
-- [`verify_cell_kzg_proof`](#verify_cell_kzg_proof)
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
@@ -685,11 +684,13 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
     """
     Recover the polynomial in coefficient form that when evaluated at the roots of unity will give the extended blob.
     """
-    # Get the extended domain. This will be referred to as the FFT domain
+    # Get the extended domain. This will be referred to as the FFT domain.
     roots_of_unity_extended = compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
 
     # Flatten the cells into evaluations
-    # If a cell is missing, then its evaluation is zero
+    # If a cell is missing, then its evaluation is zero.
+    # We let E(x) be a polynomial of degree FIELD_ELEMENTS_PER_EXT_BLOB - 1
+    # that interpolates the evaluations including the zeros for missing ones.
     extended_evaluation_rbo = [0] * FIELD_ELEMENTS_PER_EXT_BLOB
     for cell_index, cell in zip(cell_indices, cells):
         start = cell_index * FIELD_ELEMENTS_PER_CELL
@@ -697,8 +698,8 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
         extended_evaluation_rbo[start:end] = cell
     extended_evaluation = bit_reversal_permutation(extended_evaluation_rbo)
 
-    # Compute Z(x) in coefficient form
-    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing
+    # Compute the vanishing polynomial Z(x) in coefficient form.
+    # Z(x) is the polynomial which vanishes on all of the evaluations which are missing.
     missing_cell_indices = [CellIndex(cell_index) for cell_index in range(CELLS_PER_EXT_BLOB)
                             if cell_index not in cell_indices]
     zero_poly_coeff = construct_vanishing_polynomial(missing_cell_indices)
@@ -707,22 +708,30 @@ def recover_polynomialcoeff(cell_indices: Sequence[CellIndex],
     zero_poly_eval = fft_field(zero_poly_coeff, roots_of_unity_extended)
 
     # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
+    # Note: over the FFT domain, the polynomials (E*Z)(x) and (P*Z)(x) agree, where
+    # P(x) is the polynomial we want to reconstruct (degree FIELD_ELEMENTS_PER_BLOB - 1).
     extended_evaluation_times_zero = [BLSFieldElement(int(a) * int(b) % BLS_MODULUS)
                                       for a, b in zip(zero_poly_eval, extended_evaluation)]
 
-    # Convert (E*Z)(x) to coefficient form
+    # We know that (E*Z)(x) and (P*Z)(x) agree over the FFT domain,
+    # and we know that (P*Z)(x) has degree at most FIELD_ELEMENTS_PER_EXT_BLOB - 1.
+    # Thus, an inverse FFT of the evaluations of (E*Z)(x) (= evaluations of (P*Z)(x))
+    # yields the coefficient form of (P*Z)(x).
     extended_evaluation_times_zero_coeffs = fft_field(extended_evaluation_times_zero, roots_of_unity_extended, inv=True)
 
-    # Convert (E*Z)(x) to evaluation form over a coset of the FFT domain
+    # Next step is to divide the polynomial (P*Z)(x) by polynomial Z(x) to get P(x).
+    # We do this in evaluation form over a coset of the FFT domain to avoid division by 0.
+
+    # Convert (P*Z)(x) to evaluation form over a coset of the FFT domain
     extended_evaluations_over_coset = coset_fft_field(extended_evaluation_times_zero_coeffs, roots_of_unity_extended)
 
     # Convert Z(x) to evaluation form over a coset of the FFT domain
     zero_poly_over_coset = coset_fft_field(zero_poly_coeff, roots_of_unity_extended)
 
-    # Compute Q_3(x) = (E*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
+    # Compute P(x) = (P*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
     reconstructed_poly_over_coset = [div(a, b) for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)]
 
-    # Convert Q_3(x) to coefficient form
+    # Convert P(x) to coefficient form
     reconstructed_poly_coeff = coset_fft_field(reconstructed_poly_over_coset, roots_of_unity_extended, inv=True)
 
     return reconstructed_poly_coeff[:FIELD_ELEMENTS_PER_BLOB]
@@ -762,9 +771,9 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Convert cells to coset evaluations
     cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
-    # Given the coset evaluations, recover the polynomial in coefficient form 
+    # Given the coset evaluations, recover the polynomial in coefficient form
     polynomial_coeff = recover_polynomialcoeff(cell_indices, cosets_evals)
-    
+
     # Recompute all cells/proofs
     return compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff)
 ```

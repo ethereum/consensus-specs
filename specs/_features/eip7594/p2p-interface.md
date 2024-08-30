@@ -17,6 +17,7 @@
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Blob subnets](#blob-subnets)
@@ -26,6 +27,7 @@
     - [Messages](#messages)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+      - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody subnet count](#custody-subnet-count)
@@ -37,19 +39,18 @@
 
 ### Preset
 
-| Name | Value | Description |
-| - | - | - |
+| Name                                    | Value                                                                                     | Description                                                       |
+|-----------------------------------------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
-
 
 ### Configuration
 
-*[New in Deneb:EIP4844]*
+*[New in EIP7594]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars  |
+| Name                                           | Value                                          | Description                                                               |
+|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -109,6 +110,24 @@ def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetI
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
 
+### MetaData
+
+The `MetaData` stored locally by clients is updated with an additional field to communicate the custody subnet count.
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  custody_subnet_count: uint64
+)
+```
+
+Where
+
+- `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
+- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject ENRs with a value less than `CUSTODY_REQUIREMENT`.
+
 ### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
@@ -160,8 +179,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version` | Chunk SSZ type |
-| - | - |
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
@@ -208,9 +227,9 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `EIP7594_FORK_VERSION`   | `eip7594.DataColumnSidecar` |
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
 ```
@@ -279,6 +298,22 @@ Clients MUST respond with data column sidecars that are consistent from a single
 
 After the initial data column sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
 
+##### GetMetaData v3
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/3/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer, using the new `MetaData` definition given above that is extended from Altair. Other conditions for the `GetMetaData` protocol are unchanged from the Altair p2p networking document.
+
 ### The discovery domain: discv5
 
 #### ENR structure
@@ -287,6 +322,6 @@ After the initial data column sidecar, clients MAY stop in the process of respon
 
 A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key   | Value                                    |
-|:------|:-----------------------------------------|
-| `csc` | Custody subnet count, big endian integer |
+| Key    | Value                                    |
+|--------|------------------------------------------|
+| `csc`  | Custody subnet count, big endian integer |

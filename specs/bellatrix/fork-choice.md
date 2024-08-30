@@ -75,7 +75,7 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_payload_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_payload_hash) function.
+[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash) function.
 
 ##### `should_override_forkchoice_update`
 
