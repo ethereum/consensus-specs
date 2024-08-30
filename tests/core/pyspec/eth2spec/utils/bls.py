@@ -54,6 +54,9 @@ bls_active = True
 # Default to fastest_bls
 bls = fastest_bls
 
+# Expose the scalar type
+Scalar = arkworks_Scalar
+
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
 G2_POINT_AT_INFINITY = b'\xc0' + b'\x00' * 95
@@ -221,30 +224,22 @@ def multiply(point, scalar):
     `point` can either be in G1 or G2
     """
     if bls == arkworks_bls or bls == fastest_bls:
-        int_as_bytes = scalar.to_bytes(32, 'little')
-        scalar = arkworks_Scalar.from_le_bytes(int_as_bytes)
         return point * scalar
     return py_ecc_mul(point, scalar)
 
 
-def multi_exp(points, integers):
+def multi_exp(points, scalars):
     """
     Performs a multi-scalar multiplication between
-    `points` and `integers`.
+    `points` and `scalars`.
     `points` can either be in G1 or G2.
     """
     # Since this method accepts either G1 or G2, we need to know
     # the type of the point to return. Hence, we need at least one point.
-    if not points or not integers:
-        raise Exception("Cannot call multi_exp with zero points or zero integers")
+    if not points or not scalars:
+        raise Exception("Cannot call multi_exp with zero points or zero scalars")
 
     if bls == arkworks_bls or bls == fastest_bls:
-        # Convert integers into arkworks Scalars
-        scalars = []
-        for integer in integers:
-            int_as_bytes = integer.to_bytes(32, 'little')
-            scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
-
         # Check if we need to perform a G1 or G2 multiexp
         if isinstance(points[0], arkworks_G1):
             return arkworks_G1.multiexp_unchecked(points, scalars)
@@ -261,7 +256,7 @@ def multi_exp(points, integers):
     else:
         raise Exception("Invalid point type")
 
-    for point, scalar in zip(points, integers):
+    for point, scalar in zip(points, scalars):
         result = add(result, multiply(point, scalar))
     return result
 

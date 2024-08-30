@@ -173,7 +173,7 @@ def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G1_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
     constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
     constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
-    
+
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
@@ -557,7 +557,7 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",
         MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.4",
+        "py_arkworks_bls12381==0.3.5",
         "curdleproofs==0.1.1",
     ]
 )
