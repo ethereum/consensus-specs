@@ -30,7 +30,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
-    - [`ExecutionLayerRequests`](#executionlayerrequests)
+    - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -260,14 +260,14 @@ class PendingConsolidation(Container):
     target_index: ValidatorIndex
 ```
 
-#### `ExecutionLayerRequests`
+#### `ExecutionRequests`
 
 *Note*: This container holds requests from the execution layer that are received in [
 `ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
 the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
 
 ```python
-class ExecutionLayerRequests(Container):
+class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
@@ -301,7 +301,7 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    execution_requests: ExecutionLayerRequests  # [New in Electra]
+    execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
 ### Extended Containers
@@ -911,7 +911,7 @@ class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
-    execution_requests: ExecutionLayerRequests  # [New in Electra]
+    execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
 ### Block processing
