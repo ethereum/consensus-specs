@@ -74,9 +74,3 @@ def run_epoch_processing_with(spec, state, process_name: str):
     yield 'pre', state
     getattr(spec, process_name)(state)
     yield 'post', state
-
-
-def compute_state_by_epoch_processing_to(spec, state, process_name: str):
-    state_copy = state.copy()
-    run_epoch_processing_to(spec, state_copy, process_name)
-    return state_copy

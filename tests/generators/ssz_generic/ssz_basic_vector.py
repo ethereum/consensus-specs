@@ -33,7 +33,7 @@ def valid_cases():
         for length in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
             for mode in random_modes:
                 yield f'vec_{name}_{length}_{mode.to_name()}', \
-                      valid_test_case(lambda: basic_vector_case_fn(rng, mode, typ, length))
+                    valid_test_case(lambda: basic_vector_case_fn(rng, mode, typ, length))
 
 
 def invalid_cases():
@@ -52,14 +52,14 @@ def invalid_cases():
                 if length == 1:
                     # empty bytes, no elements. It may seem valid, but empty fixed-size elements are not valid SSZ.
                     yield f'vec_{name}_{length}_{mode.to_name()}_one_less', \
-                          invalid_test_case(lambda: b"")
+                        invalid_test_case(lambda: b"")
                 else:
                     yield f'vec_{name}_{length}_{mode.to_name()}_one_less', \
-                          invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length - 1)))
+                        invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length - 1)))
                 yield f'vec_{name}_{length}_{mode.to_name()}_one_more', \
-                      invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length + 1)))
+                    invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length + 1)))
                 yield f'vec_{name}_{length}_{mode.to_name()}_one_byte_less', \
-                      invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))[:-1])
+                    invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))[:-1])
                 yield f'vec_{name}_{length}_{mode.to_name()}_one_byte_more', \
-                      invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))
-                                        + serialize(basic_vector_case_fn(rng, mode, uint8, 1)))
+                    invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))
+                                      + serialize(basic_vector_case_fn(rng, mode, uint8, 1)))

@@ -73,3 +73,19 @@ Documentation on the different components used during spec writing can be found 
 ## Consensus spec tests
 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
+
+
+## Installation and Usage
+The consensus-specs repo can be used by running the tests locally or inside a docker container.
+
+To run the tests locally:
+- Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
+- Switch to the directory `cd consensus-specs`
+- Install the dependencies with: `make install_test && make preinstallation && make pyspec`
+- Run the tests with `make citest`
+
+To run the tests inside a docker container:
+- Switch to the directory with `cd scripts`
+- Run the script `./build_run_docker_tests.sh`
+- Find the results in a folder called `./testResults`
+- Find more ways to customize the script with `./build_run_docker_tests.sh --h`

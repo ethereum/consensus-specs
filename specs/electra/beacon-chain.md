@@ -995,10 +995,9 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     expected_withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)  # [Modified in Electra:EIP7251]
 
-    assert len(payload.withdrawals) == len(expected_withdrawals)
+    assert payload.withdrawals == expected_withdrawals
 
-    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
-        assert withdrawal == expected_withdrawal
+    for withdrawal in expected_withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update pending partial withdrawals [New in Electra:EIP7251]
