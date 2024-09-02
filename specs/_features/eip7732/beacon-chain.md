@@ -655,6 +655,7 @@ def process_execution_payload(state: BeaconState,
                 execution_payload=payload,
                 versioned_hashes=versioned_hashes,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
+                execution_requests=ExecutionRequests(),  # TODO: fix me (making linter happy)
             )
         )
 
