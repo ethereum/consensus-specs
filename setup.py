@@ -397,10 +397,6 @@ class PySpecCommand(Command):
             print("no paths were specified, using default markdown file paths for pyspec"
                   " build (spec fork: %s)" % self.spec_fork)
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
-            if self.spec_fork not in ('phase0', 'altair'):
-                self.md_doc_paths += """
-                    fork_choice/confirmation-rule.md
-                """
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
 

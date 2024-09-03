@@ -13,6 +13,7 @@
       - [`safe_block_hash`](#safe_block_hash)
       - [`should_override_forkchoice_update`](#should_override_forkchoice_update)
 - [Helpers](#helpers)
+  - [Modified `Store`](#modified-store)
   - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
@@ -158,6 +159,32 @@ to construct a payload with less notice. The result of `get_proposer_head` MUST 
 the result of `should_override_forkchoice_update` (when proposer reorgs are enabled).
 
 ## Helpers
+
+### Modified `Store` 
+
+*Note*: It's not a hard fork change. `highest_confirmed_block_current_epoch`, `highest_confirmed_block_previous_epoch`, and `leaves_last_slot_previous_epoch` are added for [confirmation rule](confirmation-rule.md).
+
+```python
+@dataclass
+class Store(object):
+    time: uint64
+    genesis_time: uint64
+    justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    unrealized_justified_checkpoint: Checkpoint
+    unrealized_finalized_checkpoint: Checkpoint
+    proposer_boost_root: Root
+    highest_confirmed_block_current_epoch: Root  # New for confirmation rule
+    highest_confirmed_block_previous_epoch: Root  # New for confirmation rule
+    leaves_last_slot_previous_epoch: Set[Root]  # New for confirmation rule
+    equivocating_indices: Set[ValidatorIndex]
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
+    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
+    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+```
 
 ### `PayloadAttributes`
 

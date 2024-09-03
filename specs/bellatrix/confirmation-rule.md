@@ -317,7 +317,6 @@ def get_ffg_support(store: Store, checkpoint: Root) -> Gwei:
     participating_indices_from_lmds = set([
         i
         for i in store.latest_messages
-        # TODO: change to compute_epoch_at_slot(store.latest_messages[i].slot) in EIP-7732
         if get_checkpoint_block(store, store.latest_messages[i].root, store.latest_messages[i].epoch) == checkpoint.root
     ])
 
