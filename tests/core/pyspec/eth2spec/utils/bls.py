@@ -1,5 +1,5 @@
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
-from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
+from py_ecc.bls.g2_primitives import signature_to_G2 as _signature_to_G2
 from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,

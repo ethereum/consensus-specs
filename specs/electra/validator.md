@@ -8,6 +8,10 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Containers](#containers)
+  - [Modified Containers](#modified-containers)
+    - [`AggregateAndProof`](#aggregateandproof)
+    - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
@@ -33,6 +37,27 @@ All behaviors and definitions defined in this document, and documents it extends
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Containers
+
+### Modified Containers
+
+#### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation  # [Modified in Electra:EIP7549]
+    selection_proof: BLSSignature
+```
+
+#### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof   # [Modified in Electra:EIP7549]
+    signature: BLSSignature
+```
 
 ## Block proposal
 
@@ -80,7 +105,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ```python
 def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
-    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_requests_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:

@@ -219,7 +219,13 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
-                assert class_name == current_name
+                try:
+                    assert class_name == current_name
+                except Exception:
+                    print('class_name', class_name)
+                    print('current_name', current_name)
+                    raise
+
                 if parent_class:
                     assert parent_class == "Container"
                 # NOTE: trim whitespace from spec
@@ -547,10 +553,10 @@ setup(
     install_requires=[
         "eth-utils>=2.0.0,<3",
         "eth-typing>=3.2.0,<4.0.0",
-        "pycryptodome==3.15.0",
+        "pycryptodome>=3.19.1",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.27",
+        "remerkleable==0.1.28",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",

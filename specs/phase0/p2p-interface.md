@@ -356,7 +356,7 @@ to subscribing nodes (typically validators) to be included in future blocks.
 We define the following variables for convenience:
 - `aggregate_and_proof = signed_aggregate_and_proof.message`
 - `aggregate = aggregate_and_proof.aggregate`
-- `index = aggregate.index`
+- `index = aggregate.data.index`
 - `aggregation_bits = attestation.aggregation_bits`
 
 The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network.
@@ -436,7 +436,7 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 We define the following variables for convenience:
-- `index = attestation.index`
+- `index = attestation.data.index`
 - `aggregation_bits = attestation.aggregation_bits`
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.

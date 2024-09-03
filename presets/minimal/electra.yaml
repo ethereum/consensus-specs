@@ -30,12 +30,12 @@ MAX_ATTESTER_SLASHINGS_ELECTRA: 1
 # `uint64(2**3)` (= 8)
 MAX_ATTESTATIONS_ELECTRA: 8
 # `uint64(2**0)` (= 1)
-MAX_CONSOLIDATIONS: 1
+MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD: 1
 
 # Execution
 # ---------------------------------------------------------------
 # [customized]
-MAX_DEPOSIT_RECEIPTS_PER_PAYLOAD: 4
+MAX_DEPOSIT_REQUESTS_PER_PAYLOAD: 4
 # [customized] 2**1 (= 2) withdrawal requests
 MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 2
 

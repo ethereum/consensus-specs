@@ -11,6 +11,7 @@ from eth2spec.test.helpers.deposits import (
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
+    is_post_electra,
 )
 
 
@@ -69,9 +70,14 @@ def test_initialize_beacon_state_some_small_balances(spec):
     if is_post_altair(spec):
         yield 'description', 'meta', get_post_altair_description(spec)
 
+    if is_post_electra(spec):
+        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
+
     main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
-        spec, spec.MAX_EFFECTIVE_BALANCE,
+        spec, max_effective_balance,
         deposit_count=main_deposit_count, signed=True,
     )
     # For deposits above, and for another deposit_count, add a balance of EFFECTIVE_BALANCE_INCREMENT
@@ -99,6 +105,8 @@ def test_initialize_beacon_state_some_small_balances(spec):
     assert state.eth1_data.deposit_count == len(deposits)
     assert state.eth1_data.block_hash == eth1_block_hash
     # only main deposits participate to the active balance
+    # NOTE: they are pre-ELECTRA deposits with BLS_WITHDRAWAL_PREFIX,
+    # so `MAX_EFFECTIVE_BALANCE` is used
     assert spec.get_total_active_balance(state) == main_deposit_count * spec.MAX_EFFECTIVE_BALANCE
 
     # yield state

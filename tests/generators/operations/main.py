@@ -45,10 +45,10 @@ if __name__ == "__main__":
 
     _new_electra_mods = {key: 'eth2spec.test.electra.block_processing.test_process_' + key for key in [
         'attestation',
-        'consolidation',
-        'deposit_receipt',
-        'execution_layer_withdrawal_request',
-        'voluntary_exit'
+        'consolidation_request',
+        'deposit_request',
+        'voluntary_exit',
+        'withdrawal_request',
     ]}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 

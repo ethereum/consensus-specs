@@ -17,6 +17,7 @@
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+  - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Blob subnets](#blob-subnets)
@@ -25,9 +26,11 @@
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
+      - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+      - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [`custody_subnet_count`](#custody_subnet_count)
+      - [Custody subnet count](#custody-subnet-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -36,19 +39,18 @@
 
 ### Preset
 
-| Name | Value | Description |
-| - | - | - |
+| Name                                    | Value                                                                                     | Description                                                       |
+|-----------------------------------------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
-
 
 ### Configuration
 
-*[New in Deneb:EIP4844]*
+*[New in EIP7594]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`       | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars  |
+| Name                                           | Value                                          | Description                                                               |
+|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -67,17 +69,18 @@ class DataColumnIdentifier(Container):
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct
+    Verify if the proofs are correct.
     """
     assert sidecar.index < NUMBER_OF_COLUMNS
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
-    row_ids = [RowIndex(i) for i in range(len(sidecar.column))]
 
-    # KZG batch verifies that the cells match the corresponding commitments and proofs
+    # The column index also represents the cell index
+    cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
+
+    # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
-        row_commitments_bytes=sidecar.kzg_commitments,
-        row_indices=row_ids,  # all rows
-        column_indices=[sidecar.index],
+        commitments_bytes=sidecar.kzg_commitments,
+        cell_indices=cell_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
     )
@@ -106,6 +109,24 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
+
+### MetaData
+
+The `MetaData` stored locally by clients is updated with an additional field to communicate the custody subnet count.
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  custody_subnet_count: uint8 # csc
+)
+```
+
+Where
+
+- `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
+- `csc` represents the node's custody subnet count. Clients MAY reject ENRs with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
@@ -158,8 +179,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version` | Chunk SSZ type |
-| - | - |
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
@@ -198,14 +219,109 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
+##### DataColumnSidecarsByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type              |
+|------------------------|-----------------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
+
+Request Content:
+```
+(
+  start_slot: Slot
+  count: uint64
+  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+)
+```
+
+Response Content:
+```
+(
+  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+)
+```
+
+Requests data column sidecars in the slot range `[start_slot, start_slot + count)` of the given `columns`, leading up to the current head block as selected by fork choice.
+
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+
+`DataColumnSidecarsByRange` is primarily used to sync data columns that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` window.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
+
+Let `data_column_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, EIP7594_FORK_EPOCH), current_epoch]`.
+Clients MUST keep a record of data column sidecars seen on the epoch range `data_column_serve_range`
+where `current_epoch` is defined by the current wall-clock time,
+and clients MUST support serving requests of data columns on this range.
+
+Peers that are unable to reply to data column sidecar requests within the
+range `data_column_serve_range` SHOULD respond with error code `3: ResourceUnavailable`.
+Such peers that are unable to successfully reply to this range of requests MAY get descored
+or disconnected at any time.
+
+*Note*: The above requirement implies that nodes that start from a recent weak subjectivity checkpoint
+MUST backfill the local data columns database to at least the range `data_column_serve_range`
+to be fully compliant with `DataColumnSidecarsByRange` requests.
+
+*Note*: Although clients that bootstrap from a weak subjectivity checkpoint can begin
+participating in the networking immediately, other peers MAY
+disconnect and/or temporarily ban such an un-synced or semi-synced client.
+
+Clients MUST respond with at least the data column sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` sidecars.
+
+Clients MUST include all data column sidecars of each block from which they include data column sidecars.
+
+The following data column sidecars, where they exist, MUST be sent in `(slot, column_index)` order.
+
+Slots that do not contain known data columns MUST be skipped, mimicking the behaviour
+of the `BlocksByRange` request. Only response chunks with known data columns should
+therefore be sent.
+
+Clients MAY limit the number of data column sidecars in the response.
+
+The response MUST contain no more than `count * NUMBER_OF_COLUMNS` data column sidecars.
+
+Clients MUST respond with data columns sidecars from their view of the current fork choice
+-- that is, data column sidecars as included by blocks from the single chain defined by the current head.
+Of note, blocks from slots before the finalization MUST lead to the finalized block reported in the `Status` handshake.
+
+Clients MUST respond with data column sidecars that are consistent from a single chain within the context of the request.
+
+After the initial data column sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+
+##### GetMetaData v3
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/3/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer, using the new `MetaData` definition given above that is extended from Altair. Other conditions for the `GetMetaData` protocol are unchanged from the Altair p2p networking document.
+
 ### The discovery domain: discv5
 
 #### ENR structure
 
-##### `custody_subnet_count`
+##### Custody subnet count
 
-A new field is added to the ENR under the key `custody_subnet_count` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key                    | Value        |
-|:-----------------------|:-------------|
-| `custody_subnet_count` | SSZ `uint64` |
+| Key    | Value                               |
+|--------|-------------------------------------|
+| `csc`  | Custody subnet count, uint8 integer |
