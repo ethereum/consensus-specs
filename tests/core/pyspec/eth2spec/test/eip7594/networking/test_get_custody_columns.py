@@ -20,7 +20,7 @@ def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None)
 
     assert len(result) == len(set(result))
     assert len(result) == (
-        int(custody_subnet_count) * spec.config.NUMBER_OF_COLUMNS // int(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+        custody_subnet_count * spec.config.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     )
     assert all(i < spec.config.NUMBER_OF_COLUMNS for i in result)
     python_list_result = [int(i) for i in result]
