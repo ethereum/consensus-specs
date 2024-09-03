@@ -129,9 +129,6 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    highest_confirmed_block_current_epoch: Root
-    highest_confirmed_block_previous_epoch: Root
-    leaves_last_slot_previous_epoch: Set[Root]    
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -177,9 +174,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        highest_confirmed_block_current_epoch=justified_checkpoint.root,
-        highest_confirmed_block_previous_epoch=justified_checkpoint.root,
-        leaves_last_slot_previous_epoch=set()
     )
 ```
 
