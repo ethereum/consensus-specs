@@ -55,9 +55,9 @@ def conf_rule_apply_next_slots_with_attestations(
     spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None,
     is_optimistic=False, store_checks=True
 ):
-
     _, new_signed_blocks, post_state = next_slots_with_attestations(
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
+
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from conf_rule_tick_and_add_block(
@@ -85,7 +85,8 @@ def apply_next_slots_with_attestations_no_checks_and_optimistic(
     spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=None
 ):
     post_state, store, last_signed_block = yield from conf_rule_apply_next_slots_with_attestations(
-        spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=participation_fn,
+        spec, state, store, slots, fill_cur_epoch, fill_prev_epoch,
+        participation_fn=participation_fn, test_steps=test_steps,
         is_optimistic=True, store_checks=False)
 
     return post_state, store, last_signed_block
