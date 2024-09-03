@@ -324,4 +324,4 @@ A new field is added to the ENR under the key `csc` to facilitate custody data c
 
 | Key    | Value                                    |
 |--------|------------------------------------------|
-| `csc`  | Custody subnet count, big endian integer |
+| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
