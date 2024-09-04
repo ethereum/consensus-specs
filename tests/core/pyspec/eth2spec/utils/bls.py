@@ -1,5 +1,6 @@
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
 from py_ecc.bls.g2_primitives import signature_to_G2 as _signature_to_G2
+from py_ecc.utils import prime_field_inv as py_ecc_prime_field_inv
 from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,
@@ -34,6 +35,32 @@ import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
 
 
+class py_ecc_Scalar(FQ):
+    field_modulus = BLS_MODULUS
+
+    def __init__(self, value):
+        """
+        Force underlying value to be a native integer.
+        """
+        super().__init__(int(value))
+
+    def pow(self, exp):
+        """
+        Raises the self to the power of the given exponent.
+        """
+        return self**int(exp)
+
+    def inverse(self):
+        """
+        Computes the modular inverse of self.
+        """
+        return py_ecc_Scalar(py_ecc_prime_field_inv(self.n, self.field_modulus))
+
+
+# Add our extended type to py_ecc
+py_ecc_bls.Scalar = py_ecc_Scalar
+
+
 class fastest_bls:
     G1 = arkworks_G1
     G2 = arkworks_G2
@@ -55,7 +82,7 @@ bls_active = True
 bls = fastest_bls
 
 # Expose the scalar type
-Scalar = arkworks_Scalar
+Scalar = arkworks_Scalar  # or py_ecc_Scalar
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
@@ -224,6 +251,8 @@ def multiply(point, scalar):
     `point` can either be in G1 or G2
     """
     if bls == arkworks_bls or bls == fastest_bls:
+        if not isinstance(scalar, arkworks_Scalar):
+            return point * arkworks_Scalar(int(scalar))
         return point * scalar
     return py_ecc_mul(point, scalar)
 
@@ -240,6 +269,10 @@ def multi_exp(points, scalars):
         raise Exception("Cannot call multi_exp with zero points or zero scalars")
 
     if bls == arkworks_bls or bls == fastest_bls:
+        # If using py_ecc Scalars, convert to arkworks Scalars.
+        if not isinstance(scalars[0], arkworks_Scalar):
+            scalars = [arkworks_Scalar(int(s)) for s in scalars]
+
         # Check if we need to perform a G1 or G2 multiexp
         if isinstance(points[0], arkworks_G1):
             return arkworks_G1.multiexp_unchecked(points, scalars)
