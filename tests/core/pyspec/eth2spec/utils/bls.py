@@ -57,10 +57,6 @@ class py_ecc_Scalar(FQ):
         return py_ecc_Scalar(py_ecc_prime_field_inv(self.n, self.field_modulus))
 
 
-# Add our extended type to py_ecc
-py_ecc_bls.Scalar = py_ecc_Scalar
-
-
 class fastest_bls:
     G1 = arkworks_G1
     G2 = arkworks_G2
@@ -80,9 +76,7 @@ bls_active = True
 
 # Default to fastest_bls
 bls = fastest_bls
-
-# Expose the scalar type
-Scalar = arkworks_Scalar  # or py_ecc_Scalar
+Scalar = fastest_bls.Scalar
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
@@ -96,6 +90,8 @@ def use_milagro():
     """
     global bls
     bls = milagro_bls
+    global Scalar
+    Scalar = fastest_bls.Scalar
 
 
 def use_arkworks():
@@ -104,6 +100,8 @@ def use_arkworks():
     """
     global bls
     bls = arkworks_bls
+    global Scalar
+    Scalar = arkworks_Scalar
 
 
 def use_py_ecc():
@@ -112,6 +110,8 @@ def use_py_ecc():
     """
     global bls
     bls = py_ecc_bls
+    global Scalar
+    Scalar = py_ecc_Scalar
 
 
 def use_fastest():
@@ -120,6 +120,8 @@ def use_fastest():
     """
     global bls
     bls = fastest_bls
+    global Scalar
+    Scalar = fastest_bls.Scalar
 
 
 def only_with_bls(alt_return=None):
