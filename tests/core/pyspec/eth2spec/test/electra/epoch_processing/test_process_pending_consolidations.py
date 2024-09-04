@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
-    compute_state_by_epoch_processing_to,
+    run_epoch_processing_to,
 )
 from eth2spec.test.context import (
     spec_state_test,
@@ -219,7 +219,8 @@ def test_pending_consolidation_future_epoch(spec, state):
         next_epoch_with_full_participation(spec, state)
 
     # Obtain state before the call to process_pending_consolidations
-    state_before_consolidation = compute_state_by_epoch_processing_to(spec, state, "process_pending_consolidations")
+    state_before_consolidation = state.copy()
+    run_epoch_processing_to(spec, state_before_consolidation, "process_pending_consolidations")
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
@@ -275,7 +276,8 @@ def test_pending_consolidation_compounding_creds(spec, state):
         next_epoch_with_full_participation(spec, state)
 
     # Obtain state before the call to process_pending_consolidations
-    state_before_consolidation = compute_state_by_epoch_processing_to(spec, state, "process_pending_consolidations")
+    state_before_consolidation = state.copy()
+    run_epoch_processing_to(spec, state_before_consolidation, "process_pending_consolidations")
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
@@ -335,8 +337,9 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     while spec.get_current_epoch(state) < target_epoch:
         next_epoch_with_full_participation(spec, state)
 
-    # Obtain state before the call to process_pending_deposits
-    state_before_consolidation = compute_state_by_epoch_processing_to(spec, state, "process_pending_deposits")
+    # Obtain state before the call to process_pending_balance_deposits
+    state_before_consolidation = state.copy()
+    run_epoch_processing_to(spec, state_before_consolidation, "process_pending_consolidations")
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 

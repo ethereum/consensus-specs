@@ -51,7 +51,7 @@
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc-1)
     - [New `get_committee_indices`](#new-get_committee_indices)
-    - [New `get_validator_max_effective_balance`](#new-get_validator_max_effective_balance)
+    - [New `get_max_effective_balance`](#new-get_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
@@ -521,14 +521,14 @@ def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: 
 
 #### Modified `is_partially_withdrawable_validator`
 
-*Note*: The function `is_partially_withdrawable_validator` is modified to use `get_validator_max_effective_balance` instead of `MAX_EFFECTIVE_BALANCE` and `has_execution_withdrawal_credential` instead of `has_eth1_withdrawal_credential`.
+*Note*: The function `is_partially_withdrawable_validator` is modified to use `get_max_effective_balance` instead of `MAX_EFFECTIVE_BALANCE` and `has_execution_withdrawal_credential` instead of `has_eth1_withdrawal_credential`.
 
 ```python
 def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> bool:
     """
     Check if ``validator`` is partially withdrawable.
     """
-    max_effective_balance = get_validator_max_effective_balance(validator)
+    max_effective_balance = get_max_effective_balance(validator)
     has_max_effective_balance = validator.effective_balance == max_effective_balance  # [Modified in Electra:EIP7251]
     has_excess_balance = balance > max_effective_balance  # [Modified in Electra:EIP7251]
     return (
@@ -547,10 +547,10 @@ def get_committee_indices(committee_bits: Bitvector) -> Sequence[CommitteeIndex]
     return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
-#### New `get_validator_max_effective_balance`
+#### New `get_max_effective_balance`
 
 ```python
-def get_validator_max_effective_balance(validator: Validator) -> Gwei:
+def get_max_effective_balance(validator: Validator) -> Gwei:
     """
     Get max effective balance for ``validator``.
     """
@@ -597,7 +597,7 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 
 ```python
 def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    max_effective_balance = get_validator_max_effective_balance(state.validators[validator_index])
+    max_effective_balance = get_max_effective_balance(state.validators[validator_index])
     return min(state.balances[validator_index], max_effective_balance)
 ```
 
@@ -1078,7 +1078,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 index=withdrawal_index,
                 validator_index=validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - get_validator_max_effective_balance(validator),  # [Modified in Electra:EIP7251]
+                amount=balance - get_max_effective_balance(validator),  # [Modified in Electra:EIP7251]
             ))
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
@@ -1095,10 +1095,9 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     expected_withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)  # [Modified in Electra:EIP7251]
 
-    assert len(payload.withdrawals) == len(expected_withdrawals)
+    assert payload.withdrawals == expected_withdrawals
 
-    for expected_withdrawal, withdrawal in zip(expected_withdrawals, payload.withdrawals):
-        assert withdrawal == expected_withdrawal
+    for withdrawal in expected_withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update pending partial withdrawals [New in Electra:EIP7251]
@@ -1583,7 +1582,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
         balance = state.balances[index]
         # [Modified in Electra:EIP7251]
         validator.effective_balance = min(
-            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_validator_max_effective_balance(validator))
+            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_max_effective_balance(validator))
         if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
