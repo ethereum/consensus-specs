@@ -184,7 +184,7 @@ The following values are (non-configurable) constants used throughout the specif
 ### Pending deposits processing
 | Name | Value | Description |
 | - | - | - |
-| `MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
+| `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
 
 ## Configuration
 
@@ -896,7 +896,7 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
 Iterating over `pending_deposits` queue this function runs the following checks before applying pending deposit:
 1. All Eth1 bridge deposits are processed before the first deposit request gets processed.
 2. Deposit position in the queue is finalized.
-3. Deposit does not exceed the `MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING` limit.
+3. Deposit does not exceed the `MAX_PENDING_DEPOSITS_PER_EPOCH` limit.
 4. Deposit does not exceed the activation churn limit.
 
 ```python
@@ -924,7 +924,7 @@ def process_pending_deposits(state: BeaconState) -> None:
             break
 
         # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
-        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
             break
 
         # Read validator state

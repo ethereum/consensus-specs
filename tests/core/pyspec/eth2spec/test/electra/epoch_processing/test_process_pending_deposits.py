@@ -194,7 +194,7 @@ def test_process_pending_deposits_not_finalized(spec, state):
 def test_process_pending_deposits_limit_is_reached(spec, state):
     # set pending deposits to the maximum
     amount = spec.EFFECTIVE_BALANCE_INCREMENT * 1
-    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING + 2):
+    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):
         wc = state.validators[i].withdrawal_credentials
         pd = prepare_pending_deposit(spec, i, amount, withdrawal_credentials=wc, signed=True)
         state.pending_deposits.append(pd)
@@ -209,10 +209,10 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
     # deposit_balance_to_consume was reset to 0
     assert state.deposit_balance_to_consume == 0
     # no deposits above limit were processed
-    assert state.pending_deposits == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING:]
-    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING):
+    assert state.pending_deposits == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH:]
+    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH):
         assert state.balances[i] == pre_balances[i] + amount
-    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING, spec.MAX_PENDING_DEPOSITS_PER_EPOCH_PROCESSING + 2):
+    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH, spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):
         assert state.balances[i] == pre_balances[i]
 
 
