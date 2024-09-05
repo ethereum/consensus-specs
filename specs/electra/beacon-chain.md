@@ -71,6 +71,7 @@
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
+    - [Modified `process_slashings`](#modified-process_slashings)
     - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
@@ -813,7 +814,7 @@ def process_epoch(state: BeaconState) -> None:
     process_inactivity_updates(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)  # [Modified in Electra:EIP7251]
-    process_slashings(state)
+    process_slashings(state)  # [Modified in Electra:EIP7251]
     process_eth1_data_reset(state)
     process_pending_balance_deposits(state)  # [New in Electra:EIP7251]
     process_pending_consolidations(state)  # [New in Electra:EIP7251]
@@ -848,6 +849,28 @@ def process_registry_updates(state: BeaconState) -> None:
     for validator in state.validators:
         if is_eligible_for_activation(state, validator):
             validator.activation_epoch = activation_epoch
+```
+
+#### Modified `process_slashings`
+
+*Note*: The function `process_slashings` is modified to use a new algorithm to compute correlation penalty.
+
+```python
+def process_slashings(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
+    total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
+        total_balance
+    )
+    increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from total balance to avoid uint64 overflow
+    penalty_per_effective_balance_increment = adjusted_total_slashing_balance // (total_balance // increment)
+    for index, validator in enumerate(state.validators):
+        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+            effective_balance_increments = validator.effective_balance // increment
+            # [Modified in Electra:EIP7251]
+            penalty = penalty_per_effective_balance_increment * effective_balance_increments
+            decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
 #### New `process_pending_balance_deposits`
