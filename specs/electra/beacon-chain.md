@@ -929,7 +929,8 @@ def notify_new_payload(self: ExecutionEngine,
                        execution_requests: ExecutionRequests,
                        parent_beacon_block_root: Root) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` are valid with respect to ``self.execution_state``.
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    are valid with respect to ``self.execution_state``.
     """
     ...
 ```
@@ -956,7 +957,10 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
         return False
 
     # [Modified in Electra]
-    if not self.notify_new_payload(execution_payload, execution_requests, parent_beacon_block_root):
+    if not self.notify_new_payload(
+            execution_payload, 
+            execution_requests, 
+            parent_beacon_block_root):
         return False
 
     return True
