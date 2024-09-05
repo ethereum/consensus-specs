@@ -76,6 +76,9 @@
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
+    - [Engine APIs](#engine-apis)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
@@ -912,6 +915,51 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests  # [New in Electra]
+```
+
+#### Engine APIs
+
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       execution_requests: ExecutionRequests,
+                       parent_beacon_block_root: Root) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` are valid with respect to ``self.execution_state``.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
+when calling `notify_new_payload` in Electra.
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    execution_payload = new_payload_request.execution_payload
+    execution_requests = new_payload_request.execution_requests  # [New in Electra]
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+        return False
+
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    # [Modified in Electra]
+    if not self.notify_new_payload(execution_payload, execution_requests, parent_beacon_block_root):
+        return False
+
+    return True
 ```
 
 ### Block processing
