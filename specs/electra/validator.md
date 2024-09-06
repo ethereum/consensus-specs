@@ -150,7 +150,7 @@ def prepare_execution_payload(state: BeaconState,
 
 ##### Modified aggregate signature
 
-*Note:* The `get_attestation_sinagure` is modified to use signing attestation data.
+*Note:* The `get_attestation_signature` method is modified to use signing attestation data.
 
 Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
 
