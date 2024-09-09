@@ -15,8 +15,6 @@
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
     - [`coset_evals_to_cell`](#coset_evals_to_cell)
-  - [Linear combinations](#linear-combinations)
-    - [`g2_lincomb`](#g2_lincomb)
   - [FFTs](#ffts)
     - [`_fft_field`](#_fft_field)
     - [`fft_field`](#fft_field)
@@ -120,28 +118,6 @@ def coset_evals_to_cell(coset_evals: Sequence[bls.Scalar]) -> Cell:
     for i in range(FIELD_ELEMENTS_PER_CELL):
         cell += bls_field_to_bytes(coset_evals[i])
     return Cell(cell)
-```
-
-### Linear combinations
-
-#### `g2_lincomb`
-
-```python
-def g2_lincomb(points: Sequence[G2Point], scalars: Sequence[bls.Scalar]) -> Bytes96:
-    """
-    BLS multiscalar multiplication in G2. This can be naively implemented using double-and-add.
-    """
-    assert len(points) == len(scalars)
-
-    if len(points) == 0:
-        return bls.G2_to_bytes96(bls.Z2())
-
-    points_g2 = []
-    for point in points:
-        points_g2.append(bls.bytes96_to_G2(point))
-
-    result = bls.multi_exp(points_g2, scalars)
-    return Bytes96(bls.G2_to_bytes96(result))
 ```
 
 ### FFTs
