@@ -91,7 +91,7 @@ def use_milagro():
     global bls
     bls = milagro_bls
     global Scalar
-    Scalar = fastest_bls.Scalar
+    Scalar = py_ecc_Scalar
 
 
 def use_arkworks():
@@ -256,7 +256,7 @@ def multiply(point, scalar):
         if not isinstance(scalar, arkworks_Scalar):
             return point * arkworks_Scalar(int(scalar))
         return point * scalar
-    return py_ecc_mul(point, scalar)
+    return py_ecc_mul(point, int(scalar))
 
 
 def multi_exp(points, scalars):
