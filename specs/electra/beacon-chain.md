@@ -1145,7 +1145,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation)  # [Modified in Electra:EIP7549]
-    for_ops(body.deposits, process_deposit)  # [Modified in Electra:EIP7251]
+    for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.execution_payload.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110]
@@ -1206,7 +1206,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ###### Modified `apply_deposit`
 
-*Note*: The function `process_deposit` is modified to support EIP7251.
+*Note*: The function `apply_deposit` is modified to support EIP7251.
 
 ```python
 def apply_deposit(state: BeaconState,
