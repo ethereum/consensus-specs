@@ -12,7 +12,6 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Domains](#domains)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -129,12 +128,6 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
-
-### Domains
-
-| Name | Value |
-| - | - |
-| `DOMAIN_CONSOLIDATION` | `DomainType('0x0B000000')` |
 
 ## Preset
 
