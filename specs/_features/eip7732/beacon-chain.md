@@ -41,8 +41,6 @@
     - [`get_indexed_payload_attestation`](#get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Withdrawals](#withdrawals)
-      - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload header](#execution-payload-header)
       - [New `verify_execution_payload_header_signature`](#new-verify_execution_payload_header_signature)
       - [New `process_execution_payload_header`](#new-process_execution_payload_header)
