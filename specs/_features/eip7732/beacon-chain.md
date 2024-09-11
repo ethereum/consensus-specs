@@ -426,50 +426,12 @@ The post-state corresponding to a pre-state `state` and a signed execution paylo
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawals(state)  # [Modified in EIP-7732]
+    # [Modified in EIP-7732, removed process_withdrawals()]
     process_execution_payload_header(state, block)  # [Modified in EIP-7732, removed process_execution_payload]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP-7732]
     process_sync_aggregate(state, block.body.sync_aggregate)
-```
-
-#### Withdrawals
-
-##### Modified `process_withdrawals`
-
-**Note:** This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances. 
-
-```python
-def process_withdrawals(state: BeaconState) -> None:
-    # return early if the parent block was empty
-    if not is_parent_block_full(state):
-        return
-
-    withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)
-    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
-    for withdrawal in withdrawals:
-        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
-
-    # Update pending partial withdrawals
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_count:]
-
-    # Update the next withdrawal index if this block contained withdrawals
-    if len(withdrawals) != 0:
-        latest_withdrawal = withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
-
-    # Update the next validator index to start the next withdrawal sweep
-    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex((withdrawals[-1].validator_index + 1) % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
-    else:
-        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
-        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
 ```
 
 #### Execution payload header
@@ -632,8 +594,8 @@ def process_execution_payload(state: BeaconState,
     assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
 
     if not envelope.payload_withheld: 
-        # Verify the withdrawals root
-        assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+        # Process withdrawals
+        process_withdrawals(state, payload)
 
         # Verify the gas_limit
         assert committed_header.gas_limit == payload.gas_limit
