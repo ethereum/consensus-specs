@@ -61,7 +61,6 @@
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
-    - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
@@ -678,16 +677,6 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 ```
 
-#### New `switch_to_compounding_validator`
-
-```python
-def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    validator = state.validators[index]
-    if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
-        queue_excess_active_balance(state, index)
-```
-
 #### New `queue_excess_active_balance`
 
 ```python
@@ -928,8 +917,6 @@ def process_pending_consolidations(state: BeaconState) -> None:
         if source_validator.withdrawable_epoch > next_epoch:
             break
 
-        # Churn any target excess active balance of target and raise its max
-        switch_to_compounding_validator(state, pending_consolidation.target_index)
         # Move active balance to target. Excess balance is withdrawable.
         active_balance = get_active_balance(state, pending_consolidation.source_index)
         decrease_balance(state, pending_consolidation.source_index, active_balance)
@@ -1225,14 +1212,6 @@ def apply_deposit(state: BeaconState,
         state.pending_balance_deposits.append(
             PendingBalanceDeposit(index=index, amount=amount)
         )  # [Modified in Electra:EIP7251]
-        # Check if valid deposit switch to compounding credentials
-        if (
-            is_compounding_withdrawal_credential(withdrawal_credentials)
-            and has_eth1_withdrawal_credential(state.validators[index])
-            and is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature)
-        ):
-            switch_to_compounding_validator(state, index)
-
 ```
 
 ###### New `is_valid_deposit_signature`
@@ -1431,10 +1410,6 @@ def process_consolidation_request(
     source_validator = state.validators[source_index]
     target_validator = state.validators[target_index]
 
-    # Verify that source != target, so a consolidation cannot be used as an exit.
-    if source_index == target_index:
-        return
-
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
@@ -1459,12 +1434,22 @@ def process_consolidation_request(
     if target_validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
+    # Churn any target excess active balance of target and raise its max
+    if has_eth1_withdrawal_credential(target_validator):
+        state.validators[target_index].withdrawal_credentials = (
+            COMPOUNDING_WITHDRAWAL_PREFIX + target_validator.withdrawal_credentials[1:])
+        queue_excess_active_balance(state, target_index)
+
+    # Verify that source != target, so a consolidation cannot be used as an exit.
+    if source_index == target_index:
+        return
+
     # Initiate source validator exit and append pending consolidation
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+    state.validators[source_index].exit_epoch = compute_consolidation_epoch_and_update_churn(
         state, source_validator.effective_balance
     )
-    source_validator.withdrawable_epoch = Epoch(
-        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    state.validators[source_index].withdrawable_epoch = Epoch(
+        state.validators[source_index].exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     state.pending_consolidations.append(PendingConsolidation(
         source_index=source_index,
