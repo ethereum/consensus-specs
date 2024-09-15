@@ -55,7 +55,7 @@ FOCIL introduces new global topics for inclusion list and inclusion list aggrega
 
 ###### `inclusion_list`
 
-This topic is used to propagate execution payload messages as `SignedInclusionList`.
+This topic is used to propagate execution inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The slot `message.slot` is equal to current slot + 1 

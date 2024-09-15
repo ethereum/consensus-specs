@@ -262,7 +262,7 @@ def process_inclusion_list_aggregate(
     inclusion_list_aggregate: InclusionListAggregate
 ) -> None:
 
-    # Verify signature
+    # Verify inclusion list aggregate signature
     indexed_inclusion_list_aggregate = get_indexed_inclusion_list_aggregate(state, inclusion_list_aggregate)
     assert is_valid_indexed_inclusion_list_aggregate(state, indexed_inclusion_list_aggregate)
 
