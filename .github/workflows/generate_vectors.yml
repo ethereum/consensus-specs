@@ -12,6 +12,8 @@ on:
         default: dev
         type: string
         required: true
+  schedule:
+    - cron:  '0 2 * * *'
 
 jobs:
   generate-tests:
