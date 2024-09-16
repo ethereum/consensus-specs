@@ -132,7 +132,7 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         # ePBS
         latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-7732]
         latest_full_slot=pre.slot,  # [New in EIP-7732]
-        latest_withdrawals_root=Root(),  # [New in EIP-7732]
+        latest_withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,  # [New in EIP-7732]
     )
 
     return post
