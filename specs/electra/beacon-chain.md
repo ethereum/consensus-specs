@@ -1437,7 +1437,8 @@ def process_consolidation_request(
     # Churn any target excess active balance of target and raise its max
     if has_eth1_withdrawal_credential(target_validator):
         state.validators[target_index].withdrawal_credentials = (
-            COMPOUNDING_WITHDRAWAL_PREFIX + target_validator.withdrawal_credentials[1:])
+            COMPOUNDING_WITHDRAWAL_PREFIX + target_validator.withdrawal_credentials[1:]
+        )
         queue_excess_active_balance(state, target_index)
 
     # Verify that source != target, so a consolidation cannot be used as an exit.
