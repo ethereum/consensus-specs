@@ -42,7 +42,7 @@ Warning: This file should be placed in https://github.com/ethereum/execution-api
 
 ### InclusionListSummaryV1
 
-This structure contains the details of each inclusion list summary.
+This structure contains the details of each inclusion summary.
 
 - `address` : `DATA`, 20 Bytes
 - `nonce` : `QUANTITY`, 64 Bits
@@ -50,7 +50,7 @@ This structure contains the details of each inclusion list summary.
 
 ### InclusionListSummaryListV1
 
-This structure contains the inclusion list summary.
+This structure contains the inclusion summary.
 
 - `summary`: `Array of InclusionListSummaryV1`, Array of summaries that must be satisfied.
 

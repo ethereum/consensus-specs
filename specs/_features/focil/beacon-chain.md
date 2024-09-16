@@ -14,10 +14,10 @@
   - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`InclusionListSummary`](#inclusionlistsummary)
-    - [`InclusionList`](#inclusionlist)
-    - [`SignedInclusionList`](#signedinclusionlist)
-    - [`InclusionListAggregate`](#inclusionlistaggregate)
+    - [`InclusionSummary`](#inclusionsummary)
+    - [`LocalInclusionList`](#localinclusionlist)
+    - [`SignedLocalInclusionList`](#signedlocalinclusionlist)
+    - [`InclusionSummaryAggregate`](#inclusionsummaryaggregate)
     - [`IndexedInclusionListAggregate`](#indexedinclusionlistaggregate)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -65,46 +65,46 @@ This is the beacon chain specification to add a committee-based inclusion list m
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(1)` # (New in FOCIL) | #TODO: Fill this value
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(1)` # (New in FOCIL) TODO: Placeholder | 
 
 ## Containers
 
 ### New containers
 
-#### `InclusionListSummary`
+#### `InclusionSummary`
 
 ```python
-class InclusionListSummary(Container):
+class InclusionSummary(Container):
     address: ExecutionAddress
     nonce: uint64
     gas_limit: uint64
 ```
 
-#### `InclusionList`
+#### `LocalInclusionList`
 
 ```python
-class InclusionList(Container):
+class LocalInclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
     parent_hash: Hash32
-    summaries: List[InclusionListSummary, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    summaries: List[InclusionSummary, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-#### `SignedInclusionList`
+#### `SignedLocalInclusionList`
 
 ```python
-class SignedInclusionList(Container):
-    message: InclusionList
+class SignedLocalInclusionList(Container):
+    message: LocalInclusionList
     signature: BLSSignature
 ```
 
-#### `InclusionListAggregate`
+#### `InclusionSummaryAggregate`
 
 ```python
-class InclusionListAggregate(Container):
+class InclusionSummaryAggregate(Container):
     aggregation_bits: Bitvector[IL_COMMITTEE_SIZE]
-    summary: InclusionListSummary
+    summary: InclusionSummary
     signature: BLSSignature
 ```
 
@@ -113,15 +113,22 @@ class InclusionListAggregate(Container):
 ```python
 class IndexedInclusionListAggregate(Container):
     validator_indices: List[ValidatorIndex, IL_COMMITTEE_SIZE]
-    summary: InclusionListSummary
+    summary: InclusionSummary
     signature: BLSSignature
+```
+
+#### `InclusionSummaryAggregates`
+
+```python
+class InclusionSummaryAggregates(Container):
+    List[InclusionSummaryAggregate, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
 ### Modified containers
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a new `inclusion_list_aggregate` field.
+**Note:** The Beacon Block body is modified to contain a new `inclusion_summary_aggregate` field.
 
 ```python
 class BeaconBlockBody(Container):
@@ -137,7 +144,7 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     # FOCIL
-    inclusion_list_aggregate: List[InclusionListAggregate, MAX_TRANSACTIONS_PER_INCLUSION_LIST]   # [New in FOCIL]
+    inclusion_summary_aggregates: InclusionSummaryAggregates   # [New in FOCIL]
 ```
 
 ### Beacon State accessors
@@ -145,17 +152,17 @@ class BeaconBlockBody(Container):
 #### `get_inclusion_list_committee`
 
 ```python
-def get_inclusion_list_committee(state: BeaconState) -> Vector[ValidatorIndex, IL_COMMITTEE_SIZE]:
+def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, IL_COMMITTEE_SIZE]:
     """
     Get the inclusion list committee for the given ``slot``
     """
-    epoch = compute_epoch_at_slot(state.slot)
+    epoch = compute_epoch_at_slot(slot)
     committees_per_slot = bit_floor(min(get_committee_count_per_slot(state, epoch), IL_COMMITTEE_SIZE))
     members_per_committee = IL_COMMITTEE_SIZE // committees_per_slot
     
     validator_indices: List[ValidatorIndex] = [] 
     for idx in range(committees_per_slot):
-        beacon_committee = get_beacon_committee(state, state.slot, CommitteeIndex(idx))
+        beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
         validator_indices += beacon_committee[:members_per_committee]
     return validator_indices
 ```
@@ -165,28 +172,28 @@ def get_inclusion_list_committee(state: BeaconState) -> Vector[ValidatorIndex, I
 
 ```python
 def get_inclusion_list_aggregate_indices(state: BeaconState, 
-                                  inclusion_list_aggregate: InclusionListAggregate) -> Set[ValidatorIndex]:
+                                  inclusion_summary_aggregate: InclusionSummaryAggregate) -> Set[ValidatorIndex]:
     """
-    Return the set of indices corresponding to ``inclusion_list_aggregate``.
+    Return the set of indices corresponding to ``inclusion_summary_aggregate``.
     """
-    il_committee = get_inclusion_list_committee(state)
-    return set(index for i, index in enumerate(il_committee) if inclusion_list_aggregate.aggregation_bits[i])
+    il_committee = get_inclusion_list_committee(state, state.slot)
+    return set(index for i, index in enumerate(il_committee) if inclusion_summary_aggregate.aggregation_bits[i])
 ```
 
 #### New `get_indexed_inclusion_list_aggregate`
 
 ```python
 def get_indexed_inclusion_list_aggregate(state: BeaconState, 
-                                    inclusion_list_aggregate: InclusionListAggregate) -> IndexedInclusionListAggregate:
+                                    inclusion_summary_aggregate: InclusionSummaryAggregate) -> IndexedInclusionListAggregate:
     """
-    Return the indexed inclusion list aggregate corresponding to ``inclusion_list_aggregate``.
+    Return the indexed inclusion list aggregate corresponding to ``inclusion_summary_aggregate``.
     """
     indices = get_inclusion_list_aggregate_indices(state)
 
     return IndexedInclusionListAggregate(
         validator_indices=sorted(indices),
-        summary=inclusion_list_aggregate.summary,
-        signature=inclusion_list_aggregate.signature,
+        summary=inclusion_summary_aggregate.summary,
+        signature=inclusion_summary_aggregate.signature,
     )
 ```
 
@@ -200,7 +207,7 @@ def get_indexed_inclusion_list_aggregate(state: BeaconState,
 
 ```python
 def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
-                              inclusion_list: InclusionList) -> bool:
+                              inclusion_list: LocalInclusionList) -> bool:
     """
     Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
     starting from the execution state corresponding to the `parent_hash` in the inclusion list 
@@ -249,7 +256,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.execution_payload.deposit_requests, process_deposit_request)
     for_ops(body.execution_payload.withdrawal_requests, process_withdrawal_request)
     for_ops(body.execution_payload.consolidation_requests, process_consolidation_request)
-    for_ops(body.inclusion_list_aggregate, process_inclusion_list_aggregate)   # [New in FOCIL]
+    for_ops(body.inclusion_summary_aggregate, process_inclusion_list_aggregate)   # [New in FOCIL]
 ```
 
 ##### Inclusion list aggregate
@@ -259,11 +266,11 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_inclusion_list_aggregate(
     state: BeaconState,
-    inclusion_list_aggregate: InclusionListAggregate
+    inclusion_summary_aggregate: InclusionSummaryAggregate
 ) -> None:
 
     # Verify inclusion list aggregate signature
-    indexed_inclusion_list_aggregate = get_indexed_inclusion_list_aggregate(state, inclusion_list_aggregate)
+    indexed_inclusion_list_aggregate = get_indexed_inclusion_list_aggregate(state, inclusion_summary_aggregate)
     assert is_valid_indexed_inclusion_list_aggregate(state, indexed_inclusion_list_aggregate)
 
     # TODO: Reward inclusion list aggregate participants
