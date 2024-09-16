@@ -73,7 +73,16 @@ an irregular state change is made to upgrade to EIP-7732.
 ```python
 def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
     epoch = electra.get_current_epoch(pre)
-
+    latest_execution_payload_header = ExecutionPayloadHeader(
+        parent_block_hash=Hash32(),  # [New in EIP-7732]
+        parent_block_root=Root(),  # [New in EIP-7732]
+        block_hash=pre.latest_execution_payload_header.block_hash,
+        gas_limit=pre.latest_execution_payload_header.gas_limit,
+        builder_index=ValidatorIndex(0),  # [New in EIP-7732]
+        slot=Slot(0),  # [New in EIP-7732]
+        value=Gwei(0),  # [New in EIP-7732]
+        blob_kzg_commitments_root=Root(),  # [New in EIP-7732]
+    )
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -114,7 +123,7 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-7732]
+        latest_execution_payload_header=latest_execution_payload_header
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
