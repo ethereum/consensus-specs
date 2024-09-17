@@ -524,7 +524,7 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     author="ethereum",
-    url="https://github.com/ethereum/eth2.0-specs",
+    url="https://github.com/ethereum/consensus-specs",
     include_package_data=False,
     package_data={
         'configs': ['*.yaml'],
