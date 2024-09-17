@@ -40,6 +40,11 @@ jobs:
         run: |
           cd consensus-specs
           make clean
+      # Necessary to build/install python-snappy
+      - name: Install snappy development headers
+        run: |
+          sudo apt update
+          sudo apt install -y libsnappy-dev
       - name: Install dependencies and generate pyspec
         run: |
           cd consensus-specs
