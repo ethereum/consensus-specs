@@ -25,6 +25,9 @@ SSZ_DIR = ./ssz
 SYNC_DIR = ./sync
 FORK_CHOICE_DIR = ./fork_choice
 
+# Get absolute path to the preinstall requirements, this uses := for immediate evaluation.
+REQUIREMENTS_PREINSTALLATION := $(realpath requirements_preinstallation.txt)
+
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
@@ -195,6 +198,7 @@ define run_generator
 	cd $(GENERATOR_DIR)/$(1); \
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
+	pip3 install -r $(REQUIREMENTS_PREINSTALLATION); \
 	pip3 install -r requirements.txt; \
 	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
 	echo "generator $(1) finished"
