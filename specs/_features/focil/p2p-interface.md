@@ -5,6 +5,7 @@ This document contains the consensus-layer networking specification for FOCIL.
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`SignedInclusionListAggregate`](#signedinclusionlistaggregate)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -15,6 +16,12 @@ This document contains the consensus-layer networking specification for FOCIL.
       - [`inclusion_summary_aggregates`](#inclusion_summary_aggregates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `LOCAL_INCLUSION_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
 
 ### Containers
 
@@ -60,6 +67,7 @@ This topic is used to propagate signed local inclusion list as `SignedLocalInclu
 The following validations MUST pass before forwarding the `local_inclusion_list` on the network, assuming the alias `message = signed_local_inclusion_list.message`:
 
 - _[REJECT]_ The slot `message.slot` is equal to current slot.
+- _[IGNORE]_ The current time is `LOCAL_INCLUSION_CUT_OFF` seconds into the slot.
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[REJECT]_ The summaries `message.summaries` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index`. 
