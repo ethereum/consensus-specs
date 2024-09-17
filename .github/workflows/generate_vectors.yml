@@ -17,14 +17,14 @@ on:
 
 jobs:
   generate-tests:
-    runs-on: [self-hosted-ghr-custom, size-chungus-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: 'ethereum/consensus-specs'
           path: 'consensus-specs'
-          ref: ${{ inputs.source_ref || 'dev' }}
+          ref: ${{ inputs.ref || 'dev' }}
       - name: Checkout consensus-spec-tests repository
         uses: actions/checkout@v4
         with:
