@@ -18,18 +18,19 @@
     - [`LocalInclusionList`](#localinclusionlist)
     - [`SignedLocalInclusionList`](#signedlocalinclusionlist)
     - [`InclusionSummaryAggregate`](#inclusionsummaryaggregate)
-    - [`IndexedInclusionListAggregate`](#indexedinclusionlistaggregate)
+    - [`IndexedInclusionSummaryAggregate`](#indexedinclusionsummaryaggregate)
+    - [`InclusionSummaryAggregates`](#inclusionsummaryaggregates)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Beacon State accessors](#beacon-state-accessors)
     - [`get_inclusion_list_committee`](#get_inclusion_list_committee)
   - [Beacon State accessors](#beacon-state-accessors-1)
-    - [New `get_inclusion_list_aggregate_indices`](#new-get_inclusion_list_aggregate_indices)
-    - [New `get_indexed_inclusion_list_aggregate`](#new-get_indexed_inclusion_list_aggregate)
+    - [New `get_inclusion_summary_aggregates_signature_indices`](#new-get_inclusion_summary_aggregates_signature_indices)
+    - [New `get_indexed_inclusion_summary_aggregate`](#new-get_indexed_inclusion_summary_aggregate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Engine APIs](#engine-apis)
-      - [New `verify_and_notify_new_inclusion_list`](#new-verify_and_notify_new_inclusion_list)
+      - [New `verify_and_notify_local_inclusion_list`](#new-verify_and_notify_local_inclusion_list)
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
@@ -41,7 +42,7 @@
 
 ## Introduction
 
-This is the beacon chain specification to add a committee-based inclusion list mechanism to allow forced transaction inclusion. Refers to [Ethresearch](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
+This is the beacon chain specification to add a fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to [Ethresearch](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
 
 *Note:* This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
 
@@ -59,7 +60,7 @@ This is the beacon chain specification to add a committee-based inclusion list m
 
 | Name | Value | 
 | - | - | 
-| `IL_COMMITTEE_SIZE` | `uint64(2**9)` (=512)  # (New in FOCIL) |
+| `IL_COMMITTEE_SIZE` | `uint64(2**9)` (=256)  # (New in FOCIL) |
 
 ### Execution
 
@@ -108,10 +109,10 @@ class InclusionSummaryAggregate(Container):
     signature: BLSSignature
 ```
 
-#### `IndexedInclusionListAggregate`
+#### `IndexedInclusionSummaryAggregate`
 
 ```python
-class IndexedInclusionListAggregate(Container):
+class IndexedInclusionSummaryAggregate(Container):
     validator_indices: List[ValidatorIndex, IL_COMMITTEE_SIZE]
     summary: InclusionSummary
     signature: BLSSignature
@@ -121,14 +122,14 @@ class IndexedInclusionListAggregate(Container):
 
 ```python
 class InclusionSummaryAggregates(Container):
-    List[InclusionSummaryAggregate, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    List[InclusionSummaryAggregate, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE]
 ```
 
 ### Modified containers
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a new `inclusion_summary_aggregate` field.
+**Note:** The Beacon Block body is modified to contain a new `inclusion_summary_aggregates` field.
 
 ```python
 class BeaconBlockBody(Container):
@@ -168,10 +169,10 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[Valid
 ```
 ### Beacon State accessors
 
-#### New `get_inclusion_list_aggregate_indices`
+#### New `get_inclusion_summary_aggregates_signature_indices`
 
 ```python
-def get_inclusion_list_aggregate_indices(state: BeaconState, 
+def get_inclusion_summary_aggregates_signature_indices(state: BeaconState, 
                                   inclusion_summary_aggregate: InclusionSummaryAggregate) -> Set[ValidatorIndex]:
     """
     Return the set of indices corresponding to ``inclusion_summary_aggregate``.
@@ -180,17 +181,17 @@ def get_inclusion_list_aggregate_indices(state: BeaconState,
     return set(index for i, index in enumerate(il_committee) if inclusion_summary_aggregate.aggregation_bits[i])
 ```
 
-#### New `get_indexed_inclusion_list_aggregate`
+#### New `get_indexed_inclusion_summary_aggregate`
 
 ```python
-def get_indexed_inclusion_list_aggregate(state: BeaconState, 
-                                    inclusion_summary_aggregate: InclusionSummaryAggregate) -> IndexedInclusionListAggregate:
+def get_indexed_inclusion_summary_aggregate(state: BeaconState, 
+                                    inclusion_summary_aggregate: InclusionSummaryAggregate) -> IndexedInclusionSummaryAggregate:
     """
     Return the indexed inclusion list aggregate corresponding to ``inclusion_summary_aggregate``.
     """
-    indices = get_inclusion_list_aggregate_indices(state)
+    indices = get_inclusion_summary_aggregates_signature_indices(state, inclusion_summary_aggregate)
 
-    return IndexedInclusionListAggregate(
+    return IndexedInclusionSummaryAggregate(
         validator_indices=sorted(indices),
         summary=inclusion_summary_aggregate.summary,
         signature=inclusion_summary_aggregate.signature,
@@ -203,10 +204,10 @@ def get_indexed_inclusion_list_aggregate(state: BeaconState,
 
 #### Engine APIs
 
-##### New `verify_and_notify_new_inclusion_list`
+##### New `verify_and_notify_local_inclusion_list`
 
 ```python
-def verify_and_notify_new_inclusion_list(self: ExecutionEngine,
+def verify_and_notify_local_inclusion_list(self: ExecutionEngine,
                               inclusion_list: LocalInclusionList) -> bool:
     """
     Return ``True`` if and only if the transactions in the inclusion list can be successfully executed
@@ -270,7 +271,7 @@ def process_inclusion_list_aggregate(
 ) -> None:
 
     # Verify inclusion list aggregate signature
-    indexed_inclusion_list_aggregate = get_indexed_inclusion_list_aggregate(state, inclusion_summary_aggregate)
+    indexed_inclusion_list_aggregate = get_indexed_inclusion_summary_aggregate(state, inclusion_summary_aggregate)
     assert is_valid_indexed_inclusion_list_aggregate(state, indexed_inclusion_list_aggregate)
 
     # TODO: Reward inclusion list aggregate participants

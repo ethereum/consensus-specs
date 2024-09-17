@@ -21,7 +21,7 @@ Warning: This file should be placed in https://github.com/ethereum/execution-api
     - [Request](#request)
     - [Response](#response)
     - [Specification](#specification)
-  - [engine_newInclusionListV1](#engine_newinclusionlistv1)
+  - [engine_newLocalInclusionListV1](#engine_newlocalinclusionlistv1)
     - [Request](#request-1)
     - [Response](#response-1)
     - [Specification](#specification-1)
@@ -36,7 +36,7 @@ Warning: This file should be placed in https://github.com/ethereum/execution-api
 
 | Name | Value |
 | - | - |
-| `INCLUSION_LIST_MAX_GAS` |  `uint64(4194304) = 2**22` |
+| `LOCAL_INCLUSION_LIST_MAX_GAS` |  `uint64(4194304) = 2**22` |
 
 ## Structures 
 
@@ -86,11 +86,11 @@ This method follows the same specification as [`engine_newPayloadV3`](./cancun.m
 
 1. Client software **MUST** return `-38005: Unsupported fork` error if the `timestamp` of the payload does not fall within the time frame of the Prague fork.
 
-### engine_newInclusionListV1
+### engine_newLocalInclusionListV1
 
 #### Request
 
-* method: `engine_newInclusionListV1`
+* method: `engine_newLocalInclusionListV1`
 * params:
   1. `parent_hash`: `DATA`, 32 Bytes - parent hash which this inclusion list is built upon.
   2. `inclusionListSummaryList`: `InclusionListSummaryListV1` - Summary.

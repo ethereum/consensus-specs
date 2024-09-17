@@ -12,7 +12,7 @@ This document contains the consensus-layer networking specification for FOCIL.
   - [Topics and messages](#topics-and-messages-1)
     - [Global topics](#global-topics)
       - [`local_inclusion_list`](#local_inclusion_list)
-      - [`inclusion_summary_aggregate`](#inclusion_summary_aggregate)
+      - [`inclusion_summary_aggregates`](#inclusion_summary_aggregates)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -21,7 +21,7 @@ This document contains the consensus-layer networking specification for FOCIL.
 #### `SignedInclusionListAggregate`
 
 ```python
-class SignedInclusionListAggregates(Container):
+class SignedInclusionSummaryAggregates(Container):
     slot: Slot
     proposer_index: ValidatorIndex
     message: InclusionSummaryAggregates
@@ -48,7 +48,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 | Name                          | Message Type                                         |
 |-------------------------------|------------------------------------------------------|
 | `local_inclusion_list`    | `SignedLocalInclusionList` [New in FOCIL] |
-| `inclusion_summary_aggregates`           | `SignedInclusionListAggregates` [New in FOCIL]       |
+| `inclusion_summary_aggregates`           | `SignedInclusionSummaryAggregates` [New in FOCIL]       |
 
 ##### Global topics
 
@@ -67,9 +67,9 @@ The following validations MUST pass before forwarding the `local_inclusion_list`
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
 - _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice. 
 
-###### `inclusion_summary_aggregate`
+###### `inclusion_summary_aggregates`
 
-This topic is used to propagate signed inclusion list aggregate as `SignedInclusionListAggregates`.
+This topic is used to propagate signed inclusion list aggregate as `SignedInclusionSummaryAggregates`.
 The following validations MUST pass before forwarding the `inclusion_summary_aggregates` on the network:
 
 - _[REJECT]_ The slot `signed_inclusion_list_aggregates.slot` is equal to current slot + 1.

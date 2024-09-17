@@ -13,7 +13,7 @@
 - [New inclusion list committee assignment](#new-inclusion-list-committee-assignment)
   - [Lookahead](#lookahead)
 - [New proposer duty](#new-proposer-duty)
-  - [Inclusion summary aggregate release](#inclusion-summary-aggregate-release)
+  - [Inclusion summary aggregates release](#inclusion-summary-aggregates-release)
   - [Block proposal](#block-proposal)
     - [Constructing the new `InclusionSummaryAggregate` field in  `BeaconBlockBody`](#constructing-the-new-inclusionsummaryaggregate-field-in--beaconblockbody)
 - [New inclusion list committee duty](#new-inclusion-list-committee-duty)
@@ -83,10 +83,10 @@ Proposer has to release `signed_inclusion_summary_aggregates` at `3 * SECONDS_PE
   - The `message.summaries` and `message.transactions` must pass `engine_newPayloadV4` validation.
 - The proposer aggregates all `local_inclusion_list` data into an `inclusion_summary_aggregates`, focusing only on the `InclusionSummary` field from the `LocalInclusionList`. 
   - To aggregate, the proposer fills the `aggregation_bits` field by using the relative position of the validator indices with respect to the ILC obtained from `get_inclusion_list_committee(state, proposing_slot - 1)`.
-- The proposer signs the `inclusion_summary_aggregates` using helper `get_inclusion_summary_aggregates` and constructs a `signed_inclusion_aggregates_summary`.
+- The proposer signs the `inclusion_summary_aggregates` using helper `get_inclusion_summary_aggregates_signatures` and constructs a `signed_inclusion_aggregates_summary`.
 
 ```python
-def get_inclusion_summary_aggregate(
+def get_inclusion_summary_aggregates_signature(
         state: BeaconState, inclusion_summary_aggregates: InclusionSummaryAggregates, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER), compute_epoch_at_slot(proposer_slot))
     signing_root = compute_signing_root(inclusion_summary_aggregates, domain)
@@ -99,8 +99,8 @@ Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 
 #### Constructing the new `InclusionSummaryAggregate` field in  `BeaconBlockBody`
 
-Proposer has to include a valid `inclusion_summary_aggregate` into the block body. The proposer will have to
-* Proposer uses perviously constructed `InclusionSummaryAggregate` and include it in the beacon block body.
+Proposer has to include a valid `inclusion_summary_aggregates` into the block body. The proposer will have to
+* Proposer uses perviously constructed `InclusionSummaryAggregates` and include it in the beacon block body.
 
 ## New inclusion list committee duty
 
