@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_and_later,
+    with_bellatrix_until_eip7732,
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
@@ -28,7 +28,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_from_syncing_to_invalid(spec, state):
     test_steps = []

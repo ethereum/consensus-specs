@@ -20,7 +20,10 @@ from eth2spec.test.helpers.attester_slashings import (
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
-from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_empty_signed_execution_payload_header,
+)
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
@@ -36,6 +39,7 @@ from eth2spec.test.helpers.forks import (
     is_post_bellatrix,
     is_post_electra,
     is_post_capella,
+    is_post_eip7732,
 )
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
@@ -147,7 +151,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         state_root=spec.Bytes32(),
         body_root=block.body.hash_tree_root(),
     )
-    if is_post_bellatrix(spec):
+    if is_post_bellatrix(spec) and not is_post_eip7732(spec):
         if spec.is_execution_enabled(state, block.body):
             spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
 
@@ -199,7 +203,9 @@ def test_invalid_parent_from_same_slot(spec, state):
     child_block = parent_block.copy()
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
-    if is_post_bellatrix(spec):
+    if is_post_eip7732(spec):
+        child_block.body.signed_execution_payload_header = build_empty_signed_execution_payload_header(spec, state)
+    elif is_post_bellatrix(spec):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     # Show that normal path through transition fails

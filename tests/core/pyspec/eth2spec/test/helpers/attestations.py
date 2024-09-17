@@ -3,7 +3,11 @@ from lru import LRU
 from typing import List
 
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.state import state_transition_and_sign_block, next_epoch, next_slot
+from eth2spec.test.helpers.state import (
+    payload_state_transition_no_store,
+    state_transition_and_sign_block,
+    next_epoch, next_slot,
+)
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_electra
 from eth2spec.test.helpers.keys import privkeys
@@ -262,6 +266,7 @@ def next_slots_with_attestations(spec,
             participation_fn,
         )
         signed_blocks.append(signed_block)
+        payload_state_transition_no_store(spec, post_state, signed_block.message)
 
     return state, signed_blocks, post_state
 

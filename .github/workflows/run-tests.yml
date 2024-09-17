@@ -74,7 +74,7 @@ jobs:
     needs: [lint,codespell,table_of_contents]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594", "eip7732"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
