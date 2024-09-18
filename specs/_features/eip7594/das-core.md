@@ -20,7 +20,7 @@
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
   - [`get_custody_columns`](#get_custody_columns)
-  - [`compute_extended_matrix`](#compute_extended_matrix)
+  - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
   - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
@@ -62,13 +62,12 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Description |
 | - | - | - |
 | `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
-| `MAX_CELLS_IN_EXTENDED_MATRIX` | `uint64(MAX_BLOBS_PER_BLOCK * NUMBER_OF_COLUMNS)` (= 768) | The data size of `ExtendedMatrix` |
 
 ### Networking
 
 | Name | Value | Description |
 | - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `128` | The number of data column sidecar subnets used in the gossipsub protocol |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint64(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
@@ -133,54 +132,52 @@ def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequen
     ])
 ```
 
-### `compute_extended_matrix`
+### `compute_matrix`
 
 ```python
-def compute_extended_matrix(blobs: Sequence[Blob]) -> List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX]:
+def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     """
-    Return the full ``ExtendedMatrix``.
+    Return the full, flattened sequence of matrix entries.
 
-    This helper demonstrates the relationship between blobs and ``ExtendedMatrix``.
-    The data structure for storing cells is implementation-dependent.
+    This helper demonstrates the relationship between blobs and the matrix of cells/proofs.
+    The data structure for storing cells/proofs is implementation-dependent.
     """
-    extended_matrix = []
+    matrix = []
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
         for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
-            extended_matrix.append(MatrixEntry(
+            matrix.append(MatrixEntry(
                 cell=cell,
                 kzg_proof=proof,
                 row_index=blob_index,
                 column_index=cell_index,
             ))
-    return extended_matrix
+    return matrix
 ```
 
 ### `recover_matrix`
 
 ```python
-def recover_matrix(partial_matrix: Sequence[MatrixEntry],
-                   blob_count: uint64) -> List[MatrixEntry, MAX_CELLS_IN_EXTENDED_MATRIX]:
+def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) -> Sequence[MatrixEntry]:
     """
-    Return the recovered extended matrix.
+    Recover the full, flattened sequence of matrix entries.
 
     This helper demonstrates how to apply ``recover_cells_and_kzg_proofs``.
-    The data structure for storing cells is implementation-dependent.
+    The data structure for storing cells/proofs is implementation-dependent.
     """
-    extended_matrix = []
+    matrix = []
     for blob_index in range(blob_count):
         cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
-
         recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
         for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
-            extended_matrix.append(MatrixEntry(
+            matrix.append(MatrixEntry(
                 cell=cell,
                 kzg_proof=proof,
                 row_index=blob_index,
                 column_index=cell_index,
             ))
-    return extended_matrix
+    return matrix
 ```
 
 ### `get_data_column_sidecars`
@@ -225,7 +222,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_subnet_count: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
@@ -241,7 +238,7 @@ At each slot, a node advertising `custody_subnet_count` downloads a minimum of `
 
 ## Extended data
 
-In this construction, we extend the blobs using a one-dimensional erasure coding extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed `NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its corresponding extension. `compute_extended_matrix` demonstrates the relationship between blobs and custom type `ExtendedMatrix`.
+In this construction, we extend the blobs using a one-dimensional erasure coding extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed `NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its corresponding extension. `compute_matrix` demonstrates the relationship between blobs and the matrix, a potential method of storing cells/proofs.
 
 ## Column gossip
 

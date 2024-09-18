@@ -19,15 +19,15 @@ def chunks(lst, n):
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_compute_extended_matrix(spec):
+def test_compute_matrix(spec):
     rng = random.Random(5566)
 
     blob_count = 2
     input_blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
-    extended_matrix = spec.compute_extended_matrix(input_blobs)
-    assert len(extended_matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
+    matrix = spec.compute_matrix(input_blobs)
+    assert len(matrix) == spec.CELLS_PER_EXT_BLOB * blob_count
 
-    rows = chunks(extended_matrix, spec.CELLS_PER_EXT_BLOB)
+    rows = chunks(matrix, spec.CELLS_PER_EXT_BLOB)
     assert len(rows) == blob_count
     for row in rows:
         assert len(row) == spec.CELLS_PER_EXT_BLOB
@@ -53,11 +53,11 @@ def test_recover_matrix(spec):
     # Compute an extended matrix with two blobs
     blob_count = 2
     blobs = [get_sample_blob(spec, rng=rng) for _ in range(blob_count)]
-    extended_matrix = spec.compute_extended_matrix(blobs)
+    matrix = spec.compute_matrix(blobs)
 
     # Construct a matrix with some entries missing
     partial_matrix = []
-    for blob_entries in chunks(extended_matrix, spec.CELLS_PER_EXT_BLOB):
+    for blob_entries in chunks(matrix, spec.CELLS_PER_EXT_BLOB):
         rng.shuffle(blob_entries)
         partial_matrix.extend(blob_entries[:N_SAMPLES])
 
@@ -65,7 +65,7 @@ def test_recover_matrix(spec):
     recovered_matrix = spec.recover_matrix(partial_matrix, blob_count)
 
     # Ensure that the recovered matrix matches the original matrix
-    assert recovered_matrix == extended_matrix
+    assert recovered_matrix == matrix
 
 
 @with_eip7594_and_later

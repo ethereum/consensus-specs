@@ -156,6 +156,7 @@ class SignedExecutionPayloadHeader(Container):
 ```python
 class ExecutionPayloadEnvelope(Container):
     payload: ExecutionPayload
+    execution_requests: ExecutionRequests
     builder_index: ValidatorIndex
     beacon_block_root: Root
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -175,7 +176,7 @@ class SignedExecutionPayloadEnvelope(Container):
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly.
+**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope. 
 
 ```python
 class BeaconBlockBody(Container):
@@ -184,15 +185,16 @@ class BeaconBlockBody(Container):
     graffiti: Bytes32  # Arbitrary data
     # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
     # Removed execution_payload [Removed in EIP-7732]
-    # Removed blob_kzg_commitments [Removed in EIP-7732]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    # Removed blob_kzg_commitments [Removed in EIP-7732]
+    # Removed execution_requests [Removed in EIP-7732]
     # PBS
     signed_execution_payload_header: SignedExecutionPayloadHeader   # [New in EIP-7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-7732]
@@ -493,9 +495,12 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     signed_header = block.body.signed_execution_payload_header
     assert verify_execution_payload_header_signature(state, signed_header)
 
-    # Check that the builder has funds to cover the bid
+    # Check that the builder is active non-slashed has funds to cover the bid
     header = signed_header.message
     builder_index = header.builder_index
+    builder = state.validators[builder_index]
+    assert is_active_validator(builder, get_current_epoch(state))
+    assert not builder.slashed
     amount = header.value
     assert state.balances[builder_index] >= amount
 
@@ -647,11 +652,13 @@ def process_execution_payload(state: BeaconState,
         # Verify the execution payload is valid
         versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) 
                             for commitment in envelope.blob_kzg_commitments]
+        requests = envelope.execution_requests
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
                 execution_payload=payload,
                 versioned_hashes=versioned_hashes,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
+                execution_requests=requests,
             )
         )
 
@@ -660,9 +667,9 @@ def process_execution_payload(state: BeaconState,
             for operation in operations:
                 fn(state, operation)
 
-        for_ops(payload.deposit_requests, process_deposit_request)
-        for_ops(payload.withdrawal_requests, process_withdrawal_request)
-        for_ops(payload, process_consolidation_request)
+        for_ops(requests.deposit_requests, process_deposit_request)
+        for_ops(requests.withdrawal_requests, process_withdrawal_request)
+        for_ops(requests.consolidation_requests, process_consolidation_request)
 
         # Cache the execution payload header and proposer
         state.latest_block_hash = payload.block_hash
