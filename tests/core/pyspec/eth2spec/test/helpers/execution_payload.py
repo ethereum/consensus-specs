@@ -198,20 +198,12 @@ def compute_el_block_hash_with_parent_root(spec, payload, parent_beacon_block_ro
     transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
 
     withdrawals_trie_root = None
-    requests_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
-    if is_post_electra(spec):
-        requests_encoded = []
-        requests_encoded += [get_deposit_request_rlp_bytes(request) for request in payload.deposit_requests]
-        requests_encoded += [get_withdrawal_request_rlp_bytes(request) for request in payload.withdrawal_requests]
-        requests_encoded += [get_consolidation_request_rlp_bytes(request) for request in payload.consolidation_requests]
-
-        requests_trie_root = compute_trie_root_from_indexed_data(requests_encoded)
 
     payload_header = get_execution_payload_header(spec, payload)
 
