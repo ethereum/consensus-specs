@@ -1176,7 +1176,6 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
         source_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
         target_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.target_pubkey))
         source_validator = state.validators[source_index]
-        pre_exit_epoch = source_validator.exit_epoch
         pre_pending_consolidations = state.pending_consolidations.copy()
         pre_withdrawal_credentials = source_validator.withdrawal_credentials
         pre_balance = state.balances[source_index]
