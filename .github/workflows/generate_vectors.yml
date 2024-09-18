@@ -12,6 +12,8 @@ on:
         default: dev
         type: string
         required: true
+  schedule:
+    - cron:  '0 2 * * *'
 
 jobs:
   generate-tests:
@@ -22,7 +24,7 @@ jobs:
         with:
           repository: 'ethereum/consensus-specs'
           path: 'consensus-specs'
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ inputs.source_ref || 'dev' }}
       - name: Checkout consensus-spec-tests repository
         uses: actions/checkout@v4
         with:

@@ -156,6 +156,7 @@ class SignedExecutionPayloadHeader(Container):
 ```python
 class ExecutionPayloadEnvelope(Container):
     payload: ExecutionPayload
+    execution_requests: ExecutionRequests
     builder_index: ValidatorIndex
     beacon_block_root: Root
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -175,7 +176,7 @@ class SignedExecutionPayloadEnvelope(Container):
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly.
+**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope. 
 
 ```python
 class BeaconBlockBody(Container):
@@ -191,8 +192,9 @@ class BeaconBlockBody(Container):
     sync_aggregate: SyncAggregate
     # Execution
     # Removed execution_payload [Removed in EIP-7732]
-    # Removed blob_kzg_commitments [Removed in EIP-7732]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    # Removed blob_kzg_commitments [Removed in EIP-7732]
+    # Removed execution_requests [Removed in EIP-7732]
     # PBS
     signed_execution_payload_header: SignedExecutionPayloadHeader   # [New in EIP-7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-7732]
@@ -650,11 +652,13 @@ def process_execution_payload(state: BeaconState,
         # Verify the execution payload is valid
         versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) 
                             for commitment in envelope.blob_kzg_commitments]
+        requests = envelope.execution_requests
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
                 execution_payload=payload,
                 versioned_hashes=versioned_hashes,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
+                execution_requests=requests,
             )
         )
 
@@ -663,9 +667,9 @@ def process_execution_payload(state: BeaconState,
             for operation in operations:
                 fn(state, operation)
 
-        for_ops(payload.deposit_requests, process_deposit_request)
-        for_ops(payload.withdrawal_requests, process_withdrawal_request)
-        for_ops(payload.consolidation_requests, process_consolidation_request)
+        for_ops(requests.deposit_requests, process_deposit_request)
+        for_ops(requests.withdrawal_requests, process_withdrawal_request)
+        for_ops(requests.consolidation_requests, process_consolidation_request)
 
         # Cache the execution payload header and proposer
         state.latest_block_hash = payload.block_hash

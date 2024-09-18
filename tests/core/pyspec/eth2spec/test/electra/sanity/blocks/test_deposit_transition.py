@@ -62,7 +62,7 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
         assert len(state.validators) == pre_validators_len + len(block.body.deposits)
 
         # Check that deposit requests are processed
-        for i, deposit_request in enumerate(block.body.execution_payload.deposit_requests):
+        for i, deposit_request in enumerate(block.body.execution_requests.deposits):
             # The corresponding pending deposit is created
             pending_deposit = state.pending_deposits[pre_pending_deposits_len + len(block.body.deposits) + i]
             assert pending_deposit.pubkey == deposit_request.pubkey
@@ -73,7 +73,7 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
 
         # Assert that no unexpected pending deposits were created
         assert len(state.pending_deposits) == pre_pending_deposits_len + len(
-            block.body.deposits) + len(block.body.execution_payload.deposit_requests)
+            block.body.deposits) + len(block.body.execution_requests.deposits)
 
 
 def prepare_state_and_block(spec,
@@ -133,7 +133,7 @@ def prepare_state_and_block(spec,
 
     # Assign deposits and deposit requests
     block.body.deposits = deposits
-    block.body.execution_payload.deposit_requests = deposit_requests
+    block.body.execution_requests.deposits = deposit_requests
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     return state, block
@@ -151,7 +151,7 @@ def test_deposit_transition__start_index_is_set(spec, state):
     yield from run_deposit_transition_block(spec, state, block)
 
     # deposit_requests_start_index must be set to the index of the first request
-    assert state.deposit_requests_start_index == block.body.execution_payload.deposit_requests[0].index
+    assert state.deposit_requests_start_index == block.body.execution_requests.deposits[0].index
 
 
 @with_phases([ELECTRA])
@@ -250,7 +250,7 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
 
     # Artificially assign deposit's pubkey to a deposit request of the same block
     top_up_keys = [block.body.deposits[0].data.pubkey]
-    block.body.execution_payload.deposit_requests[0].pubkey = top_up_keys[0]
+    block.body.execution_requests.deposits[0].pubkey = top_up_keys[0]
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     pre_pending_deposits = len(state.pending_deposits)
@@ -260,5 +260,5 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # Check the top up
     assert len(state.pending_deposits) == pre_pending_deposits + 2
     assert state.pending_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
-    amount_from_deposit = block.body.execution_payload.deposit_requests[0].amount
+    amount_from_deposit = block.body.execution_requests.deposits[0].amount
     assert state.pending_deposits[pre_pending_deposits + 1].amount == amount_from_deposit

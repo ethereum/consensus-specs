@@ -3,7 +3,11 @@ from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with, run_epoch_processing_to
 )
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_electra,
+)
 from eth2spec.test.helpers.random import randomize_state
 from eth2spec.test.helpers.state import has_active_balance_differential
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
@@ -38,6 +42,18 @@ def get_slashing_multiplier(spec):
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR
     else:
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER
+
+
+def _compute_expected_correlation_penalty(spec, effective_balance, total_slashed_balance, total_balance):
+    if is_post_electra(spec):
+        return ((get_slashing_multiplier(spec) * total_slashed_balance)
+                // (total_balance // spec.EFFECTIVE_BALANCE_INCREMENT)
+                * (effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT))
+    else:
+        return (effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
+                * (get_slashing_multiplier(spec) * total_slashed_balance)
+                // total_balance
+                * spec.EFFECTIVE_BALANCE_INCREMENT)
 
 
 def _setup_process_slashings_test(spec, state, not_slashable_set=set()):
@@ -99,7 +115,8 @@ def test_minimal_penalty(spec, state):
     #
 
     # Just the bare minimum for this one validator
-    state.balances[0] = state.validators[0].effective_balance = spec.config.EJECTION_BALANCE
+    state.balances[0] = state.validators[0].effective_balance = (
+        spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT)
     # All the other validators get the maximum.
     for i in range(1, len(state.validators)):
         state.validators[i].effective_balance = state.balances[i] = spec.MAX_EFFECTIVE_BALANCE
@@ -119,15 +136,10 @@ def test_minimal_penalty(spec, state):
     spec.process_slashings(state)
     yield 'post', state
 
-    expected_penalty = (
-        state.validators[0].effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
-        * (get_slashing_multiplier(spec) * total_penalties)
-        // total_balance
-        * spec.EFFECTIVE_BALANCE_INCREMENT
-    )
+    expected_penalty = _compute_expected_correlation_penalty(
+        spec, state.validators[0].effective_balance, total_penalties, total_balance)
 
-    assert expected_penalty == 0
-    assert state.balances[0] == pre_slash_balances[0]
+    assert state.balances[0] == pre_slash_balances[0] - expected_penalty
 
 
 @with_all_phases
@@ -181,12 +193,8 @@ def test_scaled_penalties(spec, state):
 
     for i in slashed_indices:
         v = state.validators[i]
-        expected_penalty = (
-            v.effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
-            * (get_slashing_multiplier(spec) * total_penalties)
-            // (total_balance)
-            * spec.EFFECTIVE_BALANCE_INCREMENT
-        )
+        expected_penalty = _compute_expected_correlation_penalty(
+            spec, v.effective_balance, total_penalties, total_balance)
         assert state.balances[i] == pre_slash_balances[i] - expected_penalty
 
 
