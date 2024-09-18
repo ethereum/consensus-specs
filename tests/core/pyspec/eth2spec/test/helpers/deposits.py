@@ -357,8 +357,7 @@ def run_deposit_request_processing(
         state,
         deposit_request,
         validator_index,
-        effective=True,
-        switches_to_compounding=False):
+        effective=True):
 
     """
     Run ``process_deposit_request``, yielding:
@@ -367,8 +366,6 @@ def run_deposit_request_processing(
       - post-state ('post').
     """
     assert is_post_electra(spec)
-    if switches_to_compounding:
-        assert effective
 
     pre_validator_count = len(state.validators)
     pre_balance = 0
@@ -392,10 +389,7 @@ def run_deposit_request_processing(
 
     if is_top_up:
         assert state.validators[validator_index].effective_balance == pre_effective_balance
-        if switches_to_compounding and pre_balance > spec.MIN_ACTIVATION_BALANCE:
-            assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE
-        else:
-            assert state.balances[validator_index] == pre_balance
+        assert state.balances[validator_index] == pre_balance
 
     pending_deposit = spec.PendingDeposit(
         pubkey=deposit_request.pubkey,
@@ -405,19 +399,7 @@ def run_deposit_request_processing(
         slot=state.slot,
     )
 
-    if switches_to_compounding and pre_balance > spec.MIN_ACTIVATION_BALANCE:
-        validator = state.validators[validator_index]
-        excess_amount = pre_balance - spec.MIN_ACTIVATION_BALANCE
-        pending_excess = spec.PendingDeposit(
-            pubkey=validator.pubkey,
-            withdrawal_credentials=validator.withdrawal_credentials,
-            amount=excess_amount,
-            signature=spec.bls.G2_POINT_AT_INFINITY,
-            slot=spec.GENESIS_SLOT,
-        )
-        assert state.pending_deposits == [pending_deposit, pending_excess]
-    else:
-        assert state.pending_deposits == [pending_deposit]
+    assert state.pending_deposits == [pending_deposit]
 
 
 def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, effective=True):
