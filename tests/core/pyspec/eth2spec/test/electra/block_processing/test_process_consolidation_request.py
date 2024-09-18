@@ -858,7 +858,6 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
     yield 'consolidation_request', consolidation
 
     spec.process_consolidation_request(state, consolidation)
-    # print(state.validators[target_index].withdrawal_credentials)
 
     yield 'post', state
 
