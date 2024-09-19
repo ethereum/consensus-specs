@@ -119,14 +119,14 @@ The `MetaData` stored locally by clients is updated with an additional field to 
   seq_number: uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_subnet_count: uint64
+  custody_subnet_count: uint64 # csc
 )
 ```
 
 Where
 
 - `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
-- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject ENRs with a value less than `CUSTODY_REQUIREMENT`.
+- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
@@ -324,4 +324,4 @@ A new field is added to the ENR under the key `csc` to facilitate custody data c
 
 | Key    | Value                                    |
 |--------|------------------------------------------|
-| `csc`  | Custody subnet count, big endian integer |
+| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
