@@ -32,7 +32,12 @@ def create_test_case(rng: Random, typ,
 def get_spec_ssz_types(spec):
     return [
         (name, value) for (name, value) in getmembers(spec, isclass)
-        if issubclass(value, Container) and value != Container  # only the subclasses, not the imported base class
+        if (
+            # only the subclasses, not the imported base class
+            issubclass(value, Container) and value != Container
+            or issubclass(value, StableContainer) and value != StableContainer
+            or issubclass(value, Profile) and value != Profile
+        )
     ]
 
 

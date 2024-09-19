@@ -203,6 +203,10 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
     for key, value in items:
         dependencies = []
         for line in value.split('\n'):
+            profile_match = re.match(r'class\s+\w+\s*\(Profile\[\s*(\w+)\s*\]\s*\)\s*:', line)
+            if profile_match is not None:
+                dependencies.append(profile_match.group(1))  # SSZ `Profile` base
+                continue
             if not re.match(r'\s+\w+: .+', line):
                 continue  # skip whitespace etc.
             line = line[line.index(':') + 1:]  # strip of field name
