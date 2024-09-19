@@ -96,6 +96,9 @@ dist_check:
 dist_upload:
 	python3 -m twine upload dist/*
 
+build_wheel: install_test pyspec
+	. venv/bin/activate && \
+	python3 -m build --no-isolation --outdir ./dist ./
 
 # "make generate_tests" to run all generators
 generate_tests: $(GENERATOR_TARGETS)
@@ -195,7 +198,8 @@ define run_generator
 	cd $(GENERATOR_DIR)/$(1); \
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
-	pip3 install -r requirements.txt; \
+	pip3 install ../../../dist/eth2spec-*.whl; \
+	pip3 install 'eth2spec[generator]'; \
 	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
 	echo "generator $(1) finished"
 endef
@@ -217,7 +221,7 @@ gen_kzg_setups:
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)
-gen_%: $(TEST_VECTOR_DIR)
+gen_%: build_wheel $(TEST_VECTOR_DIR)
 	$(call run_generator,$*)
 
 detect_generator_incomplete: $(TEST_VECTOR_DIR)
