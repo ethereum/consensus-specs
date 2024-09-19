@@ -7,6 +7,7 @@ This document contains the consensus-layer networking specification for EIP7732.
 
 - [Modification in EIP-7732](#modification-in-eip-7732)
   - [Preset](#preset)
+  - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
     - [Helpers](#helpers)
@@ -23,7 +24,7 @@ This document contains the consensus-layer networking specification for EIP7732.
       - [BeaconBlocksByRange v3](#beaconblocksbyrange-v3)
       - [BeaconBlocksByRoot v3](#beaconblocksbyroot-v3)
       - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
-      - [ExecutionPayloadEnvelopeByRoot v1](#executionpayloadenvelopebyroot-v1)
+      - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -36,6 +37,14 @@ This document contains the consensus-layer networking specification for EIP7732.
 | Name                                     | Value                             | Description                                                         |
 |------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
+
+### Configuration
+
+*[New in EIP7732]*
+
+| Name                   | Value          | Description                                                       |
+|------------------------|----------------|-------------------------------------------------------------------|
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
 
 
 ### Containers
@@ -170,9 +179,10 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the pair of the corresponding slot and the given parent block hash.
-- _[REJECT]_ The signed builder bid, `header.builder_index` is a valid and non-slashed builder index in state.
+- _[REJECT]_ The signed builder bid, `header.builder_index` is a valid, active, and non-slashed builder index in state.
 - _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than the builder's balance in state.  i.e. `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
 - _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution payload in fork choice.
+_ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon block in fork choice. 
 - _[IGNORE]_ `header.slot` is the current slot or the next slot. 
 - _[REJECT]_ The builder signature, `signed_execution_payload_header_envelope.signature`, is valid with respect to the `header_envelope.builder_index`.
 
@@ -225,9 +235,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
 
 
-##### ExecutionPayloadEnvelopeByRoot v1
+##### ExecutionPayloadEnvelopesByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelope_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -241,7 +251,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_PAYLOAD]
+  List[Root, MAX_REQUEST_PAYLOADS]
 )
 ```
 
@@ -249,14 +259,14 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOAD]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
-Requests execution payload envelope by `signed_execution_payload_envelope.message.block_root`. The response is a list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the number of requested execution payload envelopes. It may be less in the case that the responding peer is missing payload envelopes.
+Requests execution payload envelopes by `signed_execution_payload_envelope.message.block_root`. The response is a list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the number of requested execution payload envelopes. It may be less in the case that the responding peer is missing payload envelopes.
 
-No more than `MAX_REQUEST_PAYLOAD` may be requested at a time.
+No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
-ExecutionPayloadEnvelopeByRoot is primarily used to recover recent execution payload envelope (e.g. when receiving a payload attestation with revealed status as true but never received a payload).
+ExecutionPayloadEnvelopesByRoot is primarily used to recover recent execution payload envelopes (e.g. when receiving a payload attestation with revealed status as true but never received a payload).
 
 The request MUST be encoded as an SSZ-field.
 

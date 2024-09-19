@@ -50,12 +50,6 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             execution_header.blob_gas_used = payload.blob_gas_used
             execution_header.excess_blob_gas = payload.excess_blob_gas
 
-        # [New in Electra:EIP6110:EIP7002:EIP7251]
-        if epoch >= ELECTRA_FORK_EPOCH:
-            execution_header.deposit_requests_root = hash_tree_root(payload.deposit_requests)
-            execution_header.withdrawal_requests_root = hash_tree_root(payload.withdrawal_requests)
-            execution_header.consolidation_requests_root = hash_tree_root(payload.consolidation_requests)
-
         execution_branch = ExecutionBranch(
             compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX))
     else:

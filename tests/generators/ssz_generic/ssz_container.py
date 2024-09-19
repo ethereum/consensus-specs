@@ -46,7 +46,7 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool=False):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool = False):
     return get_random_ssz_object(rng, typ,
                                  max_bytes_length=2000,
                                  max_list_length=2000,
@@ -77,7 +77,7 @@ def valid_cases():
         for mode in modes:
             for variation in range(3):
                 yield f'{name}_{mode.to_name()}_chaos_{variation}', \
-                      valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
+                    valid_test_case(lambda: container_case_fn(rng, mode, typ, chaos=True))
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
         # are deterministic.
@@ -85,7 +85,7 @@ def valid_cases():
         for mode in modes:
             for variation in range(10):
                 yield f'{name}_{mode.to_name()}_{variation}', \
-                      valid_test_case(lambda: container_case_fn(rng, mode, typ))
+                    valid_test_case(lambda: container_case_fn(rng, mode, typ))
 
 
 def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
@@ -100,8 +100,8 @@ def invalid_cases():
     for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f'{name}_extra_byte', \
-              invalid_test_case(lambda: serialize(
-                  container_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b'\xff')
+            invalid_test_case(lambda: serialize(
+                container_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b'\xff')
 
         if len(offsets) != 0:
             # Note: there are many more ways to have invalid offsets,
@@ -112,23 +112,22 @@ def invalid_cases():
                          RandomizationMode.mode_max_count]:
                 for index, offset_index in enumerate(offsets):
                     yield f'{name}_{mode.to_name()}_offset_{offset_index}_plus_one', \
-                          invalid_test_case(lambda: mod_offset(
-                              b=serialize(container_case_fn(rng, mode, typ)),
-                              offset_index=offset_index,
-                              change=lambda x: x + 1
-                          ))
+                        invalid_test_case(lambda: mod_offset(
+                            b=serialize(container_case_fn(rng, mode, typ)),
+                            offset_index=offset_index,
+                            change=lambda x: x + 1))
                     yield f'{name}_{mode.to_name()}_offset_{offset_index}_zeroed', \
-                          invalid_test_case(lambda: mod_offset(
-                              b=serialize(container_case_fn(rng, mode, typ)),
-                              offset_index=offset_index,
-                              change=lambda x: 0
-                          ))
+                        invalid_test_case(lambda: mod_offset(
+                            b=serialize(container_case_fn(rng, mode, typ)),
+                            offset_index=offset_index,
+                            change=lambda x: 0
+                        ))
                     if index == 0:
                         yield f'{name}_{mode.to_name()}_offset_{offset_index}_minus_one', \
                             invalid_test_case(lambda: mod_offset(
-                              b=serialize(container_case_fn(rng, mode, typ)),
-                              offset_index=offset_index,
-                              change=lambda x: x - 1
+                                b=serialize(container_case_fn(rng, mode, typ)),
+                                offset_index=offset_index,
+                                change=lambda x: x - 1
                             ))
                     if mode == RandomizationMode.mode_max_count:
                         serialized = serialize(container_case_fn(rng, mode, typ))
