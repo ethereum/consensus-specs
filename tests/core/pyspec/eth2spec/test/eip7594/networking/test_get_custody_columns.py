@@ -16,7 +16,7 @@ def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None)
 
     result = spec.get_custody_columns(node_id, custody_subnet_count)
     yield 'node_id', 'meta', node_id
-    yield 'custody_subnet_count', 'meta', custody_subnet_count
+    yield 'custody_subnet_count', 'meta', int(custody_subnet_count)
 
     assert len(result) == len(set(result))
     assert len(result) == (
