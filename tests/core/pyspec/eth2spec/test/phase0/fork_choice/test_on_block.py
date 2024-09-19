@@ -18,6 +18,9 @@ from eth2spec.test.helpers.block import (
     transition_unsigned_block,
     sign_block,
 )
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_block_hash_for_block,
+)
 from eth2spec.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -27,6 +30,9 @@ from eth2spec.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     is_ready_to_justify,
     find_next_justifying_slot,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_bellatrix,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -152,6 +158,8 @@ def test_on_block_bad_parent_root(spec, state):
     block.state_root = state.hash_tree_root()
 
     block.parent_root = b'\x45' * 32
+    if is_post_bellatrix(spec):
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     signed_block = sign_block(spec, state, block)
 
