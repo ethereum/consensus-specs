@@ -30,10 +30,7 @@ def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None
 
 def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance=None, address=None):
     if balance is None:
-        if is_post_electra(spec):
-            balance = spec.MIN_ACTIVATION_BALANCE
-        else:
-            balance = spec.MAX_EFFECTIVE_BALANCE
+        balance = spec.MAX_EFFECTIVE_BALANCE
     if address is None:
         address = b'\x11' * 20
 
