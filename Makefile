@@ -14,7 +14,6 @@ SOLIDITY_FILE_NAME = deposit_contract.json
 DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
 TEST_PRESET_TYPE ?= minimal
-NUMBER_OF_CORES=16
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 # Map this list of generator paths to "gen_{generator name}" entries
@@ -35,7 +34,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800
+ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7732
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), ./eth2spec/$S)
@@ -97,6 +96,9 @@ dist_check:
 dist_upload:
 	python3 -m twine upload dist/*
 
+build_wheel: install_test pyspec
+	. venv/bin/activate && \
+	python3 -m build --no-isolation --outdir ./dist ./
 
 # "make generate_tests" to run all generators
 generate_tests: $(GENERATOR_TARGETS)
@@ -118,7 +120,7 @@ install_test: preinstallation
 # Testing against `minimal` or `mainnet` config by default
 test: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n 4 --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python3 -m pytest -n auto --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 # Testing against `minimal` or `mainnet` config by default
 find_test: pyspec
@@ -129,10 +131,10 @@ citest: pyspec
 	mkdir -p $(TEST_REPORT_DIR);
 ifdef fork
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n $(NUMBER_OF_CORES) --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
 else
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n $(NUMBER_OF_CORES) --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
+	python3 -m pytest -n auto --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
 endif
 
 
@@ -196,7 +198,8 @@ define run_generator
 	cd $(GENERATOR_DIR)/$(1); \
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
-	pip3 install -r requirements.txt; \
+	pip3 install ../../../dist/eth2spec-*.whl; \
+	pip3 install 'eth2spec[generator]'; \
 	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
 	echo "generator $(1) finished"
 endef
@@ -218,7 +221,7 @@ gen_kzg_setups:
 
 # For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)
-gen_%: $(TEST_VECTOR_DIR)
+gen_%: build_wheel $(TEST_VECTOR_DIR)
 	$(call run_generator,$*)
 
 detect_generator_incomplete: $(TEST_VECTOR_DIR)

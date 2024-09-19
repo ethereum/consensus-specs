@@ -159,15 +159,6 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
 def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
-    # [New in Electra:EIP6110:EIP7002:EIP7251]
-    if epoch < ELECTRA_FORK_EPOCH:
-        if (
-            header.execution.deposit_requests_root != Root()
-            or header.execution.withdrawal_requests_root != Root()
-            or header.execution.consolidation_requests_root != Root()
-        ):
-            return False
-
     if epoch < DENEB_FORK_EPOCH:
         if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
             return False

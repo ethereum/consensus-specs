@@ -1,4 +1,4 @@
-# Electra -- Fork Logic
+# EIP-7732 -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to Electra](#fork-to-electra)
+- [Fork to EIP-7732](#fork-to-eip-7732)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,16 +20,16 @@
 
 ## Introduction
 
-This document describes the process of the Electra upgrade.
+This document describes the process of the EIP-7732 upgrade.
 
 ## Configuration
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')` |
-| `ELECTRA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                | Value |
+|---------------------| - |
+| `EIP7732_FORK_VERSION` | `Version('0x09000000')` |
+| `EIP7732_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,6 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
+    if epoch >= EIP7732_FORK_EPOCH:
+        return EIP7732_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -55,29 +57,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to Electra
+## Fork to EIP-7732
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `ELECTRA_FORK_EPOCH`.
-
-Note that for the pure Electra networks, we don't apply `upgrade_to_electra` since it starts with Electra version logic.
+TBD. This fork is defined for testing purposes, the EIP may be combined with other 
+consensus-layer upgrade.
+For now, we assume the condition will be triggered at epoch `EIP7732_FORK_EPOCH`.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ELECTRA_FORK_EPOCH`,
-an irregular state change is made to upgrade to Electra.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`,
+an irregular state change is made to upgrade to EIP-7732.
 
 ```python
-def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
-    epoch = deneb.get_current_epoch(pre)
-    latest_execution_payload_header = pre.latest_execution_payload_header
-
-    exit_epochs = [v.exit_epoch for v in pre.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    if not exit_epochs:
-        exit_epochs = [get_current_epoch(pre)]
-    earliest_exit_epoch = max(exit_epochs) + 1
+def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
+    epoch = electra.get_current_epoch(pre)
 
     post = BeaconState(
         # Versioning
@@ -86,7 +81,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
+            current_version=EIP7732_FORK_VERSION,  # [Modified in EIP-7732]
             epoch=epoch,
         ),
         # History
@@ -119,45 +114,26 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110:EIP7002]
+        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-7732]
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
-        # [New in Electra:EIP6110]
-        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,
-        # [New in Electra:EIP7251]
-        deposit_balance_to_consume=0,
-        exit_balance_to_consume=0,
-        earliest_exit_epoch=earliest_exit_epoch,
-        consolidation_balance_to_consume=0,
-        earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
-        pending_balance_deposits=[],
-        pending_partial_withdrawals=[],
-        pending_consolidations=[],
+        deposit_requests_start_index=pre.deposit_requests_start_index,
+        deposit_balance_to_consume=pre.deposit_balance_to_consume,
+        exit_balance_to_consume=pre.exit_balance_to_consume,
+        earliest_exit_epoch=pre.earliest_exit_epoch,
+        consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
+        earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
+        pending_balance_deposits=pre.pending_balance_deposits,
+        pending_partial_withdrawals=pre.pending_partial_withdrawals,
+        pending_consolidations=pre.pending_consolidations,
+        # ePBS
+        latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-7732]
+        latest_full_slot=pre.slot,  # [New in EIP-7732]
+        latest_withdrawals_root=Root(),  # [New in EIP-7732]
     )
-
-    post.exit_balance_to_consume = get_activation_exit_churn_limit(post)
-    post.consolidation_balance_to_consume = get_consolidation_churn_limit(post)
-
-    # [New in Electra:EIP7251]
-    # add validators that are not yet active to pending balance deposits
-    pre_activation = sorted([
-        index for index, validator in enumerate(post.validators)
-        if validator.activation_epoch == FAR_FUTURE_EPOCH
-    ], key=lambda index: (
-        post.validators[index].activation_eligibility_epoch,
-        index
-    ))
-
-    for index in pre_activation:
-        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
-
-    # Ensure early adopters of compounding credentials go through the activation churn
-    for index, validator in enumerate(post.validators):
-        if has_compounding_withdrawal_credential(validator):
-            queue_excess_active_balance(post, ValidatorIndex(index))
 
     return post
 ```

@@ -1,4 +1,4 @@
-# Deneb -- Fork Choice
+# EIP-7594 -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -6,65 +6,41 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Containers](#containers)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
-  - [`is_data_available`](#is_data_available)
+  - [Modified `is_data_available`](#modified-is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
-  - [`on_block`](#on_block)
+  - [Modified `on_block`](#modified-on_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the Deneb upgrade.
-
-## Containers
+This is the modification of the fork choice accompanying EIP-7594.
 
 ## Helpers
 
-### Extended `PayloadAttributes`
-
-`PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
+### Modified `is_data_available`
 
 ```python
-@dataclass
-class PayloadAttributes(object):
-    timestamp: uint64
-    prev_randao: Bytes32
-    suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]
-    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
-```
-
-### `is_data_available`
-
-*[New in Deneb:EIP4844]*
-
-The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
-Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
-
-The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
-
-*Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
-
-```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_and_proofs` is implementation and context dependent
-    # It returns all the blobs for the given block root, and raises an exception if not available
-    # Note: the p2p network does not guarantee sidecar retrieval outside of
-    # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
-    blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
-
-    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+def is_data_available(beacon_block_root: Root) -> bool:
+    # `retrieve_column_sidecars` is implementation and context dependent, replacing
+    # `retrieve_blobs_and_proofs`. For the given block root, it returns all column 
+    # sidecars to sample, or raises an exception if they are not available. 
+    # The p2p network does not guarantee sidecar retrieval outside of 
+    # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
+    column_sidecars = retrieve_column_sidecars(beacon_block_root)
+    return all(
+        verify_data_column_sidecar_kzg_proofs(column_sidecar)
+        for column_sidecar in column_sidecars
+    )
 ```
 
 ## Updated fork-choice handlers
 
-### `on_block`
+### Modified `on_block`
 
-*Note*: The only modification is the addition of the blob data availability check.
+*Note*: The only modification is that `is_data_available` does not take `blob_kzg_commitments` as input.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -74,6 +50,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -88,16 +66,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
-    # [New in Deneb:EIP4844]
-    # Check if blob data is available
-    # If not, this block MAY be queued and subsequently considered when blob data becomes available
-    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
-    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
-    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
+    # [Modified in EIP7594]
+    assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
