@@ -28,12 +28,6 @@ FORK_CHOICE_DIR = ./fork_choice
 # To check generator matching:
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/*/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
-                 $(wildcard $(SSZ_DIR)/*.md)
-
 ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7732
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
@@ -141,13 +135,33 @@ endif
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
-check_toc: $(MARKDOWN_FILES:=.toc)
+###############################################################################
+# Table of Contents
+###############################################################################
 
+# When using .ONESHELL, bail on errors.
+.SHELLFLAGS = -e
+
+# This contains all markdown files with specifications.
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/**/*.md) \
+                 $(wildcard $(SSZ_DIR)/*.md)
+
+# Check all files and error if any ToC were modified.
+check_toc: $(MARKDOWN_FILES:=.toc)
+	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
+
+# Generate ToC sections & save copy of original if modified.
+.ONESHELL:
 %.toc:
-	cp $* $*.tmp && \
-	doctoc $* && \
-	diff -q $* $*.tmp && \
-	rm $*.tmp
+	@cp $* $*.tmp
+	@doctoc $* > /dev/null
+	@if diff -q $* $*.tmp > /dev/null; then \
+		echo "Good $*"; \
+		rm $*.tmp; \
+	else \
+		echo "\033[1;33m Bad $*\033[0m"; \
+		echo "\033[1;34m See $*.tmp\033[0m"; \
+	fi
 
 codespell:
 	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
