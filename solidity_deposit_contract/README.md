@@ -2,7 +2,7 @@
 
 ## History
 
-This is a rewrite of the [Vyper Eth 2.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/v0.12.2/deposit_contract/contracts/validator_registration.vy) to Solidity.
+This is a rewrite of the [Vyper Ethereum staking deposit contract](https://github.com/ethereum/consensus-specs/blob/v0.12.2/deposit_contract/contracts/validator_registration.vy) to Solidity.
 
 The original motivation was to run the SMTChecker and the new Yul IR generator option (`--ir`) in the compiler.
 
@@ -13,7 +13,7 @@ In August 2020, version `r2` was released with metadata modifications and relice
 
 ## Compiling solidity deposit contract
 
-In the `eth2.0-specs` directory run:
+In the `consensus-specs` directory run:
 ```sh
 make compile_deposit_contract
 ```
@@ -31,12 +31,12 @@ solc --optimize --optimize-runs 5000000 --metadata-literal --bin deposit_contrac
 
 ## Running web3 tests
 
-1. In the `eth2.0-specs` directory run `make install_deposit_contract_web3_tester` to install the tools needed (make sure to have Python 3.7 and pip installed).
-2. In the `eth2.0-specs` directory run `make test_deposit_contract_web3_tests` to execute the tests.
+1. In the `consensus-specs` directory run `make install_deposit_contract_web3_tester` to install the tools needed (make sure to have Python 3.7 and pip installed).
+2. In the `consensus-specs` directory run `make test_deposit_contract_web3_tests` to execute the tests.
 
 ## Running randomized `dapp` tests:
 
-Install the latest version of `dapp` by following the instructions at [dapp.tools](https://dapp.tools/). Then in the `eth2.0-specs` directory run:
+Install the latest version of `dapp` by following the instructions at [dapp.tools](https://dapp.tools/). Then in the `consensus-specs` directory run:
 
 ```sh
 make test_deposit_contract
