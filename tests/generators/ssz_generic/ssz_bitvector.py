@@ -38,5 +38,5 @@ def invalid_cases():
                                   (5, 6), (8, 9), (9, 8), (16, 8), (32, 33), (512, 513)]:
         for mode in [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f'bitvec_{typ_size}_{mode.to_name()}_{test_size}', \
-                  invalid_test_case(lambda: serialize(bitvector_case_fn(rng, mode, test_size,
-                                                                        invalid_making_pos=typ_size)))
+                invalid_test_case(lambda: serialize(bitvector_case_fn(rng, mode, test_size,
+                                                    invalid_making_pos=typ_size)))

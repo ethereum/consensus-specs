@@ -1,5 +1,5 @@
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
-from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
+from py_ecc.bls.g2_primitives import signature_to_G2 as _signature_to_G2
 from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,
@@ -11,6 +11,8 @@ from py_ecc.optimized_bls12_381 import (  # noqa: F401
     pairing as py_ecc_pairing,
     final_exponentiate as py_ecc_final_exponentiate,
     FQ12 as py_ecc_GT,
+    FQ,
+    FQ2,
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
     curve_order as BLS_MODULUS,
@@ -223,6 +225,45 @@ def multiply(point, scalar):
         scalar = arkworks_Scalar.from_le_bytes(int_as_bytes)
         return point * scalar
     return py_ecc_mul(point, scalar)
+
+
+def multi_exp(points, integers):
+    """
+    Performs a multi-scalar multiplication between
+    `points` and `integers`.
+    `points` can either be in G1 or G2.
+    """
+    # Since this method accepts either G1 or G2, we need to know
+    # the type of the point to return. Hence, we need at least one point.
+    if not points or not integers:
+        raise Exception("Cannot call multi_exp with zero points or zero integers")
+
+    if bls == arkworks_bls or bls == fastest_bls:
+        # Convert integers into arkworks Scalars
+        scalars = []
+        for integer in integers:
+            int_as_bytes = integer.to_bytes(32, 'little')
+            scalars.append(arkworks_Scalar.from_le_bytes(int_as_bytes))
+
+        # Check if we need to perform a G1 or G2 multiexp
+        if isinstance(points[0], arkworks_G1):
+            return arkworks_G1.multiexp_unchecked(points, scalars)
+        elif isinstance(points[0], arkworks_G2):
+            return arkworks_G2.multiexp_unchecked(points, scalars)
+        else:
+            raise Exception("Invalid point type")
+
+    result = None
+    if isinstance(points[0][0], FQ):
+        result = Z1()
+    elif isinstance(points[0][0], FQ2):
+        result = Z2()
+    else:
+        raise Exception("Invalid point type")
+
+    for point, scalar in zip(points, integers):
+        result = add(result, multiply(point, scalar))
+    return result
 
 
 def neg(point):

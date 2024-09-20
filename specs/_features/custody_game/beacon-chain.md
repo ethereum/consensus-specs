@@ -401,7 +401,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify responder is slashable
     assert is_slashable_validator(responder, get_current_epoch(state))
     # Verify the responder participated in the attestation
-    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
+    attesters = get_attesting_indices(state, challenge)
     assert challenge.responder_index in attesters
     # Verify shard transition is correctly given
     assert hash_tree_root(challenge.shard_transition) == challenge.attestation.data.shard_transition_root
@@ -594,7 +594,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     assert len(custody_slashing.data) == shard_transition.shard_block_lengths[custody_slashing.data_index]
     assert hash_tree_root(custody_slashing.data) == shard_transition.shard_data_roots[custody_slashing.data_index]
     # Verify existence and participation of claimed malefactor
-    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+    attesters = get_attesting_indices(state, attestation)
     assert custody_slashing.malefactor_index in attesters
     
     # Verify the malefactor custody key

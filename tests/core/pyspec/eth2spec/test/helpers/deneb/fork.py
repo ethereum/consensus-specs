@@ -36,6 +36,8 @@ def run_fork_test(post_spec, pre_state):
         'current_sync_committee', 'next_sync_committee',
         # Withdrawals
         'next_withdrawal_index', 'next_withdrawal_validator_index',
+        # Deep history valid from Capella onwards
+        'historical_summaries',
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)

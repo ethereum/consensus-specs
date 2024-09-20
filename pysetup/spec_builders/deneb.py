@@ -17,6 +17,7 @@ from eth2spec.capella import {preset_name} as capella
     def preparations(cls):
         return '''
 T = TypeVar('T')  # For generic function
+TPoint = TypeVar('TPoint')  # For generic function. G1 or G2 point.
 '''
 
     @classmethod
@@ -69,7 +70,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
         return {
             'BYTES_PER_FIELD_ELEMENT': spec_object.constant_vars['BYTES_PER_FIELD_ELEMENT'].value,
             'FIELD_ELEMENTS_PER_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_BLOB'].value,
-            'MAX_BLOBS_PER_BLOCK': spec_object.preset_vars['MAX_BLOBS_PER_BLOCK'].value,
+            'MAX_BLOBS_PER_BLOCK': spec_object.config_vars['MAX_BLOBS_PER_BLOCK'].value,
             'MAX_BLOB_COMMITMENTS_PER_BLOCK': spec_object.preset_vars['MAX_BLOB_COMMITMENTS_PER_BLOCK'].value,
         }
 

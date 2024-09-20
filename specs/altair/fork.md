@@ -69,7 +69,7 @@ def translate_participation(state: BeaconState, pending_attestations: Sequence[p
 
         # Apply flags to all attesting validators
         epoch_participation = state.previous_epoch_participation
-        for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+        for index in get_attesting_indices(state, attestation):
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 

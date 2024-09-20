@@ -118,7 +118,7 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is modified to also support Deneb blocks and new topics are added per table below.
 
-The `voluntary_exit` topic is implicitly modified due to the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
+The `voluntary_exit` topic is implicitly modified despite the lock-in use of `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of attestations created in epoch `N` to be gossiped through the entire range of slots in epoch `N+1` rather than only through one epoch of slots for EIP-7045.
 
@@ -183,7 +183,7 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
 - _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof(blob_sidecar)`.
 - _[REJECT]_ The sidecar's blob is valid as verified by `verify_blob_kzg_proof(blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof)`.
-- _[IGNORE]_ The sidecar is the first sidecar for the tuple (block_header.slot, block_header.proposer_index, blob_sidecar.index) with valid header signature, sidecar inclusion proof, and kzg proof.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, blob_sidecar.index)` with valid header signature, sidecar inclusion proof, and kzg proof.
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 

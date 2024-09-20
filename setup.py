@@ -219,7 +219,13 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
-                assert class_name == current_name
+                try:
+                    assert class_name == current_name
+                except Exception:
+                    print('class_name', class_name)
+                    print('current_name', current_name)
+                    raise
+
                 if parent_class:
                     assert parent_class == "Container"
                 # NOTE: trim whitespace from spec
@@ -518,35 +524,39 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     author="ethereum",
-    url="https://github.com/ethereum/eth2.0-specs",
+    url="https://github.com/ethereum/consensus-specs",
     include_package_data=False,
-    package_data={'configs': ['*.yaml'],
-                  'presets': ['*.yaml'],
-                  'specs': ['**/*.md'],
-                  'eth2spec': ['VERSION.txt']},
+    package_data={
+        'configs': ['*.yaml'],
+        'eth2spec': ['VERSION.txt'],
+        'presets': ['**/*.yaml', '**/*.json'],
+        'specs': ['**/*.md'],
+        'sync': ['optimistic.md'],
+    },
     package_dir={
-        "eth2spec": "tests/core/pyspec/eth2spec",
         "configs": "configs",
+        "eth2spec": "tests/core/pyspec/eth2spec",
         "presets": "presets",
         "specs": "specs",
+        "sync": "sync",
     },
-    packages=find_packages(where='tests/core/pyspec') + ['configs', 'specs'],
+    packages=find_packages(where='tests/core/pyspec') + ['configs', 'presets', 'specs', 'presets', 'sync'],
     py_modules=["eth2spec"],
     cmdclass=commands,
     python_requires=">=3.9, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
         "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==2.15.3"],
-        "generator": ["python-snappy==0.6.1", "filelock", "pathos==0.3.0"],
+        "generator": ["setuptools>=72.0.0", "pytest>4.4", "python-snappy==0.7.3", "filelock", "pathos==0.3.0"],
         "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
     },
     install_requires=[
         "eth-utils>=2.0.0,<3",
         "eth-typing>=3.2.0,<4.0.0",
-        "pycryptodome==3.15.0",
+        "pycryptodome>=3.19.1",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.27",
+        "remerkleable==0.1.28",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",

@@ -132,7 +132,7 @@ def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
             print(f'Skipping already existing test: {case_dir}')
             is_skip = True
         else:
-            print(f'Warning, output directory {case_dir} already exist,'
+            print(f'Warning, output directory {case_dir} already exist, '
                   ' old files will be deleted and it will generate test vector files with the latest version')
             # Clear the existing case_dir folder
             shutil.rmtree(case_dir)
@@ -356,7 +356,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     test_end = time.time()
     span = round(test_end - test_start, 2)
     if span > TIME_THRESHOLD_TO_PRINT:
-        print(f'    - generated in {span} seconds')
+        print(f'- generated in {span} seconds')
 
     return result
 

@@ -26,10 +26,10 @@ Features are researched and developed in parallel, and then consolidated into se
 ### In-development Specifications
 | Code Name or Topic | Specs | Notes |
 | - | - | - |
+| Electra | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[EIP-6110 fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [full node](specs/electra/light-client/full-node.md), [networking](specs/electra/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/electra/validator.md)</li></ul></ul> |
 | Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/_features/sharding/p2p-interface.md)</li></ul></ul> |
 | Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
 | Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/_features/das/das-core.md)</li><li>[Fork choice changes](specs/_features/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/_features/das/p2p-interface.md)</li><li>[Sampling process](specs/_features/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
-| EIP-6110 | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/eip6110//beacon-chain.md)</li><li>[EIP-6110 fork](specs/_features/eip6110/fork.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/eip6110/validator.md)</li></ul></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -73,3 +73,19 @@ Documentation on the different components used during spec writing can be found 
 ## Consensus spec tests
 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
+
+
+## Installation and Usage
+The consensus-specs repo can be used by running the tests locally or inside a docker container.
+
+To run the tests locally:
+- Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
+- Switch to the directory `cd consensus-specs`
+- Install the dependencies with: `make install_test && make preinstallation && make pyspec`
+- Run the tests with `make citest`
+
+To run the tests inside a docker container:
+- Switch to the directory with `cd scripts`
+- Run the script `./build_run_docker_tests.sh`
+- Find the results in a folder called `./testResults`
+- Find more ways to customize the script with `./build_run_docker_tests.sh --h`

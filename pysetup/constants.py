@@ -4,11 +4,11 @@ ALTAIR = 'altair'
 BELLATRIX = 'bellatrix'
 CAPELLA = 'capella'
 DENEB = 'deneb'
-EIP6110 = 'eip6110'
-EIP7002 = 'eip7002'
-WHISK = 'whisk'
+ELECTRA = 'electra'
 EIP7594 = 'eip7594'
-
+EIP6800 = 'eip6800'
+WHISK = 'whisk'
+EIP7732 = 'eip7732'
 
 
 # The helper functions that are used when defining constants

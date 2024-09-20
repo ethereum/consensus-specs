@@ -16,15 +16,16 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     MINIMAL,
 )
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
+    transition_across_forks,
 )
 from eth2spec.test.helpers.forks import (
     get_spec_for_fork_version,
-    is_post_capella, is_post_deneb,
+    is_post_capella, is_post_deneb, is_post_electra,
 )
 from eth2spec.test.helpers.light_client import (
     compute_start_slot_at_next_sync_committee_period,
@@ -47,6 +48,8 @@ class LightClientSyncTest(object):
 
 
 def get_store_fork_version(s_spec):
+    if is_post_electra(s_spec):
+        return s_spec.config.ELECTRA_FORK_VERSION
     if is_post_deneb(s_spec):
         return s_spec.config.DENEB_FORK_VERSION
     if is_post_capella(s_spec):
@@ -60,6 +63,11 @@ def setup_test(spec, state, s_spec=None, phases=None):
 
     if s_spec is None:
         s_spec = spec
+    if phases is None:
+        phases = {
+            spec.fork: spec,
+            s_spec.fork: s_spec,
+        }
     test.s_spec = s_spec
 
     yield "genesis_validators_root", "meta", "0x" + state.genesis_validators_root.hex()
@@ -77,7 +85,7 @@ def setup_test(spec, state, s_spec=None, phases=None):
     yield "bootstrap_fork_digest", "meta", encode_hex(data_fork_digest)
     yield "bootstrap", data
 
-    upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data)
+    upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
     test.store = test.s_spec.initialize_light_client_store(trusted_block_root, upgraded)
     store_fork_version = get_store_fork_version(test.s_spec)
     store_fork_digest = test.s_spec.compute_fork_digest(store_fork_version, test.genesis_validators_root)
@@ -149,11 +157,10 @@ def emit_update(test, spec, state, block, attested_state, attested_block, finali
     data = d_spec.create_light_client_update(state, block, attested_state, attested_block, finalized_block)
     if not with_next:
         data.next_sync_committee = spec.SyncCommittee()
-        data.next_sync_committee_branch = \
-            [spec.Bytes32() for _ in range(spec.floorlog2(spec.NEXT_SYNC_COMMITTEE_GINDEX))]
+        data.next_sync_committee_branch = spec.NextSyncCommitteeBranch()
     current_slot = state.slot
 
-    upgraded = upgrade_lc_update_to_new_spec(d_spec, test.s_spec, data)
+    upgraded = upgrade_lc_update_to_new_spec(d_spec, test.s_spec, data, phases)
     test.s_spec.process_light_client_update(test.store, upgraded, current_slot, test.genesis_validators_root)
 
     yield get_update_file_name(d_spec, data), data
@@ -169,7 +176,7 @@ def emit_update(test, spec, state, block, attested_state, attested_block, finali
 
 
 def emit_upgrade_store(test, new_s_spec, phases=None):
-    test.store = upgrade_lc_store_to_new_spec(test.s_spec, new_s_spec, test.store)
+    test.store = upgrade_lc_store_to_new_spec(test.s_spec, new_s_spec, test.store, phases)
     test.s_spec = new_s_spec
     store_fork_version = get_store_fork_version(test.s_spec)
     store_fork_digest = test.s_spec.compute_fork_digest(store_fork_version, test.genesis_validators_root)
@@ -561,7 +568,7 @@ def run_test_single_fork(spec, phases, state, fork):
     # Upgrade to post-fork spec, attested block is still before the fork
     attested_block = block.copy()
     attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(phases[fork], state, phases=phases)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -635,6 +642,18 @@ def test_deneb_fork(spec, phases, state):
     yield from run_test_single_fork(spec, phases, state, DENEB)
 
 
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_config_overrides({
+    'ELECTRA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_electra_fork(spec, phases, state):
+    yield from run_test_single_fork(spec, phases, state, ELECTRA)
+
+
 def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     # Start test
     test = yield from setup_test(spec, state, phases[fork_2], phases)
@@ -646,17 +665,28 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
 
     # ..., attested is from `fork_1`, ...
     fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + '_FORK_EPOCH')
-    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_1_epoch) - 1)
-    state, attested_block = do_fork(state, spec, phases[fork_1], fork_1_epoch)
-    spec = phases[fork_1]
+    spec, state, attested_block = transition_across_forks(
+        spec,
+        state,
+        spec.compute_start_slot_at_epoch(fork_1_epoch),
+        phases,
+        with_block=True,
+    )
     attested_state = state.copy()
 
     # ..., and signature is from `fork_2`
     fork_2_epoch = getattr(phases[fork_2].config, fork_2.upper() + '_FORK_EPOCH')
-    transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1)
-    sync_aggregate, _ = get_sync_aggregate(phases[fork_2], state)
-    state, block = do_fork(state, spec, phases[fork_2], fork_2_epoch, sync_aggregate=sync_aggregate)
-    spec = phases[fork_2]
+    spec, state, _ = transition_across_forks(
+        spec, state, spec.compute_start_slot_at_epoch(fork_2_epoch) - 1, phases)
+    sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
+    spec, state, block = transition_across_forks(
+        spec,
+        state,
+        spec.compute_start_slot_at_epoch(fork_2_epoch),
+        phases,
+        with_block=True,
+        sync_aggregate=sync_aggregate,
+    )
 
     # Check that update applies
     yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
@@ -680,6 +710,33 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_deneb_fork(spec, phases, state):
     yield from run_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
+
+
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB, ELECTRA])
+@spec_test
+@with_config_overrides({
+    'CAPELLA_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+    'DENEB_FORK_EPOCH': 4,
+    'ELECTRA_FORK_EPOCH': 5,
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_capella_electra_fork(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, CAPELLA, ELECTRA)
+
+
+@with_phases(phases=[CAPELLA], other_phases=[DENEB, ELECTRA])
+@spec_test
+@with_config_overrides({
+    'DENEB_FORK_EPOCH': 3,  # `setup_test` advances to epoch 2
+    'ELECTRA_FORK_EPOCH': 4,
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_deneb_electra_fork(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, DENEB, ELECTRA)
 
 
 def run_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
@@ -713,10 +770,19 @@ def test_capella_store_with_legacy_data(spec, phases, state):
     yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, CAPELLA)
 
 
-@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[DENEB])
+@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA], other_phases=[CAPELLA, DENEB])
 @spec_test
 @with_state
 @with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
 def test_deneb_store_with_legacy_data(spec, phases, state):
     yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, DENEB)
+
+
+@with_phases(phases=[ALTAIR, BELLATRIX, CAPELLA, DENEB], other_phases=[CAPELLA, DENEB, ELECTRA])
+@spec_test
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_electra_store_with_legacy_data(spec, phases, state):
+    yield from run_test_upgraded_store_with_legacy_data(spec, phases, state, ELECTRA)

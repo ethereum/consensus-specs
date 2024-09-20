@@ -4,7 +4,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import UINT64_MAX
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix,
+    is_post_altair, is_post_bellatrix, is_post_electra,
 )
 
 
@@ -58,6 +58,8 @@ def test_incentives(spec, state):
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     elif is_post_altair(spec):
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
+    elif is_post_electra(spec):
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
     else:
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
 

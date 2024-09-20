@@ -40,7 +40,7 @@ def run_block_with_blobs(spec, state, blob_count, tx_count=1, blob_gas_used=1, e
     block.body.execution_payload.transactions = txs
     block.body.execution_payload.blob_gas_used = blob_gas_used
     block.body.execution_payload.excess_blob_gas = excess_blob_gas
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
 
     if valid:
         signed_block = state_transition_and_sign_block(spec, state, block)

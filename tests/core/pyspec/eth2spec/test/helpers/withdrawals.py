@@ -1,4 +1,12 @@
-import random
+from eth2spec.test.helpers.forks import is_post_electra
+
+
+def get_expected_withdrawals(spec, state):
+    if is_post_electra(spec):
+        withdrawals, _ = spec.get_expected_withdrawals(state)
+        return withdrawals
+    else:
+        return spec.get_expected_withdrawals(state)
 
 
 def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None):
@@ -39,8 +47,8 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
     assert spec.is_partially_withdrawable_validator(validator, state.balances[index])
 
 
-def prepare_expected_withdrawals(spec, state,
-                                 num_full_withdrawals=0, num_partial_withdrawals=0, rng=random.Random(5566)):
+def prepare_expected_withdrawals(spec, state, rng,
+                                 num_full_withdrawals=0, num_partial_withdrawals=0):
     bound = min(len(state.validators), spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     assert num_full_withdrawals + num_partial_withdrawals <= bound
     eligible_validator_indices = list(range(bound))
@@ -54,3 +62,11 @@ def prepare_expected_withdrawals(spec, state,
         set_validator_partially_withdrawable(spec, state, index)
 
     return fully_withdrawable_indices, partial_withdrawals_indices
+
+
+def set_compounding_withdrawal_credential(spec, state, index, address=None):
+    if address is None:
+        address = b'\x11' * 20
+
+    validator = state.validators[index]
+    validator.withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b'\x00' * 11 + address

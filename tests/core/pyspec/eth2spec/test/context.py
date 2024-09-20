@@ -7,8 +7,8 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    EIP6110, EIP7002, EIP7594,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
+    EIP7594,
     WHISK,
     MINIMAL,
     ALL_PHASES,
@@ -16,7 +16,7 @@ from .helpers.constants import (
     ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
-from .helpers.forks import is_post_fork
+from .helpers.forks import is_post_fork, is_post_electra
 from .helpers.genesis import create_genesis_state
 from .helpers.typing import (
     Spec,
@@ -86,7 +86,10 @@ def default_activation_threshold(spec: Spec):
     Helper method to use the default balance activation threshold for state creation for tests.
     Usage: `@with_custom_state(threshold_fn=default_activation_threshold, ...)`
     """
-    return spec.MAX_EFFECTIVE_BALANCE
+    if is_post_electra(spec):
+        return spec.MIN_ACTIVATION_BALANCE
+    else:
+        return spec.MAX_EFFECTIVE_BALANCE
 
 
 def zero_activation_threshold(spec: Spec):
@@ -106,6 +109,18 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
+def default_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of default balances for Electra.
+    Usage: `@with_custom_state(balances_fn=default_balances_electra, ...)`
+    """
+    if not is_post_electra(spec):
+        return default_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
+
 def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
@@ -120,8 +135,7 @@ def scaled_churn_balances_min_churn_limit(spec: Spec):
 def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
@@ -135,6 +149,19 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     """
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = (
+        2 * spec.config.CHURN_LIMIT_QUOTIENT
+        * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
+        // spec.MIN_ACTIVATION_BALANCE)
+    return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
 
 with_state = with_custom_state(default_balances, default_activation_threshold)
@@ -158,6 +185,21 @@ def misc_balances(spec: Spec):
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
     balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
+    rng = Random(1234)
+    rng.shuffle(balances)
+    return balances
+
+
+def misc_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of balances that includes some misc. balances for Electra.
+    Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
+    """
+    if not is_post_electra(spec):
+        return misc_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    balances = [spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)]
     rng = Random(1234)
     rng.shuffle(balances)
     return balances
@@ -387,6 +429,13 @@ def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     return decorator
 
 
+def with_all_phases_from_except(earliest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+
+
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
@@ -507,8 +556,7 @@ with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
-with_eip7002_and_later = with_all_phases_from(EIP7002)
+with_electra_and_later = with_all_phases_from(ELECTRA)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 

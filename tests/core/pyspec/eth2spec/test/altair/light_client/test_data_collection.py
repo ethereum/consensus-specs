@@ -13,7 +13,7 @@ from eth2spec.test.context import (
     with_light_client,
 )
 from eth2spec.test.helpers.constants import (
-    ALTAIR, BELLATRIX, CAPELLA, DENEB,
+    ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     MINIMAL,
 )
 from eth2spec.test.helpers.fork_transition import (
@@ -25,6 +25,10 @@ from eth2spec.test.helpers.forks import (
 from eth2spec.test.helpers.light_client import (
     compute_start_slot_at_sync_committee_period,
     get_sync_aggregate,
+    latest_current_sync_committee_gindex,
+    latest_finalized_root_gindex,
+    latest_next_sync_committee_gindex,
+    latest_normalize_merkle_branch,
     upgrade_lc_header_to_new_spec,
     upgrade_lc_update_to_new_spec,
 )
@@ -152,6 +156,8 @@ class LightClientDataDb(object):
 
 @dataclass
 class LightClientDataStore(object):
+    spec: Any
+
     # Cached data to accelerate creating light client data
     cache: LightClientDataCache
 
@@ -165,7 +171,6 @@ class LightClientDataCollectionTest(object):
     files: Set[str]
 
     # Fork schedule
-    spec: Any
     phases: Any
 
     # History access
@@ -205,11 +210,12 @@ def block_id_at_finalized_slot(test, slot):  # -> Optional[BlockId]
 def get_current_sync_committee_for_finalized_period(test, period):  # -> Optional[SyncCommittee]
     low_slot = max(
         test.historical_tail_slot,
-        test.spec.compute_start_slot_at_epoch(test.spec.config.ALTAIR_FORK_EPOCH)
+        test.lc_data_store.spec.compute_start_slot_at_epoch(
+            test.lc_data_store.spec.config.ALTAIR_FORK_EPOCH)
     )
-    if period < test.spec.compute_sync_committee_period_at_slot(low_slot):
+    if period < test.lc_data_store.spec.compute_sync_committee_period_at_slot(low_slot):
         return None
-    period_start_slot = compute_start_slot_at_sync_committee_period(test.spec, period)
+    period_start_slot = compute_start_slot_at_sync_committee_period(test.lc_data_store.spec, period)
     sync_committee_slot = max(period_start_slot, low_slot)
     bid = block_id_at_finalized_slot(test, sync_committee_slot)
     if bid is None:
@@ -261,10 +267,19 @@ def cache_light_client_data(lc_data_store, spec, state, bid, current_period_best
     # `LightClientUpdate` and `LightClientBootstrap` instances that refer to this
     # block and state.
     cached_data = CachedLightClientData(
-        current_sync_committee_branch=spec.compute_merkle_proof(state, spec.CURRENT_SYNC_COMMITTEE_GINDEX),
-        next_sync_committee_branch=spec.compute_merkle_proof(state, spec.NEXT_SYNC_COMMITTEE_GINDEX),
+        current_sync_committee_branch=latest_normalize_merkle_branch(
+            lc_data_store.spec,
+            spec.compute_merkle_proof(state, spec.current_sync_committee_gindex_at_slot(state.slot)),
+            latest_current_sync_committee_gindex(lc_data_store.spec)),
+        next_sync_committee_branch=latest_normalize_merkle_branch(
+            lc_data_store.spec,
+            spec.compute_merkle_proof(state, spec.next_sync_committee_gindex_at_slot(state.slot)),
+            latest_next_sync_committee_gindex(lc_data_store.spec)),
         finalized_slot=spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch),
-        finality_branch=spec.compute_merkle_proof(state, spec.FINALIZED_ROOT_GINDEX),
+        finality_branch=latest_normalize_merkle_branch(
+            lc_data_store.spec,
+            spec.compute_merkle_proof(state, spec.finalized_root_gindex_at_slot(state.slot)),
+            latest_finalized_root_gindex(lc_data_store.spec)),
         current_period_best_update=current_period_best_update,
         latest_signature_slot=latest_signature_slot,
     )
@@ -398,7 +413,8 @@ def create_light_client_update(test, spec, state, block, parent_bid):
         test, attested_bid, signature_slot, sync_aggregate, state.next_sync_committee)
     is_better = (
         best.spec is None
-        or spec.is_better_update(update.data, upgrade_lc_update_to_new_spec(best.spec, update.spec, best.data))
+        or spec.is_better_update(update.data, upgrade_lc_update_to_new_spec(
+            best.spec, update.spec, best.data, test.phases))
     )
 
     # Update best light client data for current sync committee period
@@ -564,7 +580,6 @@ def setup_test(spec, state, phases=None):
     test = LightClientDataCollectionTest(
         steps=[],
         files=set(),
-        spec=spec,
         phases=phases,
         blocks={},
         finalized_block_roots={},
@@ -577,6 +592,7 @@ def setup_test(spec, state, phases=None):
         ),
         historical_tail_slot=state.slot,
         lc_data_store=LightClientDataStore(
+            spec=spec,
             cache=LightClientDataCache(
                 data={},
                 latest=ForkedLightClientFinalityUpdate(spec=None, data=None),
@@ -1088,3 +1104,29 @@ def test_capella_deneb_reorg_aligned(spec, phases, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_deneb_reorg_unaligned(spec, phases, state):
     yield from run_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
+
+
+@with_phases(phases=[CAPELLA], other_phases=[DENEB, ELECTRA])
+@spec_test
+@with_config_overrides({
+    'DENEB_FORK_EPOCH': 1 * 8,  # SyncCommitteePeriod 1
+    'ELECTRA_FORK_EPOCH': 2 * 8,  # SyncCommitteePeriod 2
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_deneb_electra_reorg_aligned(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, DENEB, ELECTRA)
+
+
+@with_phases(phases=[CAPELLA], other_phases=[DENEB, ELECTRA])
+@spec_test
+@with_config_overrides({
+    'DENEB_FORK_EPOCH': 1 * 8 + 4,  # SyncCommitteePeriod 1 (+ 4 epochs)
+    'ELECTRA_FORK_EPOCH': 3 * 8 + 4,  # SyncCommitteePeriod 3 (+ 4 epochs)
+}, emit=False)
+@with_state
+@with_matching_spec_config(emitted_fork=ELECTRA)
+@with_presets([MINIMAL], reason="too slow")
+def test_deneb_electra_reorg_unaligned(spec, phases, state):
+    yield from run_test_multi_fork(spec, phases, state, DENEB, ELECTRA)

@@ -124,13 +124,22 @@ def objects_to_spec(preset_name: str,
     # Keep engine from the most recent fork
     execution_engine_cls = reduce(lambda txt, builder: builder.execution_engine_cls() or txt, builders, "")
 
+    # Remove deprecated constants
+    deprecate_constants = reduce(lambda obj, builder: obj.union(builder.deprecate_constants()), builders, set())
+    # constant_vars = {k: v for k, v in spec_object.constant_vars.items() if k not in deprecate_constants}
+    filtered_ssz_dep_constants = {k: v for k, v in hardcoded_ssz_dep_constants.items() if k not in deprecate_constants}
+    # Remove deprecated presets
+    deprecate_presets = reduce(lambda obj, builder: obj.union(builder.deprecate_presets()), builders, set())
+    # preset_vars = {k: v for k, v in spec_object.constant_vars.items() if k not in deprecate_constants}
+    filtered_hardcoded_func_dep_presets = {k: v for k, v in hardcoded_func_dep_presets.items() if k not in deprecate_presets}
+
     constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
     ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
-    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
+    ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), filtered_ssz_dep_constants))
     custom_type_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_custom_type_dep_constants[x]), hardcoded_custom_type_dep_constants))
-    func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), hardcoded_func_dep_presets))
+    func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), filtered_hardcoded_func_dep_presets))
     spec_strs = [
         imports,
         preparations,
@@ -178,7 +187,7 @@ def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T
 
 ignored_dependencies = [
     'bit', 'boolean', 'Vector', 'List', 'Container', 'BLSPubkey', 'BLSSignature',
-    'Bytes1', 'Bytes4', 'Bytes8', 'Bytes20', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
+    'Bytes1', 'Bytes4', 'Bytes8', 'Bytes20', 'Bytes31', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'ByteList', 'ByteVector',
     'Dict', 'dict', 'field', 'ceillog2', 'floorlog2', 'Set',
@@ -208,8 +217,7 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
-
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -231,7 +239,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
     ssz_dep_constants = combine_dicts(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
     func_dep_presets = combine_dicts(spec0.func_dep_presets, spec1.func_dep_presets)
-    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects, custom_types)
+    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects)
     dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
     return SpecObject(
         functions=functions,

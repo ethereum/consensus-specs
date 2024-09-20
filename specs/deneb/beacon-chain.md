@@ -1,7 +1,5 @@
 # Deneb -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -15,6 +13,7 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
@@ -79,12 +78,17 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | Name | Value | Description |
 | - | - | - |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+
+## Configuration
+
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
 | `MAX_BLOBS_PER_BLOCK`            | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
 and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
-
-## Configuration
 
 ### Validator cycle
 
@@ -262,7 +266,7 @@ def is_valid_block_hash(self: ExecutionEngine,
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
-    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
     ...
 ```
@@ -337,7 +341,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+    for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)

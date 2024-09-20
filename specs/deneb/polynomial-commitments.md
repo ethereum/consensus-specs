@@ -18,8 +18,10 @@
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
+    - [`multi_exp`](#multi_exp)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
+    - [`bls_field_to_bytes`](#bls_field_to_bytes)
     - [`validate_kzg_g1`](#validate_kzg_g1)
     - [`bytes_to_kzg_commitment`](#bytes_to_kzg_commitment)
     - [`bytes_to_kzg_proof`](#bytes_to_kzg_proof)
@@ -145,6 +147,18 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 ### BLS12-381 helpers
 
+
+#### `multi_exp`
+
+This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
+
+```python
+def multi_exp(points: Sequence[TPoint],
+              integers: Sequence[uint64]) -> Sequence[TPoint]:
+    # pylint: disable=unused-argument
+    ...
+```
+
 #### `hash_to_bls_field`
 
 ```python
@@ -170,6 +184,12 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element)
 ```
 
+#### `bls_field_to_bytes`
+
+```python
+def bls_field_to_bytes(x: BLSFieldElement) -> Bytes32:
+    return int.to_bytes(x % BLS_MODULUS, 32, KZG_ENDIANNESS)
+```
 
 #### `validate_kzg_g1`
 
@@ -267,12 +287,18 @@ def div(x: BLSFieldElement, y: BLSFieldElement) -> BLSFieldElement:
 ```python
 def g1_lincomb(points: Sequence[KZGCommitment], scalars: Sequence[BLSFieldElement]) -> KZGCommitment:
     """
-    BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
+    BLS multiscalar multiplication in G1. This can be naively implemented using double-and-add.
     """
     assert len(points) == len(scalars)
-    result = bls.Z1()
-    for x, a in zip(points, scalars):
-        result = bls.add(result, bls.multiply(bls.bytes48_to_G1(x), a))
+
+    if len(points) == 0:
+        return bls.G1_to_bytes48(bls.Z1())
+
+    points_g1 = []
+    for point in points:
+        points_g1.append(bls.bytes48_to_G1(point))
+
+    result = bls.multi_exp(points_g1, scalars)
     return KZGCommitment(bls.G1_to_bytes48(result))
 ```
 

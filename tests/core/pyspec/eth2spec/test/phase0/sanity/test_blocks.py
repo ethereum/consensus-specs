@@ -15,11 +15,15 @@ from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
     get_valid_attester_slashing,
     get_indexed_attestation_participants,
+    get_max_attester_slashings,
 )
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
-from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash_for_block,
+)
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
@@ -30,7 +34,12 @@ from eth2spec.test.helpers.sync_committee import (
     compute_sync_committee_participant_reward_and_penalty,
 )
 from eth2spec.test.helpers.constants import PHASE0, MINIMAL
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_capella
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_electra,
+    is_post_capella,
+)
 from eth2spec.test.context import (
     spec_test, spec_state_test, dump_skipping_message,
     with_phases, with_all_phases, single_phase,
@@ -152,7 +161,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     if is_post_altair(spec):
         spec.process_sync_aggregate(state, block.body.sync_aggregate)
 
-    # Insert post-state rot
+    # Insert post-state root
     block.state_root = state.hash_tree_root()
 
     # Sign block
@@ -191,10 +200,12 @@ def test_invalid_parent_from_same_slot(spec, state):
     signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
 
     child_block = parent_block.copy()
-    child_block.parent_root = state.latest_block_header.hash_tree_root()
-
     if is_post_bellatrix(spec):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
+
+    child_block.parent_root = state.latest_block_header.hash_tree_root()
+    if is_post_bellatrix(spec):
+        child_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, child_block)
 
     # Show that normal path through transition fails
     failed_state = state.copy()
@@ -550,7 +561,7 @@ def test_attester_slashing(spec, state):
 @with_all_phases
 @spec_state_test
 def test_invalid_duplicate_attester_slashing_same_block(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
@@ -578,7 +589,7 @@ def test_invalid_duplicate_attester_slashing_same_block(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.
@@ -618,7 +629,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_partial_overlap(spec, state):
-    if spec.MAX_ATTESTER_SLASHINGS < 2:
+    if get_max_attester_slashings(spec) < 2:
         return dump_skipping_message("Skip test if config cannot handle multiple AttesterSlashings per block")
 
     # copy for later balance lookups.
@@ -738,9 +749,14 @@ def test_deposit_in_block(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
+    if is_post_electra(spec):
+        balance = state.pending_balance_deposits[0].amount
+    else:
+        balance = get_balance(state, validator_index)
+
     assert len(state.validators) == initial_registry_len + 1
     assert len(state.balances) == initial_balances_len + 1
-    assert get_balance(state, validator_index) == spec.MAX_EFFECTIVE_BALANCE
+    assert balance == spec.MAX_EFFECTIVE_BALANCE
     assert state.validators[validator_index].pubkey == pubkeys[validator_index]
 
 
@@ -803,7 +819,11 @@ def test_deposit_top_up(spec, state):
             committee_bits,
         )
 
-    assert get_balance(state, validator_index) == (
+    balance = get_balance(state, validator_index)
+    if is_post_electra(spec):
+        balance += state.pending_balance_deposits[0].amount
+
+    assert balance == (
         validator_pre_balance + amount + sync_committee_reward - sync_committee_penalty
     )
 
