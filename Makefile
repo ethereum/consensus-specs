@@ -135,15 +135,14 @@ endif
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
-###############################################################################
-# Table of Contents
-###############################################################################
-
 # When using .ONESHELL, bail on errors.
 .SHELLFLAGS = -e
 
-# This contains all markdown files with specifications.
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/**/*.md) \
+# This contains all markdown files that should have table of contents.
+MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/*/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*.md) \
+                 $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
 # Check all files and error if any ToC were modified.
