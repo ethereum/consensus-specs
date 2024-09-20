@@ -30,6 +30,7 @@
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
     - [`SingleAttestation`](#singleattestation)
+    - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -257,7 +258,6 @@ class PendingConsolidation(Container):
     target_index: ValidatorIndex
 ```
 
-
 #### `SingleAttestation`
 
 ```python
@@ -266,6 +266,7 @@ class SingleAttestation(Container):
     attester_index: ValidatorIndex
     data: AttestationData
     signature: BLSSignature
+```
 
 #### `ExecutionRequests`
 
