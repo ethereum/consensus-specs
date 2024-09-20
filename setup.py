@@ -35,6 +35,16 @@ from pysetup.helpers import (
 )
 from pysetup.md_doc_paths import get_md_doc_paths
 
+# Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
+import warnings
+warnings.filterwarnings('ignore', message='Normalizing .* to .*')
+
+# Ignore 'running' and 'creating' messages
+import logging
+class PyspecFilter(logging.Filter):
+    def filter(self, record):
+        return not record.getMessage().startswith(('running ', 'creating '))
+logging.getLogger().addFilter(PyspecFilter())
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
@@ -394,8 +404,6 @@ class PySpecCommand(Command):
     def finalize_options(self):
         """Post-process options."""
         if len(self.md_doc_paths) == 0:
-            print("no paths were specified, using default markdown file paths for pyspec"
-                  " build (spec fork: %s)" % self.spec_fork)
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -428,6 +436,7 @@ class PySpecCommand(Command):
         if not self.dry_run:
             dir_util.mkpath(self.out_dir)
 
+        print(f'Building pyspec: {self.spec_fork}')
         for (name, preset_paths, config_path) in self.parsed_build_targets:
             spec_str = build_spec(
                 spec_builders[self.spec_fork].fork,
@@ -492,7 +501,6 @@ class PyspecDevCommand(Command):
         self.run_command('pyspec')
 
     def run(self):
-        print("running build_py command")
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
