@@ -152,11 +152,12 @@ def prepare_execution_payload(state: BeaconState,
 
 ### Construct attestation
 
-- Set `attestation_data.index = 0`.
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
-- Let `attestation.committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`.
+The validator creates `attestation` as a `SingleAttestation` container
+with updated field assignments:
 
-*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
+- Set `attestation_data.index = 0`.
+- Set `attestation.committee_index` to the index associated with the validator's committee.
+- Set `attestation.attester_index` to the index of the validator.
 
 ## Attestation aggregation
 
@@ -164,4 +165,4 @@ def prepare_execution_payload(state: BeaconState,
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation.
+- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the bit set corresponding to `committee_index` in each individual attestation.
