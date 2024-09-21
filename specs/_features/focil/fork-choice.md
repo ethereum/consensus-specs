@@ -9,7 +9,6 @@
 - [Helpers](#helpers)
   - [New `evaluate_inclusion_summary_aggregates`](#new-evaluate_inclusion_summary_aggregates)
   - [Modified `Store`](#modified-store)
-  - [New `on_local_inclusion_list`](#new-on_local_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -53,18 +52,6 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     inclusion_summary_aggregates: Dict[Root, InclusionSummaryAggregates] = field(default_factory=dict)  # [New in FOCIL]
-
-### New `notify_local_inclusion_list`
-
-```python
-def notify_local_inclusion_list(store: Store, signed_inclusion_list: SignedLocalInclusionList) -> None:
-    """
-    ``notify_local_inclusion_list`` sends inclusion list to EL to verify and import it to fork choice store.
-    """
-    assert self.verify_and_notify_local_inclusion_list(inclusion_list)
-
-    on_local_inclusion_list(store, signed_inclusion_list)
-```
     
 
 ### New `on_local_inclusion_list`
@@ -91,7 +78,6 @@ def on_local_inclusion_list(
 
     parent_hash = message.parent_hash
 
-    # TODO: Convert inclusion list to aggregate format and properly aggregate them given existing entries
     aggregates = InclusionSummaryAggregate()
     store.inclusion_summary_aggregates[parent_hash] = aggregate
 ```

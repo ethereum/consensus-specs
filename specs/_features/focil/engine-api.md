@@ -21,14 +21,10 @@ Warning: This file should be placed in https://github.com/ethereum/execution-api
     - [Request](#request)
     - [Response](#response)
     - [Specification](#specification)
-  - [engine_newLocalInclusionListV1](#engine_newlocalinclusionlistv1)
+  - [engine_getInclusionListV1](#engine_getinclusionlistv1)
     - [Request](#request-1)
     - [Response](#response-1)
     - [Specification](#specification-1)
-  - [engine_getInclusionListV1](#engine_getinclusionlistv1)
-    - [Request](#request-2)
-    - [Response](#response-2)
-    - [Specification](#specification-2)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -84,30 +80,8 @@ Refer to the response for [`engine_newPayloadV3`](./cancun.md#engine_newpayloadv
 
 This method follows the same specification as [`engine_newPayloadV3`](./cancun.md#engine_newpayloadv3) with the following changes:
 
-1. Client software **MUST** return `-38005: Unsupported fork` error if the `timestamp` of the payload does not fall within the time frame of the Prague fork.
-
-### engine_newLocalInclusionListV1
-
-#### Request
-
-* method: `engine_newLocalInclusionListV1`
-* params:
-  1. `parent_hash`: `DATA`, 32 Bytes - parent hash which this inclusion list is built upon.
-  2. `inclusionListSummaryList`: `InclusionListSummaryListV1` - Summary.
-  3. `inclusionListTransactions`: `Array of DATA` - Array of transaction objects, each object is a byte list (`DATA`) representing `TransactionType || TransactionPayload` or `LegacyTransaction` as defined in [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718)
-* timeout: 1s
-
-#### Response
-
-* result: [`InclusionListStatusV1`](./#inclusionliststatusv1).
-* error: code and message set in case an exception happens while processing the inclusion list.
-
-#### Specification
-
-1. Client software **MUST** validate the inclusion list transactions are valid (correct nonce and sufficient base fee) given the parent block hash specified. If the parent block is not available, return false.
-2. Client software **MUST** validate that the sum of inclusion list transactions gas does not exceed `INCLUSION_LIST_MAX_GAS`.   
-3. Client software **MUST** validate that the summary and transactions are the same length.
-4. Client software **MUST** validate that the order of the summary entries matches the order of the transactions.
+1. Client software **MUST** return `-38005: Unsupported fork` error if the `timestamp` of the payload does not fall within the time frame of the fork number.
+2. Client software **MUST** return `TBD` if the payload does not satisfy inclusion list evaluation.
 
 ### engine_getInclusionListV1
 
