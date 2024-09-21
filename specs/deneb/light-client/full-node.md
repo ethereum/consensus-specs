@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Deneb upgrade.
+Execution payload data is updated to account for the Deneb upgrade.
 
 ## Helper functions
 

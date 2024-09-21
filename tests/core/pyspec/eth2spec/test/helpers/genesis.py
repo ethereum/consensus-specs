@@ -6,7 +6,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_electra, is_post_whisk,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
@@ -65,19 +65,19 @@ def get_sample_genesis_execution_payload_header(spec,
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
-    requests_trie_root = None
+    parent_beacon_block_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    if is_post_electra(spec):
-        requests_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_deneb(spec):
+        parent_beacon_block_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
-        requests_trie_root,
+        parent_beacon_block_root,
     )
     return payload_header
 

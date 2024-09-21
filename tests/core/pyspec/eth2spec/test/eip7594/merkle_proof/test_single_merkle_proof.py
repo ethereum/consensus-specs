@@ -36,9 +36,10 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
         )
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = sign_block(spec, state, block, proposer_index=0)
-    column_sidcars = spec.get_data_column_sidecars(signed_block, blobs)
+    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    column_sidcars = spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)
     column_sidcar = column_sidcars[0]
 
     yield "object", block.body
