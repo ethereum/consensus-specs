@@ -96,7 +96,7 @@ Cells are the smallest unit of blob data that can come with their own KZG proofs
 ```python
 def cell_to_coset_evals(cell: Cell) -> CosetEvals:
     """
-    Convert an untrusted ``Cell`` into trusted coset evaluations.
+    Convert an untrusted ``Cell`` into a trusted ``CosetEvals``.
     """
     evals = CosetEvals()
     for i in range(FIELD_ELEMENTS_PER_CELL):
@@ -111,7 +111,7 @@ def cell_to_coset_evals(cell: Cell) -> CosetEvals:
 ```python
 def coset_evals_to_cell(coset_evals: CosetEvals) -> Cell:
     """
-    Convert trusted coset evaluations into an untrusted ``Cell``.
+    Convert a trusted ``CosetEval`` into an untrusted ``Cell``.
     """
     cell = []
     for i in range(FIELD_ELEMENTS_PER_CELL):
@@ -194,7 +194,7 @@ def coset_fft_field(vals: Sequence[BLSFieldElement],
 def compute_verify_cell_kzg_proof_batch_challenge(commitments: Sequence[KZGCommitment],
                                                   commitment_indices: Sequence[CommitmentIndex],
                                                   cell_indices: Sequence[CellIndex],
-                                                  cosets_evals: Sequence[Sequence[BLSFieldElement]],
+                                                  cosets_evals: Sequence[CosetEvals],
                                                   proofs: Sequence[KZGProof]) -> BLSFieldElement:
     """
     Compute a random challenge ``r`` used in the universal verification equation. To compute the
@@ -329,7 +329,7 @@ def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
 #### `evaluate_polynomialcoeff`
 
 ```python
-def evaluate_polynomialcoeff(polynomial_coeff: Sequence[BLSFieldElement], z: BLSFieldElement) -> BLSFieldElement:
+def evaluate_polynomialcoeff(polynomial_coeff: PolynomialCoeff, z: BLSFieldElement) -> BLSFieldElement:
     """
     Evaluate a coefficient form polynomial at ``z`` using Horner's schema.
     """
@@ -348,7 +348,7 @@ Extended KZG functions for multiproofs
 ```python
 def compute_kzg_proof_multi_impl(
         polynomial_coeff: PolynomialCoeff,
-        zs: Sequence[BLSFieldElement]) -> Tuple[KZGProof, Sequence[BLSFieldElement]]:
+        zs: Coset) -> Tuple[KZGProof, CosetEvals]:
     """
     Compute a KZG multi-evaluation proof for a set of `k` points.
 
@@ -363,7 +363,7 @@ def compute_kzg_proof_multi_impl(
     """
 
     # For all points, compute the evaluation of those points
-    ys = [evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs]
+    ys = CosetEvals([evaluate_polynomialcoeff(polynomial_coeff, z) for z in zs])
 
     # Compute Z(X)
     denominator_poly = vanishing_polynomialcoeff(zs)
@@ -380,7 +380,7 @@ def compute_kzg_proof_multi_impl(
 def verify_cell_kzg_proof_batch_impl(commitments: Sequence[KZGCommitment],
                                      commitment_indices: Sequence[CommitmentIndex],
                                      cell_indices: Sequence[CellIndex],
-                                     cosets_evals: Sequence[Sequence[BLSFieldElement]],
+                                     cosets_evals: Sequence[CosetEvals],
                                      proofs: Sequence[KZGProof]) -> bool:
     """
     Helper: Verify that a set of cells belong to their corresponding commitment.
@@ -500,7 +500,7 @@ def coset_shift_for_cell(cell_index: CellIndex) -> BLSFieldElement:
 #### `coset_for_cell`
 
 ```python
-def coset_for_cell(cell_index: CellIndex) -> Sequence[BLSFieldElement]:
+def coset_for_cell(cell_index: CellIndex) -> Coset:
     """
     Get the coset for a given ``cell_index``.
     Precisely, consider the group of roots of unity of order FIELD_ELEMENTS_PER_CELL * CELLS_PER_EXT_BLOB.
@@ -512,7 +512,7 @@ def coset_for_cell(cell_index: CellIndex) -> Sequence[BLSFieldElement]:
     roots_of_unity_brp = bit_reversal_permutation(
         compute_roots_of_unity(FIELD_ELEMENTS_PER_EXT_BLOB)
     )
-    return roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)]
+    return Coset(roots_of_unity_brp[FIELD_ELEMENTS_PER_CELL * cell_index:FIELD_ELEMENTS_PER_CELL * (cell_index + 1)])
 ```
 
 ## Cells
