@@ -228,9 +228,7 @@ def polynomial_eval_to_coeff(polynomial: Polynomial) -> PolynomialCoeff:
     Interpolates a polynomial (given in evaluation form) to a polynomial in coefficient form.
     """
     roots_of_unity = compute_roots_of_unity(FIELD_ELEMENTS_PER_BLOB)
-    polynomial_coeff = fft_field(bit_reversal_permutation(list(polynomial)), roots_of_unity, inv=True)
-
-    return PolynomialCoeff(polynomial_coeff)
+    return PolynomialCoeff(fft_field(bit_reversal_permutation(polynomial), roots_of_unity, inv=True))
 ```
 
 #### `add_polynomialcoeff`
@@ -241,9 +239,7 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     Sum the coefficient form polynomials ``a`` and ``b``.
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
-    length_a = len(a)
-    length_b = len(b)
-    return PolynomialCoeff([a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)])
+    return PolynomialCoeff([a[i] + (b[i] if i < len(b) else BLSFieldElement(0)) for i in range(len(a))])
 ```
 
 #### `neg_polynomialcoeff`
@@ -261,7 +257,7 @@ def neg_polynomialcoeff(a: PolynomialCoeff) -> PolynomialCoeff:
 ```python
 def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoeff:
     """
-    Multiplies the coefficient form polynomials ``a`` and ``b``
+    Multiplies the coefficient form polynomials ``a`` and ``b``.
     """
     assert len(a) + len(b) <= FIELD_ELEMENTS_PER_EXT_BLOB
 
@@ -277,7 +273,7 @@ def multiply_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomi
 ```python
 def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoeff:
     """
-    Long polynomial division for two coefficient form polynomials ``a`` and ``b``
+    Long polynomial division for two coefficient form polynomials ``a`` and ``b``.
     """
     a = PolynomialCoeff(a[:])  # copy
     o = PolynomialCoeff([])
@@ -299,13 +295,12 @@ def divide_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> Polynomial
 ```python
 def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
-    Lagrange interpolation: Finds the lowest degree polynomial that takes the value ``ys[i]`` at ``x[i]``
-    for all i.
+    Lagrange interpolation: Finds the lowest degree polynomial that takes the value ``ys[i]`` at ``x[i]`` for all i.
     Outputs a coefficient form polynomial. Leading coefficients may be zero.
     """
     assert len(xs) == len(ys)
-    r = PolynomialCoeff([BLSFieldElement(0)])
 
+    r = PolynomialCoeff([BLSFieldElement(0)])
     for i in range(len(xs)):
         summand = PolynomialCoeff([ys[i]])
         for j in range(len(ys)):
@@ -315,7 +310,6 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
                     summand, PolynomialCoeff([-weight_adjustment * xs[j], weight_adjustment])
                 )
         r = add_polynomialcoeff(r, summand)
-
     return r
 ```
 
@@ -324,7 +318,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
 ```python
 def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
     """
-    Compute the vanishing polynomial on ``xs`` (in coefficient form)
+    Compute the vanishing polynomial on ``xs`` (in coefficient form).
     """
     p = PolynomialCoeff([BLSFieldElement(1)])
     for x in xs:
@@ -337,7 +331,7 @@ def vanishing_polynomialcoeff(xs: Sequence[BLSFieldElement]) -> PolynomialCoeff:
 ```python
 def evaluate_polynomialcoeff(polynomial_coeff: Sequence[BLSFieldElement], z: BLSFieldElement) -> BLSFieldElement:
     """
-    Evaluate a coefficient form polynomial at ``z`` using Horner's schema
+    Evaluate a coefficient form polynomial at ``z`` using Horner's schema.
     """
     y = BLSFieldElement(0)
     for coef in polynomial_coeff[::-1]:
@@ -365,7 +359,7 @@ def compute_kzg_proof_multi_impl(
         - Z(X) is the degree `k` polynomial that evaluates to zero on all `k` points
 
     We further note that since the degree of I(X) is less than the degree of Z(X),
-    the computation can be simplified in monomial form to Q(X) = f(X) / Z(X)
+    the computation can be simplified in monomial form to Q(X) = f(X) / Z(X).
     """
 
     # For all points, compute the evaluation of those points

@@ -280,5 +280,6 @@ def test_multiply_polynomial_degree_overflow(spec):
     _ = spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff)
 
     # Now overflow the degree by pumping the degree of one of the inputs by one
-    poly2_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)]
+    poly2_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+                   for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)]
     expect_assertion_error(lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff))
