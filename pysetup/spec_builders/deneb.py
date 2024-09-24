@@ -22,9 +22,9 @@ class BLSFieldElement(bls.Scalar):
 class Polynomial(list):
     def __init__(self, evals: Optional[Sequence[BLSFieldElement]] = None):
         if evals is None:
-            evals = [BLSFieldElement(0)] * 4096
-        if len(evals) != 4096:
-            raise ValueError("expected 4096 evals")
+            evals = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
+        if len(evals) != FIELD_ELEMENTS_PER_BLOB:
+            raise ValueError("expected FIELD_ELEMENTS_PER_BLOB evals")
         super().__init__(evals)
 '''
 

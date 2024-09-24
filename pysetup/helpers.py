@@ -143,7 +143,6 @@ def objects_to_spec(preset_name: str,
     func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), filtered_hardcoded_func_dep_presets))
     spec_strs = [
         imports,
-        classes,
         preparations,
         f"fork = \'{fork}\'\n",
         # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`
@@ -156,6 +155,8 @@ def objects_to_spec(preset_name: str,
         constant_vars_spec,
         preset_vars_spec,
         config_spec,
+        # Custom classes which are not required to be SSZ containers.
+        classes,
         ordered_class_objects_spec,
         protocols_spec,
         functions_spec,
