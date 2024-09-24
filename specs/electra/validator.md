@@ -70,7 +70,7 @@ Changed the max attester slashings size to `MAX_ATTESTER_SLASHINGS_ELECTRA`.
 Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
 The network attestation aggregates contain only the assigned committee attestations.
-Attestation aggregates received by the block proposer from the committee aggregators with disjoint `committee_bits` sets and equal signing `AttestationData` SHOULD be consolidated into a single `Attestation` object.
+Attestation aggregates received by the block proposer from the committee aggregators with disjoint `committee_bits` sets and equal signing `AttestationData` SHOULD be consolidated into a single `OnchainAttestation` object.
 The proposer should run the following function to construct an on chain final aggregate form a list of network aggregates with equal signing `AttestationData`:
 
 ```python
