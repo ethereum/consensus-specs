@@ -307,7 +307,7 @@ def interpolate_polynomialcoeff(xs: Sequence[BLSFieldElement], ys: Sequence[BLSF
     r = PolynomialCoeff([BLSFieldElement(0)])
 
     for i in range(len(xs)):
-        summand = PolynomialCoeff(ys[:])
+        summand = PolynomialCoeff([ys[i]])
         for j in range(len(ys)):
             if j != i:
                 weight_adjustment = (xs[i] - xs[j]).inverse()
