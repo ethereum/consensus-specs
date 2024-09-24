@@ -39,7 +39,7 @@ def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
-    x = spec.bls_field_to_bytes(spec.bls.Scalar(3))
+    x = spec.bls_field_to_bytes(spec.BLSFieldElement(3))
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -54,7 +54,7 @@ def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = spec.bls_field_to_bytes(spec.bls.Scalar(3465))
+    x = spec.bls_field_to_bytes(spec.BLSFieldElement(3465))
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -70,7 +70,7 @@ def test_verify_kzg_proof_impl(spec):
     """
     Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
     """
-    x = spec.bls.Scalar(BLS_MODULUS - 1)
+    x = spec.BLSFieldElement(BLS_MODULUS - 1)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -86,7 +86,7 @@ def test_verify_kzg_proof_impl_incorrect_proof(spec):
     """
     Test the implementation function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = spec.bls.Scalar(324561)
+    x = spec.BLSFieldElement(324561)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -116,9 +116,9 @@ def test_barycentric_outside_domain(spec):
 
     for _ in range(n_samples):
         # Get a random evaluation point and make sure it's not a root of unity
-        z = spec.bls.Scalar(rng.randint(0, BLS_MODULUS - 1))
+        z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
         while z in roots_of_unity_brp:
-            z = spec.bls.Scalar(rng.randint(0, BLS_MODULUS - 1))
+            z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
