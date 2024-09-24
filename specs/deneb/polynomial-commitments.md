@@ -331,8 +331,8 @@ def evaluate_polynomial_in_evaluation_form(polynomial: Polynomial, z: BLSFieldEl
         a = polynomial[i] * roots_of_unity_brp[i]
         b = z - roots_of_unity_brp[i]
         result += a / b
-    r = (BLS_MODULUS + pow(int(z), width, BLS_MODULUS) - 1) % BLS_MODULUS
-    result = result * BLSFieldElement(r) * inverse_width
+    r = z.pow(BLSFieldElement(width)) - BLSFieldElement(1)
+    result = result * r * inverse_width
     return result
 ```
 
