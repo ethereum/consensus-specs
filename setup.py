@@ -557,7 +557,7 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",
         MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.5",
+        "py_arkworks_bls12381==0.3.8",
         "curdleproofs==0.1.2",
     ]
 )

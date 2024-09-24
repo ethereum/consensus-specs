@@ -119,6 +119,7 @@ def objects_to_spec(preset_name: str,
     hardcoded_func_dep_presets = reduce(lambda obj, builder: {**obj, **builder.hardcoded_func_dep_presets(spec_object)}, builders, {})
     # Concatenate all strings
     imports =              reduce(lambda txt, builder: (txt + "\n\n" + builder.imports(preset_name)  ).strip("\n"), builders, "")
+    classes =              reduce(lambda txt, builder: (txt + "\n\n" + builder.classes()             ).strip("\n"), builders, "")
     preparations =         reduce(lambda txt, builder: (txt + "\n\n" + builder.preparations()        ).strip("\n"), builders, "")
     sundry_functions =     reduce(lambda txt, builder: (txt + "\n\n" + builder.sundry_functions()    ).strip("\n"), builders, "")
     # Keep engine from the most recent fork
@@ -142,6 +143,7 @@ def objects_to_spec(preset_name: str,
     func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), filtered_hardcoded_func_dep_presets))
     spec_strs = [
         imports,
+        classes,
         preparations,
         f"fork = \'{fork}\'\n",
         # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`

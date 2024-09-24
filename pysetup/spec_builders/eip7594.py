@@ -15,6 +15,32 @@ from eth2spec.deneb import {preset_name} as deneb
 
 
     @classmethod
+    def classes(cls):
+        return f'''
+class PolynomialCoeff(list):
+    def __init__(self, coeffs: Sequence[BLSFieldElement]):
+        super().__init__(coeffs)
+
+
+class Coset(list):
+    def __init__(self, coeffs: Optional[Sequence[BLSFieldElement]] = None):
+        if coeffs is None:
+            coeffs = [BLSFieldElement(0)] * 64
+        if len(coeffs) != 64:
+            raise ValueError("expected 64 coeffs")
+        super().__init__(coeffs)
+
+
+class CosetEvals(list):
+    def __init__(self, evals: Optional[Sequence[BLSFieldElement]] = None):
+        if evals is None:
+            evals = [BLSFieldElement(0)] * 64
+        if len(evals) != 64:
+            raise ValueError("expected 64 evals")
+        super().__init__(evals)
+'''
+
+    @classmethod
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:

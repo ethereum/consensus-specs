@@ -16,6 +16,13 @@ class BaseSpecBuilder(ABC):
         return ""
 
     @classmethod
+    def classes(cls) -> str:
+        """
+        Define special classes.
+        """
+        return ""
+
+    @classmethod
     def preparations(cls) -> str:
         """
         Define special types/constants for building pyspec or call functions.
