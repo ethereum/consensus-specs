@@ -126,8 +126,8 @@ def test_deposit_and_bls_change(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_exit_and_bls_change(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)

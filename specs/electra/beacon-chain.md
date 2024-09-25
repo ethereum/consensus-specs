@@ -1319,7 +1319,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= voluntary_exit.epoch
     # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    assert get_current_epoch(state) >= validator.activation_epoch + MIN_VALIDATOR_ACTIVE_PERIOD
     # Only exit validator if it has no pending withdrawals in the queue
     assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in Electra:EIP7251]
     # Verify signature
@@ -1368,7 +1368,7 @@ def process_withdrawal_request(
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
     # Verify the validator has been active long enough
-    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+    if get_current_epoch(state) < validator.activation_epoch + MIN_VALIDATOR_ACTIVE_PERIOD:
         return
 
     pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, index)

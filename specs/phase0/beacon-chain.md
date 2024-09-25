@@ -306,7 +306,7 @@ Testnets and other types of chain instances may use a different configuration.
 | `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| `MIN_VALIDATOR_ACTIVE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
 | `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
 
 ### Validator cycle
@@ -1931,7 +1931,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= voluntary_exit.epoch
     # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
+    assert get_current_epoch(state) >= validator.activation_epoch + MIN_VALIDATOR_ACTIVE_PERIOD
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     signing_root = compute_signing_root(voluntary_exit, domain)

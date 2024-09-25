@@ -144,10 +144,10 @@ def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post
 def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a voluntary exit right *after* the transition.
-    fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
+    fork_epoch=66 because minimal preset `MIN_VALIDATOR_ACTIVE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
-    state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot = spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield from run_transition_with_operation(
         state,
@@ -166,10 +166,10 @@ def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec
 def test_transition_with_voluntary_exit_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Create a voluntary exit right *before* the transition.
-    fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
+    fork_epoch=66 because minimal preset `MIN_VALIDATOR_ACTIVE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
-    state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot = spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield from run_transition_with_operation(
         state,
