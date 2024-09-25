@@ -93,8 +93,10 @@
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposits](#deposits)
         - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
+        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
         - [Modified `apply_deposit`](#modified-apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
+        - [Modified `process_deposit`](#modified-process_deposit)
       - [Voluntary exits](#voluntary-exits)
         - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
@@ -1316,6 +1318,24 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     )
 ```
 
+###### Modified `add_validator_to_registry`
+
+*Note*: The function `add_validator_to_registry` is modified to use the modified `get_validator_from_deposit`.
+
+```python
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)  # [Modified in Electra:EIP7251]
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, amount)
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, uint64(0))
+```
+
 ###### Modified `apply_deposit`
 
 *Note*: The function `apply_deposit` is modified to support EIP7251.
@@ -1366,6 +1386,34 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
     domain = compute_domain(DOMAIN_DEPOSIT)  # Fork-agnostic domain since deposits are valid across forks
     signing_root = compute_signing_root(deposit_message, domain)
     return bls.Verify(pubkey, signing_root, signature)
+```
+
+###### Modified `process_deposit`
+
+*Note*: The function `process_deposit` is modified to to use the modified `apply_deposit`.
+
+```python
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    # Verify the Merkle branch
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(deposit.data),
+        branch=deposit.proof,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
+    )
+
+    # Deposits must be processed in order
+    state.eth1_deposit_index += 1
+
+    # [Modified in Electra:EIP7251]
+    apply_deposit(
+        state=state,
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        amount=deposit.data.amount,
+        signature=deposit.data.signature,
+    )
 ```
 
 ##### Voluntary exits
