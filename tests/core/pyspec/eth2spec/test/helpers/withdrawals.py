@@ -84,6 +84,19 @@ def set_compounding_withdrawal_credential(spec, state, index, address=None):
     validator.withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b'\x00' * 11 + address
 
 
+def set_compounding_withdrawal_credential_with_balance(spec, state, index,
+                                                       effective_balance=None, balance=None, address=None):
+    set_compounding_withdrawal_credential(spec, state, index, address)
+
+    if effective_balance is None:
+        effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    if balance is None:
+        balance = effective_balance
+
+    state.validators[index].effective_balance = effective_balance
+    state.balances[index] = balance
+
+
 def prepare_expected_withdrawals_compounding(spec, state, rng,
                                              num_full_withdrawals=0,
                                              num_partial_withdrawals_sweep=0,
@@ -95,11 +108,8 @@ def prepare_expected_withdrawals_compounding(spec, state, rng,
     )
 
     for index in fully_withdrawable_indices + partial_withdrawals_sweep_indices:
-        validator = state.validators[index]
-        validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-        state.balances[index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         address = state.validators[index].withdrawal_credentials[12:]
-        set_compounding_withdrawal_credential(spec, state, index, address=address)
+        set_compounding_withdrawal_credential_with_balance(spec, state, index, address=address)
 
     for index in fully_withdrawable_indices:
         set_validator_fully_withdrawable(spec, state, index)
@@ -113,9 +123,10 @@ def prepare_pending_withdrawal(spec, state, validator_index,
                                effective_balance=32_000_000_000, amount=1_000_000_000):
     assert is_post_electra(spec)
 
-    set_compounding_withdrawal_credential(spec, state, validator_index)
-    state.validators[validator_index].effective_balance = effective_balance
-    state.balances[validator_index] = effective_balance + amount
+    balance = effective_balance + amount
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state, validator_index, effective_balance, balance
+    )
 
     withdrawal = spec.PendingPartialWithdrawal(
         index=validator_index,
@@ -129,6 +140,7 @@ def prepare_pending_withdrawal(spec, state, validator_index,
 #
 # Run processing
 #
+
 
 def verify_post_state(state, spec, expected_withdrawals,
                       fully_withdrawable_indices, partial_withdrawals_indices):

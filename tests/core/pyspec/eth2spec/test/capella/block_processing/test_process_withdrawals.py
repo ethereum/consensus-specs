@@ -2,7 +2,6 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    expect_assertion_error,
     with_presets,
     with_capella_and_later,
 )
