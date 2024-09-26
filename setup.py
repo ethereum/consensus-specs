@@ -258,7 +258,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                         # marko parses `**X**` as a list containing a X
                         value = value[0].children
 
-                    # Skip types that have been elsewhere
+                    # Skip types that have been defined elsewhere
                     if description is not None and description.startswith("<!-- predefined-type -->"):
                         continue
 
