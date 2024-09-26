@@ -65,6 +65,13 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
 | `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob |
 
+## Cryptographic types
+
+| Name | Description |
+| - | - |
+| [`BLSFieldElement`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L18-L19) | A value in the finite field defined by `BLS_MODULUS` |
+| [`Polynomial`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L22-L28) | A list of `FIELD_ELEMENTS_PER_BLOB` field elements in evaluation form |
+
 ## Constants
 
 | Name | Value | Notes |
@@ -77,7 +84,6 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 | `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
 | `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7` | The primitive root of unity from which all roots of unity should be derived |
-
 
 ## Preset
 
