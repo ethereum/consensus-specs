@@ -9,6 +9,7 @@
 - [Helpers](#helpers)
   - [New `evaluate_inclusion_summary_aggregates`](#new-evaluate_inclusion_summary_aggregates)
   - [Modified `Store`](#modified-store)
+  - [New `on_local_inclusion_list`](#new-on_local_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -16,6 +17,16 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the FOCIL upgrade.
+
+## Containers
+
+### New `inclusion_list_aggregate`
+
+```python
+class InclusionSummaryAggregate(Container):
+    aggregation_bits: Bitvector[IL_COMMITTEE_SIZE]
+    summary: InclusionSummary
+```
 
 ## Helpers
 
@@ -80,4 +91,21 @@ def on_local_inclusion_list(
 
     aggregates = InclusionSummaryAggregate()
     store.inclusion_summary_aggregates[parent_hash] = aggregate
+    ilc_index = ilc.index(message.validator_index)
+    for summary in message.summaries:
+        matching_aggregate = None
+        for aggregate in store.inclusion_summary_aggregates[parent_hash]:
+            if aggregate.summary == summary:
+                matching_aggregate = aggregate
+                break
+
+        if matching_aggregate:
+            matching_aggregate.aggregation_bits.flip(ilc_index_to_i)
+        else:
+            new_aggregate = InclusionSummaryAggregate(
+                aggregation_bits=Bitvector[IL_COMMITTEE_SIZE](),
+                summary=summary
+            )
+            new_aggregate.aggregation_bits.flip(ilc_index_to_i)            
+            store.inclusion_summary_aggregates[parent_hash].append(new_aggregate)
 ```
