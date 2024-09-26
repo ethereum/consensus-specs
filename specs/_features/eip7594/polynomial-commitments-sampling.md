@@ -256,7 +256,7 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
 ```python
 def neg_polynomialcoeff(a: PolynomialCoeff) -> PolynomialCoeff:
     """
-    Negative of coefficient form polynomial ``a``
+    Negative of coefficient form polynomial ``a``.
     """
     return PolynomialCoeff([-x for x in a])
 ```
