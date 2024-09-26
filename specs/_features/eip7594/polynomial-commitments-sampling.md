@@ -77,9 +77,9 @@ The following is a list of the public methods:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| [`PolynomialCoeff`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L20-L24) | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | A polynomial in coefficient form |
-| [`Coset`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L27-L33) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | The evaluation domain of a cell |
-| [`CosetEvals`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L36-L42) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | A cell's evaluations over its coset |
+| [`PolynomialCoeff`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L20-L24) | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | <!-- predefined-type --> A polynomial in coefficient form |
+| [`Coset`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L27-L33) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | <!-- predefined-type --> The evaluation domain of a cell |
+| [`CosetEvals`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L36-L42) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | <!-- predefined-type --> A cell's evaluations over its coset |
 
 ## Preset
 

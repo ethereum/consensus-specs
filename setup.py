@@ -251,9 +251,16 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                                 # marko parses `**X**` as a list containing a X
                                 description = description[0].children
 
+                    if isinstance(name, list):
+                        # marko parses `[X]()` as a list containing a X
+                        name = name[0].children
                     if isinstance(value, list):
                         # marko parses `**X**` as a list containing a X
                         value = value[0].children
+
+                    # Skip types that have been elsewhere
+                    if description is not None and description.startswith("<!-- predefined-type -->"):
+                        continue
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
