@@ -247,8 +247,8 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     """
     Sum the coefficient form polynomials ``a`` and ``b``.
     """
-    length_a, length_b = len(a), len(b)
     a, b = (a, b) if length_a >= length_b else (b, a)
+    length_a, length_b = len(a), len(b)
     return PolynomialCoeff([a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)])
 ```
 
