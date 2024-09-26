@@ -60,7 +60,8 @@ def test_success_no_max_effective_balance_compounding(spec, state):
 def test_success_no_excess_balance_compounding(spec, state):
     validator_index = len(state.validators) // 2
     # To be partially withdrawable, the validator needs an excess balance
-    set_compounding_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+    effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    set_compounding_withdrawal_credential_with_balance(spec, state, validator_index, effective_balance)
 
     validator = state.validators[validator_index]
     assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
