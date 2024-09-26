@@ -8,6 +8,7 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Cryptographic types](#cryptographic-types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)

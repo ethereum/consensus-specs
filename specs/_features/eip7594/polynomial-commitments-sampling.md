@@ -9,6 +9,7 @@
 - [Introduction](#introduction)
 - [Public Methods](#public-methods)
 - [Custom types](#custom-types)
+- [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Cells](#cells)
 - [Helper functions](#helper-functions)
