@@ -8,7 +8,7 @@ This repository hosts the current Ethereum proof-of-stake specifications. Discus
 
 ## Specs
 
-[![GitHub release](https://img.shields.io/github/v/release/ethereum/consensus-specs)](https://github.com/ethereum/consensus-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
+[![GitHub release](https://img.shields.io/github/v/release/ethereum/consensus-specs)](https://github.com/ethereum/consensus-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec) [![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
 
 Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs/). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
