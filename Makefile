@@ -141,13 +141,21 @@ endif
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
+# Check all files and error if any ToC were modified.
 check_toc: $(MARKDOWN_FILES:=.toc)
+	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
 
+# Generate ToC sections & save copy of original if modified.
 %.toc:
-	cp $* $*.tmp && \
-	doctoc $* && \
-	diff -q $* $*.tmp && \
-	rm $*.tmp
+	@cp $* $*.tmp; \
+	doctoc $* > /dev/null; \
+	if diff -q $* $*.tmp > /dev/null; then \
+		echo "Good $*"; \
+		rm $*.tmp; \
+	else \
+		echo "\033[1;33m Bad $*\033[0m"; \
+		echo "\033[1;34m See $*.tmp\033[0m"; \
+	fi
 
 codespell:
 	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
