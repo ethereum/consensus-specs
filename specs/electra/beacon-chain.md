@@ -1426,7 +1426,7 @@ def is_valid_switch_to_compounding_request(
     if not is_active_validator(source_validator, current_epoch):
         return False
 
-    # Verify exit for source have not been initiated
+    # Verify exit for source has not been initiated
     if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
         return False
 
