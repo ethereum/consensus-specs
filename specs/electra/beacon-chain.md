@@ -183,6 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
 
 ### Pending deposits processing
+
 | Name | Value | Description |
 | - | - | - |
 | `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
