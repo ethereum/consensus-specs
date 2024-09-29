@@ -53,7 +53,6 @@
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
-    - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
@@ -539,14 +538,6 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return get_balance_churn_limit(state) - get_activation_exit_churn_limit(state)
 ```
 
-#### New `get_active_balance`
-
-```python
-def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    max_effective_balance = get_max_effective_balance(state.validators[validator_index])
-    return min(state.balances[validator_index], max_effective_balance)
-```
-
 #### New `get_pending_balance_to_withdraw`
 
 ```python
@@ -884,10 +875,14 @@ def process_pending_consolidations(state: BeaconState) -> None:
 
         # Churn any target excess active balance of target and raise its max
         switch_to_compounding_validator(state, pending_consolidation.target_index)
+
+        # Calculate the consolidated balance
+        max_effective_balance = get_max_effective_balance(source_validator)
+        source_effective_balance = min(state.balances[pending_consolidation.source_index], max_effective_balance)
+
         # Move active balance to target. Excess balance is withdrawable.
-        active_balance = get_active_balance(state, pending_consolidation.source_index)
-        decrease_balance(state, pending_consolidation.source_index, active_balance)
-        increase_balance(state, pending_consolidation.target_index, active_balance)
+        decrease_balance(state, pending_consolidation.source_index, source_effective_balance)
+        increase_balance(state, pending_consolidation.target_index, source_effective_balance)
         next_pending_consolidation += 1
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
