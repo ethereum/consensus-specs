@@ -999,6 +999,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
+    partial_withdrawals_count = 0
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
@@ -1018,7 +1019,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-    partial_withdrawals_count = len(withdrawals)
+        partial_withdrawals_count += 1
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
