@@ -906,16 +906,13 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         # [Modified in Electra:EIP7251]
-        EFFECTIVE_BALANCE_LIMIT = (
-            MAX_EFFECTIVE_BALANCE_ELECTRA if has_compounding_withdrawal_credential(validator)
-            else MIN_ACTIVATION_BALANCE
-        )
+        max_effective_balance = get_max_effective_balance(validator)
 
         if (
             balance + DOWNWARD_THRESHOLD < validator.effective_balance
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
-            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, EFFECTIVE_BALANCE_LIMIT)
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
 ```
 
 ### Execution engine
