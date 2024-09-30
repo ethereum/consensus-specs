@@ -6,8 +6,6 @@ This document contains the consensus-layer networking specification for FOCIL.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Time parameters](#time-parameters)
-- [Containers](#containers)
-  - [`SignedInclusionListAggregate`](#signedinclusionlistaggregate)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -19,19 +17,8 @@ This document contains the consensus-layer networking specification for FOCIL.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `LOCAL_INCLUSION_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
+| `LOCAL_INCLUSION_LIST_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
 
-### Containers
-
-#### `SignedInclusionListAggregate`
-
-```python
-class SignedInclusionSummaryAggregates(Container):
-    slot: Slot
-    proposer_index: ValidatorIndex
-    message: InclusionSummaryAggregates
-    signature: BLSSignature
-```
 
 ### The gossip domain: gossipsub
 
@@ -55,8 +42,7 @@ The following validations MUST pass before forwarding the `local_inclusion_list`
 - _[REJECT]_ The slot `message.slot` is equal to current slot.
 - _[IGNORE]_ The current time is `LOCAL_INCLUSION_CUT_OFF` seconds into the slot.
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[REJECT]_ The summaries `message.summaries` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index`. 
+- _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index` and can be received no more than twice from the same validator index.
 - _[IGNORE]_ The block hash `message.parent_block_hash` is a known execution payload in fork choice.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
 - _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice. 

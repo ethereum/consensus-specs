@@ -14,13 +14,19 @@
   - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`InclusionSummary`](#inclusionsummary)
     - [`LocalInclusionList`](#localinclusionlist)
     - [`SignedLocalInclusionList`](#signedlocalinclusionlist)
   - [Predicates](#predicates)
     - [New `is_valid_local_inclusion_list_signature`](#new-is_valid_local_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
     - [`get_inclusion_list_committee`](#get_inclusion_list_committee)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+      - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
+    - [Engine APIs](#engine-apis)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -45,7 +51,7 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 
 | Name | Value | 
 | - | - | 
-| `IL_COMMITTEE_SIZE` | `uint64(2**9)` (=256)  # (New in FOCIL) |
+| `IL_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in FOCIL) |
 
 ### Execution
 
@@ -57,15 +63,6 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 
 ### New containers
 
-#### `InclusionSummary`
-
-```python
-class InclusionSummary(Container):
-    address: ExecutionAddress
-    nonce: uint64
-    gas_limit: uint64
-```
-
 #### `LocalInclusionList`
 
 ```python
@@ -74,7 +71,6 @@ class LocalInclusionList(Container):
     validator_index: ValidatorIndex
     parent_root: Root
     parent_hash: Hash32
-    summaries: List[InclusionSummary, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
@@ -100,7 +96,7 @@ def is_valid_local_inclusion_list_signature(
     message = signed_local_inclusion_list.message
     index = message.validator_index
     pubkey = state.validators[index].pubkey
-    domain = get_domain(state, IL_COMMITTEE_SIZE, compute_epoch_at_slot(message.slot))
+    domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(message.slot))
     signing_root = compute_signing_root(message, domain)
     return bls.FastAggregateVerify(pubkey, signing_root, signed_local_inclusion_list.signature)
 ```
@@ -123,4 +119,74 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[Valid
         beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
         validator_indices += beacon_committee[:members_per_committee]
     return validator_indices
+```
+
+## Beacon chain state transition function
+
+### Execution engine
+
+#### Request data
+
+##### Modified `NewPayloadRequest`
+
+```python
+@dataclass
+class NewPayloadRequest(object):
+    execution_payload: ExecutionPayload
+    versioned_hashes: Sequence[VersionedHash]
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests 
+    il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in FOCIL]
+```
+
+#### Engine APIs
+
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in FOCIL.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       execution_requests: ExecutionRequests,
+                       parent_beacon_block_root: Root,
+                       il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST] ) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    are valid with respect to ``self.execution_state``.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `il_transactions`
+when calling `notify_new_payload` in FOCIL.
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    execution_payload = new_payload_request.execution_payload
+    execution_requests = new_payload_request.execution_requests
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    il_transactions = new_payload_request.il_transactions
+
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+        return False
+
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    # [Modified in FOCIL]
+    if not self.notify_new_payload(
+            execution_payload, 
+            execution_requests, 
+            parent_beacon_block_root,
+            il_transactions):
+        return False
+
+    return True
 ```

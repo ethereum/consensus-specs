@@ -7,9 +7,8 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
-  - [New `evaluate_inclusion_summary_aggregates`](#new-evaluate_inclusion_summary_aggregates)
+  - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [Modified `Store`](#modified-store)
-  - [New `on_local_inclusion_list`](#new-on_local_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -18,32 +17,20 @@
 
 This is the modification of the fork choice accompanying the FOCIL upgrade.
 
-## Containers
-
-### New `inclusion_list_aggregate`
-
-```python
-class InclusionSummaryAggregate(Container):
-    aggregation_bits: Bitvector[IL_COMMITTEE_SIZE]
-    summary: InclusionSummary
-```
-
 ## Helpers
 
-### New `evaluate_inclusion_summary_aggregates`
+### New `validate_inclusion_lists`
 
 ```python
-def evaluate_inclusion_summary_aggregates(store: Store, inclusion_summary_aggregates: InclusionSummaryAggregates) -> bool:
+def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST], execution_payload: ExecutionPayload) -> bool:
     """
-    Return ``True`` if and only if the input ``inclusion_summary_aggregates`` satifies evaluation.
+    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, that to verify if the `execution_payload` satisfies `inclusion_list_transactions` validity conditions either when all transactions are present in payload or when any missing transactions are found to be invalid when appended to the end of the payload.
     """
     ...
 ```
 
-TODO: Apply `evaluate_inclusion_summary_aggregates`, which can be part of the import rule for head filtering. Where it should be applied requires further analysis, and we won't specify the design at this moment.
-
 ### Modified `Store` 
-**Note:** `Store` is modified to track the seen local inclusion lists before inclusion list aggregate cutoff interval.
+**Note:** `Store` is modified to track the seen local inclusion lists.
 
 ```python
 @dataclass
@@ -62,15 +49,40 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    inclusion_summary_aggregates: Dict[Root, InclusionSummaryAggregates] = field(default_factory=dict)  # [New in FOCIL]
+    inclusion_lists: List[Transaction]  # [New in FOCIL]
     
+#### Modified `get_head`
+**Note:** `get_head` is modified to use `validate_inclusion_lists` as filter for head.
+
+```python
+def get_head(store: Store) -> Root:
+    # Get filtered block tree that only includes viable branches
+    blocks = get_filtered_block_tree(store)
+    # Execute the LMD-GHOST fork choice
+    head = store.justified_checkpoint.root
+    while True:
+        children = [
+            root for root in blocks.keys()
+            if blocks[root].parent_root == head
+        ]
+        if len(children) == 0:
+            return head
+        # Sort by latest attesting balance with ties broken lexicographically
+        # Ties broken by favoring block with lexicographically higher root
+        head = max(
+            children, 
+            key=lambda root: (get_weight(store, root), root) 
+            if validate_inclusion_lists(store, store.inclusion_list_transactions, blocks[root].body.execution_payload) # [New in FOCIL]
+            else (0, root)
+)```
+
 
 ### New `on_local_inclusion_list`
 
 `on_local_inclusion_list` is called to import `signed_local_inclusion_list` to the fork choice store.
 
 ```python
-def on_local_inclusion_list(
+def on_inclusion_list(
         store: Store, signed_inclusion_list: SignedLocalInclusionList) -> None:
     """
     ``on_local_inclusion_list`` verify the inclusion list before import it to fork choice store.
@@ -89,23 +101,6 @@ def on_local_inclusion_list(
 
     parent_hash = message.parent_hash
 
-    aggregates = InclusionSummaryAggregate()
-    store.inclusion_summary_aggregates[parent_hash] = aggregate
-    ilc_index = ilc.index(message.validator_index)
-    for summary in message.summaries:
-        matching_aggregate = None
-        for aggregate in store.inclusion_summary_aggregates[parent_hash]:
-            if aggregate.summary == summary:
-                matching_aggregate = aggregate
-                break
-
-        if matching_aggregate:
-            matching_aggregate.aggregation_bits.flip(ilc_index_to_i)
-        else:
-            new_aggregate = InclusionSummaryAggregate(
-                aggregation_bits=Bitvector[IL_COMMITTEE_SIZE](),
-                summary=summary
-            )
-            new_aggregate.aggregation_bits.flip(ilc_index_to_i)            
-            store.inclusion_summary_aggregates[parent_hash].append(new_aggregate)
+    if message.transaction not in store.inclusion_lists:
+        store.inclusion_lists.append(message.transaction)    
 ```
