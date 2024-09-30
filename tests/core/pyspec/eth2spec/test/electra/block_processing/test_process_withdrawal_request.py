@@ -791,7 +791,7 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
 @spec_state_test
 def test_full_exit_request_has_partial_withdrawal(spec, state):
     rng = random.Random(1361)
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
