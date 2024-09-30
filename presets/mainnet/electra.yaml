@@ -43,3 +43,8 @@ MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 16
 # ---------------------------------------------------------------
 # 2**3 ( = 8) pending withdrawals
 MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 8
+
+# Misc
+# ---------------------------------------------------------------
+# `floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)` = 7 + 1 + 12 = 20
+KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA: 20
