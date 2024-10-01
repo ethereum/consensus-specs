@@ -12,7 +12,6 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Domains](#domains)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -30,14 +29,13 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
+    - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
+    - [`BeaconBlockBody`](#beaconblockbody)
   - [Extended Containers](#extended-containers)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
-    - [`BeaconBlockBody`](#beaconblockbody)
-    - [`ExecutionPayload`](#executionpayload)
-    - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
@@ -55,7 +53,6 @@
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
-    - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
@@ -63,7 +60,6 @@
     - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
-    - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Modified `slash_validator`](#modified-slash_validator)
@@ -75,6 +71,12 @@
     - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
+  - [Execution engine](#execution-engine)
+    - [Request data](#request-data)
+      - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
+    - [Engine APIs](#engine-apis)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
@@ -130,12 +132,6 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
-
-### Domains
-
-| Name | Value |
-| - | - |
-| `DOMAIN_CONSOLIDATION` | `DomainType('0x0B000000')` |
 
 ## Preset
 
@@ -260,6 +256,19 @@ class PendingConsolidation(Container):
     target_index: ValidatorIndex
 ```
 
+#### `ExecutionRequests`
+
+*Note*: This container holds requests from the execution layer that are received in [
+`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
+the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
+
+```python
+class ExecutionRequests(Container):
+    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
+    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+```
+
 ### Modified Containers
 
 #### `AttesterSlashing`
@@ -268,6 +277,27 @@ class PendingConsolidation(Container):
 class AttesterSlashing(Container):
     attestation_1: IndexedAttestation  # [Modified in Electra:EIP7549]
     attestation_2: IndexedAttestation  # [Modified in Electra:EIP7549]
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Container):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]  # [Modified in Electra:EIP7549]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]  # [Modified in Electra:EIP7549]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    sync_aggregate: SyncAggregate
+    # Execution
+    execution_payload: ExecutionPayload
+    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
 ### Extended Containers
@@ -290,84 +320,6 @@ class IndexedAttestation(Container):
     attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
     data: AttestationData
     signature: BLSSignature
-```
-
-#### `BeaconBlockBody`
-
-```python
-class BeaconBlockBody(Container):
-    randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]  # [Modified in Electra:EIP7549]
-    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]  # [Modified in Electra:EIP7549]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
-    sync_aggregate: SyncAggregate
-    # Execution
-    execution_payload: ExecutionPayload  # [Modified in Electra:EIP6110:EIP7002]
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-```
-
-#### `ExecutionPayload`
-
-```python
-class ExecutionPayload(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
-    deposit_requests: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
-    # [New in Electra:EIP7002:EIP7251]
-    withdrawal_requests: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    # [New in Electra:EIP7251]
-    consolidation_requests: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
-```
-
-#### `ExecutionPayloadHeader`
-
-```python
-class ExecutionPayloadHeader(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32
-    transactions_root: Root
-    withdrawals_root: Root
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
-    deposit_requests_root: Root  # [New in Electra:EIP6110]
-    withdrawal_requests_root: Root  # [New in Electra:EIP7002:EIP7251]
-    consolidation_requests_root: Root  # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
@@ -409,7 +361,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110:EIP7002]
+    latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
@@ -586,14 +538,6 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return get_balance_churn_limit(state) - get_activation_exit_churn_limit(state)
 ```
 
-#### New `get_active_balance`
-
-```python
-def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    max_effective_balance = get_max_effective_balance(state.validators[validator_index])
-    return min(state.balances[validator_index], max_effective_balance)
-```
-
 #### New `get_pending_balance_to_withdraw`
 
 ```python
@@ -699,20 +643,6 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
         state.pending_balance_deposits.append(
             PendingBalanceDeposit(index=index, amount=excess_balance)
         )
-```
-
-#### New `queue_entire_balance_and_reset_validator`
-
-```python
-def queue_entire_balance_and_reset_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    balance = state.balances[index]
-    state.balances[index] = 0
-    validator = state.validators[index]
-    validator.effective_balance = 0
-    validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-    state.pending_balance_deposits.append(
-        PendingBalanceDeposit(index=index, amount=balance)
-    )
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
@@ -928,10 +858,13 @@ def process_pending_consolidations(state: BeaconState) -> None:
         if source_validator.withdrawable_epoch > next_epoch:
             break
 
+        # Calculate the consolidated balance
+        max_effective_balance = get_max_effective_balance(source_validator)
+        source_effective_balance = min(state.balances[pending_consolidation.source_index], max_effective_balance)
+
         # Move active balance to target. Excess balance is withdrawable.
-        active_balance = get_active_balance(state, pending_consolidation.source_index)
-        decrease_balance(state, pending_consolidation.source_index, active_balance)
-        increase_balance(state, pending_consolidation.target_index, active_balance)
+        decrease_balance(state, pending_consolidation.source_index, source_effective_balance)
+        increase_balance(state, pending_consolidation.target_index, source_effective_balance)
         next_pending_consolidation += 1
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
@@ -950,16 +883,77 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         # [Modified in Electra:EIP7251]
-        EFFECTIVE_BALANCE_LIMIT = (
-            MAX_EFFECTIVE_BALANCE_ELECTRA if has_compounding_withdrawal_credential(validator)
-            else MIN_ACTIVATION_BALANCE
-        )
+        max_effective_balance = get_max_effective_balance(validator)
 
         if (
             balance + DOWNWARD_THRESHOLD < validator.effective_balance
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
-            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, EFFECTIVE_BALANCE_LIMIT)
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
+```
+
+### Execution engine
+
+#### Request data
+
+##### Modified `NewPayloadRequest`
+
+```python
+@dataclass
+class NewPayloadRequest(object):
+    execution_payload: ExecutionPayload
+    versioned_hashes: Sequence[VersionedHash]
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests  # [New in Electra]
+```
+
+#### Engine APIs
+
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       execution_requests: ExecutionRequests,
+                       parent_beacon_block_root: Root) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    are valid with respect to ``self.execution_state``.
+    """
+    ...
+```
+
+##### Modified `verify_and_notify_new_payload`
+
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
+when calling `notify_new_payload` in Electra.
+
+```python
+def verify_and_notify_new_payload(self: ExecutionEngine,
+                                  new_payload_request: NewPayloadRequest) -> bool:
+    """
+    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
+    """
+    execution_payload = new_payload_request.execution_payload
+    execution_requests = new_payload_request.execution_requests  # [New in Electra]
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+
+    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+        return False
+
+    if not self.is_valid_versioned_hashes(new_payload_request):
+        return False
+
+    # [Modified in Electra]
+    if not self.notify_new_payload(
+            execution_payload, 
+            execution_requests, 
+            parent_beacon_block_root):
+        return False
+
+    return True
 ```
 
 ### Block processing
@@ -987,6 +981,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
+    partial_withdrawals_count = 0
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
@@ -1006,7 +1001,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-    partial_withdrawals_count = len(withdrawals)
+        partial_withdrawals_count += 1
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
@@ -1072,7 +1067,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type.
+*Note*: The function `process_execution_payload` is modified to pass `execution_requests` into `execution_engine.verify_and_notify_new_payload` (via the updated `NewPayloadRequest`).
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -1091,6 +1086,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
+            execution_requests=body.execution_requests,  # [New in Electra]
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
         )
@@ -1114,9 +1110,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
-        deposit_requests_root=hash_tree_root(payload.deposit_requests),  # [New in Electra:EIP6110]
-        withdrawal_requests_root=hash_tree_root(payload.withdrawal_requests),  # [New in Electra:EIP7002:EIP7251]
-        consolidation_requests_root=hash_tree_root(payload.consolidation_requests),  # [New in Electra:EIP7251]
     )
 ```
 
@@ -1146,11 +1139,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)  # [Modified in Electra:EIP7251]
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    for_ops(body.execution_payload.deposit_requests, process_deposit_request)  # [New in Electra:EIP6110]
-    # [New in Electra:EIP7002:EIP7251]
-    for_ops(body.execution_payload.withdrawal_requests, process_withdrawal_request)
-    # [New in Electra:EIP7251]
-    for_ops(body.execution_payload.consolidation_requests, process_consolidation_request)
+    for_ops(body.execution_requests.deposits, process_deposit_request)  # [New in Electra:EIP6110]
+    for_ops(body.execution_requests.withdrawals, process_withdrawal_request)  # [New in Electra:EIP7002:EIP7251]
+    for_ops(body.execution_requests.consolidations, process_consolidation_request)  # [New in Electra:EIP7251]
 ```
 
 ##### Attestations

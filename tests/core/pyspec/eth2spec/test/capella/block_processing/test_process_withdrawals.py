@@ -2,7 +2,6 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    expect_assertion_error,
     with_presets,
     with_capella_and_later,
 )
@@ -24,78 +23,8 @@ from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
+    run_withdrawals_processing,
 )
-
-
-def verify_post_state(state, spec, expected_withdrawals,
-                      fully_withdrawable_indices, partial_withdrawals_indices):
-    # Consider verifying also the condition when no withdrawals are expected.
-    if len(expected_withdrawals) == 0:
-        return
-
-    expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
-    assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-
-    if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        # NOTE: ideally we would also check in the case with
-        # fewer than maximum withdrawals but that requires the pre-state info
-        next_withdrawal_validator_index = (expected_withdrawals_validator_indices[-1] + 1) % len(state.validators)
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index
-
-    for index in fully_withdrawable_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == 0
-        else:
-            assert state.balances[index] > 0
-    for index in partial_withdrawals_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == spec.MAX_EFFECTIVE_BALANCE
-        else:
-            assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
-
-
-def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None,
-                               fully_withdrawable_indices=None, partial_withdrawals_indices=None, valid=True):
-    """
-    Run ``process_withdrawals``, yielding:
-      - pre-state ('pre')
-      - execution payload ('execution_payload')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    expected_withdrawals = get_expected_withdrawals(spec, state)
-    assert len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    if num_expected_withdrawals is not None:
-        assert len(expected_withdrawals) == num_expected_withdrawals
-
-    pre_state = state.copy()
-    yield 'pre', state
-    yield 'execution_payload', execution_payload
-
-    if not valid:
-        expect_assertion_error(lambda: spec.process_withdrawals(state, execution_payload))
-        yield 'post', None
-        return
-
-    spec.process_withdrawals(state, execution_payload)
-
-    yield 'post', state
-
-    if len(expected_withdrawals) == 0:
-        next_withdrawal_validator_index = (
-            pre_state.next_withdrawal_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        )
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(state.validators)
-    elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        assert len(get_expected_withdrawals(spec, state)) <= bound
-    elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise ValueError('len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD')
-
-    if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
-        verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-
-    return expected_withdrawals
 
 
 @with_capella_and_later
