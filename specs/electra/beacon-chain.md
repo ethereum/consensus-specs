@@ -1137,7 +1137,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests_hash=compute_execution_requests_hash(execution_requests),  # [New in Electra]
+            execution_requests_hash=compute_execution_requests_hash(body.execution_requests),  # [New in Electra]
         )
     )
     # Cache execution payload header
