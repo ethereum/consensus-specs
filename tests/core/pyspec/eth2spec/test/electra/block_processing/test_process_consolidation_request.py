@@ -572,7 +572,7 @@ def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state)
     )
 
 
-# Failing tests
+# Tests that should fail
 
 @with_electra_and_later
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
@@ -958,10 +958,10 @@ def test_switch_to_compounding_exited_source(spec, state):
         target_pubkey=state.validators[source_index].pubkey,
     )
 
-    # exit source
+    # Initiate exit for source
     spec.initiate_validator_exit(state, source_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert state.validators[source_index].exit_epoch != spec.FAR_FUTURE_EPOCH
 
     yield from run_switch_to_compounding_processing(
@@ -985,7 +985,7 @@ def test_switch_to_compounding_inactive_source(spec, state):
         target_pubkey=state.validators[source_index].pubkey,
     )
 
-    # set source validator as not yet activated
+    # Set source validator as not yet activated
     state.validators[source_index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
     # Check the the return condition
