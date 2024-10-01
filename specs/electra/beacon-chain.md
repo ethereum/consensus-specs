@@ -78,7 +78,7 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
@@ -940,23 +940,22 @@ class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
-    execution_requests_hash: Hash32  # [New in Electra]
+    execution_requests_hash: Hash32  # [New in Electra:EIP7685]
 ```
 
 #### Engine APIs
 
-##### Modified `notify_new_payload`
+##### Modified `is_valid_block_hash`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests_hash` parameter in Electra.
+*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests_hash` parameter for EIP-7685.
 
 ```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       parent_beacon_block_root: Root,
-                       execution_requests_hash: execution_requests_hash) -> bool:
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root,
+                        execution_requests_hash: Hash32) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
-    are valid with respect to ``self.execution_state``.
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
     ...
 ```
@@ -976,17 +975,19 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_hash = new_payload_request.execution_requests_hash  # [New in Electra]
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    # [Modified in Electra:EIP7685]
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_hash):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
         return False
 
-    # [Modified in Electra]
     if not self.notify_new_payload(
             execution_payload,
-            parent_beacon_block_root,
-            execution_requests_hash):
+            parent_beacon_block_root):
         return False
 
     return True

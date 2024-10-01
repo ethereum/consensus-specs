@@ -29,7 +29,6 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine,
                            execution_payload: ExecutionPayload,
-                           execution_requests: ExecutionRequests,
                            parent_beacon_block_root: Root) -> bool:
         return True
 
@@ -46,7 +45,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_valid_block_hash(self: ExecutionEngine,
                             execution_payload: ExecutionPayload,
-                            parent_beacon_block_root: Root) -> bool:
+                            parent_beacon_block_root: Root,
+                            execution_requests_hash: Hash32) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
