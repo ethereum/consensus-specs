@@ -973,8 +973,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    execution_requests_hash = new_payload_request.execution_requests_hash  # [New in Electra]
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    execution_requests_hash = new_payload_request.execution_requests_hash  # [New in Electra]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
