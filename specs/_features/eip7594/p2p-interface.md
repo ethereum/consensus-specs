@@ -80,7 +80,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) == 0:
         return False
 
-    # There should be an equal number of cells/commitments/proofs
+    # The column length must be equal to the number of commitments/proofs
     if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
         return False
 
@@ -92,7 +92,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct.
+    Verify if the KZG proofs are correct.
     """
     # The column index also represents the cell index
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
