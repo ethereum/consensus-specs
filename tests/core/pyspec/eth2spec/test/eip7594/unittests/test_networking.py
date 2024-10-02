@@ -1,3 +1,4 @@
+import copy
 import functools
 import random
 import threading
@@ -38,7 +39,7 @@ def test_compute_subnet_for_data_column_sidecar(spec):
 
 
 @functools.cache
-def compute_data_column_sidecars(spec, state):
+def compute_data_column_sidecar(spec, state):
     rng = random.Random(5566)
     opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=2)
     block = get_random_ssz_object(
@@ -54,20 +55,20 @@ def compute_data_column_sidecars(spec, state):
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)
+    return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)[0]
 
 
-# Necessary to cache the result of compute_data_column_sidecars().
+# Necessary to cache the result of compute_data_column_sidecar().
 # So multiple tests do not attempt to compute the sidecars at the same time.
-compute_data_column_sidecars_lock = threading.Lock()
+compute_data_column_sidecar_lock = threading.Lock()
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         assert spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
@@ -75,8 +76,8 @@ def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_zero_blobs(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.column = []
         sidecar.kzg_commitments = []
         sidecar.kzg_proofs = []
@@ -87,8 +88,8 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_zero_blobs(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_index(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.index = 128
         expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
 
@@ -97,8 +98,8 @@ def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_index(spec, stat
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_column(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.column = sidecar.column[1:]
         expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
 
@@ -107,8 +108,8 @@ def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_col
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg_commitments(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
         expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
 
@@ -117,8 +118,8 @@ def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg_proofs(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
         expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
 
@@ -127,8 +128,8 @@ def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
@@ -136,8 +137,8 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid_but_missing_commitment(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
         assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
@@ -146,8 +147,8 @@ def test_verify_data_column_sidecar_inclusion_proof__valid_but_missing_commitmen
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid_but_duplicate_commitment(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
         assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
@@ -156,8 +157,8 @@ def test_verify_data_column_sidecar_inclusion_proof__valid_but_duplicate_commitm
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_zero_blobs(spec, state):
-    with compute_data_column_sidecars_lock:
-        sidecar = compute_data_column_sidecars(spec, state)[0]
+    with compute_data_column_sidecar_lock:
+        sidecar = copy.deepcopy(compute_data_column_sidecar(spec, state))
         sidecar.column = []
         sidecar.kzg_commitments = []
         sidecar.kzg_proofs = []
