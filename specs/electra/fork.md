@@ -152,7 +152,14 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     ))
 
     for index in pre_activation:
-        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+        balance = post.balances[index]
+        post.balances[index] = 0
+        validator = post.validators[index]
+        validator.effective_balance = 0
+        validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
+        post.pending_balance_deposits.append(
+            PendingBalanceDeposit(index=index, amount=balance)
+        )
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):
