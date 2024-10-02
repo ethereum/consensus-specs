@@ -44,7 +44,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-*Note*: `engine_getInclusionListV1` and `engine_updateInclusionListV1` functions are added to the `ExecutionEngine` protocol for use as a validator.
+*Note*: `engine_getInclusionListV1` and `engine_updateBlockWithInclusionListV1` functions are added to the `ExecutionEngine` protocol for use as a validator.
 
 The body of these function is implementation dependent. The Engine API may be used to implement it with an external execution engine. 
 
@@ -92,7 +92,7 @@ The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_L
 
 Some validators are selected to submit local inclusion list. Validators should call `get_ilc_assignment` at the beginning of an epoch to be prepared to submit their local inclusion list during the next epoch. 
 
-A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by the `LOCAL_INCLUSION_LIST_CUT_OFF` in the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
+A validator should create and broadcast the `signed_inclusion_list` to the global `local_inclusion_list` subnet by the `LOCAL_INCLUSION_LIST_CUT_OFF` in the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
 
 #### Constructing a local inclusion list
 
@@ -101,7 +101,7 @@ The validator creates the `signed_local_inclusion_list` as follows:
 - Set `local_inclusion_list.slot` to the assigned slot returned by `get_ilc_assignment`.
 - Set `local_inclusion_list.validator_index` to the validator's index.
 - Set `local_inclusion_list.parent_hash` to the block hash of the fork choice head.
-- Set `local_inclusion_list.parent_root` to the block hash of the fork choice head.
+- Set `local_inclusion_list.parent_root` to the block root of the fork choice head.
 - Set `local_inclusion_list.transactions` using the response from `engine_getInclusionListV1` from the execution layer client.
 - Sign the `local_inclusion_list` using the helper `get_inclusion_list_signature` and obtain the `signature`.
 - Set `signed_local_inclusion_list.message` to `local_inclusion_list`.

@@ -22,9 +22,9 @@ This is the modification of the fork choice accompanying the FOCIL upgrade.
 ### New `validate_inclusion_lists`
 
 ```python
-def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST], execution_payload: ExecutionPayload) -> bool:
+def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE], execution_payload: ExecutionPayload) -> bool:
     """
-    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, that to verify if the `execution_payload` satisfies `inclusion_list_transactions` validity conditions either when all transactions are present in payload or when any missing transactions are found to be invalid when appended to the end of the payload.
+    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, that to verify if the `execution_payload` satisfies `inclusion_list_transactions` validity conditions either when all transactions are present in payload or when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
     """
     ...
 ```
@@ -72,8 +72,7 @@ def get_head(store: Store) -> Root:
         head = max(
             children, 
             key=lambda root: (get_weight(store, root), root) 
-            if validate_inclusion_lists(store, store.inclusion_list_transactions, blocks[root].body.execution_payload) # [New in FOCIL]
-            else (0, root)
+            0 if validate_inclusion_lists(store, store.inclusion_list_transactions, blocks[root].body.execution_payload) else root # [New in FOCIL]
 )```
 
 
@@ -98,8 +97,6 @@ def on_inclusion_list(
    
     # Verify inclusion list signature
     assert is_valid_local_inclusion_list_signature(state, signed_inclusion_list) 
-
-    parent_hash = message.parent_hash
 
     if message.transaction not in store.inclusion_lists:
         store.inclusion_lists.append(message.transaction)    

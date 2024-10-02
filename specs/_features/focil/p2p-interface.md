@@ -32,7 +32,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 ##### Global topics
 
-FOCIL introduces new global topics for inclusion list and inclusion list aggregate.
+FOCIL introduces new global topics for inclusion list.
 
 ###### `local_inclusion_list`
 
@@ -45,4 +45,4 @@ The following validations MUST pass before forwarding the `local_inclusion_list`
 - _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index` and can be received no more than twice from the same validator index.
 - _[IGNORE]_ The block hash `message.parent_block_hash` is a known execution payload in fork choice.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
-- _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice. 
+- _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is based from `message.parent_block_root` to processing the block up to the current slot as determined by the fork choice. 

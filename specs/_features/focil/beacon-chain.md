@@ -33,8 +33,9 @@
 
 ## Introduction
 
-This is the beacon chain specification to add a fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to [Ethresearch](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
-
+This is the beacon chain specification to add a fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to the following posts:
+- [Fork-Choice enforced Inclusion Lists (FOCIL): A simple committee-based inclusion list proposal](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
+- [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
 *Note:* This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
 
 ## Constants
@@ -165,14 +166,14 @@ when calling `notify_new_payload` in FOCIL.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                                  new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
     execution_requests = new_payload_request.execution_requests
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    il_transactions = new_payload_request.il_transactions
+    il_transactions = new_payload_request.il_transactions # [New in FOCIL]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False

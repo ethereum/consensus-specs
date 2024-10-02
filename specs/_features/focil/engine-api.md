@@ -65,7 +65,7 @@ The request of this method is updated with [`ExecutionPayloadV5`](#ExecutionPayl
 #### Specification
 
 1. Client software **MUST** respond to this method call in the following way:
-  * `{status: INVALID_INCLUSION_LISTING, latestValidHash: null, validationError: null}` if there are any leftover `inclusionListTransactions` that are not part of the `executionPayload`, they can be processed at the end of the `executionPayload`.
+  * `{status: INVALID_INCLUSION_LIST, latestValidHash: null, validationError: null}` if there are any leftover `inclusionListTransactions` that are not part of the `executionPayload`, they can be processed at the end of the `executionPayload` or the block is full.
 
 ### engine_updateBlockWithInclusionListV1
 
