@@ -1,7 +1,4 @@
-import copy
-import functools
 import random
-import threading
 from eth2spec.test.context import (
     expect_assertion_error,
     single_phase,
@@ -24,22 +21,10 @@ from eth2spec.test.helpers.sharding import (
 )
 
 
-@with_eip7594_and_later
-@spec_test
-@single_phase
-def test_compute_subnet_for_data_column_sidecar(spec):
-    subnet_results = []
-    for column_index in range(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT):
-        subnet_results.append(spec.compute_subnet_for_data_column_sidecar(column_index))
-    # no duplicates
-    assert len(subnet_results) == len(set(subnet_results))
-    # next one should be duplicate
-    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
-    assert next_subnet == subnet_results[0]
+# Helper functions
 
 
-@functools.cache
-def _compute_data_column_sidecar(spec, state):
+def compute_data_column_sidecar(spec, state):
     rng = random.Random(5566)
     opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=2)
     block = get_random_ssz_object(
@@ -57,113 +42,143 @@ def _compute_data_column_sidecar(spec, state):
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
     return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)[0]
 
-def compute_data_column_sidecar(spec, state):
-    """This function returns a copy of a cached data column sidecar."""
-    return copy.deepcopy(_compute_data_column_sidecar(spec, state))
+
+# Tests for verify_data_column_sidecar
+
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__valid(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    assert spec.verify_data_column_sidecar(sidecar)
 
 
-# Necessary to cache the result of compute_data_column_sidecar().
-# So multiple tests do not attempt to compute the sidecars at the same time.
-compute_data_column_sidecar_lock = threading.Lock()
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.column = []
+    sidecar.kzg_commitments = []
+    sidecar.kzg_proofs = []
+    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+
+
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__invalid_index(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.index = 128
+    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+
+
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.column = sidecar.column[1:]
+    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+
+
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
+    expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+
+
+@with_eip7594_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
+    expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+
+
+# Tests for verify_data_column_sidecar_kzg_proofs
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        assert spec.verify_data_column_sidecar_kzg_proofs(sidecar)
+    sidecar = compute_data_column_sidecar(spec, state)
+    assert spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs__invalid_zero_blobs(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.column = []
-        sidecar.kzg_commitments = []
-        sidecar.kzg_proofs = []
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_column(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.column[0] = sidecar.column[1]
+    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_index(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.index = 128
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_commitment(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
+    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_column(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.column = sidecar.column[1:]
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_proof(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_proofs[0] = sidecar.kzg_proofs[1]
+    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
-@with_eip7594_and_later
-@spec_state_test
-@single_phase
-def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg_commitments(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
-
-
-@with_eip7594_and_later
-@spec_state_test
-@single_phase
-def test_verify_data_column_sidecar_kzg_proofs_invalid__invalid_mismatch_len_kzg_proofs(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+# Tests for verify_data_column_sidecar_inclusion_proof
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
+    sidecar = compute_data_column_sidecar(spec, state)
+    assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid_but_missing_commitment(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
-        assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
+    assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid_but_duplicate_commitment(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
-        assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
+    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
+    assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
+
+
+# Tests for compute_subnet_for_data_column_sidecar
 
 
 @with_eip7594_and_later
-@spec_state_test
+@spec_test
 @single_phase
-def test_verify_data_column_sidecar_inclusion_proof__invalid_zero_blobs(spec, state):
-    with compute_data_column_sidecar_lock:
-        sidecar = compute_data_column_sidecar(spec, state)
-        sidecar.column = []
-        sidecar.kzg_commitments = []
-        sidecar.kzg_proofs = []
-        expect_assertion_error(lambda: spec.verify_data_column_sidecar_inclusion_proof(sidecar))
+def test_compute_subnet_for_data_column_sidecar(spec):
+    subnet_results = []
+    for column_index in range(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT):
+        subnet_results.append(spec.compute_subnet_for_data_column_sidecar(column_index))
+    # no duplicates
+    assert len(subnet_results) == len(set(subnet_results))
+    # next one should be duplicate
+    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    assert next_subnet == subnet_results[0]
