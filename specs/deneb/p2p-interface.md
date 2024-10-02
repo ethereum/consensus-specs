@@ -313,7 +313,7 @@ Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon 
 
 ###### Usage of `engine_getBlobsV1` engine API method
 In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer via `engine_getBlobsV1`.
-Implementers are encouraged to leverege this method to encrease the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
 Client MUST publish the corresponding `blob_sidecar` whenever successfully recovers blobs via `engine_getBlobsV1`.
 
