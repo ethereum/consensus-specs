@@ -71,7 +71,11 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
     Verify if the proofs are correct.
     """
+    # A sidecar for zero blobs is invalid
+    assert len(sidecar.kzg_commitments) > 0
+    # The sidecar index must be within the valid range
     assert sidecar.index < NUMBER_OF_COLUMNS
+    # There should be an equal number of cells/commitments/proofs
     assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
 
     # The column index also represents the cell index
@@ -93,6 +97,9 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     """
     Verify if the given KZG commitments included in the given beacon block.
     """
+    # A sidecar for zero blobs is invalid
+    assert len(sidecar.kzg_commitments) > 0
+
     gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'))
     return is_valid_merkle_branch(
         leaf=hash_tree_root(sidecar.kzg_commitments),
