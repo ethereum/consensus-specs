@@ -34,6 +34,7 @@ The specification of these changes continues in the same format as the network s
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+        - [Usage of `engine_getBlobsV1` engine API method](#usage-of-engine_getblobsv1-engine-api-method)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
