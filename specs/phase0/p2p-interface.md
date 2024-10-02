@@ -203,6 +203,7 @@ This section outlines configurations that are used in this spec.
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `MAX_CONCURRENT_REQUESTS` | `2` | Maximum number of concurrent requests per protocol ID that a client may issue |
 
 ### MetaData
 
@@ -560,7 +561,7 @@ The request MUST be encoded according to the encoding strategy.
 The requester MUST close the write side of the stream once it finishes writing the request message.
 At this point, the stream will be half-closed.
 
-The requester MUST NOT make more than two concurrent requests with the same ID.
+The requester MUST NOT make more than `MAX_CONCURRENT_REQUESTS` concurrent requests with the same protocol ID.
 
 If a timeout happens on the requesting side, they SHOULD reset the stream.
 
