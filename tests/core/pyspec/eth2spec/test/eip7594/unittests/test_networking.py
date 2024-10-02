@@ -45,6 +45,7 @@ def compute_data_column_sidecar(spec, state):
 
 # Tests for verify_data_column_sidecar
 
+
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
