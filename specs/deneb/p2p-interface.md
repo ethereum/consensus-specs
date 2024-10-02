@@ -296,7 +296,7 @@ Before consuming the next response chunk, the response reader SHOULD verify the 
 
 No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
 
-`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing). In addition, it is possible to retrieve recent blobs by querying the Execution Layer via `engine_getBlobsV1` engine API method.
+`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
 
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
@@ -309,6 +309,14 @@ Clients MAY limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
+
+###### Usage of `engine_getBlobsV1` engine API method
+In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer via `engine_getBlobsV1`.
+Implementers are encouraged to leverege this method to encrease the likelyhood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+
+Client MAY use this method when serving `BlobSidecarsByRoot` requests.
+
+Client MUST publish the corresponding `blob_sidecar` whenever succesfully recovers blobs via `engine_getBlobsV1`.
 
 ##### BlobSidecarsByRange v1
 
