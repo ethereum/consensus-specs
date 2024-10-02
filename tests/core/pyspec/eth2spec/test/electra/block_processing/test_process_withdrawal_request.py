@@ -850,6 +850,36 @@ def test_full_exit_request_has_partial_withdrawal(spec, state):
         spec, state, withdrawal_request, success=False
     )
 
+
+@with_electra_and_later
+@spec_state_test
+def test_incorrect_inactive_validator(spec, state):
+    rng = random.Random(1361)
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = rng.choice(spec.get_active_validator_indices(state, current_epoch))
+    validator_pubkey = state.validators[validator_index].pubkey
+    address = b"\x22" * 20
+    incorrect_address = b"\x33" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, validator_index, address=address
+    )
+    withdrawal_request = spec.WithdrawalRequest(
+        source_address=incorrect_address,
+        validator_pubkey=validator_pubkey,
+        amount=spec.FULL_EXIT_REQUEST_AMOUNT,
+    )
+
+    # set validator as not yet activated
+    state.validators[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    assert not spec.is_active_validator(state.validators[validator_index], current_epoch)
+
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
+    )
+
 #
 # Run processing
 #
