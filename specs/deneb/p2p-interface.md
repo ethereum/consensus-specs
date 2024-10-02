@@ -34,7 +34,7 @@ The specification of these changes continues in the same format as the network s
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-        - [Usage of `engine_getBlobsV1` engine API method](#usage-of-engine_getblobsv1-engine-api-method)
+        - [Blobs recovery via local execution layer client](#blobs-recovery-via-local-execution-layer-client)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
@@ -311,11 +311,11 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
-###### Usage of `engine_getBlobsV1` engine API method
-In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer via `engine_getBlobsV1`.
+###### Blobs recovery via local execution layer client
+In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer (i.e. via `engine_getBlobsV1`)
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
-Client MUST publish the corresponding `blob_sidecar` whenever successfully recovers blobs via `engine_getBlobsV1`.
+Client MUST publish the corresponding `blob_sidecar` whenever successfully recovers blobs via local execution layer client.
 
 ##### BlobSidecarsByRange v1
 
