@@ -73,7 +73,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     Verify if the data column sidecar is valid.
     """
     # The sidecar index must be within the valid range
-    if sidecar.index >= NUMBER_OF_COLUMNS
+    if sidecar.index >= NUMBER_OF_COLUMNS:
         return False
 
     # A sidecar for zero blobs is invalid
