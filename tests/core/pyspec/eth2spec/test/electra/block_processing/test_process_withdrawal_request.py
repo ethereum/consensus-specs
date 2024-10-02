@@ -789,6 +789,8 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(
     )
 
 
+@with_electra_and_later
+@spec_state_test
 def test_insufficient_balance(spec, state):
     rng = random.Random(1361)
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -811,6 +813,41 @@ def test_insufficient_balance(spec, state):
         state,
         withdrawal_request,
         success=False,
+    )
+
+
+@with_electra_and_later
+@spec_state_test
+def test_full_exit_request_has_partial_withdrawal(spec, state):
+    rng = random.Random(1361)
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = rng.choice(spec.get_active_validator_indices(state, current_epoch))
+    validator_pubkey = state.validators[validator_index].pubkey
+    address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, validator_index, address=address
+    )
+    withdrawal_request = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=validator_pubkey,
+        amount=spec.FULL_EXIT_REQUEST_AMOUNT,
+    )
+
+    # Validator can only be exited if there's no pending partial withdrawals in state
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    state.pending_partial_withdrawals.append(
+        spec.PendingPartialWithdrawal(
+            index=validator_index,
+            amount=1,
+            withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
+        )
+    )
+
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
     )
 
 #
