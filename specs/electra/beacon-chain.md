@@ -54,7 +54,6 @@
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
-    - [New `get_active_balance`](#new-get_active_balance)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
@@ -62,7 +61,6 @@
     - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
-    - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Modified `slash_validator`](#modified-slash_validator)
@@ -374,7 +372,7 @@ class BeaconState(Container):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Execution
-    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Electra:EIP6110:EIP7002]
+    latest_execution_payload_header: ExecutionPayloadHeader
     # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
@@ -551,14 +549,6 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return get_balance_churn_limit(state) - get_activation_exit_churn_limit(state)
 ```
 
-#### New `get_active_balance`
-
-```python
-def get_active_balance(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
-    max_effective_balance = get_max_effective_balance(state.validators[validator_index])
-    return min(state.balances[validator_index], max_effective_balance)
-```
-
 #### New `get_pending_balance_to_withdraw`
 
 ```python
@@ -670,24 +660,6 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
             signature=bls.G2_POINT_AT_INFINITY,
             slot=GENESIS_SLOT,
         ))
-```
-
-#### New `queue_entire_balance_and_reset_validator`
-
-```python
-def queue_entire_balance_and_reset_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    balance = state.balances[index]
-    state.balances[index] = 0
-    validator = state.validators[index]
-    validator.effective_balance = 0
-    validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-    state.pending_deposits.append(PendingDeposit(
-        pubkey=validator.pubkey,
-        withdrawal_credentials=validator.withdrawal_credentials,
-        amount=balance,
-        signature=bls.G2_POINT_AT_INFINITY,
-        slot=GENESIS_SLOT,
-    ))
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
@@ -960,10 +932,14 @@ def process_pending_consolidations(state: BeaconState) -> None:
 
         # Churn any target excess active balance of target and raise its max
         switch_to_compounding_validator(state, pending_consolidation.target_index)
+
+        # Calculate the consolidated balance
+        max_effective_balance = get_max_effective_balance(source_validator)
+        source_effective_balance = min(state.balances[pending_consolidation.source_index], max_effective_balance)
+
         # Move active balance to target. Excess balance is withdrawable.
-        active_balance = get_active_balance(state, pending_consolidation.source_index)
-        decrease_balance(state, pending_consolidation.source_index, active_balance)
-        increase_balance(state, pending_consolidation.target_index, active_balance)
+        decrease_balance(state, pending_consolidation.source_index, source_effective_balance)
+        increase_balance(state, pending_consolidation.target_index, source_effective_balance)
         next_pending_consolidation += 1
 
     state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
@@ -982,16 +958,13 @@ def process_effective_balance_updates(state: BeaconState) -> None:
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         # [Modified in Electra:EIP7251]
-        EFFECTIVE_BALANCE_LIMIT = (
-            MAX_EFFECTIVE_BALANCE_ELECTRA if has_compounding_withdrawal_credential(validator)
-            else MIN_ACTIVATION_BALANCE
-        )
+        max_effective_balance = get_max_effective_balance(validator)
 
         if (
             balance + DOWNWARD_THRESHOLD < validator.effective_balance
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
-            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, EFFECTIVE_BALANCE_LIMIT)
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
 ```
 
 ### Execution engine
@@ -1083,6 +1056,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
+    partial_withdrawals_count = 0
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
@@ -1102,7 +1076,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-    partial_withdrawals_count = len(withdrawals)
+        partial_withdrawals_count += 1
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
