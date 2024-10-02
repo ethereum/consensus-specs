@@ -73,11 +73,16 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     Verify if the data column sidecar is valid.
     """
     # The sidecar index must be within the valid range
-    assert sidecar.index < NUMBER_OF_COLUMNS
+    if sidecar.index >= NUMBER_OF_COLUMNS
+        return False
+
     # A sidecar for zero blobs is invalid
-    assert len(sidecar.kzg_commitments) > 0
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
     # There should be an equal number of cells/commitments/proofs
-    assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
+        return False
 
     return True
 ```

@@ -1,6 +1,5 @@
 import random
 from eth2spec.test.context import (
-    expect_assertion_error,
     single_phase,
     spec_state_test,
     spec_test,
@@ -62,7 +61,7 @@ def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
     sidecar.column = []
     sidecar.kzg_commitments = []
     sidecar.kzg_proofs = []
-    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+    assert not spec.verify_data_column_sidecar(sidecar)
 
 
 @with_eip7594_and_later
@@ -71,7 +70,7 @@ def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
 def test_verify_data_column_sidecar__invalid_index(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.index = 128
-    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+    assert not spec.verify_data_column_sidecar(sidecar)
 
 
 @with_eip7594_and_later
@@ -80,7 +79,7 @@ def test_verify_data_column_sidecar__invalid_index(spec, state):
 def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.column = sidecar.column[1:]
-    expect_assertion_error(lambda: spec.verify_data_column_sidecar(sidecar))
+    assert not spec.verify_data_column_sidecar(sidecar)
 
 
 @with_eip7594_and_later
@@ -89,7 +88,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
-    expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+    assert not spec.verify_data_column_sidecar(sidecar)
 
 
 @with_eip7594_and_later
@@ -98,7 +97,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, 
 def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
-    expect_assertion_error(lambda: spec.verify_data_column_sidecar_kzg_proofs(sidecar))
+    assert not spec.verify_data_column_sidecar(sidecar)
 
 
 # Tests for verify_data_column_sidecar_kzg_proofs
