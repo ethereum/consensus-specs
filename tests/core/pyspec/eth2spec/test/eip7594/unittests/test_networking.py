@@ -114,7 +114,7 @@ def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_column(spec, state):
+def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.column[0] = sidecar.column[1]
     assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
@@ -123,7 +123,7 @@ def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_column(spec, sta
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_commitment(spec, state):
+def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
     assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
@@ -132,7 +132,7 @@ def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_commitment(spec,
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_kzg_proofs__valid_but_wrong_proof(spec, state):
+def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs[0] = sidecar.kzg_proofs[1]
     assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
@@ -152,7 +152,7 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_inclusion_proof__valid_but_missing_commitment(spec, state):
+def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -161,7 +161,7 @@ def test_verify_data_column_sidecar_inclusion_proof__valid_but_missing_commitmen
 @with_eip7594_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_inclusion_proof__valid_but_duplicate_commitment(spec, state):
+def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
