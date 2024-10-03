@@ -314,7 +314,7 @@ Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon 
 In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer (i.e. via `engine_getBlobsV1`)
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
-When clients uses local execution layer to retrieve blobs relative to the current slot they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+When clients uses local execution layer to recover missing blobs relative to the current slot, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
 - publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
 - update gossip rule related data structures (ie update the anti-equivocation cache).
 
