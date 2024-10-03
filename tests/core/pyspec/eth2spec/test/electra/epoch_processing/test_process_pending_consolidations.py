@@ -36,10 +36,6 @@ def test_basic_pending_consolidation(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
     # Pending consolidation was successfully processed
-    assert (
-        state.validators[target_index].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
-    )
     assert state.balances[target_index] == 2 * spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source_index] == 0
     assert state.pending_consolidations == []
@@ -65,9 +61,6 @@ def test_consolidation_not_yet_withdrawable_validator(spec, state):
 
     pre_pending_consolidations = state.pending_consolidations.copy()
     pre_balances = state.balances.copy()
-    pre_target_withdrawal_credential = state.validators[
-        target_index
-    ].withdrawal_credentials[:1]
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
@@ -75,11 +68,6 @@ def test_consolidation_not_yet_withdrawable_validator(spec, state):
     # Balances are unchanged
     assert state.balances[source_index] == pre_balances[0]
     assert state.balances[target_index] == pre_balances[1]
-    # Target withdrawal credential is unchanged
-    assert (
-        state.validators[target_index].withdrawal_credentials[:1]
-        == pre_target_withdrawal_credential
-    )
     # Pending consolidation is still in the queue
     assert state.pending_consolidations == pre_pending_consolidations
 
@@ -121,17 +109,9 @@ def test_skip_consolidation_when_source_slashed(spec, state):
     # first pending consolidation should not be processed
     assert state.balances[target0_index] == spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source0_index] == spec.MIN_ACTIVATION_BALANCE
-    assert (
-        state.validators[target0_index].withdrawal_credentials[:1]
-        == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
-    )
     # second pending consolidation should be processed: first one is skipped and doesn't block the queue
     assert state.balances[target1_index] == 2 * spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source1_index] == 0
-    assert (
-        state.validators[target1_index].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
-    )
 
 
 @with_electra_and_later
@@ -167,26 +147,14 @@ def test_all_consolidation_cases_together(spec, state):
     spec.initiate_validator_exit(state, 2)
 
     pre_balances = state.balances.copy()
-    pre_target_withdrawal_prefixes = [
-        state.validators[target_index[i]].withdrawal_credentials[:1]
-        for i in [0, 1, 2, 3]
-    ]
     pre_pending_consolidations = state.pending_consolidations.copy()
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
     # First consolidation is successfully processed
-    assert (
-        state.validators[target_index[0]].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
-    )
     assert state.balances[target_index[0]] == 2 * spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source_index[0]] == 0
     # All other consolidations are not processed
     for i in [1, 2, 3]:
-        assert (
-            state.validators[target_index[i]].withdrawal_credentials[:1]
-            == pre_target_withdrawal_prefixes[i]
-        )
         assert state.balances[source_index[i]] == pre_balances[source_index[i]]
         assert state.balances[target_index[i]] == pre_balances[target_index[i]]
     # First consolidation is processed, second is skipped, last two are left in the queue
@@ -226,12 +194,9 @@ def test_pending_consolidation_future_epoch(spec, state):
 
     # Pending consolidation was successfully processed
     expected_source_balance = state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE
-    assert (
-        state.validators[target_index].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
-    )
-    assert state.balances[target_index] == 2 * spec.MIN_ACTIVATION_BALANCE
+    expected_target_balance = state_before_consolidation.balances[target_index] + spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source_index] == expected_source_balance
+    assert state.balances[target_index] == expected_target_balance
     assert state.pending_consolidations == []
 
     # Pending balance deposit to the target is created as part of `switch_to_compounding_validator`.
@@ -284,10 +249,6 @@ def test_pending_consolidation_compounding_creds(spec, state):
     # Pending consolidation was successfully processed
     expected_target_balance = (
         state_before_consolidation.balances[source_index] + state_before_consolidation.balances[target_index]
-    )
-    assert (
-        state.validators[target_index].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
     )
     assert state.balances[target_index] == expected_target_balance
     # All source balance is active and moved to the target,
@@ -346,10 +307,6 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     # Pending consolidation was successfully processed
     expected_target_balance = (
         state_before_consolidation.balances[source_index] + state_before_consolidation.balances[target_index]
-    )
-    assert (
-        state.validators[target_index].withdrawal_credentials[:1]
-        == spec.COMPOUNDING_WITHDRAWAL_PREFIX
     )
     assert state.balances[target_index] == expected_target_balance
     assert state.balances[source_index] == 0
