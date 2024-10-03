@@ -704,7 +704,7 @@ def process_execution_payload(state: BeaconState,
                 execution_payload=payload,
                 versioned_hashes=versioned_hashes,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
-                execution_requests_hash=compute_execution_requests_hash(requests),
+                execution_requests=requests,
             )
         )
 
