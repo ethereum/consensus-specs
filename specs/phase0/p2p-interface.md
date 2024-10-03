@@ -625,7 +625,7 @@ The `ErrorMessage` schema is:
 *Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes).
 Clients MUST treat as valid any byte sequences.
 
-The responder MAY penalise peers that concurrently open more than two streams for the same request type, for the protocol IDs defined in this specification.
+The responder MAY penalise peers that concurrently open more than `MAX_CONCURRENT_REQUESTS` streams for the same request type, for the protocol IDs defined in this specification.
 
 #### Encoding strategies
 
