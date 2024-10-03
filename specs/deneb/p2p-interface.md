@@ -185,7 +185,6 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[REJECT]_ The sidecar's inclusion proof is valid as verified by `verify_blob_sidecar_inclusion_proof(blob_sidecar)`.
 - _[REJECT]_ The sidecar's blob is valid as verified by `verify_blob_kzg_proof(blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple `(block_header.slot, block_header.proposer_index, blob_sidecar.index)` with valid header signature, sidecar inclusion proof, and kzg proof.
-*Note:* If client obtains the blob via local execution layer client or any other method before receiving the corresponding sidecar via this topic, it MUST NOT consider the tuple as "seen" (i.e. it MUST participate in the dissemination of the blob_sidecar even if it already obtained the blob)
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
@@ -315,7 +314,7 @@ Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon 
 In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer (i.e. via `engine_getBlobsV1`)
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
-Client MUST publish the corresponding `blob_sidecar` whenever successfully recovers blobs via local execution layer client.
+Clients MUST publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet whenever it successfully recovers blobs via local execution layer client. In such case, clients MUST also consider the `blob_sidecar` as "seen" with regards to blob subnet gossip rules.
 
 ##### BlobSidecarsByRange v1
 
