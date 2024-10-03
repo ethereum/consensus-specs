@@ -1003,9 +1003,8 @@ def test_switch_to_compounding_source_bls_withdrawal_credential(spec, state):
     # a bls withdrawal credential
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    source_address = b"\x22" * 20
     consolidation = spec.ConsolidationRequest(
-        source_address=source_address,
+        source_address=state.validators[source_index].withdrawal_credentials[12:],
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[source_index].pubkey,
     )
@@ -1026,12 +1025,12 @@ def test_switch_to_compounding_source_coumpounding_withdrawal_credential(spec, s
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     source_address = b"\x22" * 20
+    set_compounding_withdrawal_credential(spec, state, source_index, address=source_address)
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[source_index].pubkey,
     )
-    set_compounding_withdrawal_credential(spec, state, source_index)
     state.balances[source_index] = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
 
     # Check the the return condition
