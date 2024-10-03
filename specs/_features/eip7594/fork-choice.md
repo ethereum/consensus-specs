@@ -31,8 +31,8 @@ def is_data_available(beacon_block_root: Root) -> bool:
     # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
     return all(
-        verify_data_column_sidecar(column_sidecar) and
-        verify_data_column_sidecar_kzg_proofs(column_sidecar)
+        verify_data_column_sidecar(column_sidecar)
+        and verify_data_column_sidecar_kzg_proofs(column_sidecar)
         for column_sidecar in column_sidecars
     )
 ```
