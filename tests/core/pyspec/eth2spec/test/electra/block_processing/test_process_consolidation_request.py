@@ -1100,7 +1100,6 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
       - post-state ('post').
     If ``success == False``, ``process_consolidation_request`` would return without any state change.
     """
-
     if success:
         validator_pubkeys = [v.pubkey for v in state.validators]
         source_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
@@ -1170,7 +1169,6 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
       - post-state ('post').
     If ``success == False``, ``process_consolidation_request`` would return without any state change.
     """
-
     if success:
         validator_pubkeys = [v.pubkey for v in state.validators]
         source_index = spec.ValidatorIndex(validator_pubkeys.index(consolidation.source_pubkey))
