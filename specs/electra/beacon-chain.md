@@ -99,6 +99,7 @@
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
+        - [New `is_valid_switch_to_compounding_request`](#new-is_valid_switch_to_compounding_request)
         - [New `process_consolidation_request`](#new-process_consolidation_request)
 - [Testing](#testing)
 
@@ -627,9 +628,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
-    if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
-        queue_excess_active_balance(state, index)
+    validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+    queue_excess_active_balance(state, index)
 ```
 
 #### New `queue_excess_active_balance`
@@ -857,9 +857,6 @@ def process_pending_consolidations(state: BeaconState) -> None:
             continue
         if source_validator.withdrawable_epoch > next_epoch:
             break
-
-        # Churn any target excess active balance of target and raise its max
-        switch_to_compounding_validator(state, pending_consolidation.target_index)
 
         # Calculate the consolidated balance
         max_effective_balance = get_max_effective_balance(source_validator)
@@ -1217,14 +1214,6 @@ def apply_deposit(state: BeaconState,
         state.pending_balance_deposits.append(
             PendingBalanceDeposit(index=index, amount=amount)
         )  # [Modified in Electra:EIP7251]
-        # Check if valid deposit switch to compounding credentials
-        if (
-            is_compounding_withdrawal_credential(withdrawal_credentials)
-            and has_eth1_withdrawal_credential(state.validators[index])
-            and is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature)
-        ):
-            switch_to_compounding_validator(state, index)
-
 ```
 
 ###### New `is_valid_deposit_signature`
@@ -1396,6 +1385,45 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
 
 ##### Execution layer consolidation requests
 
+###### New `is_valid_switch_to_compounding_request`
+
+```python
+def is_valid_switch_to_compounding_request(
+    state: BeaconState,
+    consolidation_request: ConsolidationRequest
+) -> bool:
+    # Switch to compounding requires source and target be equal
+    if consolidation_request.source_pubkey != consolidation_request.target_pubkey:
+        return False
+
+    # Verify pubkey exists
+    source_pubkey = consolidation_request.source_pubkey
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if source_pubkey not in validator_pubkeys:
+        return False
+
+    source_validator = state.validators[ValidatorIndex(validator_pubkeys.index(source_pubkey))]
+
+    # Verify request has been authorized
+    if source_validator.withdrawal_credentials[12:] != consolidation_request.source_address:
+        return False
+
+    # Verify source withdrawal credentials
+    if not has_eth1_withdrawal_credential(source_validator):
+        return False
+
+    # Verify the source is active
+    current_epoch = get_current_epoch(state)
+    if not is_active_validator(source_validator, current_epoch):
+        return False
+
+    # Verify exit for source has not been initiated
+    if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return False
+
+    return True
+```
+
 ###### New `process_consolidation_request`
 
 ```python
@@ -1403,6 +1431,16 @@ def process_consolidation_request(
     state: BeaconState,
     consolidation_request: ConsolidationRequest
 ) -> None:
+    if is_valid_switch_to_compounding_request(state, consolidation_request):
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        request_source_pubkey = consolidation_request.source_pubkey
+        source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
+        switch_to_compounding_validator(state, source_index)
+        return
+
+    # Verify that source != target, so a consolidation cannot be used as an exit.
+    if consolidation_request.source_pubkey == consolidation_request.target_pubkey:
+        return
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
         return
@@ -1422,10 +1460,6 @@ def process_consolidation_request(
     target_index = ValidatorIndex(validator_pubkeys.index(request_target_pubkey))
     source_validator = state.validators[source_index]
     target_validator = state.validators[target_index]
-
-    # Verify that source != target, so a consolidation cannot be used as an exit.
-    if source_index == target_index:
-        return
 
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
@@ -1462,6 +1496,10 @@ def process_consolidation_request(
         source_index=source_index,
         target_index=target_index
     ))
+
+    # Churn any target excess active balance of target and raise its max
+    if has_eth1_withdrawal_credential(target_validator):
+        switch_to_compounding_validator(state, target_index)
 ```
 
 ## Testing
