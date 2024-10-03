@@ -653,6 +653,8 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
         excess_balance = balance - MIN_ACTIVATION_BALANCE
         state.balances[index] = MIN_ACTIVATION_BALANCE
         validator = state.validators[index]
+        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
+        # and GENESIS_SLOT to distinguish from a pending deposit request
         state.pending_deposits.append(PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
@@ -1274,23 +1276,21 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
-    if is_compounding_withdrawal_credential(withdrawal_credentials):
-        max_effective_balance = MAX_EFFECTIVE_BALANCE_ELECTRA
-    else:
-        max_effective_balance = MIN_ACTIVATION_BALANCE
-
-    # [Modified in Electra:EIP7251]
-    effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
-
-    return Validator(
+    validator = Validator(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
+        effective_balance=Gwei(0),
     )
+
+    # [Modified in Electra:EIP7251]
+    max_effective_balance = get_max_effective_balance(validator)
+    validator.effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
+
+    return validator
 ```
 
 ###### Modified `add_validator_to_registry`
@@ -1332,7 +1332,7 @@ def apply_deposit(state: BeaconState,
                 withdrawal_credentials=withdrawal_credentials,
                 amount=amount,
                 signature=signature,
-                slot=GENESIS_SLOT,
+                slot=GENESIS_SLOT,  # Use GENESIS_SLOT to distinguish from a pending deposit request
             ))
     else:
         # Increase balance by deposit amount
@@ -1342,7 +1342,7 @@ def apply_deposit(state: BeaconState,
             withdrawal_credentials=withdrawal_credentials,
             amount=amount,
             signature=signature,
-            slot=GENESIS_SLOT
+            slot=GENESIS_SLOT  # Use GENESIS_SLOT to distinguish from a pending deposit request
         ))
 ```
 
