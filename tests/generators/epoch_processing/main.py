@@ -37,11 +37,15 @@ if __name__ == "__main__":
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
-    _new_electra_mods = {key: 'eth2spec.test.electra.epoch_processing.test_process_' + key for key in [
+    _new_electra_mods_1 = {key: 'eth2spec.test.electra.epoch_processing.test_process_' + key for key in [
         'effective_balance_updates',
-        'pending_balance_deposits',
         'pending_consolidations',
     ]}
+    # This is a trick to allow tests be split into multiple files and use the same test format.
+    _new_electra_mods_2 = {key: 'eth2spec.test.electra.epoch_processing.' + key for key in [
+        'pending_deposits',
+    ]}
+    _new_electra_mods = {**_new_electra_mods_1, **_new_electra_mods_2}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
     # TODO Custody Game testgen is disabled for now

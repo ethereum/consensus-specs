@@ -34,7 +34,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7732
+ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7594 eip7732
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), ./eth2spec/$S)
@@ -105,7 +105,7 @@ generate_tests: $(GENERATOR_TARGETS)
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec:
-	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
+	@python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
 
 # check the setup tool requirements
 preinstallation:
@@ -141,13 +141,21 @@ endif
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
+# Check all files and error if any ToC were modified.
 check_toc: $(MARKDOWN_FILES:=.toc)
+	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
 
+# Generate ToC sections & save copy of original if modified.
 %.toc:
-	cp $* $*.tmp && \
-	doctoc $* && \
-	diff -q $* $*.tmp && \
-	rm $*.tmp
+	@cp $* $*.tmp; \
+	doctoc $* > /dev/null; \
+	if diff -q $* $*.tmp > /dev/null; then \
+		echo "Good $*"; \
+		rm $*.tmp; \
+	else \
+		echo "\033[1;33m Bad $*\033[0m"; \
+		echo "\033[1;34m See $*.tmp\033[0m"; \
+	fi
 
 codespell:
 	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
