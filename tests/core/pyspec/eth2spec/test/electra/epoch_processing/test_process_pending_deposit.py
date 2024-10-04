@@ -13,7 +13,7 @@ from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_under_min_activation(spec, state):
+def test_process_pending_deposit_under_min_activation(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
@@ -25,7 +25,7 @@ def test_apply_pending_deposit_under_min_activation(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_min_activation(spec, state):
+def test_process_pending_deposit_min_activation(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be exactly the same as balance.
@@ -37,7 +37,7 @@ def test_apply_pending_deposit_min_activation(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_over_min_activation(spec, state):
+def test_process_pending_deposit_over_min_activation(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # just 1 over the limit, effective balance should be set MIN_ACTIVATION_BALANCE during processing
@@ -49,7 +49,7 @@ def test_apply_pending_deposit_over_min_activation(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_eth1_withdrawal_credentials(spec, state):
+def test_process_pending_deposit_eth1_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -71,7 +71,7 @@ def test_apply_pending_deposit_eth1_withdrawal_credentials(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_compounding_withdrawal_credentials_under_max(spec, state):
+def test_process_pending_deposit_compounding_withdrawal_credentials_under_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -94,7 +94,7 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_under_max(spec
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_compounding_withdrawal_credentials_max(spec, state):
+def test_process_pending_deposit_compounding_withdrawal_credentials_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -117,7 +117,7 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_max(spec, stat
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max(spec, state):
+def test_process_pending_deposit_compounding_withdrawal_credentials_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -140,7 +140,7 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max(spec,
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_non_versioned_withdrawal_credentials(spec, state):
+def test_process_pending_deposit_non_versioned_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -161,7 +161,7 @@ def test_apply_pending_deposit_non_versioned_withdrawal_credentials(spec, state)
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_non_versioned_withdrawal_credentials_over_min_activation(spec, state):
+def test_process_pending_deposit_non_versioned_withdrawal_credentials_over_min_activation(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
@@ -184,7 +184,7 @@ def test_apply_pending_deposit_non_versioned_withdrawal_credentials_over_min_act
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_correct_sig_but_forked_state(spec, state):
+def test_process_pending_deposit_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
     # deposits will always be valid, regardless of the current fork
@@ -196,7 +196,7 @@ def test_apply_pending_deposit_correct_sig_but_forked_state(spec, state):
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_incorrect_sig_new_deposit(spec, state):
+def test_process_pending_deposit_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -206,7 +206,7 @@ def test_apply_pending_deposit_incorrect_sig_new_deposit(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__min_activation_balance(spec, state):
+def test_process_pending_deposit_top_up__min_activation_balance(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
@@ -222,7 +222,7 @@ def test_apply_pending_deposit_top_up__min_activation_balance(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__min_activation_balance_compounding(spec, state):
+def test_process_pending_deposit_top_up__min_activation_balance_compounding(spec, state):
     validator_index = 0
     withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX
@@ -244,7 +244,7 @@ def test_apply_pending_deposit_top_up__min_activation_balance_compounding(spec, 
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__max_effective_balance_compounding(spec, state):
+def test_process_pending_deposit_top_up__max_effective_balance_compounding(spec, state):
     validator_index = 0
     withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX
@@ -266,7 +266,7 @@ def test_apply_pending_deposit_top_up__max_effective_balance_compounding(spec, s
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
+def test_process_pending_deposit_top_up__less_effective_balance(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
@@ -285,7 +285,7 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__zero_balance(spec, state):
+def test_process_pending_deposit_top_up__zero_balance(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
@@ -305,7 +305,7 @@ def test_apply_pending_deposit_top_up__zero_balance(spec, state):
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
+def test_process_pending_deposit_incorrect_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
@@ -316,7 +316,7 @@ def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, state):
+def test_process_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
@@ -335,7 +335,7 @@ def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, sta
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
+def test_process_pending_deposit_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
 
@@ -350,7 +350,7 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
+def test_process_pending_deposit_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
 
@@ -367,7 +367,7 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, state):
+def test_process_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, state):
     validator_index = len(state.validators)
     fork_version = spec.Version('0xAaBbCcDd')
     pending_deposit = prepare_pending_deposit(
@@ -384,7 +384,7 @@ def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, s
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_with_previous_fork_version(spec, state):
+def test_process_pending_deposit_with_previous_fork_version(spec, state):
     # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
     # It's an ineffective deposit because it fails at BLS sig verification.
     # NOTE: it was effective in Altair.
@@ -423,7 +423,7 @@ def test_ineffective_deposit_with_current_fork_version(spec, state):
 @with_electra_and_later
 @spec_state_test
 @always_bls
-def test_apply_pending_deposit_effective_deposit_with_genesis_fork_version(spec, state):
+def test_process_pending_deposit_effective_deposit_with_genesis_fork_version(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
 
     validator_index = len(state.validators)
@@ -441,7 +441,7 @@ def test_apply_pending_deposit_effective_deposit_with_genesis_fork_version(spec,
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_success_top_up_to_withdrawn_validator(spec, state):
+def test_process_pending_deposit_success_top_up_to_withdrawn_validator(spec, state):
     validator_index = 0
 
     # Fully withdraw validator
