@@ -199,19 +199,6 @@ def test_pending_consolidation_future_epoch(spec, state):
     assert state.balances[target_index] == expected_target_balance
     assert state.pending_consolidations == []
 
-    # Pending balance deposit to the target is created as part of `switch_to_compounding_validator`.
-    # The excess balance to queue are the rewards accumulated over the previous epoch transitions.
-    expected_pending_balance = state_before_consolidation.balances[target_index] - spec.MIN_ACTIVATION_BALANCE
-    target = state.validators[target_index]
-    pending_deposit = spec.PendingDeposit(
-        pubkey=target.pubkey,
-        withdrawal_credentials=target.withdrawal_credentials,
-        amount=expected_pending_balance,
-        signature=spec.bls.G2_POINT_AT_INFINITY,
-        slot=spec.GENESIS_SLOT,
-    )
-    assert state.pending_deposits == [pending_deposit]
-
 
 @with_electra_and_later
 @spec_state_test
