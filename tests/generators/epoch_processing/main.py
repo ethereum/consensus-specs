@@ -39,6 +39,7 @@ if __name__ == "__main__":
 
     _new_electra_mods = {key: 'eth2spec.test.electra.epoch_processing.test_process_' + key for key in [
         'effective_balance_updates',
+        'pending_deposit',
         'pending_deposits',
         'pending_consolidations',
     ]}

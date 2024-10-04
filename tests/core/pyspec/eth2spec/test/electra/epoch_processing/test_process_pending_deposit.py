@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     with_electra_and_later,
     always_bls,
 )
-from tests.core.pyspec.eth2spec.test.helpers.deposits import (
+from eth2spec.test.helpers.deposits import (
     prepare_pending_deposit,
     run_pending_deposit_applying,
 )
