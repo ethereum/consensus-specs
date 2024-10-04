@@ -1148,12 +1148,19 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         assert state.pending_consolidations == pre_pending_consolidations + [expected_new_pending_consolidation]
         # Check excess balance is queued if the target switched to compounding
         if pre_target_withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
-            assert state.validators[target_index].withdrawal_credentials == (
-                spec.COMPOUNDING_WITHDRAWAL_PREFIX + pre_target_withdrawal_credentials[1:])
+            post_target_withdrawal_credentials = (
+                spec.COMPOUNDING_WITHDRAWAL_PREFIX + pre_target_withdrawal_credentials[1:]
+            )
+            assert state.validators[target_index].withdrawal_credentials == post_target_withdrawal_credentials
             assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE
             if pre_target_balance > spec.MIN_ACTIVATION_BALANCE:
-                assert state.pending_balance_deposits == [spec.PendingBalanceDeposit(
-                    index=target_index, amount=(pre_target_balance - spec.MIN_ACTIVATION_BALANCE))]
+                assert len(state.pending_deposits) == 1
+                pending_deposit = state.pending_deposits[0]
+                assert pending_deposit.pubkey == target_validator.pubkey
+                assert pending_deposit.withdrawal_credentials == post_target_withdrawal_credentials
+                assert pending_deposit.amount == (pre_target_balance - spec.MIN_ACTIVATION_BALANCE)
+                assert pending_deposit.signature == spec.G2_POINT_AT_INFINITY
+                assert pending_deposit.slot == spec.GENESIS_SLOT
         else:
             assert state.balances[target_index] == pre_target_balance
     else:
@@ -1194,14 +1201,20 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
         # Check source address in the consolidation fits the withdrawal credentials
         assert state.validators[source_index].withdrawal_credentials[12:] == consolidation.source_address
         # Check that the source has switched to compounding
-        assert state.validators[source_index].withdrawal_credentials == (
+        post_withdrawal_credentials = (
             spec.COMPOUNDING_WITHDRAWAL_PREFIX + pre_withdrawal_credentials[1:]
         )
+        assert state.validators[source_index].withdrawal_credentials == post_withdrawal_credentials
         # Check excess balance is queued
         assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
         if pre_balance > spec.MIN_ACTIVATION_BALANCE:
-            assert state.pending_balance_deposits == [spec.PendingBalanceDeposit(
-                index=source_index, amount=(pre_balance - spec.MIN_ACTIVATION_BALANCE))]
+            assert len(state.pending_deposits) == 1
+            pending_deposit = state.pending_deposits[0]
+            assert pending_deposit.pubkey == source_validator.pubkey
+            assert pending_deposit.withdrawal_credentials == post_withdrawal_credentials
+            assert pending_deposit.amount == (pre_balance - spec.MIN_ACTIVATION_BALANCE)
+            assert pending_deposit.signature == spec.G2_POINT_AT_INFINITY
+            assert pending_deposit.slot == spec.GENESIS_SLOT
         # Check no consolidation has been initiated
         assert state.validators[source_index].exit_epoch == spec.FAR_FUTURE_EPOCH
         assert state.pending_consolidations == pre_pending_consolidations

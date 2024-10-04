@@ -166,7 +166,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.earliest_exit_epoch = spec.GENESIS_EPOCH
         state.consolidation_balance_to_consume = 0
         state.earliest_consolidation_epoch = 0
-        state.pending_balance_deposits = []
+        state.pending_deposits = []
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
 
