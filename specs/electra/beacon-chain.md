@@ -1108,11 +1108,11 @@ The computation algorithm is defined by [EIP-7685](https://eips.ethereum.org/EIP
 
 ```python
 def compute_execution_requests_hash(execution_requests: ExecutionRequests) -> Hash32:
-    deposit_bytes = DEPOSIT_REQUEST_TYPE + serialize(execution_requests.deposits)
-    withdrawal_bytes = WITHDRAWAL_REQUEST_TYPE + serialize(execution_requests.withdrawals)
-    consolidation_bytes = CONSOLIDATION_REQUEST_TYPE + serialize(execution_requests.consolidations)
-
-    return hash(deposit_bytes + withdrawal_bytes + consolidation_bytes)
+    deposit_requests = DEPOSIT_REQUEST_TYPE + serialize(execution_requests.deposits)
+    withdrawal_requests = WITHDRAWAL_REQUEST_TYPE + serialize(execution_requests.withdrawals)
+    consolidation_requests = CONSOLIDATION_REQUEST_TYPE + serialize(execution_requests.consolidations)
+    
+    return hash(hash(deposit_requests) + hash(withdrawal_requests) + hash(consolidation_requests))
 ```
 
 ##### Modified `process_execution_payload`
