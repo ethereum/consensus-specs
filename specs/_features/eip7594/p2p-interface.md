@@ -14,10 +14,10 @@
   - [Containers](#containers)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
-      - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
-      - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
-      - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
-      - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+    - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
+    - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
+    - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
+    - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -41,7 +41,7 @@
 ### Preset
 
 | Name                                    | Value                                                                                     | Description                                                       |
-|-----------------------------------------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
 ### Configuration
@@ -49,7 +49,7 @@
 *[New in EIP7594]*
 
 | Name                                           | Value                                          | Description                                                               |
-|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
+| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
 
@@ -183,7 +183,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-*Note:* In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
+_Note:_ In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
 ### The Req/Resp domain
 
@@ -197,10 +197,10 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+[1]: # "eth2spec: skip"
 
 | `fork_version`         | Chunk SSZ type              |
-|------------------------|-----------------------------|
+| ---------------------- | --------------------------- |
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
@@ -245,13 +245,14 @@ Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon 
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+[1]: # "eth2spec: skip"
 
 | `fork_version`         | Chunk SSZ type              |
-|------------------------|-----------------------------|
+| ---------------------- | --------------------------- |
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -261,6 +262,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
@@ -302,7 +304,7 @@ Clients MUST include all data column sidecars of each block from which they incl
 
 The following data column sidecars, where they exist, MUST be sent in `(slot, column_index)` order.
 
-Slots that do not contain known data columns MUST be skipped, mimicking the behaviour
+Slots that do not contain known data columns MUST be skipped, mimicking the behavior
 of the `BlocksByRange` request. Only response chunks with known data columns should
 therefore be sent.
 
@@ -342,6 +344,6 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 
 A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
 
-| Key    | Value                                    |
-|--------|------------------------------------------|
-| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+| Key   | Value                                                                                                              |
+| ----- | ------------------------------------------------------------------------------------------------------------------ |
+| `csc` | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |

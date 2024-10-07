@@ -44,37 +44,37 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name          | Value                 |
+| ------------- | --------------------- |
 | `UINT256_MAX` | `uint256(2**256 - 1)` |
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `RowIndex` | `uint64` | Row identifier in the matrix of cells |
-| `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
+| Name          | SSZ equivalent | Description                              |
+| ------------- | -------------- | ---------------------------------------- |
+| `RowIndex`    | `uint64`       | Row identifier in the matrix of cells    |
+| `ColumnIndex` | `uint64`       | Column identifier in the matrix of cells |
 
 ## Configuration
 
 ### Data size
 
-| Name | Value | Description |
-| - | - | - |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
 | `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Networking
 
-| Name | Value | Description |
-| - | - | - |
+| Name                               | Value         | Description                                                              |
+| ---------------------------------- | ------------- | ------------------------------------------------------------------------ |
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint64(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
-| Name | Value | Description |
-| - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
-| `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
+| Name                  | Value | Description                                                                |
+| --------------------- | ----- | -------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`    | `8`   | Number of `DataColumnSidecar` random samples a node queries per slot       |
+| `CUSTODY_REQUIREMENT` | `4`   | Minimum number of subnets an honest node custodies and serves samples from |
 
 ### Containers
 
@@ -222,15 +222,15 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
+A node _may_ choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
 
-A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
+A node stores the custodies columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
 ### Public, deterministic selection
 
 The particular columns that a node custodies are selected pseudo-randomly as a function (`get_custody_columns`) of the node-id and custody size -- importantly this function can be run by any party as the inputs are all public.
 
-*Note*: increasing the `custody_size` parameter for a given `node_id` extends the returned list (rather than being an entirely new shuffle) such that if `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for a subset of the node's custody.
+_Note_: increasing the `custody_size` parameter for a given `node_id` extends the returned list (rather than being an entirely new shuffle) such that if `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for a subset of the node's custody.
 
 ## Subnet sampling
 
@@ -254,11 +254,11 @@ If the node obtains 50%+ of all the columns, it SHOULD reconstruct the full data
 
 Once the node obtains a column through reconstruction, the node MUST expose the new column as if it had received it over the network. If the node is subscribed to the subnet corresponding to the column, it MUST send the reconstructed DataColumnSidecar to its topic mesh neighbors. If instead the node is not subscribed to the corresponding subnet, it SHOULD still expose the availability of the DataColumnSidecar as part of the gossip emission process.
 
-*Note*: A node always maintains a matrix view of the rows and columns they are following, able to cross-reference and cross-seed in either direction.
+_Note_: A node always maintains a matrix view of the rows and columns they are following, able to cross-reference and cross-seed in either direction.
 
-*Note*: There are timing considerations to analyze -- at what point does a node consider samples missing and choose to reconstruct and cross-seed.
+_Note_: There are timing considerations to analyze -- at what point does a node consider samples missing and choose to reconstruct and cross-seed.
 
-*Note*: There may be anti-DoS and quality-of-service considerations around how to send samples and consider samples -- is each individual sample a message or are they sent in aggregate forms.
+_Note_: There may be anti-DoS and quality-of-service considerations around how to send samples and consider samples -- is each individual sample a message or are they sent in aggregate forms.
 
 ## FAQs
 
@@ -268,7 +268,7 @@ In the one-dimension construction, a node samples the peers by requesting the wh
 
 The potential benefits of having row custody could include:
 
-1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column [0, N)  and the latter is req/resp instead of gossiping.
+1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column [0, N) and the latter is req/resp instead of gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can compute extensions and seed missing samples to the network. This would either need to be able to send individual points on the gossip or would need some sort of req/resp faculty, potentially similar to an `IHAVEPOINTBITFIELD` and `IWANTSAMPLE`.
 
 However, for simplicity, we don't assign row custody assignments to nodes in the current design.

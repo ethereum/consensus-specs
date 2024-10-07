@@ -55,7 +55,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document details the beacon chain additions and changes of to support the shard data custody game,
@@ -65,56 +64,55 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ### Misc
 
-| Name | Value | Unit |
-| - | - | - |
-| `CUSTODY_PRIME` | `int(2 ** 256 - 189)` | - |
-| `CUSTODY_SECRETS` | `uint64(3)` | - |
-| `BYTES_PER_CUSTODY_ATOM` | `uint64(32)` | bytes |
-| `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)` | - |
+| Name                           | Value                 | Unit  |
+| ------------------------------ | --------------------- | ----- |
+| `CUSTODY_PRIME`                | `int(2 ** 256 - 189)` | -     |
+| `CUSTODY_SECRETS`              | `uint64(3)`           | -     |
+| `BYTES_PER_CUSTODY_ATOM`       | `uint64(32)`          | bytes |
+| `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)`          | -     |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                          | Value                      |
+| ----------------------------- | -------------------------- |
 | `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 
 ## Preset
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `RANDAO_PENALTY_EPOCHS` | `uint64(2**1)` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | `uint64(2**14)` (= 16,384) | epochs | ~73 days |
-| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `uint64(2**11)` (= 2,048) | epochs | ~9 days |
-| `MAX_CHUNK_CHALLENGE_DELAY` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
+| Name                                             | Value                      |  Unit  |   Duration   |
+| ------------------------------------------------ | -------------------------- | :----: | :----------: |
+| `RANDAO_PENALTY_EPOCHS`                          | `uint64(2**1)` (= 2)       | epochs | 12.8 minutes |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `uint64(2**15)` (= 32,768) | epochs |  ~146 days   |
+| `EPOCHS_PER_CUSTODY_PERIOD`                      | `uint64(2**14)` (= 16,384) | epochs |   ~73 days   |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING`               | `uint64(2**11)` (= 2,048)  | epochs |   ~9 days    |
+| `MAX_CHUNK_CHALLENGE_DELAY`                      | `uint64(2**15)` (= 32,768) | epochs |  ~146 days   |
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_CUSTODY_KEY_REVEALS` | `uint64(2**8)` (= 256) |
-| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `uint64(2**0)` (= 1) |
-| `MAX_CUSTODY_CHUNK_CHALLENGES` | `uint64(2**2)` (= 4) |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16) |
-| `MAX_CUSTODY_SLASHINGS` | `uint64(2**0)` (= 1) |
-
+| Name                                    | Value                         |
+| --------------------------------------- | ----------------------------- |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS`   | `uint64(2**20)` (= 1,048,576) |
+| `MAX_CUSTODY_KEY_REVEALS`               | `uint64(2**8)` (= 256)        |
+| `MAX_EARLY_DERIVED_SECRET_REVEALS`      | `uint64(2**0)` (= 1)          |
+| `MAX_CUSTODY_CHUNK_CHALLENGES`          | `uint64(2**2)` (= 4)          |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16)         |
+| `MAX_CUSTODY_SLASHINGS`                 | `uint64(2**0)` (= 1)          |
 
 ### Size parameters
 
-| Name | Value | Unit |
-| - | - | - |
-| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096) | bytes |
-| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - |
+| Name                      | Value                                                       | Unit  |
+| ------------------------- | ----------------------------------------------------------- | ----- |
+| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096)                                   | bytes |
+| `CUSTODY_RESPONSE_DEPTH`  | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | -     |
 
 ### Reward and penalty quotients
 
-| Name | Value |
-| - | - |
-| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `uint64(2**1)` (= 2) |
-| `MINOR_REWARD_QUOTIENT` | `uint64(2**8)` (= 256) |
+| Name                                               | Value                  |
+| -------------------------------------------------- | ---------------------- |
+| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `uint64(2**1)` (= 2)   |
+| `MINOR_REWARD_QUOTIENT`                            | `uint64(2**8)` (= 256) |
 
 ## Data structures
 
@@ -124,12 +122,12 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ```python
 class Validator(sharding.Validator):
-    # next_custody_secret_to_reveal is initialised to the custody period
+    # next_custody_secret_to_reveal is initialized to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
     # TODO: The max_reveal_lateness doesn't really make sense anymore.
-    # So how do we incentivise early custody key reveals now?
+    # So how do we incentivize early custody key reveals now?
     all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
 ```
 
@@ -355,7 +353,6 @@ def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epo
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
-
 ## Per-block processing
 
 ### Block processing
@@ -446,7 +443,7 @@ def process_chunk_challenge_response(state: BeaconState,
     challenge = matching_challenges[0]
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
-    # Verify the chunk matches the crosslink data root
+    # Verify the chunk matches the cross link data root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
@@ -573,7 +570,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
 
     # Any signed custody-slashing should result in at least one slashing.
     # If the custody bits are valid, then the claim itself is slashed.
-    malefactor = state.validators[custody_slashing.malefactor_index] 
+    malefactor = state.validators[custody_slashing.malefactor_index]
     whistleblower = state.validators[custody_slashing.whistleblower_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_SLASHING, get_current_epoch(state))
     signing_root = compute_signing_root(custody_slashing, domain)
@@ -596,7 +593,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation)
     assert custody_slashing.malefactor_index in attesters
-    
+
     # Verify the malefactor custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
         get_custody_period_for_validator(custody_slashing.malefactor_index, attestation.data.target.epoch),
@@ -619,7 +616,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         for attester_index in attesters:
             if attester_index != custody_slashing.malefactor_index:
                 increase_balance(state, attester_index, whistleblower_reward)
-        # No special whisteblower reward: it is expected to be an attester. Others are free to slash too however. 
+        # No special whistleblower reward: it is expected to be an attester. Others are free to slash too however.
     else:
         # The claim was false, the custody bit was correct. Slash the whistleblower that induced this work.
         slash_validator(state, custody_slashing.whistleblower_index)
