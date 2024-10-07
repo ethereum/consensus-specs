@@ -129,9 +129,9 @@ leaving the block tree without viable branches
 
 Let only a validator on an optimistic node be an *optimistic validator*.
 
-When this specification only defines behaviour for an optimistic
+When this specification only defines behavior for an optimistic
 node/validator, but *not* for the non-optimistic case, assume default
-behaviours without regard for optimistic sync.
+behaviors without regard for optimistic sync.
 
 ## Mechanisms
 
@@ -237,7 +237,7 @@ another chain.
 
 ### Re-Orgs
 
-The consensus engine MUST support any chain reorganisation which does *not*
+The consensus engine MUST support any chain reorganization which does *not*
 affect the justified checkpoint.
 
 If the justified checkpoint transitions from `NOT_VALIDATED` -> `INVALIDATED`, a
@@ -341,7 +341,7 @@ Optimistic sync is also an optimal strategy for execution engines using block ex
 sync mechanism (e.g. Erigon). Alternatively, a consensus engine may inform the execution engine with a payload
 obtained from a checkpoint block, then wait until the execution layer catches up with it and proceed
 in lock step after that. This alternative approach would keep user in limbo for several hours and
-would increase time of the sync process as batch sync has more opportunities for optimisation than the lock step.
+would increase time of the sync process as batch sync has more opportunities for optimization than the lock step.
 
 Aforementioned premises make optimistic sync a *generalized* solution for interaction between consensus and
 execution engines during the sync process.
@@ -426,4 +426,4 @@ retrospectively call [`validate_merge_block`](../specs/bellatrix/fork-choice.md#
 on a transition block that
 matches `TERMINAL_BLOCK_HASH` after an optimistic sync, doing so will have no
 effect. For simplicity, the optimistic sync specification does not define
-edge-case behaviour for when `TERMINAL_BLOCK_HASH` is used.
+edge-case behavior for when `TERMINAL_BLOCK_HASH` is used.
