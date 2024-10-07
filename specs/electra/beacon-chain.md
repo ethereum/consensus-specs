@@ -12,6 +12,7 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
+  - [Execution layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -84,7 +85,7 @@
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
-      - [New `get_execution_requests_list`](#new-get_execution_requests_list)
+      - [New `compute_execution_requests_hash`](#new-compute_execution_requests_hash)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
@@ -134,6 +135,14 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
+
+### Execution layer triggered requests
+
+| Name | Value |
+| - | - |
+| `DEPOSIT_REQUEST_TYPE` | `Bytes1('0x00')` |
+| `WITHDRAWAL_REQUEST_TYPE` | `Bytes1('0x01')` |
+| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
 
 ## Preset
 
@@ -931,20 +940,20 @@ class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests  # [New in Electra]
+    execution_requests_hash: Hash32  # [New in Electra:EIP7685]
 ```
 
 #### Engine APIs
 
 ##### Modified `is_valid_block_hash`
 
-*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests_list` parameter for EIP-7685.
+*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests_hash` parameter for EIP-7685.
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
                         execution_payload: ExecutionPayload,
                         parent_beacon_block_root: Root,
-                        execution_requests_list: list[bytes]) -> bool:
+                        execution_requests_hash: Hash32) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -964,14 +973,13 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    # [New in Electra]
-    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)
+    execution_requests_hash = new_payload_request.execution_requests_hash  # [New in Electra]
 
     # [Modified in Electra:EIP7685]
     if not self.is_valid_block_hash(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list):
+            execution_requests_hash):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -1093,17 +1101,18 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Execution payload
 
-##### New `get_execution_requests_list`
+##### New `compute_execution_requests_hash`
 
-*Note*: Encodes execution layer requests as it is defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
+*Note*: Computes commitment to the execution layer triggered requests data.
+The computation algorithm is defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
 
 ```python
-def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
-    deposit_bytes = serialize(execution_requests.deposits)
-    withdrawal_bytes = serialize(execution_requests.withdrawals)
-    consolidation_bytes = serialize(execution_requests.consolidations)
+def compute_execution_requests_hash(execution_requests: ExecutionRequests) -> Hash32:
+    deposit_bytes = DEPOSIT_REQUEST_TYPE + serialize(execution_requests.deposits)
+    withdrawal_bytes = WITHDRAWAL_REQUEST_TYPE + serialize(execution_requests.withdrawals)
+    consolidation_bytes = CONSOLIDATION_REQUEST_TYPE + serialize(execution_requests.consolidations)
 
-    return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
+    return hash(deposit_bytes + withdrawal_bytes + consolidation_bytes)
 ```
 
 ##### Modified `process_execution_payload`
@@ -1129,7 +1138,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests=body.execution_requests,  # [New in Electra]
+            execution_requests_hash=compute_execution_requests_hash(body.execution_requests),  # [New in Electra]
         )
     )
     # Cache execution payload header
