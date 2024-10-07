@@ -1111,7 +1111,7 @@ def compute_execution_requests_hash(execution_requests: ExecutionRequests) -> Ha
     deposit_requests = DEPOSIT_REQUEST_TYPE + serialize(execution_requests.deposits)
     withdrawal_requests = WITHDRAWAL_REQUEST_TYPE + serialize(execution_requests.withdrawals)
     consolidation_requests = CONSOLIDATION_REQUEST_TYPE + serialize(execution_requests.consolidations)
-    
+
     return hash(hash(deposit_requests) + hash(withdrawal_requests) + hash(consolidation_requests))
 ```
 
