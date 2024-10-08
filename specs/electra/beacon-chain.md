@@ -988,7 +988,7 @@ class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
-    execution_requests_hash: Hash32  # [New in Electra:EIP7685]
+    execution_requests: ExecutionRequests  # [New in Electra:EIP7685]
 ```
 
 #### Engine APIs
@@ -1021,7 +1021,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    execution_requests_hash = new_payload_request.execution_requests_hash  # [New in Electra]
+    # [New in Electra]
+    execution_requests_hash = compute_execution_requests_hash(new_payload_request.execution_requests)
 
     # [Modified in Electra:EIP7685]
     if not self.is_valid_block_hash(
@@ -1187,7 +1188,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests_hash=compute_execution_requests_hash(body.execution_requests),  # [New in Electra]
+            execution_requests=body.execution_requests,  # [New in Electra]
         )
     )
     # Cache execution payload header
