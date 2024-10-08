@@ -84,6 +84,7 @@
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
+      - [New `get_execution_requests_list`](#new-get_execution_requests_list)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
