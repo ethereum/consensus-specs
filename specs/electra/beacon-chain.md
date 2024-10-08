@@ -84,6 +84,7 @@
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
+      - [New `get_execution_requests_list`](#new-get_execution_requests_list)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
@@ -991,7 +992,7 @@ class NewPayloadRequest(object):
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests: ExecutionRequests) -> bool:
+                       execution_requests_list: list[bytes]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
     are valid with respect to ``self.execution_state``.
@@ -1012,7 +1013,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    execution_requests = new_payload_request.execution_requests  # [New in Electra]
+    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
@@ -1024,7 +1025,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.notify_new_payload(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests):
+            execution_requests_list):
         return False
 
     return True
@@ -1138,6 +1139,19 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 ```
 
 #### Execution payload
+
+##### New `get_execution_requests_list`
+
+*Note*: Encodes execution requests as defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
+
+```python
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
+    deposit_bytes = serialize(execution_requests.deposits)
+    withdrawal_bytes = serialize(execution_requests.withdrawals)
+    consolidation_bytes = serialize(execution_requests.consolidations)
+
+    return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
+```
 
 ##### Modified `process_execution_payload`
 
