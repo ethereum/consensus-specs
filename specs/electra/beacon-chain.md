@@ -990,7 +990,7 @@ class NewPayloadRequest(object):
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
-                       execution_requests: ExecutionRequests,
+                       execution_requests_list: list[bytes],
                        parent_beacon_block_root: Root) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
@@ -1011,7 +1011,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    execution_requests = new_payload_request.execution_requests  # [New in Electra]
+    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
@@ -1023,7 +1023,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     # [Modified in Electra]
     if not self.notify_new_payload(
             execution_payload, 
-            execution_requests, 
+            execution_requests_list, 
             parent_beacon_block_root):
         return False
 
@@ -1138,6 +1138,19 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 ```
 
 #### Execution payload
+
+##### New `get_execution_requests_list`
+
+*Note*: Encodes execution requests as defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
+
+```python
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
+    deposit_bytes = serialize(execution_requests.deposits)
+    withdrawal_bytes = serialize(execution_requests.withdrawals)
+    consolidation_bytes = serialize(execution_requests.consolidations)
+
+    return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
+```
 
 ##### Modified `process_execution_payload`
 
