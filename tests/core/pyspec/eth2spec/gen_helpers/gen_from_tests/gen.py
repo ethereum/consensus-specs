@@ -200,5 +200,5 @@ def check_mods(all_mods, pkg):
                 problems.append('unexpected: ' + t)
     
     if problems:
-        raise Exception('\n'.join(problems))
+        raise Exception('[ERROR] module problems:\n ' + '\n '.join(problems))
     
