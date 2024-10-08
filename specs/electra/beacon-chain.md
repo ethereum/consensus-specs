@@ -1023,7 +1023,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
     # [Modified in Electra]
     if not self.notify_new_payload(
-            execution_payload, 
+            execution_payload,
             parent_beacon_block_root,
             execution_requests_list):
         return False
