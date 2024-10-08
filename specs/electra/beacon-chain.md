@@ -30,6 +30,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
+    - [`SingleAttestation`](#singleattestation)
     - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -266,6 +267,16 @@ class ConsolidationRequest(Container):
 class PendingConsolidation(Container):
     source_index: ValidatorIndex
     target_index: ValidatorIndex
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 #### `ExecutionRequests`
@@ -993,7 +1004,7 @@ def notify_new_payload(self: ExecutionEngine,
                        execution_requests: ExecutionRequests,
                        parent_beacon_block_root: Root) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1022,8 +1033,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
     # [Modified in Electra]
     if not self.notify_new_payload(
-            execution_payload, 
-            execution_requests, 
+            execution_payload,
+            execution_requests,
             parent_beacon_block_root):
         return False
 
