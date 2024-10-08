@@ -139,7 +139,7 @@ def combine_mods(dict_1, dict_2):
 
 def check_mods(all_mods, pkg):
     """
-    Raise an expection if there is a missing/unexpected module in all_mods.
+    Raise an exception if there is a missing/unexpected module in all_mods.
     """
     def get_expected_modules(package, absolute=False):
         """
@@ -162,7 +162,7 @@ def check_mods(all_mods, pkg):
                 mod = [mod]
 
             # For each submodule, check if it is package.
-            # This is a "trick" we do to re-use a test format.
+            # This is a "trick" we do to reuse a test format.
             for sub in mod:
                 is_package = '.test_' not in sub
                 if is_package:
