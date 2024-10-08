@@ -28,8 +28,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine,
                            execution_payload: ExecutionPayload,
-                           execution_requests: ExecutionRequests,
-                           parent_beacon_block_root: Root) -> bool:
+                           parent_beacon_block_root: Root,
+                           execution_requests: ExecutionRequests) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
