@@ -169,7 +169,7 @@ def check_mods(all_mods, pkg):
                     mods.extend(get_expected_modules(sub, absolute=True))
                 else:
                     mods.append(sub)
-    
+
     problems = []
     expected_mods = get_expected_modules(pkg)
     if mods != expected_mods:
@@ -198,7 +198,6 @@ def check_mods(all_mods, pkg):
             if t not in expected_mods:
                 print('unexpected:', t)
                 problems.append('unexpected: ' + t)
-    
+
     if problems:
         raise Exception('[ERROR] module problems:\n ' + '\n '.join(problems))
-    
