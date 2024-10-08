@@ -146,10 +146,10 @@ def check_mods(all_mods, pkg):
         Return all modules (which are not packages) inside the given package.
         """
         modules = []
-        eth2spec = import_module("eth2spec")
-        prefix = eth2spec.__name__ + "."
+        eth2spec = import_module('eth2spec')
+        prefix = eth2spec.__name__ + '.'
         for _, modname, ispkg in walk_packages(eth2spec.__path__, prefix):
-            s = package if absolute else f".{package}."
+            s = package if absolute else f'.{package}.'
             if s in modname and not ispkg:
                 modules.append(modname)
         return modules
@@ -164,7 +164,7 @@ def check_mods(all_mods, pkg):
             # For each submodule, check if it is package.
             # This is a "trick" we do to re-use a test format.
             for sub in mod:
-                is_package = ".test_" not in sub
+                is_package = '.test_' not in sub
                 if is_package:
                     mods.extend(get_expected_modules(sub, absolute=True))
                 else:
@@ -176,28 +176,28 @@ def check_mods(all_mods, pkg):
         for e in expected_mods:
             # Skip forks which are not in all_mods.
             # The fork name is the 3rd item in the path.
-            fork = e.split(".")[2]
+            fork = e.split('.')[2]
             if fork not in all_mods:
                 continue
             # Skip modules in the unittests package.
             # These are not associated with generators.
-            if ".unittests." in e:
+            if '.unittests.' in e:
                 continue
             # The expected module is not in our list of modules.
             # Add it to our list of problems.
             if e not in mods:
-                problems.append("missing: " + e)
+                problems.append('missing: ' + e)
 
         for t in mods:
             # Skip helper modules.
             # These do not define test functions.
-            if t.startswith("eth2spec.test.helpers"):
+            if t.startswith('eth2spec.test.helpers'):
                 continue
             # There is a module not defined in eth2spec.
             # Add it to our list of problems.
             if t not in expected_mods:
-                print("unexpected:", t)
-                problems.append("unexpected: " + t)
+                print('unexpected:', t)
+                problems.append('unexpected: ' + t)
     
     if problems:
         raise Exception('\n'.join(problems))
