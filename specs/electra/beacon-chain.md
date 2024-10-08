@@ -991,8 +991,8 @@ class NewPayloadRequest(object):
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
-                       execution_requests_list: list[bytes],
-                       parent_beacon_block_root: Root) -> bool:
+                       parent_beacon_block_root: Root,
+                       execution_requests_list: list[bytes]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
     are valid with respect to ``self.execution_state``.
@@ -1012,8 +1012,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
@@ -1024,8 +1024,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     # [Modified in Electra]
     if not self.notify_new_payload(
             execution_payload, 
-            execution_requests_list, 
-            parent_beacon_block_root):
+            parent_beacon_block_root,
+            execution_requests_list):
         return False
 
     return True
@@ -1174,9 +1174,9 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
-            execution_requests=body.execution_requests,  # [New in Electra]
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=body.execution_requests,  # [New in Electra]
         )
     )
     # Cache execution payload header
