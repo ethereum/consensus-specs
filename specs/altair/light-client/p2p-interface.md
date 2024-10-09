@@ -71,7 +71,7 @@ For light clients, the following validations MUST additionally pass before forwa
 
 Light clients SHOULD call `process_light_client_finality_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`.
+The gossip `ForkDigestValue` is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -99,7 +99,7 @@ For light clients, the following validations MUST additionally pass before forwa
 
 Light clients SHOULD call `process_light_client_optimistic_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`.
+The gossip `ForkDigestValue` is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
