@@ -42,10 +42,10 @@ def eval_poly_in_coeff_form(spec, coeffs, x):
     """
     Evaluate a polynomial in coefficient form at 'x' using Horner's rule
     """
-    total = 0
+    total = spec.BLSFieldElement(0)
     for a in reversed(coeffs):
-        total = (total * x + a) % spec.BLS_MODULUS
-    return total % spec.BLS_MODULUS
+        total = total * x + a
+    return total
 
 
 def get_poly_in_both_forms(spec, rng=None):
@@ -56,16 +56,8 @@ def get_poly_in_both_forms(spec, rng=None):
         rng = random.Random(5566)
 
     roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
-
-    coeffs = [
-        rng.randint(0, spec.BLS_MODULUS - 1)
-        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
-    ]
-
-    evals = [
-        eval_poly_in_coeff_form(spec, coeffs, int(z))
-        for z in roots_of_unity_brp
-    ]
+    coeffs = [spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    evals = [eval_poly_in_coeff_form(spec, coeffs, z) for z in roots_of_unity_brp]
 
     return coeffs, evals
 

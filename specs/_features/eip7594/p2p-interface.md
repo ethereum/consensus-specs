@@ -14,6 +14,7 @@
   - [Containers](#containers)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
+      - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
@@ -64,16 +65,35 @@ class DataColumnIdentifier(Container):
 
 ### Helpers
 
+##### `verify_data_column_sidecar`
+
+```python
+def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the data column sidecar is valid.
+    """
+    # The sidecar index must be within the valid range
+    if sidecar.index >= NUMBER_OF_COLUMNS:
+        return False
+
+    # A sidecar for zero blobs is invalid
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
+    # The column length must be equal to the number of commitments/proofs
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
+        return False
+
+    return True
+```
+
 ##### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct.
+    Verify if the KZG proofs are correct.
     """
-    assert sidecar.index < NUMBER_OF_COLUMNS
-    assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
-
     # The column index also represents the cell index
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
@@ -148,7 +168,7 @@ The *type* of the payload of this topic is `DataColumnSidecar`.
 
 The following validations MUST pass before forwarding the `sidecar: DataColumnSidecar` on the network, assuming the alias `block_header = sidecar.signed_block_header.message`:
 
-- _[REJECT]_ The sidecar's index is consistent with `NUMBER_OF_COLUMNS` -- i.e. `sidecar.index < NUMBER_OF_COLUMNS`.
+- _[REJECT]_ The sidecar is valid as verified by `verify_data_column_sidecar(sidecar)`.
 - _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
