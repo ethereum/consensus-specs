@@ -28,12 +28,12 @@ def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     address = b'\x22' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     validator_pubkey = state.validators[validator_index].pubkey
     withdrawal_request = spec.WithdrawalRequest(
@@ -57,9 +57,10 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -99,10 +100,10 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     # block_1 contains a BTEC operation of the given validator
     address = b'\x22' * 20
@@ -146,12 +147,12 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     address = b'\x22' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     # CL-Exit
     signed_voluntary_exits = prepare_signed_exits(spec, state, indices=[validator_index])

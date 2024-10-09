@@ -41,6 +41,20 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
         (min, min + (hys_inc * div * 2), min + (2 * inc), "exact two step balance increment"),
         (min, min + (hys_inc * div * 2) + 1, min + (2 * inc), "over two steps, round down"),
     ]
+
+    if with_compounding_credentials:
+        min = spec.MIN_ACTIVATION_BALANCE
+        cases = cases + [
+            (min, min + (hys_inc * up), min, "bigger balance, but not high enough"),
+            (min, min + (hys_inc * up) + 1, min + inc, "bigger balance, high enough, but small step"),
+            (min, min + (hys_inc * div * 2) - 1, min + inc, "bigger balance, high enough, close to double step"),
+            (min, min + (hys_inc * div * 2), min + (2 * inc), "exact two step balance increment"),
+            (min, min + (hys_inc * div * 2) + 1, min + (2 * inc), "over two steps, round down"),
+            (min, min * 2 + 1, min * 2, "top up or consolidation doubling the balance"),
+            (min, min * 2 - 1, min * 2 - spec.EFFECTIVE_BALANCE_INCREMENT,
+                "top up or consolidation almost doubling the balance"),
+        ]
+
     current_epoch = spec.get_current_epoch(state)
     for i, (pre_eff, bal, _, _) in enumerate(cases):
         assert spec.is_active_validator(state.validators[i], current_epoch)
