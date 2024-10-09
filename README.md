@@ -24,6 +24,7 @@ Features are researched and developed in parallel, and then consolidated into se
 | 4 | **Deneb** | `269568` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/deneb/beacon-chain.md)</li><li>[Deneb fork](specs/deneb/fork.md)</li><li>[Polynomial commitments](specs/deneb/polynomial-commitments.md)</li><li>[Fork choice changes](specs/deneb/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/deneb/light-client/sync-protocol.md) ([fork](specs/deneb/light-client/fork.md), [full node](specs/deneb/light-client/full-node.md), [networking](specs/deneb/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/deneb/validator.md)</li><li>[P2P networking](specs/deneb/p2p-interface.md)</li></ul></ul> |
 
 ### In-development Specifications
+
 | Code Name or Topic | Specs | Notes |
 | - | - | - |
 | Electra | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[EIP-6110 fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [full node](specs/electra/light-client/full-node.md), [networking](specs/electra/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/electra/validator.md)</li></ul></ul> |
@@ -75,6 +76,7 @@ Documentation on the different components used during spec writing can be found 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
 
 ## Installation and Usage
+
 The consensus-specs repo can be used by running the tests locally or inside a docker container.
 
 To run the tests locally:

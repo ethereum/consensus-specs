@@ -613,6 +613,7 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
 ```
 
 #### Modified `validate_merge_block`
+
 `validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
 
 ```python

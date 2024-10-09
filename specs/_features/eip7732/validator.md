@@ -94,6 +94,7 @@ Up to `MAX_PAYLOAD_ATTESTATIONS`, aggregate payload attestations can be included
 * The proposer should only include payload attestations that are consistent with the current block they are proposing. That is, if the previous block had a payload, they should only include attestations with `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations that are not-consistent with their view.
 
 #### Blob sidecars
+
 The blob sidecars are no longer broadcast by the validator, and thus their construction is not necessary. This deprecates the corresponding sections from the honest validator guide in the Electra fork, moving them, albeit with some modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation

@@ -1627,6 +1627,7 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Eth1 data votes updates
+
 ```python
 def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -1672,6 +1673,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 ```
 
 #### Historical roots updates
+
 ```python
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator

@@ -412,12 +412,14 @@ def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint:
 _Implementing these helpers is optional_.
 
 ##### `is_head_late`
+
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
 ##### `is_shuffling_stable`
+
 ```python
 def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
