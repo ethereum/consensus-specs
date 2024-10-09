@@ -38,6 +38,19 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: list[bytes]  # [New in Electra]
+```
+
 ## Containers
 
 ### Modified Containers
@@ -57,6 +70,24 @@ class AggregateAndProof(Container):
 class SignedAggregateAndProof(Container):
     message: AggregateAndProof   # [Modified in Electra:EIP7549]
     signature: BLSSignature
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle and list[bytes] objects.
+    """
+    # pylint: disable=unused-argument
+    ...
 ```
 
 ## Block proposal
@@ -146,6 +177,25 @@ def prepare_execution_payload(state: BeaconState,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
     )
+```
+
+#### Execution Requests
+
+*[New in Electra]*
+
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one ssz list of requests as defined
+in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
+2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
+
+```python
+def get_execution_requests(execution_requests: list[bytes]) -> ExecutionRequests:
+    requests = ExecutionRequests()
+
+    requests.deposits = deserialize(execution_requests[0], DepositRequest)
+    requests.withdrawals = deserialize(execution_requests[0], WithdrawalRequest)
+    requests.consolidations = deserialize(execution_requests[0], ConsolidationRequest)
+
+    return requests
 ```
 
 ## Attesting
