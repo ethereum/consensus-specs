@@ -119,6 +119,7 @@ def objects_to_spec(preset_name: str,
     hardcoded_func_dep_presets = reduce(lambda obj, builder: {**obj, **builder.hardcoded_func_dep_presets(spec_object)}, builders, {})
     # Concatenate all strings
     imports =              reduce(lambda txt, builder: (txt + "\n\n" + builder.imports(preset_name)  ).strip("\n"), builders, "")
+    classes =              reduce(lambda txt, builder: (txt + "\n\n" + builder.classes()             ).strip("\n"), builders, "")
     preparations =         reduce(lambda txt, builder: (txt + "\n\n" + builder.preparations()        ).strip("\n"), builders, "")
     sundry_functions =     reduce(lambda txt, builder: (txt + "\n\n" + builder.sundry_functions()    ).strip("\n"), builders, "")
     # Keep engine from the most recent fork
@@ -154,6 +155,8 @@ def objects_to_spec(preset_name: str,
         constant_vars_spec,
         preset_vars_spec,
         config_spec,
+        # Custom classes which are not required to be SSZ containers.
+        classes,
         ordered_class_objects_spec,
         protocols_spec,
         functions_spec,

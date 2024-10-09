@@ -35,6 +35,16 @@ from pysetup.helpers import (
 )
 from pysetup.md_doc_paths import get_md_doc_paths
 
+# Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
+import warnings
+warnings.filterwarnings('ignore', message='Normalizing .* to .*')
+
+# Ignore 'running' and 'creating' messages
+import logging
+class PyspecFilter(logging.Filter):
+    def filter(self, record):
+        return not record.getMessage().startswith(('running ', 'creating '))
+logging.getLogger().addFilter(PyspecFilter())
 
 # NOTE: have to programmatically include third-party dependencies in `setup.py`.
 def installPackage(package: str):
@@ -251,9 +261,16 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                                 # marko parses `**X**` as a list containing a X
                                 description = description[0].children
 
+                    if isinstance(name, list):
+                        # marko parses `[X]()` as a list containing a X
+                        name = name[0].children
                     if isinstance(value, list):
                         # marko parses `**X**` as a list containing a X
                         value = value[0].children
+
+                    # Skip types that have been defined elsewhere
+                    if description is not None and description.startswith("<!-- predefined-type -->"):
+                        continue
 
                     if not _is_constant_id(name):
                         # Check for short type declarations
@@ -394,8 +411,6 @@ class PySpecCommand(Command):
     def finalize_options(self):
         """Post-process options."""
         if len(self.md_doc_paths) == 0:
-            print("no paths were specified, using default markdown file paths for pyspec"
-                  " build (spec fork: %s)" % self.spec_fork)
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
             if len(self.md_doc_paths) == 0:
                 raise Exception('no markdown files specified, and spec fork "%s" is unknown', self.spec_fork)
@@ -428,6 +443,7 @@ class PySpecCommand(Command):
         if not self.dry_run:
             dir_util.mkpath(self.out_dir)
 
+        print(f'Building pyspec: {self.spec_fork}')
         for (name, preset_paths, config_path) in self.parsed_build_targets:
             spec_str = build_spec(
                 spec_builders[self.spec_fork].fork,
@@ -492,7 +508,6 @@ class PyspecDevCommand(Command):
         self.run_command('pyspec')
 
     def run(self):
-        print("running build_py command")
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
@@ -561,7 +576,7 @@ setup(
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",
         MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.4",
-        "curdleproofs==0.1.1",
+        "py_arkworks_bls12381==0.3.8",
+        "curdleproofs==0.1.2",
     ]
 )
