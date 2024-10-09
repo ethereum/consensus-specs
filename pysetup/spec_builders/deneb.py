@@ -12,6 +12,21 @@ class DenebSpecBuilder(BaseSpecBuilder):
 from eth2spec.capella import {preset_name} as capella
 '''
 
+    @classmethod
+    def classes(cls):
+        return f'''
+class BLSFieldElement(bls.Scalar):
+    pass
+
+
+class Polynomial(list):
+    def __init__(self, evals: Optional[Sequence[BLSFieldElement]] = None):
+        if evals is None:
+            evals = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
+        if len(evals) != FIELD_ELEMENTS_PER_BLOB:
+            raise ValueError("expected FIELD_ELEMENTS_PER_BLOB evals")
+        super().__init__(evals)
+'''
 
     @classmethod
     def preparations(cls):
