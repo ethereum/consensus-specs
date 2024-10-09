@@ -994,7 +994,7 @@ def notify_new_payload(self: ExecutionEngine,
                        parent_beacon_block_root: Root,
                        execution_requests_list: list[bytes]) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
     are valid with respect to ``self.execution_state``.
     """
     ...
