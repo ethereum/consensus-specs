@@ -23,7 +23,6 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-
 ## A. Make it executable for linter checks
 
 ### 1. Create a folder under `./specs/_features`

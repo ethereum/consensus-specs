@@ -29,7 +29,6 @@ Warning: this configuration is not definitive.
 | `EIP6800_FORK_VERSION` | `Version('0x05000000')` |
 | `EIP6800_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
-
 ## Helper functions
 
 ### Misc

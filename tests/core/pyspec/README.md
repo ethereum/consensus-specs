@@ -29,7 +29,6 @@ the distutils implementation of the `setup` runs `build`, which is extended to r
 but outputs into the standard `./build/lib` output.
 This enables the `consensus-specs` repository to be installed like any other python package.
 
-
 ## Py-tests
 
 These tests are not intended for client-consumption.
@@ -91,7 +90,6 @@ Building spec files from any markdown sources, to a custom location:
 
 Contributions are welcome, but consider implementing your idea as part of the spec itself first.
 The pyspec is not a replacement.
-
 
 ## License
 

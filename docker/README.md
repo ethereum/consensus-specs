@@ -3,7 +3,6 @@
 This dockerfile sets up the dependencies required to run consensus-spec tests. The docker image can be locally built with:
 - `docker build ./ -t $IMAGE_NAME -f ./docker/Dockerfile`
 
-
 Handy commands:
 - `docker run -it $IMAGE_NAME /bin/sh` will give you a shell inside the docker container to manually run any tests
 - `docker run $IMAGE_NAME make citest` will run the make citest command inside the docker container

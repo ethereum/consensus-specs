@@ -3,6 +3,7 @@
 This document defines the YAML format and structure used for consensus spec testing.
 
 ## Table of contents
+
 <!-- TOC -->
 
 * [About](#about)
@@ -46,11 +47,10 @@ Test formats:
 - [`ssz_static`](./ssz_static/README.md)
 - More formats are planned, see tracking issues for CI/testing
 
-
 ## Glossary
 
 - `generator`: a program that outputs one or more test-cases, each organized into a `config > runner > handler > suite` hierarchy.
-- `config`: tests are grouped by configuration used for spec presets. In addition to the standard configurations, 
+- `config`: tests are grouped by configuration used for spec presets. In addition to the standard configurations,
   `general` may be used as a catch-all for tests not restricted to one configuration. (E.g. BLS).
 - `type`: the specialization of one single `generator`. E.g. epoch processing.
 - `runner`: where a generator is a *"producer"*, this is the *"consumer"*.
@@ -59,10 +59,10 @@ Test formats:
   To facilitate this, you specify a `handler`: the runner can deal with the format by using the specified handler.
 - `suite`: a directory containing test cases that are coherent. Each `suite` under the same `handler` shares the same format.
   This is an organizational/cosmetic hierarchy layer.
-- `case`: a test case, a directory in a `suite`. A case can be anything in general, 
+- `case`: a test case, a directory in a `suite`. A case can be anything in general,
   but its format should be well-defined in the documentation corresponding to the `type` (and `handler`).
 - `case part`: a test case consists of different files, possibly in different formats, to facilitate the specific test case format better.
-  Optionally, a `meta.yaml` is included to declare meta-data for the test, e.g. BLS requirements. 
+  Optionally, a `meta.yaml` is included to declare meta-data for the test, e.g. BLS requirements.
 
 ## Test format philosophy
 
@@ -70,12 +70,12 @@ Test formats:
 
 The configuration constant types are:
 - Never changing: genesis data.
-- Changing, but reliant on old value: e.g. an epoch time may change, but if you want to do the conversion 
+- Changing, but reliant on old value: e.g. an epoch time may change, but if you want to do the conversion
   `(genesis data, timestamp) -> epoch number`, you end up needing both constants.
 - Changing, but kept around during fork transition: finalization may take a while,
   e.g. an executable has to deal with new deposits and old deposits at the same time. Another example may be economic constants.
 - Additional, backwards compatible: new constants are introduced for later phases.
-- Changing: there is a very small chance some constant may really be *replaced*. 
+- Changing: there is a very small chance some constant may really be *replaced*.
   In this off-chance, it is likely better to include it as an additional variable,
   and some clients may simply stop supporting the old one if they do not want to sync from genesis.
   The change of functionality goes through a phase of deprecation of the old constant, and eventually only the new constant is kept around in the config (when old state is not supported anymore).
@@ -92,7 +92,6 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 - Clients that are complete are expected to contribute to testing, seeking for better resources to get conformance with the spec, and other clients.
 - Clients that are not complete in functionality can choose to ignore suites that use certain test-runners, or specific handlers of these test-runners.
 - Clients that are on older versions can test their work based on older releases of the generated tests, and catch up with newer releases when possible.
-
 
 ## Test structure
 
@@ -152,12 +151,11 @@ Between all types of tests, a few formats are common:
 - **`.ssz_snappy`**: Like `.ssz`, but compressed with Snappy block compression.
   Snappy block compression is already applied to SSZ in consensus-layer gossip, available in client implementations, and thus chosen as compression method.
 
-
 #### Special output parts
 
 ##### `meta.yaml`
 
-If present (it is optional), the test is enhanced with extra data to describe usage. Specialized data is described in the documentation of the specific test format. 
+If present (it is optional), the test is enhanced with extra data to describe usage. Specialized data is described in the documentation of the specific test format.
 
 Common data is documented here:
 
@@ -181,7 +179,6 @@ The format matches that of the `mainnet_config.yaml` and `minimal_config.yaml`,
 see the [`/configs`](../../configs/README.md#format) documentation.
 Config values that are introduced at a later fork may be omitted from tests of previous forks.
 
-
 ## Config sourcing
 
 The constants configurations are located in:
@@ -198,14 +195,13 @@ And copied by CI for testing purposes to:
 
 The first `<config name>` is a directory, which contains exactly all tests that make use of the given config.
 
-
 ## Note for implementers
 
 The basic pattern for test-suite loading and running is:
 
 1. For a specific config, load it first (and only need to do so once),
     then continue with the tests defined in the config folder.
-2. Select a fork. Repeat for each fork if running tests for multiple forks.  
+2. Select a fork. Repeat for each fork if running tests for multiple forks.
 3. Select the category and specialization of interest (e.g. `operations > deposits`). Again, repeat for each if running all.
 4. Select a test suite. Or repeat for each.
 5. Select a test case. Or repeat for each.
@@ -213,4 +209,4 @@ The basic pattern for test-suite loading and running is:
 7. Run the test, as defined by the test format.
 
 Step 1 may be a step with compile time selection of a configuration, if desired for optimization.
-The base requirement is just to use the same set of constants, independent of the loading process. 
+The base requirement is just to use the same set of constants, independent of the loading process.

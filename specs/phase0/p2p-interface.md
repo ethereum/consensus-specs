@@ -1,15 +1,7 @@
 # Phase 0 -- Networking
 
-This document contains the networking specification for Phase 0.
-
-It consists of four main sections:
-
-1. A specification of the network fundamentals.
-2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
-3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
-
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -113,6 +105,17 @@ It consists of four main sections:
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Phase 0.
+
+It consists of four main sections:
+
+1. A specification of the network fundamentals.
+2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+3. The rationale and further explanation for the design choices made in the previous two sections.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -393,7 +396,6 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
-
 ###### `voluntary_exit`
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary validator exits to proposers on the network.
@@ -467,8 +469,6 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
-
-
 
 ##### Attestations and Aggregation
 
@@ -1300,7 +1300,6 @@ Some examples of where messages could be duplicated:
   does not provide enough responsiveness during adverse conditions.
 - `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
   Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
-
 
 #### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 

@@ -1,9 +1,5 @@
 # Deneb -- Networking
 
-This document contains the consensus-layer networking specification for Deneb.
-
-The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -40,6 +36,12 @@ The specification of these changes continues in the same format as the network s
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the consensus-layer networking specification for Deneb.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
 

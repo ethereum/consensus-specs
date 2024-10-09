@@ -7,13 +7,12 @@ Any issues with the generators and/or generated tests should be filed in the rep
 
 On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
 
-An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
+An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
@@ -24,8 +23,6 @@ An automated nightly tests release system, with a config filter applied, is bein
 - [How to remove a test generator](#how-to-remove-a-test-generator)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-
 
 ## How to run generators
 
@@ -39,7 +36,7 @@ Prerequisites:
 This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../consensus-spec-tests/tests`).
 
 ```bash
-make clean 
+make clean
 ```
 
 ### Running all test generators
@@ -51,7 +48,6 @@ make -j 4 generate_tests
 ```
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
-
 
 ### Running a single generator
 
@@ -195,9 +191,9 @@ Recommendations:
 - You can have more than just one test provider.
 - Your test provider is free to output any configuration and combination of runner/handler/fork/case name.
 - You can split your test case generators into different Python files/packages; this is good for code organization.
-- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
+- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary.
 - You may be able to write your test case provider in a way where it does not make assumptions on constants.
-  If so, you can generate test cases with different configurations for the same scenario (see example). 
+  If so, you can generate test cases with different configurations for the same scenario (see example).
 - See [`tests/core/gen_helpers/README.md`](../core/pyspec/eth2spec/gen_helpers/README.md) for command line options for generators.
 
 ## How to add a new test generator
@@ -219,7 +215,6 @@ To add a new test generator that builds `New Tests`:
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
-
 
 ## How to remove a test generator
 
