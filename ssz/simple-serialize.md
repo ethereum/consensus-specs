@@ -359,7 +359,7 @@ While the serialization of `Profile[B]` is more compact, note that it is not for
 
 ## Implementations
 
-See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
+See https://github.com/ethereum/consensus-specs/issues/2138 for a list of current known implementations.
 
 ## JSON mapping
 
