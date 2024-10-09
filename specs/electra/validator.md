@@ -192,8 +192,8 @@ def get_execution_requests(execution_requests: list[bytes]) -> ExecutionRequests
     requests = ExecutionRequests()
 
     requests.deposits = deserialize(execution_requests[0], DepositRequest)
-    requests.withdrawals = deserialize(execution_requests[0], WithdrawalRequest)
-    requests.consolidations = deserialize(execution_requests[0], ConsolidationRequest)
+    requests.withdrawals = deserialize(execution_requests[1], WithdrawalRequest)
+    requests.consolidations = deserialize(execution_requests[2], ConsolidationRequest)
 
     return requests
 ```
