@@ -1,5 +1,6 @@
 from importlib import import_module
 from inspect import getmembers, isfunction
+from pkgutil import walk_packages
 from typing import Any, Callable, Dict, Iterable, Optional, List, Union
 
 from eth2spec.utils import bls
@@ -134,3 +135,69 @@ def combine_mods(dict_1, dict_2):
             dict_3[key].append(dict_1[key])
 
     return dict_3
+
+
+def check_mods(all_mods, pkg):
+    """
+    Raise an exception if there is a missing/unexpected module in all_mods.
+    """
+    def get_expected_modules(package, absolute=False):
+        """
+        Return all modules (which are not packages) inside the given package.
+        """
+        modules = []
+        eth2spec = import_module('eth2spec')
+        prefix = eth2spec.__name__ + '.'
+        for _, modname, ispkg in walk_packages(eth2spec.__path__, prefix):
+            s = package if absolute else f'.{package}.'
+            if s in modname and not ispkg:
+                modules.append(modname)
+        return modules
+
+    mods = []
+    for fork in all_mods:
+        for mod in all_mods[fork].values():
+            # If this key has a single value, normalize to list.
+            if isinstance(mod, str):
+                mod = [mod]
+
+            # For each submodule, check if it is package.
+            # This is a "trick" we do to reuse a test format.
+            for sub in mod:
+                is_package = '.test_' not in sub
+                if is_package:
+                    mods.extend(get_expected_modules(sub, absolute=True))
+                else:
+                    mods.append(sub)
+
+    problems = []
+    expected_mods = get_expected_modules(pkg)
+    if mods != expected_mods:
+        for e in expected_mods:
+            # Skip forks which are not in all_mods.
+            # The fork name is the 3rd item in the path.
+            fork = e.split('.')[2]
+            if fork not in all_mods:
+                continue
+            # Skip modules in the unittests package.
+            # These are not associated with generators.
+            if '.unittests.' in e:
+                continue
+            # The expected module is not in our list of modules.
+            # Add it to our list of problems.
+            if e not in mods:
+                problems.append('missing: ' + e)
+
+        for t in mods:
+            # Skip helper modules.
+            # These do not define test functions.
+            if t.startswith('eth2spec.test.helpers'):
+                continue
+            # There is a module not defined in eth2spec.
+            # Add it to our list of problems.
+            if t not in expected_mods:
+                print('unexpected:', t)
+                problems.append('unexpected: ' + t)
+
+    if problems:
+        raise Exception('[ERROR] module problems:\n ' + '\n '.join(problems))
