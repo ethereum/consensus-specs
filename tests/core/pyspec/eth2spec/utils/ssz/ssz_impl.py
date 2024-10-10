@@ -1,7 +1,7 @@
 from typing import TypeVar
 
 from remerkleable.basic import uint
-from remerkleable.core import View
+from remerkleable.core import Type, View
 from remerkleable.byte_arrays import Bytes32
 
 
@@ -9,8 +9,8 @@ def serialize(obj: View) -> bytes:
     return obj.encode_bytes()
 
 
-def deserialize(cls: View, data: bytes) -> object:
-    return cls.decode_bytes(data)
+def deserialize(typ: Type[View], data: bytes) -> View:
+    return typ.decode_bytes(data)
 
 
 def hash_tree_root(obj: View) -> Bytes32:
