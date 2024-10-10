@@ -8,16 +8,22 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
   - [Modified Containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
     - [Execution payload](#execution-payload)
+    - [Execution Requests](#execution-requests)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
@@ -38,6 +44,19 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]  # [New in Electra]
+```
+
 ## Containers
 
 ### Modified Containers
@@ -57,6 +76,24 @@ class AggregateAndProof(Container):
 class SignedAggregateAndProof(Container):
     message: AggregateAndProof   # [Modified in Electra:EIP7549]
     signature: BLSSignature
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    """
+    # pylint: disable=unused-argument
+    ...
 ```
 
 ## Block proposal
@@ -146,6 +183,24 @@ def prepare_execution_payload(state: BeaconState,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
     )
+```
+
+#### Execution Requests
+
+*[New in Electra]*
+
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined
+in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
+2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
+
+```python
+def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequests:
+    deposits = ssz_deserialize(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], execution_requests[0])
+    withdrawals = ssz_deserialize(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], execution_requests[1])
+    consolidations = ssz_deserialize(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                                     execution_requests[2])
+
+    return ExecutionRequests(deposits, withdrawals, consolidations)
 ```
 
 ## Attesting
