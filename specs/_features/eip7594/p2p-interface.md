@@ -223,7 +223,7 @@ Requests sidecars by block root and index.
 The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
 It may be less in the case that the responding peer is missing blocks or sidecars.
 
-Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
 
 No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
 
@@ -269,7 +269,7 @@ Response Content:
 
 Requests data column sidecars in the slot range `[start_slot, start_slot + count)` of the given `columns`, leading up to the current head block as selected by fork choice.
 
-Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
 
 `DataColumnSidecarsByRange` is primarily used to sync data columns that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` window.
 
