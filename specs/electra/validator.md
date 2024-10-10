@@ -90,7 +90,7 @@ has been built since the corresponding call to `notify_forkchoice_updated` metho
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle and Sequence[bytes] objects.
+    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
     """
     # pylint: disable=unused-argument
     ...
