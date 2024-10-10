@@ -194,7 +194,7 @@ in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each elemen
 2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
 
 ```python
-def get_execution_requests(execution_requests: list[bytes]) -> ExecutionRequests:
+def get_execution_requests(execution_requests: List[bytes]) -> ExecutionRequests:
     deposits = deserialize(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], execution_requests[0])
     withdrawals = deserialize(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], execution_requests[1])
     consolidations = deserialize(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD], execution_requests[2])
