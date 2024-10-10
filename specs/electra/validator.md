@@ -189,13 +189,11 @@ in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each elemen
 
 ```python
 def get_execution_requests(execution_requests: list[bytes]) -> ExecutionRequests:
-    requests = ExecutionRequests()
+    deposits = deserialize(DepositRequest, execution_requests[0])
+    withdrawals = deserialize(WithdrawalRequest, execution_requests[1])
+    consolidations = deserialize(ConsolidationRequest, execution_requests[2])
 
-    requests.deposits = deserialize(execution_requests[0], DepositRequest)
-    requests.withdrawals = deserialize(execution_requests[1], WithdrawalRequest)
-    requests.consolidations = deserialize(execution_requests[2], ConsolidationRequest)
-
-    return requests
+    return ExecutionRequests(deposits, withdrawals, consolidations)
 ```
 
 ## Attesting
