@@ -10,7 +10,7 @@ if __name__ == "__main__":
         'single_merkle_proof',
     ]}
     electra_mods = deneb_mods
-    eip_7594_mods = combine_mods(_new_eip7594_mods, deneb_mods)
+    eip_7594_mods = combine_mods(_new_eip7594_mods, electra_mods)
 
     all_mods = {
         DENEB: deneb_mods,
