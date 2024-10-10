@@ -86,9 +86,9 @@ A detailed analysis of the calculation of the weak subjectivity period is made i
 ```python
 def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     """
-    Returns the weak subjectivity period for the current ``state``. 
+    Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:
-        - validator set churn (bounded by ``get_validator_churn_limit()`` per epoch), and 
+        - validator set churn (bounded by ``get_validator_churn_limit()`` per epoch), and
         - validator balance top-ups (bounded by ``MAX_DEPOSITS * SLOTS_PER_EPOCH`` per epoch).
     A detailed calculation can be found at:
     https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf
@@ -113,7 +113,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
         ws_period += (
             3 * N * D * t // (200 * Delta * (T - t))
         )
-    
+
     return ws_period
 ```
 

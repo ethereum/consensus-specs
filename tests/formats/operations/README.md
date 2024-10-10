@@ -24,7 +24,6 @@ An SSZ-snappy encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
-
 ## Condition
 
 A handler of the `operations` test-runner should process these cases,

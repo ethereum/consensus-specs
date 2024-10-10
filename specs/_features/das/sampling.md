@@ -22,7 +22,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Data Availability Sampling
 
 TODO: Summary of Data Availability problem
@@ -44,7 +43,6 @@ TODO
 #### Quick rotation: Sampling
 
 TODO
-
 
 ### DAS during network instability
 

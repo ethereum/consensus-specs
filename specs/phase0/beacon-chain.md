@@ -1,6 +1,7 @@
 # Phase 0 -- The Beacon Chain
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -1420,24 +1421,20 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
 
-
 ```python
 def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> Gwei:
     return Gwei(get_base_reward(state, attesting_index) // PROPOSER_REWARD_QUOTIENT)
 ```
-
 
 ```python
 def get_finality_delay(state: BeaconState) -> uint64:
     return get_previous_epoch(state) - state.finalized_checkpoint.epoch
 ```
 
-
 ```python
 def is_in_inactivity_leak(state: BeaconState) -> bool:
     return get_finality_delay(state) > MIN_EPOCHS_TO_INACTIVITY_PENALTY
 ```
-
 
 ```python
 def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
@@ -1630,6 +1627,7 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Eth1 data votes updates
+
 ```python
 def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -1675,6 +1673,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 ```
 
 #### Historical roots updates
+
 ```python
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator

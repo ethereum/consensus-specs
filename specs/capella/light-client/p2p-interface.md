@@ -1,7 +1,5 @@
 # Capella Light Client -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->

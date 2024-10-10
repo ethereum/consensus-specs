@@ -27,7 +27,6 @@ This document describes the process of the Capella upgrade.
 | `CAPELLA_FORK_VERSION` | `Version('0x03000000')` |
 | `CAPELLA_FORK_EPOCH` | `Epoch(194048)` (April 12, 2023, 10:27:35pm UTC) |
 
-
 ## Helper functions
 
 ### Misc

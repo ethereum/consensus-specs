@@ -124,7 +124,6 @@ To obtain an execution payload, a block proposer building a block on top of a `s
     * `finalized_block_hash` is the block hash of the latest finalized execution payload (`Hash32()` if none yet finalized)
     * `suggested_fee_recipient` is the value suggested to be used for the `fee_recipient` field of the execution payload
 
-
 ```python
 def prepare_execution_payload(state: BeaconState,
                               safe_block_hash: Hash32,

@@ -13,11 +13,9 @@ reveal_deadlines_setting: int  -- see general test-format spec.
 blocks_count: int              -- the number of blocks processed in this test.
 ```
 
-
 ### `pre.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state before running the block transitions.
-
 
 ### `blocks_<index>.ssz_snappy`
 
@@ -29,7 +27,6 @@ Each file is a SSZ-snappy encoded `SignedBeaconBlock`.
 ### `post.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
-
 
 ## Condition
 

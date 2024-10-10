@@ -3,14 +3,13 @@
 # <FORK_NAME> -- The Beacon Chain
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
-
-
 
 ## Introduction
 
@@ -27,7 +26,6 @@
 | `<CONSTANT_NAME>` | `<VALUE>`` |
 
 ## Preset
-
 
 ### [CATEGORY OF PRESETS]
 
@@ -64,12 +62,8 @@ class CONTAINER_NAME(Container):
 
 ### Epoch processing
 
-
 ### Block processing
 
-    
-
-    
 ## Testing
 
 *Note*: The function `initialize_beacon_state_from_eth1` is modified for pure <FORK_NAME> testing only.

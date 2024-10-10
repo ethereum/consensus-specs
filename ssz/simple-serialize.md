@@ -1,6 +1,7 @@
 # SimpleSerialize (SSZ)
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -40,6 +41,7 @@
 | `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
 ## Typing
+
 ### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
@@ -87,6 +89,7 @@ For convenience we alias:
 Aliases are semantically equivalent to their underlying type and therefore share canonical representations both in SSZ and in related formats.
 
 ### Default values
+
 Assuming a helper function `default(type)` which returns the default value for `type`, we can recursively define the default value for all types.
 
 | Type | Default Value |
