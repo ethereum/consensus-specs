@@ -189,7 +189,7 @@ def prepare_execution_payload(state: BeaconState,
 
 *[New in Electra]*
 
-1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one ssz list of requests as defined
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined
 in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
 2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
 
