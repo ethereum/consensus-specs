@@ -1146,9 +1146,9 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    deposit_bytes = serialize(execution_requests.deposits)
-    withdrawal_bytes = serialize(execution_requests.withdrawals)
-    consolidation_bytes = serialize(execution_requests.consolidations)
+    deposit_bytes = ssz_serialize(execution_requests.deposits)
+    withdrawal_bytes = ssz_serialize(execution_requests.withdrawals)
+    consolidation_bytes = ssz_serialize(execution_requests.consolidations)
 
     return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
 ```
