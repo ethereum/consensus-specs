@@ -8,8 +8,10 @@ from remerkleable.byte_arrays import Bytes32
 def serialize(obj: View) -> bytes:
     return obj.encode_bytes()
 
+
 def deserialize(cls: View, data: bytes) -> object:
     return cls.decode_bytes(data)
+
 
 def hash_tree_root(obj: View) -> Bytes32:
     return Bytes32(obj.get_backing().merkle_root())
