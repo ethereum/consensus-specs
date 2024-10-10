@@ -237,7 +237,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     raise
 
                 if parent_class:
-                    assert parent_class == "Container"
+                    assert parent_class in ["Container", "StableContainer", "Profile"]
                 # NOTE: trim whitespace from spec
                 ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
             else:
@@ -571,7 +571,7 @@ setup(
         "pycryptodome>=3.19.1",
         "py_ecc==6.0.0",
         "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.28",
+        "remerkleable @ git+https://github.com/etan-status/remerkleable@dev/etan/sc-default",
         "trie==2.0.2",
         RUAMEL_YAML_VERSION,
         "lru-dict==1.2.0",
