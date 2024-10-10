@@ -54,7 +54,7 @@ class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
     blobs_bundle: BlobsBundle
-    execution_requests: list[bytes]  # [New in Electra]
+    execution_requests: List[bytes]  # [New in Electra]
 ```
 
 ## Containers
@@ -90,7 +90,7 @@ has been built since the corresponding call to `notify_forkchoice_updated` metho
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle and list[bytes] objects.
+    Return ExecutionPayload, uint256, BlobsBundle and List[bytes] objects.
     """
     # pylint: disable=unused-argument
     ...
