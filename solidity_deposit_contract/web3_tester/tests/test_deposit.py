@@ -2,7 +2,7 @@ from random import randint
 import pytest
 import eth_utils
 
-from eth2spec.phase0.spec import DepositData
+from eth2spec.phase0.mainnet import DepositData
 from eth2spec.utils.ssz.ssz_typing import List
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
@@ -119,7 +119,7 @@ def test_deposit_inputs(registration_contract,
 
 
 def test_deposit_event_log(registration_contract, a0, w3):
-    log_filter = registration_contract.events.DepositEvent.createFilter(
+    log_filter = registration_contract.events.DepositEvent.create_filter(
         fromBlock='latest',
     )
     deposit_amount_list = [randint(MIN_DEPOSIT_AMOUNT, FULL_DEPOSIT_AMOUNT * 2) for _ in range(3)]
@@ -154,7 +154,7 @@ def test_deposit_event_log(registration_contract, a0, w3):
 
 
 def test_deposit_tree(registration_contract, w3, assert_tx_failed):
-    log_filter = registration_contract.events.DepositEvent.createFilter(
+    log_filter = registration_contract.events.DepositEvent.create_filter(
         fromBlock='latest',
     )
 
@@ -178,7 +178,7 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed):
         tx_hash = registration_contract.functions.deposit(
             *deposit_input,
         ).transact({"value": deposit_amount_list[i] * eth_utils.denoms.gwei})
-        receipt = w3.eth.getTransactionReceipt(tx_hash)
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
         print("deposit transaction consumes %d gas" % receipt['gasUsed'])
 
         logs = log_filter.get_new_entries()
