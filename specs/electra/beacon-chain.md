@@ -994,7 +994,7 @@ def notify_new_payload(self: ExecutionEngine,
                        parent_beacon_block_root: Root,
                        execution_requests_list: list[bytes]) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1290,11 +1290,12 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     validator = Validator(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
+        effective_balance=Gwei(0),
+        slashed=False,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=Gwei(0),
     )
 
     # [Modified in Electra:EIP7251]
