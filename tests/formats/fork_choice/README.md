@@ -90,7 +90,7 @@ The parameter that is required for executing `on_block(store, block)`.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
-}  
+}
 ```
 
 The file is located in the same folder (see below).
