@@ -69,6 +69,18 @@ jobs:
       - name: Run linter for test generators
         run: make lint_generators
 
+  whitespace:
+    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check for trailing whitespace
+        run: |
+          if git grep -n '[[:blank:]]$'; then
+            echo "Trailing whitespace found. Please fix it."
+            exit 1
+          fi
+
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     needs: [lint,codespell,table_of_contents]
