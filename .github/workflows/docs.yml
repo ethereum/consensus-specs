@@ -3,7 +3,7 @@ name: Publish docs
 on:
   push:
     branches:
-      - master 
+      - master
 permissions:
   contents: write
 jobs:
