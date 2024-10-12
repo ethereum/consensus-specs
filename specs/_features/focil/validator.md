@@ -114,3 +114,7 @@ def get_inclusion_list_signature(
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
 ```
+
+## Modified attester duty
+
+Attesters should not vote for the head block if `validate_inclusion_lists` of the head block returns false. 

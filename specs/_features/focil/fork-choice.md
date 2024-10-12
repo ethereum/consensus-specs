@@ -49,46 +49,22 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    inclusion_lists: List[Transaction]  # [New in FOCIL]
-    
-#### Modified `get_head`
-**Note:** `get_head` is modified to use `validate_inclusion_lists` as filter for head.
-
-```python
-def get_head(store: Store) -> Root:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_block_tree(store)
-    # Execute the LMD-GHOST fork choice
-    head = store.justified_checkpoint.root
-    while True:
-        children = [
-            root for root in blocks.keys()
-            if blocks[root].parent_root == head
-        ]
-        if len(children) == 0:
-            return head
-        # Sort by latest attesting balance with ties broken lexicographically
-        # Ties broken by favoring block with lexicographically higher root
-        head = max(
-            children, 
-            key=lambda root: (get_weight(store, root), root) 
-            0 if validate_inclusion_lists(store, store.inclusion_list_transactions, blocks[root].body.execution_payload) else root # [New in FOCIL]
-)```
+    inclusion_lists: List[Transaction]  # [New in FOCIL
 
 
 ### New `on_local_inclusion_list`
 
 `on_local_inclusion_list` is called to import `signed_local_inclusion_list` to the fork choice store.
-
 ```python
 def on_inclusion_list(
         store: Store, signed_inclusion_list: SignedLocalInclusionList) -> None:
     """
-    ``on_local_inclusion_list`` verify the inclusion list before import it to fork choice store.
+    ``on_local_inclusion_list`` verify the inclusion list before importing it to fork choice store.
+    If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
     """
     message = signed_inclusion_list.message
-    # Verify inclusion list slot is bouded to the current slot
-    assert get_current_slot(store) != message.slot
+    # Verify inclusion list slot is bounded to the current slot
+    assert get_current_slot(store) == message.slot
 
     state = store.block_states[message.beacon_block_root]
     ilc = get_inclusion_list_committee(state, message.slot)
@@ -96,8 +72,19 @@ def on_inclusion_list(
     assert message.validator_index in ilc
    
     # Verify inclusion list signature
-    assert is_valid_local_inclusion_list_signature(state, signed_inclusion_list) 
+    assert is_valid_local_inclusion_list_signature(state, signed_inclusion_list)
 
-    if message.transaction not in store.inclusion_lists:
-        store.inclusion_lists.append(message.transaction)    
+    # Check if an inclusion list with the same slot and validator index exists
+    existing_inclusion_list = next(
+        (il for il in store.inclusion_lists 
+         if il.slot == message.slot and il.validator_index == message.validator_index),
+        None
+    )
+    
+    # If such an inclusion list exists, remove it
+    if existing_inclusion_list:
+        store.inclusion_lists.remove(existing_inclusion_list)
+    else:
+        # If no such inclusion list exists, add the new one
+        store.inclusion_lists.append(message)
 ```

@@ -38,15 +38,13 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
 *Note:* This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
 
-## Constants
+## Preset
 
 ### Domain types
 
 | Name | Value |
 | - | - |
 | `DOMAIN_IL_COMMITTEE`       | `DomainType('0x0C000000')`  # (New in FOCIL)|
-
-## Preset
 
 ### Inclusion List Committee
 

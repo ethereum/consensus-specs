@@ -19,6 +19,9 @@ This document contains the consensus-layer networking specification for FOCIL.
 | - | - | :-: | :-: |
 | `LOCAL_INCLUSION_LIST_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
 
+### Configuration
+
+| `MAX_REQUEST_INCLUSION_LIST` | `2**4` (= 16) | Maximum number of inclusion list in a single request |
 
 ### The gossip domain: gossipsub
 
@@ -46,3 +49,34 @@ The following validations MUST pass before forwarding the `local_inclusion_list`
 - _[IGNORE]_ The block hash `message.parent_block_hash` is a known execution payload in fork choice.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
 - _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is based from `message.parent_block_root` to processing the block up to the current slot as determined by the fork choice. 
+
+### The Req/Resp domain
+
+#### Messages
+
+##### InclusionListByCommitteeIndices v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/inclusion_list_by_committee_indices/1/`
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type                           |
+|------------------------|------------------------------------------|
+| `FOCIL_FORK_VERSION` | `focil.SignedInclusionList` |
+
+Request Content:
+```
+(
+  slot: Slot
+  committee_indices: Bitvector[IL_COMMITTEE_SIZE]
+)
+```
+
+Response Content:
+```
+(
+  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+)
+```
