@@ -42,7 +42,7 @@ A test-runner can implement the following assertions:
     - Serialization: After parsing the `value`, SSZ-serialize it: the output should match `serialized`
     - Deserialization: SSZ-deserialize the `serialized` value, and see if it matches the parsed `value`
 - If YAML decoding of SSZ objects is not supported by the implementation:
-    - Serialization in 2 steps: deserialize `serialized`, then serialize the result, 
+    - Serialization in 2 steps: deserialize `serialized`, then serialize the result,
        and verify if the bytes match the original `serialized`.
 - Hash-tree-root: After parsing the `value` (or deserializing `serialized`), Hash-tree-root it: the output should match `root`
 
