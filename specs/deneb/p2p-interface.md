@@ -317,7 +317,7 @@ Implementers are encouraged to leverage this method to increase the likelihood o
 
 When clients use local execution layer to recover missing blobs relative to the current slot, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
 - publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
-- update gossip rule related data structures (ie update the anti-equivocation cache).
+- update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ##### BlobSidecarsByRange v1
 
