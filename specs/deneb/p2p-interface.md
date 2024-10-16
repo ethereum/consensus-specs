@@ -310,7 +310,8 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
 Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
-###### Blobs recovery via local execution layer client
+###### Blob retrieval via local execution layer client
+
 In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer (i.e. via `engine_getBlobsV1`)
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
