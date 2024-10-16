@@ -312,7 +312,7 @@ Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon 
 
 ###### Blob retrieval via local execution layer client
 
-In addition to `BlobSidecarsByRoot` requests, recent blobs recovery MAY also be done by querying the Execution Layer (i.e. via `engine_getBlobsV1`)
+In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
 When clients use local execution layer to recover missing blobs relative to the current slot, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
