@@ -21,7 +21,6 @@
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
   - [Vectors, containers, lists](#vectors-containers-lists)
-  - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Summaries and expansions](#summaries-and-expansions)
@@ -63,14 +62,12 @@
     * notation `Bitvector[N]`
 * **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
     * notation `Bitlist[N]`
-* **union**: union type containing one of the given subtypes
-    * notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
 
 *Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due to their different serialization requirements. Similarly, both `List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization efficiencies.
 
 ### Variable-size and fixed-size
 
-We recursively define "variable-size" types to be lists, unions, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
+We recursively define "variable-size" types to be lists, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Byte
 
@@ -98,7 +95,6 @@ Assuming a helper function `default(type)` which returns the default value for `
 | `Bitvector[N]` | `[False] * N` |
 | `List[type, N]` | `[]` |
 | `Bitlist[N]` | `[]` |
-| `Union[type_0, type_1, ...]` | `default(type_0)` |
 
 #### `is_zero`
 
@@ -108,7 +104,6 @@ An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it 
 
 - Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
 - Containers with no fields are illegal.
-- The `None` type option in a `Union` type is only legal as the first option (i.e. with index zero).
 
 ## Serialization
 
@@ -171,28 +166,6 @@ fixed_parts = [part if part != None else variable_offsets[i] for i, part in enum
 return b"".join(fixed_parts + variable_parts)
 ```
 
-### Union
-
-A `value` as `Union[T...]` type has properties `value.value` with the contained value, and `value.selector` which indexes the selected `Union` type option `T`.
-
-A `Union`:
-- May have multiple selectors with the same type.
-- Should not use selectors above 127 (i.e. highest bit is set), these are reserved for backwards compatible extensions.
-- Must have at least 1 type option.
-- May have `None` as first type option, i.e. `selector == 0`
-- Must have at least 2 type options if the first is `None`
-- Is always considered a variable-length type, even if all type options have an equal fixed-length.
-
-```python
-if value.value is None:
-    assert value.selector == 0
-    return b"\x00"
-else:
-    serialized_bytes = serialize(value.value)
-    serialized_selector_index = value.selector.to_bytes(1, "little")
-    return serialized_selector_index + serialized_bytes
-```
-
 ## Deserialization
 
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to.
@@ -204,14 +177,12 @@ Deserialization can be implemented using a recursive algorithm. The deserializat
   * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
 * Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
 * In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
-* In the case of unions, the first byte of the deserialization scope is deserialized as type selector, the remainder of the scope is deserialized as the selected type.
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
 - Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
-- An out-of-bounds selected index in an `Union`
 
 Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
@@ -252,8 +223,6 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
-* `mix_in_selector(hash_tree_root(value.value), value.selector)` if `value` is of union type, and `value.value` is not `None`
-* `mix_in_selector(Bytes32(), 0)` if `value` is of union type, and `value.value` is `None`
 
 ## Summaries and expansions
 
@@ -283,7 +252,6 @@ When decoding JSON data, all fields in the SSZ schema must be present with a val
 | `List[type, N]` | array | `[element, ...]` |
 | `List[byte, N]` | hex-byte-string | `"0x1122"` |
 | `Bitlist[N]` | hex-byte-string | `"0x1122"` |
-| `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }`  |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.
 
@@ -292,5 +260,3 @@ Aliases are encoded as their underlying type.
 `hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would appear in an SSZ stream.
 
 `List` and `Vector` of `byte` (and aliases thereof) are encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their SSZ-byte encodings to a `hex-byte-string`.
-
-`Union` is encoded as an object with a `selector` and `data` field, where the contents of `data` change according to the selector.
