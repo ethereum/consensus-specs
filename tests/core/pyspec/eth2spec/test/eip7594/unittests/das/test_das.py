@@ -6,7 +6,7 @@ from eth2spec.test.context import (
     with_config_overrides,
     with_eip7594_and_later,
 )
-from eth2spec.test.helpers.sharding import (
+from eth2spec.test.helpers.blob import (
     get_sample_blob,
 )
 
