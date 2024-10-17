@@ -298,7 +298,7 @@ def test_pending_withdrawals_with_effective_sweep_on_top(spec, state):
 
     # Set excess balance to requested amount times three,
     # so the validator is partially withdrawable after pending withdrawal is processed
-    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT * 3
+    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT * 2
     assert spec.is_partially_withdrawable_validator(
         state.validators[validator_index],
         state.balances[validator_index] - pending_withdrawal_0.amount - pending_withdrawal_1.amount
@@ -366,7 +366,7 @@ def test_pending_withdrawals_mixed_with_sweep_and_fully_withdrawable(spec, state
     num_partial_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 4
     num_full_withdrawals_comp = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 4
     num_partial_withdrawals_comp = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 4
-    num_pending_withdrawal_requests = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 4
+    num_pending_withdrawal_requests = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP // 2
 
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
         spec, state,
