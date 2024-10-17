@@ -7,17 +7,16 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Constants](#constants)
-  - [Domain types](#domain-types)
 - [Preset](#preset)
+  - [Domain types](#domain-types)
   - [Inclusion List Committee](#inclusion-list-committee)
   - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`LocalInclusionList`](#localinclusionlist)
-    - [`SignedLocalInclusionList`](#signedlocalinclusionlist)
+    - [`InclusionList`](#inclusionlist)
+    - [`SignedInclusionList`](#signedinclusionlist)
   - [Predicates](#predicates)
-    - [New `is_valid_local_inclusion_list_signature`](#new-is_valid_local_inclusion_list_signature)
+    - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
     - [`get_inclusion_list_committee`](#get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -62,10 +61,10 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 
 ### New containers
 
-#### `LocalInclusionList`
+#### `InclusionList`
 
 ```python
-class LocalInclusionList(Container):
+class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
     parent_root: Root
@@ -73,31 +72,31 @@ class LocalInclusionList(Container):
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
-#### `SignedLocalInclusionList`
+#### `SignedInclusionList`
 
 ```python
-class SignedLocalInclusionList(Container):
-    message: LocalInclusionList
+class SignedInclusionList(Container):
+    message: InclusionList
     signature: BLSSignature
 ```
 
 ### Predicates
 
-#### New `is_valid_local_inclusion_list_signature`
+#### New `is_valid_inclusion_list_signature`
 
 ```python
-def is_valid_local_inclusion_list_signature(
+def is_valid_inclusion_list_signature(
         state: BeaconState, 
-        signed_local_inclusion_list: SignedLocalInclusionList) -> bool:
+        signed_inclusion_list: SignedInclusionList) -> bool:
     """
-    Check if ``signed_local_inclusion_list`` has a valid signature
+    Check if ``signed_inclusion_list`` has a valid signature
     """
-    message = signed_local_inclusion_list.message
+    message = signed_inclusion_list.message
     index = message.validator_index
     pubkey = state.validators[index].pubkey
     domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(message.slot))
     signing_root = compute_signing_root(message, domain)
-    return bls.FastAggregateVerify(pubkey, signing_root, signed_local_inclusion_list.signature)
+    return bls.FastAggregateVerify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
 ### Beacon State accessors

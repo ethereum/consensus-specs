@@ -30,7 +30,7 @@ def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Tra
 ```
 
 ### Modified `Store` 
-**Note:** `Store` is modified to track the seen local inclusion lists.
+**Note:** `Store` is modified to track the seen inclusion lists.
 
 ```python
 @dataclass
@@ -52,14 +52,14 @@ class Store(object):
     inclusion_lists: List[Transaction]  # [New in FOCIL
 
 
-### New `on_local_inclusion_list`
+### New `on_inclusion_list`
 
-`on_local_inclusion_list` is called to import `signed_local_inclusion_list` to the fork choice store.
+`on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
 ```python
 def on_inclusion_list(
-        store: Store, signed_inclusion_list: SignedLocalInclusionList) -> None:
+        store: Store, signed_inclusion_list: SignedInclusionList) -> None:
     """
-    ``on_local_inclusion_list`` verify the inclusion list before importing it to fork choice store.
+    ``on_inclusion_list`` verify the inclusion list before importing it to fork choice store.
     If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
     """
     message = signed_inclusion_list.message
@@ -72,7 +72,7 @@ def on_inclusion_list(
     assert message.validator_index in ilc
    
     # Verify inclusion list signature
-    assert is_valid_local_inclusion_list_signature(state, signed_inclusion_list)
+    assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # Check if an inclusion list with the same slot and validator index exists
     existing_inclusion_list = next(

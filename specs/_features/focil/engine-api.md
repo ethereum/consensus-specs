@@ -33,7 +33,7 @@ Warning: This file should be placed in https://github.com/ethereum/execution-api
 
 | Name | Value |
 | - | - |
-| `LOCAL_INCLUSION_LIST_MAX_GAS` |  `uint64(4194304) = 2**22` |
+| `INCLUSION_LIST_MAX_GAS` |  `uint64(4194304) = 2**22` |
 
 ### PayloadStatusV2
 

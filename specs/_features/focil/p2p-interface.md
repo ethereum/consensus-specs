@@ -6,10 +6,14 @@ This document contains the consensus-layer networking specification for FOCIL.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Time parameters](#time-parameters)
+- [Configuration](#configuration)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
-      - [`local_inclusion_list`](#local_inclusion_list)
+      - [`inclusion_list`](#inclusion_list)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -17,7 +21,7 @@ This document contains the consensus-layer networking specification for FOCIL.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `LOCAL_INCLUSION_LIST_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
+| `inclusion_list_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
 
 ### Configuration
 
@@ -31,19 +35,19 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name                          | Message Type                                         |
 |-------------------------------|------------------------------------------------------|
-| `local_inclusion_list`    | `SignedLocalInclusionList` [New in FOCIL] |
+| `inclusion_list`    | `SignedInclusionList` [New in FOCIL] |
 
 ##### Global topics
 
 FOCIL introduces new global topics for inclusion list.
 
-###### `local_inclusion_list`
+###### `inclusion_list`
 
-This topic is used to propagate signed local inclusion list as `SignedLocalInclusionList`.
-The following validations MUST pass before forwarding the `local_inclusion_list` on the network, assuming the alias `message = signed_local_inclusion_list.message`:
+This topic is used to propagate signed inclusion list as `SignedInclusionList`.
+The following validations MUST pass before forwarding the `inclusion_list` on the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The slot `message.slot` is equal to current slot.
-- _[IGNORE]_ The current time is `LOCAL_INCLUSION_CUT_OFF` seconds into the slot.
+- _[IGNORE]_ The current time is `INCLUSION_LIST_CUT_OFF` seconds into the slot.
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index` and can be received no more than twice from the same validator index.
 - _[IGNORE]_ The block hash `message.parent_block_hash` is a known execution payload in fork choice.

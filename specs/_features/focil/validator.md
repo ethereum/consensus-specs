@@ -17,7 +17,8 @@
   - [Block proposal](#block-proposal)
     - [Update execution client with inclusion lists](#update-execution-client-with-inclusion-lists)
 - [New inclusion list committee duty](#new-inclusion-list-committee-duty)
-    - [Constructing a local inclusion list](#constructing-a-local-inclusion-list)
+    - [Constructing a signed inclusion list](#constructing-a-signed-inclusion-list)
+- [Modified attester duty](#modified-attester-duty)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -85,31 +86,31 @@ Proposers are still expected to propose `SignedBeaconBlock` at the beginning of 
 
 #### Update execution client with inclusion lists
 
-The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion lists that gathered since `LOCAL_INCLUSION_LIST_CUT_OFF`
+The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion lists that gathered since `inclusion_list_CUT_OFF`
 
 
 ## New inclusion list committee duty
 
-Some validators are selected to submit local inclusion list. Validators should call `get_ilc_assignment` at the beginning of an epoch to be prepared to submit their local inclusion list during the next epoch. 
+Some validators are selected to submit signed inclusion list. Validators should call `get_ilc_assignment` at the beginning of an epoch to be prepared to submit their inclusion list during the next epoch. 
 
-A validator should create and broadcast the `signed_inclusion_list` to the global `local_inclusion_list` subnet by the `LOCAL_INCLUSION_LIST_CUT_OFF` in the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
+A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by the `inclusion_list_CUT_OFF` in the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
 
-#### Constructing a local inclusion list
+#### Constructing a signed inclusion list
 
-The validator creates the `signed_local_inclusion_list` as follows:
-- First, the validator creates the `local_inclusion_list`.
-- Set `local_inclusion_list.slot` to the assigned slot returned by `get_ilc_assignment`.
-- Set `local_inclusion_list.validator_index` to the validator's index.
-- Set `local_inclusion_list.parent_hash` to the block hash of the fork choice head.
-- Set `local_inclusion_list.parent_root` to the block root of the fork choice head.
-- Set `local_inclusion_list.transactions` using the response from `engine_getInclusionListV1` from the execution layer client.
-- Sign the `local_inclusion_list` using the helper `get_inclusion_list_signature` and obtain the `signature`.
-- Set `signed_local_inclusion_list.message` to `local_inclusion_list`.
-- Set `signed_local_inclusion_list.signature` to `signature`.
+The validator creates the `signed_inclusion_list` as follows:
+- First, the validator creates the `inclusion_list`.
+- Set `inclusion_list.slot` to the assigned slot returned by `get_ilc_assignment`.
+- Set `inclusion_list.validator_index` to the validator's index.
+- Set `inclusion_list.parent_hash` to the block hash of the fork choice head.
+- Set `inclusion_list.parent_root` to the block root of the fork choice head.
+- Set `inclusion_list.transactions` using the response from `engine_getInclusionListV1` from the execution layer client.
+- Sign the `inclusion_list` using the helper `get_inclusion_list_signature` and obtain the `signature`.
+- Set `signed_inclusion_list.message` to `inclusion_list`.
+- Set `signed_inclusion_list.signature` to `signature`.
 
 ```python
 def get_inclusion_list_signature(
-        state: BeaconState, inclusion_list: LocalInclusionList, privkey: int) -> BLSSignature:
+        state: BeaconState, inclusion_list: InclusionList, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot))
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
