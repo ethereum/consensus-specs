@@ -1,12 +1,16 @@
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
     with_electra_and_later,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
     get_valid_attestation,
     sign_attestation,
+    build_attestation_data,
+    fill_aggregate_attestation,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
@@ -79,3 +83,30 @@ def test_invalid_nonset_committe_bits(spec, state):
     attestation.committee_bits[committee_index] = 0
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_electra_and_later
+@spec_state_test
+@with_presets([MINIMAL], "need multiple committees per slot")
+@always_bls
+def test_multiple_committees(spec, state):
+    attestation_data = build_attestation_data(spec, state, slot=state.slot, index=0)
+    attestation = spec.Attestation(data=attestation_data)
+
+    # fill the attestation with two committees and finally sign it
+    fill_aggregate_attestation(spec, state, attestation, signed=False, committee_index=0)
+    fill_aggregate_attestation(spec, state, attestation, signed=True, committee_index=1)
+
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    yield from run_attestation_processing(spec, state, attestation)
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_one_committee_with_gap(spec, state):
+    attestation = get_valid_attestation(spec, state, index=1, signed=True)
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    yield from run_attestation_processing(spec, state, attestation)
