@@ -93,8 +93,8 @@ def test_multiple_committees(spec, state):
     attestation_data = build_attestation_data(spec, state, slot=state.slot, index=0)
     attestation = spec.Attestation(data=attestation_data)
 
-    # fill the attestation with two committees and finally sign it
-    fill_aggregate_attestation(spec, state, attestation, signed=False, committee_index=0)
+    # fill the attestation with two committees
+    fill_aggregate_attestation(spec, state, attestation, signed=True, committee_index=0)
     fill_aggregate_attestation(spec, state, attestation, signed=True, committee_index=1)
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
