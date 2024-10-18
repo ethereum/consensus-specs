@@ -104,6 +104,7 @@ def test_multiple_committees(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+@with_presets([MINIMAL], "need multiple committees per slot")
 @always_bls
 def test_one_committee_with_gap(spec, state):
     attestation = get_valid_attestation(spec, state, index=1, signed=True)
