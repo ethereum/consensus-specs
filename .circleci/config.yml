@@ -191,7 +191,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Install Python3
-          command: sudo apt-get update && sudo apt-get install -y python3.12
+          command: sudo apt-get update && sudo apt-get install -y python3
       - run:
           name: Install doctoc
           command: sudo npm install -g doctoc@2.2.0
