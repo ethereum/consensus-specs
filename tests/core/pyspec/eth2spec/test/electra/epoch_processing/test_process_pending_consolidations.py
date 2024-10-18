@@ -302,3 +302,67 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     # Pending deposit to the source was not processed.
     # It should only be processed in the next epoch transition
     assert state.pending_deposits == [pending_deposit]
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_source_balance_less_than_effective(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    # append pending consolidation
+    state.pending_consolidations.append(
+        spec.PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+    # Set withdrawable epoch to current epoch to allow processing
+    state.validators[source_index].withdrawable_epoch = current_epoch
+    # Set the target withdrawal credential to eth1
+    eth1_withdrawal_credential = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    state.validators[target_index].withdrawal_credentials = eth1_withdrawal_credential
+    # Set the source balance to be less than effective_balance
+    pre_balance_source = state.validators[source_index].effective_balance - spec.EFFECTIVE_BALANCE_INCREMENT // 8
+    state.balances[source_index] = pre_balance_source
+
+    pre_balance_target = state.balances[target_index]
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
+
+    # Pending consolidation was successfully processed
+    assert state.balances[target_index] == pre_balance_target + pre_balance_source
+    assert state.balances[source_index] == 0
+    assert state.pending_consolidations == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_source_balance_greater_than_effective(spec, state):
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    # append pending consolidation
+    state.pending_consolidations.append(
+        spec.PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+    # Set withdrawable epoch to current epoch to allow processing
+    state.validators[source_index].withdrawable_epoch = current_epoch
+    # Set the target withdrawal credential to eth1
+    eth1_withdrawal_credential = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    state.validators[target_index].withdrawal_credentials = eth1_withdrawal_credential
+    # Set the source balance to be greater than effective_balance
+    pre_balance_source = state.validators[source_index].effective_balance + spec.EFFECTIVE_BALANCE_INCREMENT // 8
+    state.balances[source_index] = pre_balance_source
+
+    pre_balance_target = state.balances[target_index]
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
+
+    # Pending consolidation was successfully processed
+    assert state.balances[target_index] == (
+        pre_balance_target + spec.get_max_effective_balance(state.validators[source_index]))
+    assert state.balances[source_index] == (
+        pre_balance_source - spec.get_max_effective_balance(state.validators[source_index]))
+    assert state.pending_consolidations == []
