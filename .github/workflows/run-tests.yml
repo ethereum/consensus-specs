@@ -24,19 +24,6 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  table_of_contents:
-   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-   steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: ''
-      - name: Check table of contents
-        run: npm install -g doctoc@2.2.0 && make check_toc
-
   lint:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
     steps:
@@ -49,12 +36,16 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
+      - name: Install doctoc
+        run: npm install -g doctoc@2.2.0
+      - name: Install codespell
+        run: pip install 'codespell<3.0.0,>=2.0.0' --user
       - name: Run linter for pyspec
         run: make lint
 
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
-    needs: [lint,table_of_contents]
+    needs: [lint]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]

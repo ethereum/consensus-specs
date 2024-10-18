@@ -181,15 +181,6 @@ jobs:
           command: make test fork=eip7594
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  table_of_contents:
-    docker:
-      - image: circleci/node:10.16.3
-    working_directory: ~/specs-repo
-    steps:
-      - checkout
-      - run:
-          name: Check table of contents
-          command: sudo npm install -g doctoc@2.2.0 && make check_toc
   lint:
     docker:
       - image: cimg/python:3.12.4
@@ -198,6 +189,9 @@ jobs:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
+      - run:
+          name: Install doctoc
+          command: sudo npm install -g doctoc@2.2.0
       - run:
           name: Install codespell
           command: pip install 'codespell<3.0.0,>=2.0.0' --user
@@ -236,7 +230,6 @@ workflows:
       - test-eip7594:
           requires:
             - install_pyspec_test
-      - table_of_contents
       - lint:
           requires:
             - install_pyspec_test
