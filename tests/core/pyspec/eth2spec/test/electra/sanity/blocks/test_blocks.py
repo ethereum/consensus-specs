@@ -28,21 +28,21 @@ def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     address = b'\x22' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
+    yield 'pre', state
+
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_requests.withdrawals = [withdrawal_request]
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
@@ -57,9 +57,10 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -73,13 +74,13 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     block.body.bls_to_execution_changes = [signed_address_change]
 
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
-    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
+    block.body.execution_requests.withdrawals = [withdrawal_request]
 
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
@@ -99,10 +100,10 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
 
     # block_1 contains a BTEC operation of the given validator
     address = b'\x22' * 20
@@ -125,13 +126,13 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
 
     # block_2 contains an EL-Exit operation of the given validator
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block_2 = build_empty_block_for_next_slot(spec, state)
-    block_2.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
-    block_2.body.execution_payload.block_hash = compute_el_block_hash(spec, block_2.body.execution_payload)
+    block_2.body.execution_requests.withdrawals = [withdrawal_request]
+    block_2.body.execution_payload.block_hash = compute_el_block_hash(spec, block_2.body.execution_payload, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield 'blocks', [signed_block_1, signed_block_2]
@@ -146,25 +147,25 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    yield 'pre', state
-
     validator_index = 0
     address = b'\x22' * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
+    yield 'pre', state
+
     # CL-Exit
     signed_voluntary_exits = prepare_signed_exits(spec, state, indices=[validator_index])
     # EL-Exit
     validator_pubkey = state.validators[validator_index].pubkey
-    execution_layer_withdrawal_request = spec.ExecutionLayerWithdrawalRequest(
+    withdrawal_request = spec.WithdrawalRequest(
         source_address=address,
         validator_pubkey=validator_pubkey,
     )
     block = build_empty_block_for_next_slot(spec, state)
     block.body.voluntary_exits = signed_voluntary_exits
-    block.body.execution_payload.withdrawal_requests = [execution_layer_withdrawal_request]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_requests.withdrawals = [withdrawal_request]
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]

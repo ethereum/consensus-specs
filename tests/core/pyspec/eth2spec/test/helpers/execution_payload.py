@@ -3,16 +3,26 @@ from trie import HexaryTrie
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
+from eth2spec.test.helpers.keys import privkeys
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
-from eth2spec.test.helpers.forks import (
-    is_post_capella,
-    is_post_deneb,
-    is_post_electra,
-)
+from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb, is_post_eip7732
 
 
 def get_execution_payload_header(spec, execution_payload):
+    if is_post_eip7732(spec):
+        return spec.ExecutionPayloadHeader(
+            parent_block_hash=execution_payload.parent_hash,
+            parent_block_root=spec.Root(),  # TODO: Fix this
+            block_hash=execution_payload.block_hash,
+            gas_limit=execution_payload.gas_limit,
+            builder_index=spec.ValidatorIndex(0),  # TODO: Fix this
+            slot=spec.Slot(0),  # TODO: Fix this
+            value=spec.Gwei(0),  # TODO: Fix this
+            blob_kzg_commitments_root=spec.Root()  # TODO: Fix this
+        )
+
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
         fee_recipient=execution_payload.fee_recipient,
@@ -34,9 +44,6 @@ def get_execution_payload_header(spec, execution_payload):
     if is_post_deneb(spec):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
-    if is_post_electra(spec):
-        payload_header.deposit_receipts_root = spec.hash_tree_root(execution_payload.deposit_receipts)
-        payload_header.withdrawal_requests_root = spec.hash_tree_root(execution_payload.withdrawal_requests)
     return payload_header
 
 
@@ -58,11 +65,13 @@ def compute_el_header_block_hash(spec,
                                  payload_header,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
-                                 deposit_receipts_trie_root=None,
-                                 withdrawal_requests_root=None):
+                                 parent_beacon_block_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
+    if is_post_eip7732(spec):
+        return spec.Hash32()
+
     execution_payload_header_rlp = [
         # parent_hash
         (Binary(32, 32), payload_header.parent_hash),
@@ -101,15 +110,12 @@ def compute_el_header_block_hash(spec,
         # withdrawals_root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
     if is_post_deneb(spec):
-        # excess_blob_gas
+        # blob_gas_used
         execution_payload_header_rlp.append((big_endian_int, payload_header.blob_gas_used))
+        # excess_blob_gas
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
-    if is_post_electra(spec):
-        # deposit_receipts_root
-        assert deposit_receipts_trie_root is not None
-        execution_payload_header_rlp.append((Binary(32, 32), deposit_receipts_trie_root))
-        # withdrawal requests root
-        execution_payload_header_rlp.append((Binary(32, 32), withdrawal_requests_root))
+        # parent_beacon_root
+        execution_payload_header_rlp.append((Binary(32, 32), parent_beacon_block_root))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -136,8 +142,27 @@ def get_withdrawal_rlp(withdrawal):
     return encode(values, sedes)
 
 
+def get_deposit_request_rlp_bytes(deposit_request):
+    deposit_request_rlp = [
+        # pubkey
+        (Binary(48, 48), deposit_request.pubkey),
+        # withdrawal_credentials
+        (Binary(32, 32), deposit_request.withdrawal_credentials),
+        # amount
+        (big_endian_int, deposit_request.amount),
+        # pubkey
+        (Binary(96, 96), deposit_request.signature),
+        # index
+        (big_endian_int, deposit_request.index),
+    ]
+
+    sedes = List([schema for schema, _ in deposit_request_rlp])
+    values = [value for _, value in deposit_request_rlp]
+    return b"\x00" + encode(values, sedes)
+
+
 # https://eips.ethereum.org/EIPS/eip-7002
-def get_withdrawal_request_rlp(withdrawal_request):
+def get_withdrawal_request_rlp_bytes(withdrawal_request):
     withdrawal_request_rlp = [
         # source_address
         (Binary(20, 20), withdrawal_request.source_address),
@@ -147,43 +172,38 @@ def get_withdrawal_request_rlp(withdrawal_request):
 
     sedes = List([schema for schema, _ in withdrawal_request_rlp])
     values = [value for _, value in withdrawal_request_rlp]
-    return encode(values, sedes)
+    return b"\x01" + encode(values, sedes)
 
 
-def get_deposit_receipt_rlp(spec, deposit_receipt):
-    deposit_receipt_rlp = [
-        # pubkey
-        (Binary(48, 48), deposit_receipt.pubkey),
-        # withdrawal_credentials
-        (Binary(32, 32), deposit_receipt.withdrawal_credentials),
-        # amount
-        (big_endian_int, deposit_receipt.amount),
-        # pubkey
-        (Binary(96, 96), deposit_receipt.signature),
-        # index
-        (big_endian_int, deposit_receipt.index),
+# https://eips.ethereum.org/EIPS/eip-7251
+def get_consolidation_request_rlp_bytes(consolidation_request):
+    consolidation_request_rlp = [
+        # source_address
+        (Binary(20, 20), consolidation_request.source_address),
+        # source_pubkey
+        (Binary(48, 48), consolidation_request.source_pubkey),
+        # target_pubkey
+        (Binary(48, 48), consolidation_request.target_pubkey),
     ]
 
-    sedes = List([schema for schema, _ in deposit_receipt_rlp])
-    values = [value for _, value in deposit_receipt_rlp]
-    return encode(values, sedes)
+    sedes = List([schema for schema, _ in consolidation_request_rlp])
+    values = [value for _, value in consolidation_request_rlp]
+    return b"\x02" + encode(values, sedes)
 
 
-def compute_el_block_hash(spec, payload):
+def compute_el_block_hash_with_parent_root(spec, payload, parent_beacon_block_root):
+    if payload == spec.ExecutionPayload():
+        return spec.Hash32()
+
     transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
 
     withdrawals_trie_root = None
-    deposit_receipts_trie_root = None
-    withdrawal_requests_root = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
-    if is_post_electra(spec):
-        deposit_receipts_encoded = [get_deposit_receipt_rlp(spec, receipt) for receipt in payload.deposit_receipts]
-        deposit_receipts_trie_root = compute_trie_root_from_indexed_data(deposit_receipts_encoded)
-        withdrawal_requests_encoded = [get_withdrawal_request_rlp(request) for request in payload.withdrawal_requests]
-        withdrawal_requests_root = compute_trie_root_from_indexed_data(withdrawal_requests_encoded)
+    if not is_post_deneb(spec):
+        parent_beacon_block_root = None
 
     payload_header = get_execution_payload_header(spec, payload)
 
@@ -192,8 +212,53 @@ def compute_el_block_hash(spec, payload):
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
-        deposit_receipts_trie_root,
-        withdrawal_requests_root,
+        parent_beacon_block_root,
+    )
+
+
+def compute_el_block_hash(spec, payload, pre_state):
+    parent_beacon_block_root = None
+
+    if is_post_deneb(spec):
+        previous_block_header = pre_state.latest_block_header.copy()
+        if previous_block_header.state_root == spec.Root():
+            previous_block_header.state_root = pre_state.hash_tree_root()
+        parent_beacon_block_root = previous_block_header.hash_tree_root()
+
+    return compute_el_block_hash_with_parent_root(
+        spec, payload, parent_beacon_block_root)
+
+
+def compute_el_block_hash_for_block(spec, block):
+    return compute_el_block_hash_with_parent_root(
+        spec, block.body.execution_payload, block.parent_root)
+
+
+def build_empty_post_eip7732_execution_payload_header(spec, state):
+    if not is_post_eip7732(spec):
+        return
+    parent_block_root = hash_tree_root(state.latest_block_header)
+    return spec.ExecutionPayloadHeader(
+        parent_block_hash=state.latest_block_hash,
+        parent_block_root=parent_block_root,
+        block_hash=spec.Hash32(),
+        gas_limit=spec.uint64(0),
+        builder_index=spec.ValidatorIndex(0),
+        slot=state.slot,
+        value=spec.Gwei(0),
+        blob_kzg_commitments_root=spec.Root()
+    )
+
+
+def build_empty_signed_execution_payload_header(spec, state):
+    if not is_post_eip7732(spec):
+        return
+    message = build_empty_post_eip7732_execution_payload_header(spec, state)
+    privkey = privkeys[0]
+    signature = spec.get_execution_payload_header_signature(state, message, privkey)
+    return spec.SignedExecutionPayloadHeader(
+        message=message,
+        signature=signature,
     )
 
 
@@ -211,28 +276,26 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     payload = spec.ExecutionPayload(
         parent_hash=latest.block_hash,
         fee_recipient=spec.ExecutionAddress(),
-        state_root=latest.state_root,  # no changes to the state
         receipts_root=spec.Bytes32(bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
         logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
-        block_number=latest.block_number + 1,
         prev_randao=randao_mix,
-        gas_limit=latest.gas_limit,  # retain same limit
         gas_used=0,  # empty block, 0 gas
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        base_fee_per_gas=latest.base_fee_per_gas,  # retain same base_fee
         transactions=empty_txs,
     )
+    if not is_post_eip7732(spec):
+        payload.state_root = latest.state_root  # no changes to the state
+        payload.block_number = latest.block_number + 1
+        payload.gas_limit = latest.gas_limit  # retain same limit
+        payload.base_fee_per_gas = latest.base_fee_per_gas  # retain same base_fee
     if is_post_capella(spec):
         payload.withdrawals = get_expected_withdrawals(spec, state)
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
-    if is_post_electra(spec):
-        # just to be clear
-        payload.deposit_receipts = []
 
-    payload.block_hash = compute_el_block_hash(spec, payload)
+    payload.block_hash = compute_el_block_hash(spec, payload, state)
 
     return payload
 
@@ -245,9 +308,9 @@ def build_randomized_execution_payload(spec, state, rng):
     execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
         get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
     )
-    execution_payload.block_number = rng.randint(0, 10e10)
-    execution_payload.gas_limit = rng.randint(0, 10e10)
-    execution_payload.gas_used = rng.randint(0, 10e10)
+    execution_payload.block_number = rng.randint(0, int(10e10))
+    execution_payload.gas_limit = rng.randint(0, int(10e10))
+    execution_payload.gas_used = rng.randint(0, int(10e10))
     extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
     execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
         get_random_bytes_list(rng, extra_data_length)
@@ -260,7 +323,7 @@ def build_randomized_execution_payload(spec, state, rng):
         for _ in range(num_transactions)
     ]
 
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     return execution_payload
 

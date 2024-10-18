@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Set
 from pathlib import Path
 
 class BaseSpecBuilder(ABC):
@@ -12,6 +12,13 @@ class BaseSpecBuilder(ABC):
     def imports(cls, preset_name: str) -> str:
         """
         Import objects from other libraries.
+        """
+        return ""
+
+    @classmethod
+    def classes(cls) -> str:
+        """
+        Define special classes.
         """
         return ""
 
@@ -54,3 +61,11 @@ class BaseSpecBuilder(ABC):
     @classmethod
     def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
         return functions
+
+    @classmethod
+    def deprecate_constants(cls) -> Set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_presets(cls) -> Set[str]:
+        return set()

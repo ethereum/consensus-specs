@@ -22,6 +22,8 @@ def get_process_calls(spec):
         'charge_confirmed_header_fees',  # sharding
         'reset_pending_headers',  # sharding
         'process_eth1_data_reset',
+        'process_pending_deposits',  # electra
+        'process_pending_consolidations',  # electra
         'process_effective_balance_updates',
         'process_slashings_reset',
         'process_randao_mixes_reset',
@@ -34,8 +36,6 @@ def get_process_calls(spec):
             'process_participation_record_updates'
         ),
         'process_sync_committee_updates',  # altair
-        'process_full_withdrawals',  # capella
-        'process_partial_withdrawals',  # capella
         # TODO: add sharding processing functions when spec stabilizes.
     ]
 

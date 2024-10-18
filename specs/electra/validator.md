@@ -8,12 +8,22 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
+- [Containers](#containers)
+  - [Modified Containers](#modified-containers)
+    - [`AggregateAndProof`](#aggregateandproof)
+    - [`SignedAggregateAndProof`](#signedaggregateandproof)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
     - [Execution payload](#execution-payload)
+    - [Execution Requests](#execution-requests)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
@@ -28,11 +38,63 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Deneb -- Honest Validator](../../deneb/validator.md) guide.
+This document is an extension of the [Deneb -- Honest Validator](../deneb/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]  # [New in Electra]
+```
+
+## Containers
+
+### Modified Containers
+
+#### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    aggregator_index: ValidatorIndex
+    aggregate: Attestation  # [Modified in Electra:EIP7549]
+    selection_proof: BLSSignature
+```
+
+#### `SignedAggregateAndProof`
+
+```python
+class SignedAggregateAndProof(Container):
+    message: AggregateAndProof   # [Modified in Electra:EIP7549]
+    signature: BLSSignature
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    """
+    # pylint: disable=unused-argument
+    ...
+```
 
 ## Block proposal
 
@@ -80,7 +142,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ```python
 def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
-    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_receipts_start_index)
+    eth1_deposit_index_limit = min(state.eth1_data.deposit_count, state.deposit_requests_start_index)
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
@@ -121,6 +183,24 @@ def prepare_execution_payload(state: BeaconState,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
     )
+```
+
+#### Execution Requests
+
+*[New in Electra]*
+
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined
+in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
+2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
+
+```python
+def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequests:
+    deposits = ssz_deserialize(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], execution_requests[0])
+    withdrawals = ssz_deserialize(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], execution_requests[1])
+    consolidations = ssz_deserialize(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                                     execution_requests[2])
+
+    return ExecutionRequests(deposits, withdrawals, consolidations)
 ```
 
 ## Attesting

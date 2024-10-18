@@ -1,5 +1,7 @@
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
-from eth2spec.test.helpers.forks import is_post_whisk, is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.execution_payload import build_empty_signed_execution_payload_header
+from eth2spec.test.helpers.forks import is_post_whisk, is_post_altair, is_post_bellatrix, is_post_eip7732, \
+    is_post_electra
 from eth2spec.test.helpers.keys import privkeys, whisk_ks_initial, whisk_ks_final
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -117,8 +119,18 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
     if is_post_altair(spec):
         empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
+    if is_post_eip7732(spec):
+        signed_header = build_empty_signed_execution_payload_header(spec, state)
+        empty_block.body.signed_execution_payload_header = signed_header
+        return empty_block
+
     if is_post_bellatrix(spec):
         empty_block.body.execution_payload = build_empty_execution_payload(spec, state)
+
+    if is_post_electra(spec):
+        empty_block.body.execution_requests.deposits = []
+        empty_block.body.execution_requests.withdrawals = []
+        empty_block.body.execution_requests.consolidations = []
 
     if is_post_whisk(spec):
         # Whisk opening proof

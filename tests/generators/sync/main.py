@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, check_mods
 from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
@@ -16,5 +16,6 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
+    check_mods(all_mods, "sync")
 
     run_state_test_generators(runner_name="sync", all_mods=all_mods)
