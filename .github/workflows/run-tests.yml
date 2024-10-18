@@ -29,8 +29,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Rust for dependencies
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: ''
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
