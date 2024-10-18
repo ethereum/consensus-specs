@@ -41,7 +41,7 @@
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
     - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
-    - [Modified `is_eligible_for_activation_queue`](#modified-is_eligible_for_activation_queue)
+    - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
     - [New `is_compounding_withdrawal_credential`](#new-is_compounding_withdrawal_credential)
     - [New `has_compounding_withdrawal_credential`](#new-has_compounding_withdrawal_credential)
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
@@ -419,18 +419,21 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
         i += 1
 ```
 
-#### Modified `is_eligible_for_activation_queue`
+#### Modified `is_eligible_for_activation`
 
-*Note*: The function `is_eligible_for_activation_queue` is modified to use `MIN_ACTIVATION_BALANCE` instead of `MAX_EFFECTIVE_BALANCE`.
+*Note*: The function `is_eligible_for_activation` is modified to directly use `effective_balance`
+instead of `activation_eligibility_epoch` as one of the elgibility criteria.
 
 ```python
-def is_eligible_for_activation_queue(validator: Validator) -> bool:
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
     """
-    Check if ``validator`` is eligible to be placed into the activation queue.
+    Check if ``validator`` is eligible for activation.
     """
     return (
-        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-        and validator.effective_balance >= MIN_ACTIVATION_BALANCE  # [Modified in Electra:EIP7251]
+        # Has sufficient effective balance
+        validator.effective_balance >= MIN_ACTIVATION_BALANCE
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
     )
 ```
 
@@ -778,23 +781,20 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Modified `process_registry_updates`
 
-*Note*: The function `process_registry_updates` is modified to use the updated definition of `initiate_validator_exit`
-and changes how the activation epochs are computed for eligible validators.
+*Note*: The function `process_registry_updates` is modified to use the updated definition of `initiate_validator_exit`,
+changes how `activation_epoch` is computed for an eligible validator and removes the usage of `activation_eligibility_epoch`.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
-    # Process activation eligibility and ejections
+    # Process ejections
     for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):
-            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
-
         if (
             is_active_validator(validator, get_current_epoch(state))
             and validator.effective_balance <= EJECTION_BALANCE
         ):
-            initiate_validator_exit(state, ValidatorIndex(index))
+            initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
 
-    # Activate all eligible validators
+    # Activate all eligible validators [Modified in Electra:EIP7251]
     activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     for validator in state.validators:
         if is_eligible_for_activation(state, validator):
