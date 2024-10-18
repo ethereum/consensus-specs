@@ -41,8 +41,6 @@ jobs:
           cache: ''
       - name: Install doctoc
         run: npm install -g doctoc@2.2.0
-      - name: Install codespell
-        run: pip install 'codespell<3.0.0,>=2.0.0' --user
       - name: Run linter for pyspec
         run: make lint
 

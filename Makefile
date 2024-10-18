@@ -58,6 +58,7 @@ help:
 VENV_DIR = $(CURDIR)/venv
 PYTHON_VENV = $(VENV_DIR)/bin/python3
 PIP_VENV = $(VENV_DIR)/bin/pip
+CODESPELL_VENV = $(VENV_DIR)/bin/codespell
 VENV = $(VENV_DIR)/.venv_done
 
 # Make a virtual environment will all of the necessary dependencies.
@@ -223,9 +224,9 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 
 # Check for mistakes.
 lint: $(ETH2SPEC) pyspec check_toc
-	@codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@flake8 --config $(LINTER_CONFIG_FILE) $(PY_SPEC_DIR)/eth2spec
-	@flake8 --config $(LINTER_CONFIG_FILE) $(TEST_GENERATORS_DIR)
+	@$(CODESPELL_VENV) . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+	@$(PYTHON_VENV) -m flake8 --config $(LINTER_CONFIG_FILE) $(PY_SPEC_DIR)/eth2spec
+	@$(PYTHON_VENV) -m flake8 --config $(LINTER_CONFIG_FILE) $(TEST_GENERATORS_DIR)
 	@$(PYTHON_VENV) -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
 

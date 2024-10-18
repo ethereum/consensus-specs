@@ -193,8 +193,9 @@ jobs:
           name: Install doctoc
           command: sudo npm install -g doctoc@2.2.0
       - run:
-          name: Install codespell
-          command: pip install 'codespell<3.0.0,>=2.0.0' --user
+          name: Create Python3 alias
+          command: |
+            sudo ln -sf $(which python) /usr/bin/python3
       - run:
           name: Run linter for pyspec
           command: make lint
