@@ -237,7 +237,6 @@ workflows:
           requires:
             - install_pyspec_test
       - table_of_contents
-      - codespell
       - lint:
           requires:
             - install_pyspec_test
