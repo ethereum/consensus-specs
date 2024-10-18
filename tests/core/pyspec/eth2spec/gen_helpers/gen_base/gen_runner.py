@@ -248,6 +248,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             print(f"Collected test at: {case_dir}")
             diagnostics_obj.collected_test_count += 1
 
+            # Bail here if we do not want to generate.
+            if collect_only:
+                continue
+
             is_skip, diagnostics_obj = should_skip_case_dir(case_dir, args.force, diagnostics_obj)
             if is_skip:
                 continue
