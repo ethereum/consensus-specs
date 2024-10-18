@@ -87,8 +87,7 @@ The consensus-specs repo can be used by running the tests locally or inside a do
 To run the tests locally:
 - Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
 - Switch to the directory `cd consensus-specs`
-- Install the dependencies with: `make install_test && make preinstallation && make pyspec`
-- Run the tests with `make citest`
+- Run the tests with `make test`
 
 To run the tests inside a docker container:
 - Switch to the directory with `cd scripts`

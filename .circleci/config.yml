@@ -75,7 +75,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
-          command: make install_test
+          command: make eth2spec
       - save_pyspec_cached_venv
   test-phase0:
     docker:
@@ -87,7 +87,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=phase0
+          command: make test fork=phase0
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-altair:
@@ -100,7 +100,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=altair
+          command: make test fork=altair
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-bellatrix:
@@ -113,7 +113,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=bellatrix
+          command: make test fork=bellatrix
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-capella:
@@ -126,7 +126,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=capella
+          command: make test fork=capella
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-deneb:
@@ -139,7 +139,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=deneb
+          command: make test fork=deneb
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-electra:
@@ -152,7 +152,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=electra
+          command: make test fork=electra
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-whisk:
@@ -165,7 +165,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=whisk
+          command: make test fork=whisk
       - store_test_results:
           path: tests/core/pyspec/test-reports
   test-eip7594:
@@ -178,7 +178,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make citest fork=eip7594
+          command: make test fork=eip7594
       - store_test_results:
           path: tests/core/pyspec/test-reports
   table_of_contents:
@@ -190,15 +190,6 @@ jobs:
       - run:
           name: Check table of contents
           command: sudo npm install -g doctoc@2.2.0 && make check_toc
-  codespell:
-    docker:
-      - image: cimg/python:3.12.4
-    working_directory: ~/specs-repo
-    steps:
-      - checkout
-      - run:
-          name: Check codespell
-          command: pip install 'codespell<3.0.0,>=2.0.0' --user &&  make codespell
   lint:
     docker:
       - image: cimg/python:3.12.4
@@ -208,11 +199,11 @@ jobs:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_pyspec_cached_venv
       - run:
+          name: Install codespell
+          command: pip install 'codespell<3.0.0,>=2.0.0' --user
+      - run:
           name: Run linter for pyspec
           command: make lint
-      - run:
-          name: Run linter for test generators
-          command: make lint_generators
 workflows:
   version: 2.1
   test_spec:

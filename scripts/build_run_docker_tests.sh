@@ -82,16 +82,16 @@ else
     echo "Image $IMAGE_NAME already exists. Skipping build..."
 fi
 
-# Equivalent to `make citest with the subsequent flags`
+# Equivalent to `make test with the subsequent flags`
 if [ "$FORK_TO_TEST" == "all" ]; then
   for fork in "${ALL_EXECUTABLE_SPECS[@]}"; do
     docker run --name $CONTAINER_NAME $IMAGE_NAME \
-      make citest fork=$fork TEST_PRESET_TYPE=$TEST_PRESET_TYPE
+      make test fork=$fork TEST_PRESET_TYPE=$TEST_PRESET_TYPE
       copy_test_results $fork
   done
 else
   docker run --name $CONTAINER_NAME $IMAGE_NAME \
-      make citest fork=$FORK_TO_TEST TEST_PRESET_TYPE=$TEST_PRESET_TYPE
+      make test fork=$FORK_TO_TEST TEST_PRESET_TYPE=$TEST_PRESET_TYPE
   copy_test_results $FORK_TO_TEST
 fi
 

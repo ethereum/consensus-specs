@@ -37,19 +37,6 @@ jobs:
       - name: Check table of contents
         run: npm install -g doctoc@2.2.0 && make check_toc
 
-  codespell:
-   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-   steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12.4'
-          cache: ''
-      - name: Check codespell
-        run: make codespell
-
   lint:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
     steps:
@@ -62,12 +49,8 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: Install pyspec requirements
-        run: make install_test
       - name: Run linter for pyspec
         run: make lint
-      - name: Run linter for test generators
-        run: make lint_generators
 
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
@@ -101,10 +84,8 @@ jobs:
         if: github.event.schedule=='0 0 * * *'
         run: |
           echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
-      - name: Install pyspec requirements
-        run: make install_test
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
+        run: make test fork=${{ matrix.version }} TEST_PRESET_TYPE=${{ env.spec_test_preset_type }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
