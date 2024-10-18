@@ -55,19 +55,16 @@ help:
 # Virtual Environment
 ###############################################################################
 
-VENV_DIR = $(CURDIR)/venv
-PYTHON_VENV = $(VENV_DIR)/bin/python3
-PIP_VENV = $(VENV_DIR)/bin/pip3
-CODESPELL_VENV = $(VENV_DIR)/bin/codespell
-VENV = $(VENV_DIR)/.venv_done
+VENV = $(CURDIR)/venv
+PYTHON_VENV = $(VENV)/bin/python3
+PIP_VENV = $(VENV)/bin/pip3
+CODESPELL_VENV = $(VENV)/bin/codespell
 
 # Make a virtual environment will all of the necessary dependencies.
-# This is linked to a hidden file so make's dependency management works.
 $(VENV): requirements_preinstallation.txt
 	@echo "Creating virtual environment"
-	@python3 -m venv $(VENV_DIR)
+	@python3 -m venv $(VENV)
 	@$(PIP_VENV) install -r requirements_preinstallation.txt
-	@touch $(VENV)
 
 ###############################################################################
 # Distribution
