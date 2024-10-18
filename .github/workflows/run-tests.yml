@@ -68,24 +68,24 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: github.event.inputs.test_preset_type != ''
         run: |
           echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
-          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
+      - name: set preset
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
           echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: github.event.schedule=='0 0 * * *'
         run: |
           echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
       - name: test-${{ matrix.version }}
-        run: make test fork=${{ matrix.version }} TEST_PRESET_TYPE=${{ env.spec_test_preset_type }}
+        run: make test fork=${{ matrix.version }} preset=${{ env.spec_test_preset_type }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -86,12 +86,12 @@ fi
 if [ "$FORK_TO_TEST" == "all" ]; then
   for fork in "${ALL_EXECUTABLE_SPECS[@]}"; do
     docker run --name $CONTAINER_NAME $IMAGE_NAME \
-      make test fork=$fork TEST_PRESET_TYPE=$TEST_PRESET_TYPE
+      make test fork=$fork preset=$TEST_PRESET_TYPE
       copy_test_results $fork
   done
 else
   docker run --name $CONTAINER_NAME $IMAGE_NAME \
-      make test fork=$FORK_TO_TEST TEST_PRESET_TYPE=$TEST_PRESET_TYPE
+      make test fork=$FORK_TO_TEST preset=$TEST_PRESET_TYPE
   copy_test_results $FORK_TO_TEST
 fi
 

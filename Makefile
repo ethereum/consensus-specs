@@ -111,26 +111,31 @@ pyspec: $(VENV) setup.py
 # Testing
 ###############################################################################
 
-TEST_PRESET_TYPE ?= minimal
 TEST_REPORT_DIR = $(PY_SPEC_DIR)/test-reports
 
 # Run pyspec tests.
-# To only run a specific test, prepend with k=<test>, eg:
+# To run a specific test, append k=<test>, eg:
 #   make test k=test_verify_kzg_proof
-# To only run tests for a specific fork, prepend with fork=<fork>, eg:
+# To run tests for a specific fork, append fork=<fork>, eg:
 #   make test fork=deneb
-# Or both at the same time, eg:
-#   make test fork=deneb k=test_verify_kzg_proof
+# To run tests for a specific preset, append preset=<preset>, eg:
+#   make test preset=mainnet
+# Or all at the same time, eg:
+#   make test preset=mainnet fork=deneb k=test_verify_kzg_proof
+# To run tests with a specific bls library, append bls=<bls>, eg:
+#   make test bls=arkworks
 test: MAYBE_TEST := $(if $(k),-k=$(k))
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+test: PRESET := --preset=$(if $(preset),$(preset),minimal)
+test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
 test: $(ETH2SPEC) pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
 		-n auto \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
-		--bls-type=fastest \
-		--preset=$(TEST_PRESET_TYPE) \
+		$(PRESET) \
+		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		$(PY_SPEC_DIR)/eth2spec
 
@@ -138,6 +143,7 @@ test: $(ETH2SPEC) pyspec
 # Coverage
 ###############################################################################
 
+TEST_PRESET_TYPE ?= minimal
 COV_HTML_OUT=$(PY_SPEC_DIR)/.htmlcov
 COV_INDEX_FILE=$(COV_HTML_OUT)/index.html
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
@@ -156,12 +162,8 @@ _test_with_coverage: $(ETH2SPEC) pyspec
 		--cov-branch \
 		$(PY_SPEC_DIR)/eth2spec
 
-# To only run a specific test, prepend with k=<test>, eg:
-#   make coverage k=test_verify_kzg_proof
-# To only run tests for a specific fork, prepend with fork=<fork>, eg:
-#   make coverage fork=altair
-# Or both at the same time, eg:
-#   make coverage fork=deneb k=test_verify_kzg_proof
+# Run tests with coverage then open the coverage report.
+# See `make test` for a list of options.
 coverage: _test_with_coverage
 	@echo "Opening result: $(COV_INDEX_FILE)"
 	@((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
