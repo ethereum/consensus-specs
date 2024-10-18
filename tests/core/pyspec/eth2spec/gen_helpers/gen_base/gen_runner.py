@@ -196,7 +196,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     # Bail here if we are checking modules.
     if args.modcheck:
-        print("Doing modcheck, returning early.")
         return
 
     output_dir = args.output_dir
