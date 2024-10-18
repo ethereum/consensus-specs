@@ -57,7 +57,7 @@ help:
 
 VENV_DIR = $(CURDIR)/venv
 PYTHON_VENV = $(VENV_DIR)/bin/python3
-PIP_VENV = $(VENV_DIR)/bin/pip
+PIP_VENV = $(VENV_DIR)/bin/pip3
 CODESPELL_VENV = $(VENV_DIR)/bin/codespell
 VENV = $(VENV_DIR)/.venv_done
 
