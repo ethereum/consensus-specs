@@ -187,14 +187,18 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="specify forks to run with. Allows all if no fork names are specified.",
     )
     parser.add_argument(
-        "-c",
-        "--collect-only",
+        "--modcheck",
         action="store_true",
         default=False,
-        help="if set only print tests to generate, do not actually run the test and dump the target data",
+        help="check generator modules, do not run any tests.",
     )
-
     args = parser.parse_args()
+
+    # Bail here if we are checking modules.
+    if args.modcheck:
+        print("Doing modcheck, returning early.")
+        return
+
     output_dir = args.output_dir
     if not args.force:
         file_mode = "x"
@@ -222,8 +226,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if len(presets) != 0:
         print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
-    collect_only = args.collect_only
-
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
@@ -231,9 +233,8 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         all_test_case_params = []
 
     for tprov in test_providers:
-        if not collect_only:
-            # runs anything that we don't want to repeat for every test case.
-            tprov.prepare()
+        # Runs anything that we don't want to repeat for every test case.
+        tprov.prepare()
 
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
@@ -247,10 +248,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             case_dir = get_test_case_dir(test_case, output_dir)
             print(f"Collected test at: {case_dir}")
             diagnostics_obj.collected_test_count += 1
-
-            # Bail here if we do not want to generate.
-            if collect_only:
-                continue
 
             is_skip, diagnostics_obj = should_skip_case_dir(case_dir, args.force, diagnostics_obj)
             if is_skip:
@@ -273,14 +270,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
 
-    if collect_only:
-        print(f"Collected {diagnostics_obj.collected_test_count} tests in total")
-    else:
-        summary_message = f"completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
-        summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
-        if span > TIME_THRESHOLD_TO_PRINT:
-            summary_message += f" in {span} seconds"
-        print(summary_message)
+    summary_message = f"completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
+    summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
+    if span > TIME_THRESHOLD_TO_PRINT:
+        summary_message += f" in {span} seconds"
+    print(summary_message)
 
     diagnostics_output = {
         "collected_test_count": diagnostics_obj.collected_test_count,
