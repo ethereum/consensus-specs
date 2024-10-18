@@ -19,5 +19,5 @@ spec.config = spec.Configuration(**config_util.load_config_file(Path('mytestnet.
 ```
 
 Note: previously the testnet config files included both preset and runtime-configuration data.
-The new config loader is compatible with this: all config vars are loaded from the file, 
-but those that have become presets can be ignored. 
+The new config loader is compatible with this: all config vars are loaded from the file,
+but those that have become presets can be ignored.

@@ -1,4 +1,4 @@
-# EIP-7594 -- Peer Sampling 
+# EIP-7594 -- Peer Sampling
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
