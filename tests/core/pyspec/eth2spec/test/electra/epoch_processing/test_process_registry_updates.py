@@ -18,7 +18,7 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
 
     # ready for entrance into activation queue
     mock_deposit(spec, state, validator_index)
-    
+
     yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
 
     # validator moved into activation queue if eligible
