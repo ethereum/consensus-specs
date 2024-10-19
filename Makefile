@@ -88,7 +88,7 @@ dist_upload: $(VENV)
 ###############################################################################
 
 TEST_LIBS_DIR = $(CURDIR)/tests/core
-PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
+PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 SITE_PACKAGES := $(wildcard $(VENV)/lib/python*/site-packages)
 ETH2SPEC := $(SITE_PACKAGES)/eth2spec
 
@@ -111,7 +111,7 @@ pyspec: $(VENV) setup.py
 # Testing
 ###############################################################################
 
-TEST_REPORT_DIR = $(PY_SPEC_DIR)/test-reports
+TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
 # To run a specific test, append k=<test>, eg:
@@ -137,14 +137,14 @@ test: $(ETH2SPEC) pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		$(PY_SPEC_DIR)/eth2spec
+		$(PYSPEC_DIR)/eth2spec
 
 ###############################################################################
 # Coverage
 ###############################################################################
 
 TEST_PRESET_TYPE ?= minimal
-COV_HTML_OUT=$(PY_SPEC_DIR)/.htmlcov
+COV_HTML_OUT=$(PYSPEC_DIR)/.htmlcov
 COV_INDEX_FILE=$(COV_HTML_OUT)/index.html
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 
@@ -160,7 +160,7 @@ _test_with_coverage: $(ETH2SPEC) pyspec
 		$(COVERAGE_SCOPE) \
 		--cov-report="html:$(COV_HTML_OUT)" \
 		--cov-branch \
-		$(PY_SPEC_DIR)/eth2spec
+		$(PYSPEC_DIR)/eth2spec
 
 # Run tests with coverage then open the coverage report.
 # See `make test` for a list of options.
@@ -195,8 +195,11 @@ serve_docs: _copy_docs
 # Checks
 ###############################################################################
 
-LINTER_CONFIG_FILE = $(CURDIR)/linter.ini
-PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PY_SPEC_DIR)/eth2spec/$S)
+FLAKE8_CONFIG = $(CURDIR)/flake8.ini
+MYPY_CONFIG = $(CURDIR)/mypy.ini
+PYLINT_CONFIG = $(CURDIR)/pylint.ini
+
+PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
 TEST_GENERATORS_DIR = ./tests/generators
 MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
@@ -223,11 +226,11 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 
 # Check for mistakes.
 lint: $(ETH2SPEC) pyspec check_toc
-	@$(CODESPELL_VENV) . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m flake8 --config $(LINTER_CONFIG_FILE) $(PY_SPEC_DIR)/eth2spec
-	@$(PYTHON_VENV) -m flake8 --config $(LINTER_CONFIG_FILE) $(TEST_GENERATORS_DIR)
-	@$(PYTHON_VENV) -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE)
-	@$(PYTHON_VENV) -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
+	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
+	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
+	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
+	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
 
 ###############################################################################
 # Generators
