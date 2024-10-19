@@ -93,7 +93,9 @@ SITE_PACKAGES := $(wildcard $(VENV)/lib/python*/site-packages)
 ETH2SPEC := $(SITE_PACKAGES)/eth2spec
 
 # Install the eth2spec package.
-$(ETH2SPEC): $(VENV)
+# The pipe indicates that venv is an order-only prerequisite.
+# When restoring venv cache, its timestamp is newer than eth2spec.
+$(ETH2SPEC): | $(VENV)
 	@$(PIP_VENV) install .[docs,lint,test,generator]
 
 # Force rebuild/install the eth2spec package.
