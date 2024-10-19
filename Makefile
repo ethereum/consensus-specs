@@ -55,7 +55,7 @@ help:
 # Virtual Environment
 ###############################################################################
 
-VENV = $(CURDIR)/venv
+VENV = venv
 PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
@@ -89,12 +89,12 @@ dist_upload: $(VENV)
 
 TEST_LIBS_DIR = $(CURDIR)/tests/core
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-ETH2SPEC = $(CURDIR)/.eth2spec
+SITE_PACKAGES := $(wildcard $(VENV)/lib/python*/site-packages)
+ETH2SPEC := $(SITE_PACKAGES)/eth2spec
 
 # Install the eth2spec package.
 $(ETH2SPEC): $(VENV)
 	@$(PIP_VENV) install .[docs,lint,test,generator]
-	@touch $(ETH2SPEC)
 
 # Force rebuild/install the eth2spec package.
 eth2spec:
