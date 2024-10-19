@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v26-pyspec
+          venv_name: v27-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v26-pyspec
+          venv_name: v27-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
           venv_path: ./venv
 jobs:
@@ -188,7 +188,7 @@ jobs:
     steps:
       - restore_cache:
           key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      #- restore_pyspec_cached_venv
+      - restore_pyspec_cached_venv
       - run:
           name: Install doctoc
           command: sudo npm install -g doctoc@2.2.0
