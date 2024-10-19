@@ -95,7 +95,7 @@ ETH2SPEC := $(SITE_PACKAGES)/eth2spec
 # Install the eth2spec package.
 # The pipe indicates that venv is an order-only prerequisite.
 # When restoring venv cache, its timestamp is newer than eth2spec.
-$(ETH2SPEC): | $(VENV)
+$(ETH2SPEC): setup.py | $(VENV)
 	@$(PIP_VENV) install .[docs,lint,test,generator]
 
 # Force rebuild/install the eth2spec package.
