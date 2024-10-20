@@ -32,10 +32,6 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
 @with_electra_and_later
 @spec_state_test
 def test_activation_queue_eligibility__less_than_min_activation_balance(spec, state):
-    # move past first two irregular epochs wrt finality
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-
     index = 3
     balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     yield from run_test_activation_queue_eligibility(spec, state, index, balance)
@@ -44,10 +40,6 @@ def test_activation_queue_eligibility__less_than_min_activation_balance(spec, st
 @with_electra_and_later
 @spec_state_test
 def test_activation_queue_eligibility__min_activation_balance(spec, state):
-    # move past first two irregular epochs wrt finality
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-
     index = 5
     balance = spec.MIN_ACTIVATION_BALANCE
     yield from run_test_activation_queue_eligibility(spec, state, index, balance)
@@ -56,10 +48,6 @@ def test_activation_queue_eligibility__min_activation_balance(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_activation_queue_eligibility__min_activation_balance_eth1_creds(spec, state):
-    # move past first two irregular epochs wrt finality
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-
     index = 7
     balance = spec.MIN_ACTIVATION_BALANCE
     set_eth1_withdrawal_credential_with_balance(spec, state, index)
@@ -69,10 +57,6 @@ def test_activation_queue_eligibility__min_activation_balance_eth1_creds(spec, s
 @with_electra_and_later
 @spec_state_test
 def test_activation_queue_eligibility__min_activation_balance_compounding_creds(spec, state):
-    # move past first two irregular epochs wrt finality
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-
     index = 11
     balance = spec.MIN_ACTIVATION_BALANCE
     set_compounding_withdrawal_credential_with_balance(spec, state, index)
@@ -82,10 +66,6 @@ def test_activation_queue_eligibility__min_activation_balance_compounding_creds(
 @with_electra_and_later
 @spec_state_test
 def test_activation_queue_eligibility__greater_than_min_activation_balance(spec, state):
-    # move past first two irregular epochs wrt finality
-    next_epoch(spec, state)
-    next_epoch(spec, state)
-
     index = 13
     balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     set_compounding_withdrawal_credential_with_balance(spec, state, index)
