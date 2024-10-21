@@ -422,7 +422,7 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
 #### Modified `is_eligible_for_activation`
 
 *Note*: The function `is_eligible_for_activation` is modified to directly use `effective_balance`
-instead of `activation_eligibility_epoch` as one of the elgibility criteria.
+instead of `activation_eligibility_epoch` as one of the eligibility criteria.
 
 ```python
 def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
