@@ -118,7 +118,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
 * [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
 
-*Note:* This specification is built upon [Deneb](../deneb/beacon_chain.md) and is under active development.
+*Note:* This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -992,9 +992,9 @@ class NewPayloadRequest(object):
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests_list: list[bytes]) -> bool:
+                       execution_requests_list: Sequence[bytes]) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1145,10 +1145,10 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 *Note*: Encodes execution requests as defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
 
 ```python
-def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
-    deposit_bytes = serialize(execution_requests.deposits)
-    withdrawal_bytes = serialize(execution_requests.withdrawals)
-    consolidation_bytes = serialize(execution_requests.consolidations)
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
+    deposit_bytes = ssz_serialize(execution_requests.deposits)
+    withdrawal_bytes = ssz_serialize(execution_requests.withdrawals)
+    consolidation_bytes = ssz_serialize(execution_requests.consolidations)
 
     return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
 ```
@@ -1290,11 +1290,12 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     validator = Validator(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
+        effective_balance=Gwei(0),
+        slashed=False,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=Gwei(0),
     )
 
     # [Modified in Electra:EIP7251]
