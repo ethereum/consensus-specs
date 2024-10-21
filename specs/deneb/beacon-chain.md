@@ -293,9 +293,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
-    # [Modified in Deneb:EIP4788]
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root  # [Modified in Deneb:EIP4788]
 
     if b'' in execution_payload.transactions:
         return False
