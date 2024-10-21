@@ -425,7 +425,7 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
 instead of `activation_eligibility_epoch` as one of the eligibility criteria.
 
 ```python
-def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+def is_eligible_for_activation(validator: Validator) -> bool:
     """
     Check if ``validator`` is eligible for activation.
     """
@@ -798,7 +798,7 @@ def process_registry_updates(state: BeaconState) -> None:
     activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     activation_eligibility_epoch = get_current_epoch(state) + 1
     for validator in state.validators:
-        if is_eligible_for_activation(state, validator):
+        if is_eligible_for_activation(validator):
             validator.activation_epoch = activation_epoch
             # Set activation eligibility epoch for backwards compatibility,
             # to be deprecated in one of the future upgrades
