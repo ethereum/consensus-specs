@@ -65,11 +65,6 @@
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-    - [Engine APIs](#engine-apis)
-      - [Modified `notify_new_payload`](#modified-notify_new_payload)
-      - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
@@ -757,54 +752,6 @@ def slash_validator(state: BeaconState,
 
 ## Beacon chain state transition function
 
-### Execution engine
-
-#### Request data
-
-#### Engine APIs
-
-##### Modified `notify_new_payload`
-
-*Note*: The function `notify_new_payload` is modified to include the target number of blobs
-allowed per block.
-
-```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       parent_beacon_block_root: Root,
-                       target_blobs_per_block: uint64) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
-    """
-    ...
-```
-
-##### Modified `verify_and_notify_new_payload`
-
-```python
-def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
-    """
-    Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
-    """
-    execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
-        return False
-
-    if not self.is_valid_versioned_hashes(new_payload_request):
-        return False
-
-    # [Modified in Electra]
-    if not self.notify_new_payload(execution_payload,
-                                   parent_beacon_block_root,
-                                   MAX_BLOBS_PER_BLOCK // 2):
-        return False
-
-    return True
-```
-
 ### Epoch processing
 
 #### Modified `process_epoch`
@@ -1039,15 +986,17 @@ class NewPayloadRequest(object):
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+*Note*: The function `notify_new_payload` is modified to include the additional
+`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests_list: Sequence[bytes]) -> bool:
+                       execution_requests_list: Sequence[bytes],
+                       target_blobs_per_block: uint64) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1055,8 +1004,8 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
-when calling `notify_new_payload` in Electra.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameters
+`execution_requests_list` and `target_blobs_per_block` when calling `notify_new_payload` in Electra.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -1067,6 +1016,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
+    target_blobs_per_block = MAX_BLOBS_PER_BLOCK // 2  # [New in Electra:EIP7742]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
@@ -1078,7 +1028,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.notify_new_payload(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list):
+            execution_requests_list,
+            target_blobs_per_block):
         return False
 
     return True
