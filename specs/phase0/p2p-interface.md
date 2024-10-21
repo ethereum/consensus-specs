@@ -563,7 +563,7 @@ At this point, the stream will be half-closed.
 
 The requester MUST NOT make more than `MAX_CONCURRENT_REQUESTS` concurrent requests with the same protocol ID.
 
-If a timeout happens on the requesting side, they SHOULD reset the stream.
+If a timeout occurs or the response is no longer relevant, the requester SHOULD reset the stream.
 
 A requester SHOULD read from the stream until either:
 1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
@@ -592,7 +592,7 @@ The responder MUST:
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error.
 Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
 
-The responder MAY rate-limit chunks by withholding each chunk until capacity is available. The responding side MUST NOT respond with an error or close the stream when rate limiting.
+The responder MAY rate-limit chunks by withholding each chunk until capacity is available. The responder MUST NOT respond with an error or close the stream when rate limiting.
 
 When rate limiting, the responder MUST send each `response_chunk` in full promptly but may introduce delays between each chunk.
 
@@ -1458,15 +1458,15 @@ Req/Resp is used to avoid confusion with JSON-RPC and similar user-client intera
 
 #### What is a typical rate limiting strategy?
 
-The serving side typically will want to rate limit requests to protect against spam and to manage resource consumption, while the requesting side will want to maximise performance based on its own resource allocation strategy. For the network, it is beneficial if available resources are used optimally.
+The responder typically will want to rate limit requests to protect against spam and to manage resource consumption, while the requester will want to maximise performance based on its own resource allocation strategy. For the network, it is beneficial if available resources are used optimally.
 
-Broadly, the requesting side does not know the capacity / limit of each server but can derive it from the rate of responses for the purpose of selecting the next peer for a request.
+Broadly, the requester does not know the capacity / limit of each server but can derive it from the rate of responses for the purpose of selecting the next peer for a request.
 
 Because the server withholds the response until capacity is available, a client can optimistically send requests without risking running into negative scoring situations or sub-optimal rate polling.
 
-A typical approach for the requesting side is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
+A typical approach for the requester is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
 
-A typical approach for the responding side is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
+A typical approach for the responder is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
 
 For requesters, rate limiting is not distinguishable from other conditions causing slow responses (slow peers, congestion etc) and since the latter conditions must be handled anyway, including rate limiting in this strategy keeps the implementation simple.
 
@@ -1501,10 +1501,10 @@ If a request for the parent fails, it's indicative of poor peer quality since pe
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time.
 By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale,
-and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
+and the responder might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
 
-To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client.
-The requesting client then goes on to validate the blocks and incorporate them in their own database
+To avoid this race condition, we allow the responder to choose which branch to send to the requester.
+The requester then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
 
 #### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
