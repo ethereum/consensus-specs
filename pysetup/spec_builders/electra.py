@@ -8,9 +8,19 @@ class ElectraSpecBuilder(BaseSpecBuilder):
 
     @classmethod
     def imports(cls, preset_name: str):
-        return f"""
+        return f'''
 from eth2spec.deneb import {preset_name} as deneb
-"""
+from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
+'''
+
+    @classmethod
+    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+        return {
+            'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(169)',
+            'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(86)',
+            'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(87)',
+        }
+
 
     @classmethod
     def execution_engine_cls(cls) -> str:
@@ -20,6 +30,7 @@ class NoopExecutionEngine(ExecutionEngine):
     def notify_new_payload(self: ExecutionEngine,
                            execution_payload: ExecutionPayload,
                            parent_beacon_block_root: Root,
+                           execution_requests_list: Sequence[bytes],
                            target_blobs_per_block: uint64) -> bool:
         return True
 
@@ -48,11 +59,3 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
-
-    @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
-        return {
-            'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(169)',
-            'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(86)',
-            'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(87)',
-        }

@@ -66,14 +66,11 @@ def get_sample_genesis_execution_payload_header(spec,
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
     parent_beacon_block_root = None
-    requests_trie_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_deneb(spec):
         parent_beacon_block_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
-    if is_post_electra(spec):
-        requests_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
@@ -81,7 +78,6 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_trie_root,
         withdrawals_trie_root,
         parent_beacon_block_root,
-        requests_trie_root,
     )
     return payload_header
 
@@ -170,7 +166,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.earliest_exit_epoch = spec.GENESIS_EPOCH
         state.consolidation_balance_to_consume = 0
         state.earliest_consolidation_epoch = 0
-        state.pending_balance_deposits = []
+        state.pending_deposits = []
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
 

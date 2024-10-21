@@ -18,7 +18,6 @@
   - [Modified `current_sync_committee_gindex_at_slot`](#modified-current_sync_committee_gindex_at_slot)
   - [Modified `next_sync_committee_gindex_at_slot`](#modified-next_sync_committee_gindex_at_slot)
   - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
-  - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -151,38 +150,4 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
         return hash_tree_root(execution_header)
 
     return Root()
-```
-
-### Modified `is_valid_light_client_header`
-
-```python
-def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    epoch = compute_epoch_at_slot(header.beacon.slot)
-
-    # [New in Electra:EIP6110:EIP7002:EIP7251]
-    if epoch < ELECTRA_FORK_EPOCH:
-        if (
-            header.execution.deposit_requests_root != Root()
-            or header.execution.withdrawal_requests_root != Root()
-            or header.execution.consolidation_requests_root != Root()
-        ):
-            return False
-
-    if epoch < DENEB_FORK_EPOCH:
-        if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
-            return False
-
-    if epoch < CAPELLA_FORK_EPOCH:
-        return (
-            header.execution == ExecutionPayloadHeader()
-            and header.execution_branch == ExecutionBranch()
-        )
-
-    return is_valid_merkle_branch(
-        leaf=get_lc_execution_root(header),
-        branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
-        root=header.beacon.body_root,
-    )
 ```

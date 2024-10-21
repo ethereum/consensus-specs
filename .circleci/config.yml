@@ -35,28 +35,15 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v24-pyspec
+          venv_name: v25-pyspec
           reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
           venv_path: ./venv
-  restore_deposit_contract_tester_cached_venv:
-    description: "Restore the venv from cache for the deposit contract tester"
-    steps:
-      - restore_cached_venv:
-          venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
-  save_deposit_contract_tester_cached_venv:
-    description: "Save the venv to cache for later use of the deposit contract tester"
-    steps:
-      - save_cached_venv:
-          venv_name: v23-deposit-contract-tester
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}-{{ checksum "solidity_deposit_contract/web3_tester/requirements.txt" }}
-          venv_path: ./solidity_deposit_contract/web3_tester/venv
 jobs:
   checkout_specs:
     docker:
@@ -80,7 +67,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: ethpandaops/circleci-python-rust:latest
+      - image: cimg/python:3.12.4
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -88,7 +75,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
-          command: make install_test && make preinstallation
+          command: make install_test
       - save_pyspec_cached_venv
   test-phase0:
     docker:
@@ -226,71 +213,6 @@ jobs:
       - run:
           name: Run linter for test generators
           command: make lint_generators
-  build_deposit_contract:
-    docker:
-      - image: ethereum/solc:0.6.11-alpine
-    steps:
-      - checkout
-      - run:
-          name: Install build essentials
-          command: |
-            apk update
-            apk add git make
-      - run:
-          name: Compile the contract
-          command: |
-            make compile_deposit_contract
-            git diff --color --exit-code
-      - persist_to_workspace:
-          root: .
-          paths:
-            - ./solidity_deposit_contract/deposit_contract.json
-            - ./build/combined.json
-            - ./solidity_deposit_contract/lib
-  test_deposit_contract:
-    docker:
-      - image: nixorg/nix:circleci
-    steps:
-      - checkout
-      - restore_cache:
-          key: nix-store-test-v2
-      - attach_workspace:
-          at: /tmp/
-      - run:
-          name: Test the contract
-          command: |
-            mkdir build
-            cp -r /tmp/build/* build
-            cp -r /tmp/solidity_deposit_contract/lib/* ./solidity_deposit_contract/lib
-            cp -r /tmp/solidity_deposit_contract/deposit_contract.json ./solidity_deposit_contract/deposit_contract.json
-            nix-shell --command 'make test_deposit_contract' ./solidity_deposit_contract/shell.nix
-      - save_cache:
-          key: nix-store-test-v2
-          paths:
-            - /nix
-  install_deposit_contract_web3_tester:
-    docker:
-      - image: cimg/python:3.12.4
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_tester_cached_venv
-      - run:
-          name: Install deposit contract tester requirements
-          command: make install_deposit_contract_web3_tester
-      - save_deposit_contract_tester_cached_venv
-  test_deposit_contract_web3_tests:
-    docker:
-      - image: cimg/python:3.12.4
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_deposit_contract_tester_cached_venv
-      - run:
-          name: Run deposit contract test with web3.py
-          command: make test_deposit_contract_web3_tests
 workflows:
   version: 2.1
   test_spec:
@@ -328,17 +250,3 @@ workflows:
       - lint:
           requires:
             - install_pyspec_test
-      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests.
-      # - install_deposit_contract_web3_tester:
-      #     requires:
-      #       - checkout_specs
-      # - test_deposit_contract_web3_tests:
-      #     requires:
-      #       - install_deposit_contract_web3_tester
-  build_and_test_deposit_contract:
-    jobs:
-      - build_deposit_contract
-      # NOTE: Since phase 0 has been launched, we disabled the deposit contract tests.
-      # - test_deposit_contract:
-      #     requires:
-      #       - build_deposit_contract

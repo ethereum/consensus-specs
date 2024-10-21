@@ -67,7 +67,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `128` | The number of data column sidecar subnets used in the gossipsub protocol |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint64(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
 
 ### Custody setting
 
@@ -222,7 +222,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` via the peer discovery mechanism -- for example, in their ENR (e.g. `custody_subnet_count: 4` if the node custodies `4` subnets each slot) -- up to a `DATA_COLUMN_SIDECAR_SUBNET_COUNT` (i.e. a super-full node).
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
@@ -244,7 +244,7 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 
 ### Parameters
 
-For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with the `get_data_column_sidecars(signed_block: SignedBeaconBlock, blobs: Sequence[Blob])` helper.
+For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with `cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then `get_data_column_sidecars(signed_block, cells_and_kzg_proofs)`.
 
 Verifiable samples from their respective column are distributed on the assigned subnet. To custody a particular column, a node joins the respective gossipsub subnet. If a node fails to get a column on the column subnet, a node can also utilize the Req/Resp protocol to query the missing column from other peers.
 

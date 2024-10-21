@@ -14,6 +14,7 @@
   - [Containers](#containers)
     - [`DataColumnIdentifier`](#datacolumnidentifier)
   - [Helpers](#helpers)
+      - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
       - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
@@ -64,16 +65,35 @@ class DataColumnIdentifier(Container):
 
 ### Helpers
 
+##### `verify_data_column_sidecar`
+
+```python
+def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the data column sidecar is valid.
+    """
+    # The sidecar index must be within the valid range
+    if sidecar.index >= NUMBER_OF_COLUMNS:
+        return False
+
+    # A sidecar for zero blobs is invalid
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
+    # The column length must be equal to the number of commitments/proofs
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
+        return False
+
+    return True
+```
+
 ##### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the proofs are correct.
+    Verify if the KZG proofs are correct.
     """
-    assert sidecar.index < NUMBER_OF_COLUMNS
-    assert len(sidecar.column) == len(sidecar.kzg_commitments) == len(sidecar.kzg_proofs)
-
     # The column index also represents the cell index
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
@@ -119,14 +139,14 @@ The `MetaData` stored locally by clients is updated with an additional field to 
   seq_number: uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_subnet_count: uint64
+  custody_subnet_count: uint64 # csc
 )
 ```
 
 Where
 
 - `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
-- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject ENRs with a value less than `CUSTODY_REQUIREMENT`.
+- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
@@ -148,7 +168,7 @@ The *type* of the payload of this topic is `DataColumnSidecar`.
 
 The following validations MUST pass before forwarding the `sidecar: DataColumnSidecar` on the network, assuming the alias `block_header = sidecar.signed_block_header.message`:
 
-- _[REJECT]_ The sidecar's index is consistent with `NUMBER_OF_COLUMNS` -- i.e. `sidecar.index < NUMBER_OF_COLUMNS`.
+- _[REJECT]_ The sidecar is valid as verified by `verify_data_column_sidecar(sidecar)`.
 - _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
@@ -203,7 +223,7 @@ Requests sidecars by block root and index.
 The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
 It may be less in the case that the responding peer is missing blocks or sidecars.
 
-Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
 
 No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
 
@@ -249,7 +269,7 @@ Response Content:
 
 Requests data column sidecars in the slot range `[start_slot, start_slot + count)` of the given `columns`, leading up to the current head block as selected by fork choice.
 
-Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
 
 `DataColumnSidecarsByRange` is primarily used to sync data columns that may have been missed on gossip and to sync within the `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` window.
 
@@ -324,4 +344,4 @@ A new field is added to the ENR under the key `csc` to facilitate custody data c
 
 | Key    | Value                                    |
 |--------|------------------------------------------|
-| `csc`  | Custody subnet count, big endian integer |
+| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
