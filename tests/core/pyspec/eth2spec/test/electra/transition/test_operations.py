@@ -63,7 +63,7 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperationType.FULL_WITHDRAWAL_REQUEST,
+        operation_type=OperationType.WITHDRAWAL_REQUEST,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )
 
@@ -75,7 +75,7 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
 @with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
                   for pre, post in AFTER_ELECTRA_PRE_POST_FORKS])
 @always_bls
-def test_transition_with_switch_to_compounding_request_right_after_fork(
+def test_transition_with_consolidation_request_right_after_fork(
     state,
     fork_epoch,
     spec,
@@ -84,7 +84,7 @@ def test_transition_with_switch_to_compounding_request_right_after_fork(
     post_tag
 ):
     """
-    Create a SWITCH_TO_COMPOUNDING_REQUEST right *after* the transition
+    Create a CONSOLIDATION_REQUEST right *after* the transition
     """
     yield from run_transition_with_operation(
         state,
@@ -93,6 +93,6 @@ def test_transition_with_switch_to_compounding_request_right_after_fork(
         post_spec,
         pre_tag,
         post_tag,
-        operation_type=OperationType.SWITCH_TO_COMPOUNDING_REQUEST,
+        operation_type=OperationType.CONSOLIDATION_REQUEST,
         operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
     )

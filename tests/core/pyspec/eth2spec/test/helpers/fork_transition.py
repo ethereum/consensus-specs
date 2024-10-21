@@ -53,8 +53,8 @@ class OperationType(Enum):
     VOLUNTARY_EXIT = auto()
     BLS_TO_EXECUTION_CHANGE = auto()
     DEPOSIT_REQUEST = auto()
-    FULL_WITHDRAWAL_REQUEST = auto()
-    SWITCH_TO_COMPOUNDING_REQUEST = auto()
+    WITHDRAWAL_REQUEST = auto()
+    CONSOLIDATION_REQUEST = auto()
 
 
 def _set_operations_by_dict(block, operation_dict):
@@ -348,12 +348,12 @@ def run_transition_with_operation(state,
         amount = post_spec.MIN_ACTIVATION_BALANCE
         deposit_request = prepare_deposit_request(post_spec, selected_validator_index, amount, signed=True)
         operation_dict = {'execution_requests.deposits': [deposit_request]}
-    elif operation_type == OperationType.FULL_WITHDRAWAL_REQUEST:
+    elif operation_type == OperationType.WITHDRAWAL_REQUEST:
         selected_validator_index = 0
         withdrawal_request = prepare_withdrawal_request(
             post_spec, state, selected_validator_index, amount=post_spec.FULL_EXIT_REQUEST_AMOUNT)
         operation_dict = {'execution_requests.withdrawals': [withdrawal_request]}
-    elif operation_type == OperationType.SWITCH_TO_COMPOUNDING_REQUEST:
+    elif operation_type == OperationType.CONSOLIDATION_REQUEST:
         selected_validator_index = 0
         consolidation_request = prepare_switch_to_compounding_request(post_spec, state, selected_validator_index)
         operation_dict = {'execution_requests.consolidations': [consolidation_request]}
@@ -389,10 +389,10 @@ def run_transition_with_operation(state,
                 signature=deposit_request.signature,
                 slot=state.slot,
             )]
-        elif operation_type == OperationType.FULL_WITHDRAWAL_REQUEST:
+        elif operation_type == OperationType.WITHDRAWAL_REQUEST:
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
-        elif operation_type == OperationType.SWITCH_TO_COMPOUNDING_REQUEST:
+        elif operation_type == OperationType.CONSOLIDATION_REQUEST:
             validator = state.validators[selected_validator_index]
             assert validator.withdrawal_credentials[:1] == post_spec.COMPOUNDING_WITHDRAWAL_PREFIX
 
