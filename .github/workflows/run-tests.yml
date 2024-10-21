@@ -24,7 +24,7 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  table-of-contents:
+  table_of_contents:
    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
    steps:
       - name: Checkout repository
@@ -71,7 +71,7 @@ jobs:
 
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
-    needs: [lint, codespell, table-of-contents]
+    needs: [lint,codespell,table_of_contents]
     strategy:
       matrix:
         version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
@@ -104,7 +104,7 @@ jobs:
       - name: Install pyspec requirements
         run: make install_test
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{ env.spec_test_preset_type }}
+        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
