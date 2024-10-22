@@ -8,7 +8,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Modifications in EIP-7594](#modifications-in-eip-7594)
+- [Modifications in Fulu](#modifications-in-fulu)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -36,7 +36,7 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-## Modifications in EIP-7594
+## Modifications in Fulu
 
 ### Preset
 
@@ -150,7 +150,7 @@ Where
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
+Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 
 #### Topics and messages
 

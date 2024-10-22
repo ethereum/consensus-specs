@@ -37,12 +37,12 @@ ALL_PHASES = (
     *MAINNET_FORKS,
     ELECTRA,
     # Experimental patches
-    EIP7594,
+    FULU,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, WHISK)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK, EIP7732)
 
@@ -57,7 +57,7 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7594: ELECTRA,
+    FULU: ELECTRA,
     EIP7732: ELECTRA,
 }
 
