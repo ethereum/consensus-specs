@@ -47,12 +47,10 @@ This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The slot `message.slot` is equal to current slot.
-- _[IGNORE]_ The current time is `INCLUSION_LIST_CUT_OFF` seconds into the slot.
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
-- _[IGNORE]_ The `message` is the first valid message received from the validator with index `message.validate_index` and can be received no more than twice from the same validator index.
-- _[IGNORE]_ The block hash `message.parent_block_hash` is a known execution payload in fork choice.
+- _[IGNORE]_ The `message` is either the first or second valid message received from the validator with index `message.validator_index`.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
-- _[REJECT]_ The validator index is within the inclusion list committee in `get_inclusion_list_committee(state)`. The `state` is based from `message.parent_block_root` to processing the block up to the current slot as determined by the fork choice. 
+- _[REJECT]_ The validator index `message.validator_index` is within the inclusion list committee given by `get_inclusion_list_committee(state, message.slot)`, where the `state` is based on `message.parent_block_root` and processed up to `message.slot`.  If the validator index cannot immediately be verified against the expected committee, the inclusion list MAY be queued for later processing while the committee for the branch of `message.parent_block_root` is calculated -- in such a case do not REJECT, instead IGNORE this message.
 
 ### The Req/Resp domain
 

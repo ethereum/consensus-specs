@@ -49,7 +49,8 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    inclusion_lists: List[Transaction]  # [New in FOCIL
+    inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in FOCIL]
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)# [New in FOCIL]
 
 
 ### New `on_inclusion_list`
@@ -66,25 +67,28 @@ def on_inclusion_list(
     # Verify inclusion list slot is bounded to the current slot
     assert get_current_slot(store) == message.slot
 
-    state = store.block_states[message.beacon_block_root]
-    ilc = get_inclusion_list_committee(state, message.slot)
+    assert message.beacon_block_root in store.block_states
+    # Get the inclusion list committee for this slot
+    state = copy(store.block_states[message.beacon_block_root])
+    if state.slot < message.slot:
+        process_slots(state, message.slot)
+    inclusion_list_committee = get_inclusion_list_committee(state, message.slot)
+
     # Verify inclusion list validator is part of the committee
-    assert message.validator_index in ilc
+    validator_index = message.validator_index
+    assert validator_index.validator_index in inclusion_list_committee
    
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    # Check if an inclusion list with the same slot and validator index exists
-    existing_inclusion_list = next(
-        (il for il in store.inclusion_lists 
-         if il.slot == message.slot and il.validator_index == message.validator_index),
-        None
-    )
-    
-    # If such an inclusion list exists, remove it
-    if existing_inclusion_list:
-        store.inclusion_lists.remove(existing_inclusion_list)
-    else:
-        # If no such inclusion list exists, add the new one
-        store.inclusion_lists.append(message)
+    root = hash_tree_root(inclusion_list_committee)
+    if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
+        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]
+            il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
+            if not il == message:
+                inclusion_list_equivocators[(message.slot, root)].add(validator_index)
+        else:
+            inclusion_lists[(message.slot, root)].append(message)
 ```
+
+
