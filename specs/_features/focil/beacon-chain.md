@@ -68,7 +68,6 @@ class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
     parent_root: Root
-    parent_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 
@@ -105,18 +104,12 @@ def is_valid_inclusion_list_signature(
 
 ```python
 def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, IL_COMMITTEE_SIZE]:
-    """
-    Get the inclusion list committee for the given ``slot``
-    """
     epoch = compute_epoch_at_slot(slot)
-    committees_per_slot = bit_floor(min(get_committee_count_per_slot(state, epoch), IL_COMMITTEE_SIZE))
-    members_per_committee = IL_COMMITTEE_SIZE // committees_per_slot
-    
-    validator_indices: List[ValidatorIndex] = [] 
-    for idx in range(committees_per_slot):
-        beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
-        validator_indices += beacon_committee[:members_per_committee]
-    return validator_indices
+    seed = get_seed(state, epoch, DOMAIN_IL_COMMITTEE)
+    indices = get_active_validator_indices(state, epoch)
+    start = (slot % SLOTS_PER_EPOCH) * IL_COMMITTEE_SIZE
+    end = start + IL_COMMITTEE_SIZE
+    return [indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)] for i in range(start, end)]
 ```
 
 ## Beacon chain state transition function
