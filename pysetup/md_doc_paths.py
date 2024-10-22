@@ -8,7 +8,7 @@ from .constants import (
     DENEB,
     ELECTRA,
     WHISK,
-    EIP7594,
+    FULU,
     EIP6800,
     EIP7732,
 )
@@ -22,7 +22,7 @@ PREVIOUS_FORK_OF = {
     DENEB: CAPELLA,
     ELECTRA: DENEB,
     WHISK: CAPELLA,
-    EIP7594: ELECTRA,
+    FULU: ELECTRA,
     EIP6800: DENEB,
     EIP7732: ELECTRA,
 }

@@ -9,7 +9,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Modifications in EIP-7594](#modifications-in-eip-7594)
+- [Modifications in Fulu](#modifications-in-fulu)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -43,11 +43,11 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for EIP7594.
+This document contains the consensus-layer networking specification for Fulu.
 
 The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in EIP-7594
+## Modifications in Fulu
 
 ### Preset
 
@@ -163,7 +163,7 @@ Where
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
+Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 
 #### Topics and messages
 
