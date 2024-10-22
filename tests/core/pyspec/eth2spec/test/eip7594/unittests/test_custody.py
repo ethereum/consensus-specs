@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     expect_assertion_error,
     spec_test,
     single_phase,
-    with_eip7594_and_later,
+    with_fulu_and_later,
 )
 
 
@@ -21,7 +21,7 @@ def run_get_custody_columns(spec, peer_count, custody_group_count):
         assert len(columns) == len(set(columns))
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns_peers_within_number_of_columns(spec):
@@ -31,7 +31,7 @@ def test_get_custody_columns_peers_within_number_of_columns(spec):
     run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns_peers_more_than_number_of_columns(spec):
@@ -41,7 +41,7 @@ def test_get_custody_columns_peers_more_than_number_of_columns(spec):
     run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns_maximum_groups(spec):
@@ -50,7 +50,7 @@ def test_get_custody_columns_maximum_groups(spec):
     run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns_custody_size_more_than_number_of_groups(spec):

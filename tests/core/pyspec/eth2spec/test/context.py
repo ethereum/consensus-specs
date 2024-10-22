@@ -558,7 +558,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_fulu_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

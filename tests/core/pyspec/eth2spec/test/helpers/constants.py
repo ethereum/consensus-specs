@@ -18,8 +18,8 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 ELECTRA = SpecForkName('electra')
+FULU = SpecForkName('fulu')
 WHISK = SpecForkName('whisk')
-EIP7594 = SpecForkName('eip7594')
 EIP7732 = SpecForkName('eip7732')
 
 #

@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     spec_test,
     single_phase,
     with_config_overrides,
-    with_eip7594_and_later,
+    with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
     get_sample_blob,
@@ -16,7 +16,7 @@ def chunks(lst, n):
     return [lst[i:i + n] for i in range(0, len(lst), n)]
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_compute_matrix(spec):
@@ -41,7 +41,7 @@ def test_compute_matrix(spec):
         assert blob == input_blobs[blob_index]
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_recover_matrix(spec):
@@ -68,7 +68,7 @@ def test_recover_matrix(spec):
     assert recovered_matrix == matrix
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__1(spec):
@@ -77,7 +77,7 @@ def test_get_extended_sample_count__1(spec):
     spec.get_extended_sample_count(allowed_failures)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__2(spec):
@@ -86,7 +86,7 @@ def test_get_extended_sample_count__2(spec):
     spec.get_extended_sample_count(allowed_failures)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__3(spec):
@@ -95,7 +95,7 @@ def test_get_extended_sample_count__3(spec):
     spec.get_extended_sample_count(allowed_failures)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__lower_bound(spec):
@@ -103,7 +103,7 @@ def test_get_extended_sample_count__lower_bound(spec):
     spec.get_extended_sample_count(allowed_failures)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__upper_bound(spec):
@@ -111,7 +111,7 @@ def test_get_extended_sample_count__upper_bound(spec):
     spec.get_extended_sample_count(allowed_failures)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_extended_sample_count__upper_bound_exceed(spec):
@@ -119,7 +119,7 @@ def test_get_extended_sample_count__upper_bound_exceed(spec):
     expect_assertion_error(lambda: spec.get_extended_sample_count(allowed_failures))
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @with_config_overrides({
     'NUMBER_OF_COLUMNS': 128,
