@@ -59,6 +59,7 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    # blob_sidecars: Dict[BlobIdentifier, BlobSidecar] = field(default_factory=dict) # [Removed in EIP7594]
     data_column_sidecars: Dict[DataColumnIdentifier, DataColumnSidecar] = field(default_factory=dict) # [New in EIP7594]
 ```
 
