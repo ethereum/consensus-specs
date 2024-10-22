@@ -23,7 +23,7 @@ This is the modification of the fork choice accompanying the Electra upgrade.
 
 ### Extended `PayloadAttributes`
 
-`PayloadAttributes` is extended with the maximum number of blobs per block.
+*Note*: `PayloadAttributes` is extended with the target/maximum number of blobs per block.
 
 ```python
 @dataclass
