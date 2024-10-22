@@ -58,30 +58,27 @@ class Store(object):
 `on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
 ```python
 def on_inclusion_list(
-        store: Store, signed_inclusion_list: SignedInclusionList) -> None:
+        store: Store, 
+        signed_inclusion_list: SignedInclusionList, 
+        inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]]) -> None:
     """
     ``on_inclusion_list`` verify the inclusion list before importing it to fork choice store.
     If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
     """
     message = signed_inclusion_list.message
-    # Verify inclusion list slot is bounded to the current slot
-    assert get_current_slot(store) == message.slot
+    # Verify inclusion list slot is either from the current or previous slot
+    assert get_current_slot(store) in [message.slot, message.slot + 1]
 
-    assert message.beacon_block_root in store.block_states
-    # Get the inclusion list committee for this slot
-    state = copy(store.block_states[message.beacon_block_root])
-    if state.slot < message.slot:
-        process_slots(state, message.slot)
-    inclusion_list_committee = get_inclusion_list_committee(state, message.slot)
+    root = message.inclusion_list_committee_root
+    assert hash_tree_root(inclusion_list_committee) == root
 
     # Verify inclusion list validator is part of the committee
     validator_index = message.validator_index
-    assert validator_index.validator_index in inclusion_list_committee
+    assert validator_index in inclusion_list_committee
    
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    root = hash_tree_root(inclusion_list_committee)
     if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
         if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]
             il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
