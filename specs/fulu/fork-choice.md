@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying EIP-7594.
+This is the modification of the fork choice accompanying Fulu.
 
 ## Helpers
 
