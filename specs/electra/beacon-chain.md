@@ -77,6 +77,7 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
