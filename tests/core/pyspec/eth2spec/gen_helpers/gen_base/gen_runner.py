@@ -140,17 +140,7 @@ def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
     return is_skip, diagnostics_obj
 
 
-def run_generator(generator_name, test_providers: Iterable[TestProvider]):
-    """
-    Implementation for a general test generator.
-    :param generator_name: The name of the generator. (lowercase snake_case)
-    :param test_providers: A list of test provider,
-            each of these returns a callable that returns an iterable of test cases.
-            The call to get the iterable may set global configuration,
-            and the iterable should not be resumed after a pause with a change of that configuration.
-    :return:
-    """
-
+def create_arg_parser(generator_name: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
         description=f"Generate YAML test suite files for {generator_name}",
@@ -193,6 +183,23 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=False,
         help="if set only print tests to generate, do not actually run the test and dump the target data",
     )
+
+    return parser
+
+
+def run_generator(generator_name, test_providers: Iterable[TestProvider], parser: argparse.ArgumentParser = None):
+    """
+    Implementation for a general test generator.
+    :param generator_name: The name of the generator. (lowercase snake_case)
+    :param test_providers: A list of test provider,
+            each of these returns a callable that returns an iterable of test cases.
+            The call to get the iterable may set global configuration,
+            and the iterable should not be resumed after a pause with a change of that configuration.
+    :return:
+    """
+
+    if parser is None:
+        parser = create_arg_parser(generator_name)
 
     args = parser.parse_args()
     output_dir = args.output_dir
