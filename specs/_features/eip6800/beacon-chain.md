@@ -158,6 +158,7 @@ class VerkleProof(Container):
 class ExecutionWitness(Container):
     state_diff: List[StemStateDiff, MAX_STEMS]
     verkle_proof: VerkleProof
+    parent_state_root: Root
 ```
 
 ## Beacon chain state transition function
