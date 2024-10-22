@@ -2,7 +2,12 @@ from random import Random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_deneb_and_later,
+    with_all_phases_from_except,
+)
+
+from eth2spec.test.helpers.constants import (
+    DENEB,
+    EIP7594,
 )
 
 from eth2spec.test.helpers.block import (
@@ -20,21 +25,21 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.helpers.sharding import (
-    get_sample_opaque_tx,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 
 
 def get_block_with_blob(spec, state, rng=None):
     block = build_empty_block_for_next_slot(spec, state)
-    opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_opaque_tx(spec, blob_count=1, rng=rng)
+    opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(spec, blob_count=1, rng=rng)
     block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload)
+    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     block.body.blob_kzg_commitments = blob_kzg_commitments
     return block, blobs, blob_kzg_proofs
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [EIP7594])
 @spec_state_test
 def test_simple_blob_data(spec, state):
     rng = Random(1234)
@@ -69,7 +74,7 @@ def test_simple_blob_data(spec, state):
     yield 'steps', test_steps
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [EIP7594])
 @spec_state_test
 def test_invalid_incorrect_proof(spec, state):
     rng = Random(1234)
@@ -97,7 +102,7 @@ def test_invalid_incorrect_proof(spec, state):
     yield 'steps', test_steps
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [EIP7594])
 @spec_state_test
 def test_invalid_data_unavailable(spec, state):
     rng = Random(1234)
@@ -125,7 +130,7 @@ def test_invalid_data_unavailable(spec, state):
     yield 'steps', test_steps
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [EIP7594])
 @spec_state_test
 def test_invalid_wrong_proofs_length(spec, state):
     rng = Random(1234)
@@ -153,7 +158,7 @@ def test_invalid_wrong_proofs_length(spec, state):
     yield 'steps', test_steps
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [EIP7594])
 @spec_state_test
 def test_invalid_wrong_blobs_length(spec, state):
     rng = Random(1234)

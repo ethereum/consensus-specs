@@ -6,7 +6,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_electra, is_post_whisk,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_whisk,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
@@ -15,8 +15,23 @@ from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, co
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
     withdrawal_pubkey = pubkeys[-1 - i]
-    # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+    if is_post_electra(spec):
+        if balance > spec.MIN_ACTIVATION_BALANCE:
+            # use compounding withdrawal credentials if the balance is higher than MIN_ACTIVATION_BALANCE
+            withdrawal_credentials = (
+                spec.COMPOUNDING_WITHDRAWAL_PREFIX
+                + b'\x00' * 11
+                + spec.hash(withdrawal_pubkey)[12:]
+            )
+        else:
+            # insecurely use pubkey as withdrawal key as well
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        # insecurely use pubkey as withdrawal key as well
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE
+
     validator = spec.Validator(
         pubkey=active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -24,7 +39,7 @@ def build_mock_validator(spec, i: int, balance: int):
         activation_epoch=spec.FAR_FUTURE_EPOCH,
         exit_epoch=spec.FAR_FUTURE_EPOCH,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balace)
     )
 
     return validator
@@ -50,22 +65,19 @@ def get_sample_genesis_execution_payload_header(spec,
 
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
-    deposit_receipts_trie_root = None
-    exits_trie_root = None
+    parent_beacon_block_root = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-    if is_post_electra(spec):
-        deposit_receipts_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-        exits_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+    if is_post_deneb(spec):
+        parent_beacon_block_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
         payload_header,
         transactions_trie_root,
         withdrawals_trie_root,
-        deposit_receipts_trie_root,
-        exits_trie_root,
+        parent_beacon_block_root,
     )
     return payload_header
 
@@ -134,7 +146,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         )
 
     if is_post_electra(spec):
-        state.deposit_receipts_start_index = spec.UNSET_DEPOSIT_RECEIPTS_START_INDEX
+        state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_whisk(spec):
         vc = len(state.validators)
@@ -154,7 +166,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.earliest_exit_epoch = spec.GENESIS_EPOCH
         state.consolidation_balance_to_consume = 0
         state.earliest_consolidation_epoch = 0
-        state.pending_balance_deposits = []
+        state.pending_deposits = []
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
 

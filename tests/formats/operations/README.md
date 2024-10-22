@@ -45,8 +45,9 @@ Operations:
 | `execution_payload`       | `BeaconBlockBody`            | **`body`**          | `process_execution_payload(state, body)` (new in Bellatrix)         |
 | `withdrawals`             | `ExecutionPayload`           | `execution_payload` | `process_withdrawals(state, execution_payload)` (new in Capella)                 |
 | `bls_to_execution_change` | `SignedBLSToExecutionChange` | `address_change`    | `process_bls_to_execution_change(state, address_change)` (new in Capella) |
-| `deposit_receipt`         | `DepositReceipt`             | `deposit_receipt`   | `process_deposit_receipt(state, deposit_receipt)` (new in Electra)               |
-| `exits`                   | `ExecutionLayerExit`         | `execution_layer_exit` | `process_execution_layer_exit(state, execution_layer_exit)` (new in Electra) |
+| `deposit_request`         | `DepositRequest`             | `deposit_request`   | `process_deposit_request(state, deposit_request)` (new in Electra)               |
+| `withdrawal_request`      | `WithdrawalRequest`          | `withdrawal_request` | `process_withdrawal_request(state, withdrawal_request)` (new in Electra) |
+| `consolidation_request`   | `ConsolidationRequest`        | `consolidation_request` | `process_consolidation_request(state, consolidation_request)` (new in Electra) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.
 

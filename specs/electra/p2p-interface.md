@@ -15,6 +15,7 @@ The specification of these changes continues in the same format as the network s
     - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
       - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
+    - [Attestation subnets](#attestation-subnets)
       - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -34,6 +35,8 @@ The `beacon_block` topic is modified to also support Electra blocks.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of the new attestation type.
 
+The `attester_slashing` topic is modified to support the gossip of the new `AttesterSlashing` type.
+
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
@@ -48,6 +51,8 @@ The following convenience variables are re-defined
 The following validations are added:
 * [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
 * [REJECT] `aggregate.data.index == 0`
+
+#### Attestation subnets
 
 ##### `beacon_attestation_{subnet_id}`
 

@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
@@ -45,10 +45,11 @@ if __name__ == "__main__":
 
     _new_electra_mods = {key: 'eth2spec.test.electra.block_processing.test_process_' + key for key in [
         'attestation',
-        'consolidation',
-        'deposit_receipt',
-        'execution_layer_withdrawal_request',
-        'voluntary_exit'
+        'consolidation_request',
+        'deposit_request',
+        'voluntary_exit',
+        'withdrawal_request',
+        'withdrawals',
     ]}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
@@ -60,5 +61,6 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
+    check_mods(all_mods, "block_processing")
 
     run_state_test_generators(runner_name="operations", all_mods=all_mods)

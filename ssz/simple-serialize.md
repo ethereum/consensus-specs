@@ -263,7 +263,7 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 
 ## Implementations
 
-See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
+See https://github.com/ethereum/consensus-specs/issues/2138 for a list of current known implementations.
 
 ## JSON mapping
 

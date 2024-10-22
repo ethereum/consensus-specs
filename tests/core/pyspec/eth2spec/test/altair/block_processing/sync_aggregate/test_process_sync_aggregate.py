@@ -24,6 +24,11 @@ from eth2spec.test.context import (
     with_presets,
     spec_state_test,
     always_bls,
+    single_phase,
+    with_custom_state,
+    spec_test,
+    default_balances_electra,
+    default_activation_threshold,
 )
 
 
@@ -143,7 +148,9 @@ def is_duplicate_sync_committee(committee_indices):
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
-@spec_state_test
+@spec_test
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
+@single_phase
 def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     committee_indices = compute_committee_indices(state)
 

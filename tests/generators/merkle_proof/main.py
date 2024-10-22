@@ -1,5 +1,5 @@
-from eth2spec.test.helpers.constants import DENEB, EIP7594
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
+from eth2spec.test.helpers.constants import DENEB, ELECTRA, EIP7594
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 
 
 if __name__ == "__main__":
@@ -9,11 +9,14 @@ if __name__ == "__main__":
     _new_eip7594_mods = {key: 'eth2spec.test.eip7594.merkle_proof.test_' + key for key in [
         'single_merkle_proof',
     ]}
-    eip_7594_mods = combine_mods(_new_eip7594_mods, deneb_mods)
+    electra_mods = deneb_mods
+    eip_7594_mods = combine_mods(_new_eip7594_mods, electra_mods)
 
     all_mods = {
         DENEB: deneb_mods,
+        ELECTRA: electra_mods,
         EIP7594: eip_7594_mods,
     }
+    check_mods(all_mods, "merkle_proof")
 
     run_state_test_generators(runner_name="merkle_proof", all_mods=all_mods)

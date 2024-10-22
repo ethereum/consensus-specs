@@ -2,7 +2,6 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    expect_assertion_error,
     with_presets,
     with_capella_and_later,
 )
@@ -24,78 +23,8 @@ from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
+    run_withdrawals_processing,
 )
-
-
-def verify_post_state(state, spec, expected_withdrawals,
-                      fully_withdrawable_indices, partial_withdrawals_indices):
-    # Consider verifying also the condition when no withdrawals are expected.
-    if len(expected_withdrawals) == 0:
-        return
-
-    expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
-    assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-
-    if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        # NOTE: ideally we would also check in the case with
-        # fewer than maximum withdrawals but that requires the pre-state info
-        next_withdrawal_validator_index = (expected_withdrawals_validator_indices[-1] + 1) % len(state.validators)
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index
-
-    for index in fully_withdrawable_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == 0
-        else:
-            assert state.balances[index] > 0
-    for index in partial_withdrawals_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == spec.MAX_EFFECTIVE_BALANCE
-        else:
-            assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
-
-
-def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None,
-                               fully_withdrawable_indices=None, partial_withdrawals_indices=None, valid=True):
-    """
-    Run ``process_withdrawals``, yielding:
-      - pre-state ('pre')
-      - execution payload ('execution_payload')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    expected_withdrawals = get_expected_withdrawals(spec, state)
-    assert len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    if num_expected_withdrawals is not None:
-        assert len(expected_withdrawals) == num_expected_withdrawals
-
-    pre_state = state.copy()
-    yield 'pre', state
-    yield 'execution_payload', execution_payload
-
-    if not valid:
-        expect_assertion_error(lambda: spec.process_withdrawals(state, execution_payload))
-        yield 'post', None
-        return
-
-    spec.process_withdrawals(state, execution_payload)
-
-    yield 'post', state
-
-    if len(expected_withdrawals) == 0:
-        next_withdrawal_validator_index = (
-            pre_state.next_withdrawal_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        )
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(state.validators)
-    elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        assert len(get_expected_withdrawals(spec, state)) <= bound
-    elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise ValueError('len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD')
-
-    if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
-        verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-
-    return expected_withdrawals
 
 
 @with_capella_and_later
@@ -259,7 +188,7 @@ def test_invalid_non_withdrawable_non_empty_withdrawals(spec, state):
         amount=420,
     )
     execution_payload.withdrawals.append(withdrawal)
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -272,7 +201,7 @@ def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, stat
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = []
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -285,7 +214,7 @@ def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, s
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = []
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -298,7 +227,7 @@ def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec,
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals.append(execution_payload.withdrawals[0].copy())
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -311,7 +240,7 @@ def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(sp
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals.append(execution_payload.withdrawals[0].copy())
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -325,7 +254,7 @@ def test_invalid_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec,
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -339,7 +268,7 @@ def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(sp
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -353,7 +282,7 @@ def test_invalid_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -367,7 +296,7 @@ def test_invalid_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -382,7 +311,7 @@ def test_invalid_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals = execution_payload.withdrawals[:-1]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -400,7 +329,7 @@ def test_invalid_incorrect_withdrawal_index(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals[0].index += 1
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -414,7 +343,7 @@ def test_invalid_incorrect_address_full(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals[0].address = b'\xff' * 20
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -428,7 +357,7 @@ def test_invalid_incorrect_address_partial(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals[0].address = b'\xff' * 20
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -441,7 +370,7 @@ def test_invalid_incorrect_amount_full(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals[0].amount += 1
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -454,7 +383,7 @@ def test_invalid_incorrect_amount_partial(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.withdrawals[0].amount += 1
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -474,7 +403,7 @@ def test_invalid_one_of_many_incorrectly_full(spec, state):
     withdrawal.index += 1
     withdrawal.address = b'\x99' * 20
     withdrawal.amount += 4000000
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -494,7 +423,7 @@ def test_invalid_one_of_many_incorrectly_partial(spec, state):
     withdrawal.index += 1
     withdrawal.address = b'\x99' * 20
     withdrawal.amount += 4000000
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -514,7 +443,7 @@ def test_invalid_many_incorrectly_full(spec, state):
             withdrawal.address = i.to_bytes(20, 'big')
         else:
             withdrawal.amount += 1
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
@@ -534,7 +463,7 @@ def test_invalid_many_incorrectly_partial(spec, state):
             withdrawal.address = i.to_bytes(20, 'big')
         else:
             withdrawal.amount += 1
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload)
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 

@@ -20,7 +20,10 @@ from eth2spec.test.helpers.attester_slashings import (
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
-from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash_for_block,
+)
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
@@ -158,7 +161,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     if is_post_altair(spec):
         spec.process_sync_aggregate(state, block.body.sync_aggregate)
 
-    # Insert post-state rot
+    # Insert post-state root
     block.state_root = state.hash_tree_root()
 
     # Sign block
@@ -197,10 +200,12 @@ def test_invalid_parent_from_same_slot(spec, state):
     signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
 
     child_block = parent_block.copy()
-    child_block.parent_root = state.latest_block_header.hash_tree_root()
-
     if is_post_bellatrix(spec):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
+
+    child_block.parent_root = state.latest_block_header.hash_tree_root()
+    if is_post_bellatrix(spec):
+        child_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, child_block)
 
     # Show that normal path through transition fails
     failed_state = state.copy()
@@ -745,7 +750,7 @@ def test_deposit_in_block(spec, state):
     yield 'post', state
 
     if is_post_electra(spec):
-        balance = state.pending_balance_deposits[0].amount
+        balance = state.pending_deposits[0].amount
     else:
         balance = get_balance(state, validator_index)
 
@@ -816,7 +821,7 @@ def test_deposit_top_up(spec, state):
 
     balance = get_balance(state, validator_index)
     if is_post_electra(spec):
-        balance += state.pending_balance_deposits[0].amount
+        balance += state.pending_deposits[0].amount
 
     assert balance == (
         validator_pre_balance + amount + sync_committee_reward - sync_committee_penalty

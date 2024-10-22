@@ -60,6 +60,14 @@ def next_epoch(spec, state):
         spec.process_slots(state, slot)
 
 
+def next_epoch_with_full_participation(spec, state):
+    """
+    Transition to the start slot of the next epoch with full participation
+    """
+    set_full_participation(spec, state)
+    next_epoch(spec, state)
+
+
 def next_epoch_via_block(spec, state, insert_state_root=False):
     """
     Transition to the start slot of the next epoch via a full block transition
@@ -171,3 +179,8 @@ def has_active_balance_differential(spec, state):
 def get_validator_index_by_pubkey(state, pubkey):
     index = next((i for i, validator in enumerate(state.validators) if validator.pubkey == pubkey), None)
     return index
+
+
+def advance_finality_to(spec, state, epoch):
+    while state.finalized_checkpoint.epoch < epoch:
+        next_epoch_with_full_participation(spec, state)
