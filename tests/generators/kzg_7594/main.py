@@ -6,7 +6,7 @@ from typing import Tuple, Iterable, Any, Callable, Dict
 
 from eth_utils import encode_hex
 
-from eth2spec.eip7594 import spec
+from eth2spec.fulu import spec
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.test.helpers.constants import EIP7594
 from eth2spec.test.helpers.typing import SpecForkName

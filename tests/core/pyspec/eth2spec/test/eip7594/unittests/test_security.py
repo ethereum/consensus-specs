@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_test,
     single_phase,
-    with_eip7594_and_later,
+    with_fulu_and_later,
     with_phases,
 )
 from eth2spec.test.helpers.constants import (
@@ -9,7 +9,7 @@ from eth2spec.test.helpers.constants import (
 )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 @with_phases([MAINNET])
