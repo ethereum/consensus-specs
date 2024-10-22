@@ -98,6 +98,27 @@ def test_fork_pre_activation(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
+def test_fork_pending_deposits_are_sorted(spec, phases, state):
+    post_spec = phases[ELECTRA]
+    state.validators[0].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[0].activation_eligibility_epoch = 2
+    state.validators[1].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[1].activation_eligibility_epoch = 3
+    state.validators[2].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[2].activation_eligibility_epoch = 2
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.pending_deposits) == 3
+    assert post_state.pending_deposits[0].pubkey == state.validators[0].pubkey
+    assert post_state.pending_deposits[1].pubkey == state.validators[2].pubkey
+    assert post_state.pending_deposits[2].pubkey == state.validators[1].pubkey
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_state
+@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
     post_spec = phases[ELECTRA]
     validator = state.validators[0]
