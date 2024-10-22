@@ -1,4 +1,4 @@
-# EIP-7594 -- Polynomial Commitments Sampling
+# Fulu -- Polynomial Commitments Sampling
 
 ## Table of contents
 
