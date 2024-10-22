@@ -1,4 +1,4 @@
-# EIP-7594 -- Peer Sampling
+# Fulu -- Peer Sampling
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -23,7 +23,7 @@
 
 ## Introduction
 
-The purpose of this document is to complement [EIP-7594 -- Data Availability Sampling Core](das-core.md) by specifying the peer sampling functionality of the full PeerDAS protocol. Initially, this functionality may not be implemented by all clients. In such cases, it is replaced by [subnet sampling](das-core.md#subnet-sampling), which is an extension of the custody component of the protocol.
+The purpose of this document is to complement [Fulu -- Data Availability Sampling Core](das-core.md) by specifying the peer sampling functionality of the full PeerDAS protocol. Initially, this functionality may not be implemented by all clients. In such cases, it is replaced by [subnet sampling](das-core.md#subnet-sampling), which is an extension of the custody component of the protocol.
 
 ## Helper functions
 

@@ -1,4 +1,4 @@
-# EIP-7594 -- Networking
+# Fulu -- Networking
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -57,7 +57,7 @@ The specification of these changes continues in the same format as the network s
 
 ### Configuration
 
-*[New in EIP7594]*
+*[New in Fulu:EIP7594]*
 
 | Name                                           | Value                                                    | Description                                                               |
 |------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
@@ -284,7 +284,7 @@ Clients MUST respond with at least the blob sidecars of the first blob-carrying 
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
 
-*[New in EIP7594]*
+*[New in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -292,7 +292,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type              |
 |------------------------|-----------------------------|
-| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
+| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -321,7 +321,7 @@ No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
 
-Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, EIP7594_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the data column sidecar in the response.
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the data column sidecar in the response.
 
 Clients MUST respond with at least one sidecar, if they have it.
 Clients MAY limit the number of blocks and sidecars in the response.
@@ -340,7 +340,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type              |
 |------------------------|-----------------------------|
-| `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
+| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -371,7 +371,7 @@ The request MUST be encoded as an SSZ-container.
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
 
-Let `data_column_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, EIP7594_FORK_EPOCH), current_epoch]`.
+Let `data_column_serve_range` be `[max(current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH), current_epoch]`.
 Clients MUST keep a record of data column sidecars seen on the epoch range `data_column_serve_range`
 where `current_epoch` is defined by the current wall-clock time,
 and clients MUST support serving requests of data columns on this range.
