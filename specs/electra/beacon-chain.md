@@ -30,6 +30,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`PendingConsolidation`](#pendingconsolidation)
+    - [`SingleAttestation`](#singleattestation)
     - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -267,6 +268,16 @@ class ConsolidationRequest(Container):
 class PendingConsolidation(Container):
     source_index: ValidatorIndex
     target_index: ValidatorIndex
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 #### `ExecutionRequests`
