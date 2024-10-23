@@ -72,7 +72,6 @@ an irregular state change is made to upgrade to Electra.
 ```python
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     epoch = deneb.get_current_epoch(pre)
-    latest_execution_payload_header = pre.latest_execution_payload_header
 
     exit_epochs = [v.exit_epoch for v in pre.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
     if not exit_epochs:
@@ -119,7 +118,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110:EIP7002]
+        latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,

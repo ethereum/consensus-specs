@@ -54,7 +54,7 @@ def run_fork_test(post_spec, pre_state):
         stable_validator_fields = [
             'pubkey', 'withdrawal_credentials',
             'slashed',
-            'exit_epoch', 'withdrawable_epoch',
+            'activation_epoch', 'exit_epoch', 'withdrawable_epoch',
         ]
         for field in stable_validator_fields:
             assert getattr(pre_validator, field) == getattr(post_validator, field)
