@@ -32,6 +32,12 @@ def latest_next_sync_committee_gindex(spec):
     return spec.NEXT_SYNC_COMMITTEE_GINDEX
 
 
+def latest_normalize_merkle_branch(spec, branch, gindex):
+    if hasattr(spec, 'normalize_merkle_branch'):
+        return spec.normalize_merkle_branch(branch, gindex)
+    return branch
+
+
 def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
     return spec.compute_start_slot_at_epoch(sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 
