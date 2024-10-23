@@ -68,7 +68,7 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to eip6800.
 
 The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP6800_FORK_EPOCH * SLOTS_PER_EPOCH`.
-Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
+Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
 In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python

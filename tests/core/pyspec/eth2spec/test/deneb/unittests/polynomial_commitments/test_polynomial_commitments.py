@@ -7,7 +7,7 @@ from eth2spec.test.context import (
     expect_assertion_error,
     always_bls
 )
-from eth2spec.test.helpers.sharding import (
+from eth2spec.test.helpers.blob import (
     get_sample_blob,
     get_poly_in_both_forms,
     eval_poly_in_coeff_form,

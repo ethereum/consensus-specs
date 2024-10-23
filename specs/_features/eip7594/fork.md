@@ -44,6 +44,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP7594_FORK_EPOCH:
         return EIP7594_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
         return DENEB_FORK_VERSION
     if epoch >= CAPELLA_FORK_EPOCH:
@@ -71,8 +73,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) ==
 an irregular state change is made to upgrade to EIP7594.
 
 ```python
-def upgrade_to_eip7594(pre: deneb.BeaconState) -> BeaconState:
-    epoch = deneb.get_current_epoch(pre)
+def upgrade_to_eip7594(pre: electra.BeaconState) -> BeaconState:
+    epoch = electra.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
         genesis_time=pre.genesis_time,
@@ -119,6 +121,17 @@ def upgrade_to_eip7594(pre: deneb.BeaconState) -> BeaconState:
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
+        # On-chain deposits
+        deposit_requests_start_index=pre.deposit_requests_start_index,
+        # Consolidations
+        deposit_balance_to_consume=pre.deposit_balance_to_consume,
+        exit_balance_to_consume=pre.exit_balance_to_consume,
+        earliest_exit_epoch=pre.earliest_exit_epoch,
+        consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
+        earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
+        pending_balance_deposits=pre.pending_balance_deposits,
+        pending_partial_withdrawals=pre.pending_partial_withdrawals,
+        pending_consolidations=pre.pending_consolidations,
     )
 
     return post

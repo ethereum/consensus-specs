@@ -1854,11 +1854,12 @@ def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes3
     return Validator(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
+        effective_balance=effective_balance,
+        slashed=False,
         activation_eligibility_epoch=FAR_FUTURE_EPOCH,
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=effective_balance,
     )
 ```
 
