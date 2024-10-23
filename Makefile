@@ -158,6 +158,9 @@ lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
 	flake8 --config $(CURRENT_DIR)/flake8.ini
 
+# If set to true, it will not run generator tests.
+modcheck ?= false
+
 # Runs a generator, identified by param 1
 define run_generator
 	# Started!
@@ -176,7 +179,7 @@ define run_generator
 	. venv/bin/activate; \
 	pip3 install ../../../dist/eth2spec-*.whl; \
 	pip3 install 'eth2spec[generator]'; \
-	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
+	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) $(if $(filter true,$(modcheck)),--modcheck); \
 	echo "generator $(1) finished"
 endef
 
