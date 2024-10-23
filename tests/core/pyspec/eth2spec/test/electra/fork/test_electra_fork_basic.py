@@ -106,13 +106,16 @@ def test_fork_pending_deposits_are_sorted(spec, phases, state):
     state.validators[1].activation_eligibility_epoch = 3
     state.validators[2].activation_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[2].activation_eligibility_epoch = 2
+    state.validators[3].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[3].activation_eligibility_epoch = 1
 
     post_state = yield from run_fork_test(post_spec, state)
 
-    assert len(post_state.pending_deposits) == 3
-    assert post_state.pending_deposits[0].pubkey == state.validators[0].pubkey
-    assert post_state.pending_deposits[1].pubkey == state.validators[2].pubkey
-    assert post_state.pending_deposits[2].pubkey == state.validators[1].pubkey
+    assert len(post_state.pending_deposits) == 4
+    assert post_state.pending_deposits[0].pubkey == state.validators[3].pubkey
+    assert post_state.pending_deposits[1].pubkey == state.validators[0].pubkey
+    assert post_state.pending_deposits[2].pubkey == state.validators[2].pubkey
+    assert post_state.pending_deposits[3].pubkey == state.validators[1].pubkey
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
