@@ -1056,7 +1056,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
-    partial_withdrawals_count = 0
+    processed_partial_withdrawals_count = 0
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
@@ -1076,13 +1076,16 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-        partial_withdrawals_count += 1
+        processed_partial_withdrawals_count += 1
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     for _ in range(bound):
         validator = state.validators[validator_index]
-        balance = state.balances[validator_index]
+        # [Modified in Electra:EIP7251]
+        partially_withdrawn_balance = sum(
+            withdrawal.amount for withdrawal in withdrawals if withdrawal.validator_index == validator_index)
+        balance = state.balances[validator_index] - partially_withdrawn_balance
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -1102,7 +1105,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-    return withdrawals, partial_withdrawals_count
+    return withdrawals, processed_partial_withdrawals_count
 ```
 
 ##### Modified `process_withdrawals`
@@ -1111,7 +1114,8 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)  # [Modified in Electra:EIP7251]
+    # [Modified in Electra:EIP7251]
+    expected_withdrawals, processed_partial_withdrawals_count = get_expected_withdrawals(state)
 
     assert payload.withdrawals == expected_withdrawals
 
@@ -1119,7 +1123,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update pending partial withdrawals [New in Electra:EIP7251]
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_count:]
+    state.pending_partial_withdrawals = state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
 
     # Update the next withdrawal index if this block contained withdrawals
     if len(expected_withdrawals) != 0:
