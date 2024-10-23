@@ -121,7 +121,7 @@ def epochs_until_leak(spec):
 
 
 def epochs_for_shard_committee_period(spec):
-    return spec.config.SHARD_COMMITTEE_PERIOD
+    return spec.config.MIN_VALIDATOR_ACTIVE_PERIOD
 
 
 # slots
