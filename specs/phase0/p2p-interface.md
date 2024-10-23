@@ -50,6 +50,7 @@ It consists of four main sections:
       - [BeaconBlocksByRoot](#beaconblocksbyroot)
       - [Ping](#ping)
       - [GetMetaData](#getmetadata)
+      - [GetENR](#getenr)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -928,6 +929,29 @@ Once established the receiving peer responds with
 it's local most up-to-date MetaData.
 
 The response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
+
+##### GetENR
+
+**Protocol ID:** `/eth2/beacon_chain/req/enr/1/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  ENR
+)
+```
+
+Requests the [ENR](https://github.com/ethereum/devp2p/blob/master/enr.md) of a peer.
+The request opens and negotiates the stream without sending any request content.
+Once established the receiving peer responds with
+it's local most up-to-date ENR.
+
+The response MUST be encoded as an RLP-encoded ENR, treated as an SSZ-list of bytes (`List[byte, 300]`).
 
 The response MUST consist of a single `response_chunk`.
 
