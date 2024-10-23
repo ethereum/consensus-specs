@@ -7,21 +7,26 @@ from eth2spec.test.context import (
 )
 
 
-def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None):
+def _run_get_custody_columns(spec, rng, node_id=None, custody_group_count=None):
     if node_id is None:
         node_id = rng.randint(0, 2**256 - 1)
 
-    if custody_subnet_count is None:
-        custody_subnet_count = rng.randint(0, spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    if custody_group_count is None:
+        custody_group_count = rng.randint(0, spec.config.NUMBER_OF_CUSTODY_GROUPS)
 
-    result = spec.get_custody_columns(node_id, custody_subnet_count)
+    columns_per_group = spec.config.NUMBER_OF_COLUMNS // spec.config.NUMBER_OF_CUSTODY_GROUPS
+    groups = spec.get_custody_groups(node_id, custody_group_count)
     yield 'node_id', 'meta', node_id
-    yield 'custody_subnet_count', 'meta', int(custody_subnet_count)
+    yield 'custody_group_count', 'meta', int(custody_group_count)
+
+    result = []
+    for group in groups:
+        group_columns = spec.compute_columns_for_custody_group(group)
+        assert len(group_columns) == columns_per_group
+        result.extend(group_columns)
 
     assert len(result) == len(set(result))
-    assert len(result) == (
-        custody_subnet_count * spec.config.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    )
+    assert len(result) == custody_group_count * columns_per_group
     assert all(i < spec.config.NUMBER_OF_COLUMNS for i in result)
     python_list_result = [int(i) for i in result]
 
@@ -31,48 +36,48 @@ def _run_get_custody_columns(spec, rng, node_id=None, custody_subnet_count=None)
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns__min_node_id_min_custody_subnet_count(spec):
+def test_get_custody_columns__min_node_id_min_custody_group_count(spec):
     rng = random.Random(1111)
-    yield from _run_get_custody_columns(spec, rng, node_id=0, custody_subnet_count=0)
+    yield from _run_get_custody_columns(spec, rng, node_id=0, custody_group_count=0)
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns__min_node_id_max_custody_subnet_count(spec):
+def test_get_custody_columns__min_node_id_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_columns(
         spec, rng, node_id=0,
-        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+        custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS)
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns__max_node_id_min_custody_subnet_count(spec):
+def test_get_custody_columns__max_node_id_min_custody_group_count(spec):
     rng = random.Random(1111)
-    yield from _run_get_custody_columns(spec, rng, node_id=2**256 - 1, custody_subnet_count=0)
+    yield from _run_get_custody_columns(spec, rng, node_id=2**256 - 1, custody_group_count=0)
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns__max_node_id_max_custody_subnet_count(spec):
+def test_get_custody_columns__max_node_id_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_columns(
         spec, rng, node_id=2**256 - 1,
-        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT,
+        custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS,
     )
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns__max_node_id_max_custody_subnet_count_minus_1(spec):
+def test_get_custody_columns__max_node_id_max_custody_group_count_minus_1(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_columns(
         spec, rng, node_id=2**256 - 2,
-        custody_subnet_count=spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT,
+        custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS,
     )
 
 
@@ -81,7 +86,7 @@ def test_get_custody_columns__max_node_id_max_custody_subnet_count_minus_1(spec)
 @single_phase
 def test_get_custody_columns__short_node_id(spec):
     rng = random.Random(1111)
-    yield from _run_get_custody_columns(spec, rng, node_id=1048576, custody_subnet_count=1)
+    yield from _run_get_custody_columns(spec, rng, node_id=1048576, custody_group_count=1)
 
 
 @with_eip7594_and_later
