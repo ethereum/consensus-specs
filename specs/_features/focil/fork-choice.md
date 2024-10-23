@@ -17,6 +17,12 @@
 
 This is the modification of the fork choice accompanying the FOCIL upgrade.
 
+## Configuration
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds | # [New in FOCIL]
+
 ## Helpers
 
 ### New `validate_inclusion_lists`
@@ -50,7 +56,7 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in FOCIL]
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)# [New in FOCIL]
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in FOCIL]
 
 
 ### New `on_inclusion_list`
@@ -69,6 +75,13 @@ def on_inclusion_list(
     # Verify inclusion list slot is either from the current or previous slot
     assert get_current_slot(store) in [message.slot, message.slot + 1]
 
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    # If the inclusion list is from the previous slot, ignore it if already past the attestation deadline
+    if get_current_slot(store) == message.slot + 1:
+        assert is_before_attesting_interval
+
+    # Sanity check that the given `inclusion_list_committee` matches the root in the inclusion list
     root = message.inclusion_list_committee_root
     assert hash_tree_root(inclusion_list_committee) == root
 
@@ -79,12 +92,17 @@ def on_inclusion_list(
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
+    is_before_freeze_deadline = get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+
+    # Do not process inclusion lists from known equivocators
     if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
         if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]
             il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
             if not il == message:
+                # We have equivocation evidence for `validator_index`, record it as equivocator
                 inclusion_list_equivocators[(message.slot, root)].add(validator_index)
-        else:
+        # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline
+        elif is_before_freeze_deadline:
             inclusion_lists[(message.slot, root)].append(message)
 ```
 
