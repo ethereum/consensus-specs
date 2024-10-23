@@ -35,6 +35,8 @@ The `beacon_block` topic is modified to also support Electra blocks.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of the new attestation type.
 
+The `attester_slashing` topic is modified to support the gossip of the new `AttesterSlashing` type.
+
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.

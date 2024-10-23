@@ -91,7 +91,7 @@ def test_fork_pre_activation(spec, phases, state):
     state.validators[0].activation_epoch = spec.FAR_FUTURE_EPOCH
     post_state = yield from run_fork_test(post_spec, state)
 
-    assert len(post_state.pending_balance_deposits) > 0
+    assert len(post_state.pending_deposits) > 0
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
@@ -105,4 +105,4 @@ def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
     validator.withdrawal_credentials = post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     post_state = yield from run_fork_test(post_spec, state)
 
-    assert len(post_state.pending_balance_deposits) > 0
+    assert len(post_state.pending_deposits) > 0

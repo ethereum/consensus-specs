@@ -137,7 +137,7 @@ def test_finality_rule_2(spec, state):
 def test_finality_rule_3(spec, state):
     """
     Test scenario described here
-    https://github.com/ethereum/eth2.0-specs/issues/611#issuecomment-463612892
+    https://github.com/ethereum/consensus-specs/issues/611#issuecomment-463612892
     """
     # get past first two epochs that finality does not run on
     next_epoch_via_block(spec, state)

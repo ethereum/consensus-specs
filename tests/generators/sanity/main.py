@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 
 
 if __name__ == "__main__":
@@ -28,6 +28,9 @@ if __name__ == "__main__":
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
+    # This is a "hack" which allows other test files (e.g., test_deposit_transition.py)
+    # to reuse the sanity/block test format. If a new test file is added or removed,
+    # do not forget to update sanity/block/__init__.py accordingly.
     _new_electra_mods = {key: 'eth2spec.test.electra.sanity.' + key for key in [
         'blocks',
     ]}
@@ -41,5 +44,6 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
+    check_mods(all_mods, "sanity")
 
     run_state_test_generators(runner_name="sanity", all_mods=all_mods)
