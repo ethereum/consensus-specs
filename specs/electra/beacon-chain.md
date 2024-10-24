@@ -77,6 +77,7 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
@@ -984,6 +985,21 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
+##### Modified `is_valid_block_hash`
+
+*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests` parameter in Electra.
+
+```python
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root,
+                        execution_requests: ExecutionRequests) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
 ##### Modified `notify_new_payload`
 
 *Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
@@ -1015,7 +1031,10 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
