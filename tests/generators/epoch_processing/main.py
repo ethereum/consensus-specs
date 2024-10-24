@@ -40,6 +40,7 @@ if __name__ == "__main__":
     _new_electra_mods_1 = {key: 'eth2spec.test.electra.epoch_processing.test_process_' + key for key in [
         'effective_balance_updates',
         'pending_consolidations',
+        'registry_updates',
     ]}
     # This is a trick to allow tests be split into multiple files and use the same test format.
     _new_electra_mods_2 = {key: 'eth2spec.test.electra.epoch_processing.' + key for key in [
