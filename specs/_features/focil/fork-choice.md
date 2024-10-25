@@ -96,7 +96,7 @@ def on_inclusion_list(
 
     # Do not process inclusion lists from known equivocators
     if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
-        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]
+        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]:
             il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
             if not il == message:
                 # We have equivocation evidence for `validator_index`, record it as equivocator
