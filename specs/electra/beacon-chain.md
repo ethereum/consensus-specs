@@ -137,6 +137,14 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
 
+### Execution layer triggered requests
+
+| Name | Value |
+| - | - |
+| `DEPOSIT_REQUEST_TYPE` | `Bytes1('0x00')` |
+| `WITHDRAWAL_REQUEST_TYPE` | `Bytes1('0x01')` |
+| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
+
 ## Preset
 
 ### Gwei values
@@ -1146,11 +1154,17 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    deposit_bytes = ssz_serialize(execution_requests.deposits)
-    withdrawal_bytes = ssz_serialize(execution_requests.withdrawals)
-    consolidation_bytes = ssz_serialize(execution_requests.consolidations)
+    requests = [
+        (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
+        (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
+        (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+    ]
 
-    return [deposit_bytes, withdrawal_bytes, consolidation_bytes]
+    return [
+        request_type + ssz_serialize(request_data)
+        for request_type, request_data in requests
+        if len(request_data) != 0
+    ]
 ```
 
 ##### Modified `process_execution_payload`
