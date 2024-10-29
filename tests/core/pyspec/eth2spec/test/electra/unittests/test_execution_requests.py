@@ -98,7 +98,7 @@ def test_requests_deserialize__reject_duplicate_request(spec):
         spec.get_execution_requests(serialized_execution_requests)
         assert False, "expected exception"
     except Exception as e:
-        assert "duplicate withdrawal request" in str(e)
+        assert "duplicate request" in str(e)
 
 
 @with_electra_and_later

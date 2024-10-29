@@ -193,45 +193,34 @@ def prepare_execution_payload(state: BeaconState,
 2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
 
 ```python
-def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequests:
-    deposits = None
-    withdrawals = None
-    consolidations = None
+def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+    requests = {
+        DEPOSIT_REQUEST_TYPE: {
+            "value": None,
+            "field": "deposits",
+            "type": List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
+        },
+        WITHDRAWAL_REQUEST_TYPE: {
+            "value": None,
+            "field": "withdrawals",
+            "type": List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
+        },
+        CONSOLIDATION_REQUEST_TYPE: {
+            "value": None,
+            "field": "consolidations",
+            "type": List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+        },
+    }
 
-    for request in execution_requests:
-        assert len(request) >= 1
+    execution_requests = ExecutionRequests()
+    for request in execution_requests_list:
         request_type, request_data = request[0:1], request[1:]
-        assert request_type in [
-            DEPOSIT_REQUEST_TYPE,
-            WITHDRAWAL_REQUEST_TYPE,
-            CONSOLIDATION_REQUEST_TYPE,
-        ], f"unexpected request type: {repr(request_type)}"
+        assert request_type in requests, "unexpected request type"
         assert len(request_data) != 0, "empty request data"
-
-        if request_type == DEPOSIT_REQUEST_TYPE:
-            assert deposits is None, "duplicate deposit request"
-            deposits = ssz_deserialize(
-                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
-                request_data
-            )
-        elif request_type == WITHDRAWAL_REQUEST_TYPE:
-            assert withdrawals is None, "duplicate withdrawal request"
-            withdrawals = ssz_deserialize(
-                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
-                request_data
-            )
-        elif request_type == CONSOLIDATION_REQUEST_TYPE:
-            assert consolidations is None, "duplicate consolidation request"
-            consolidations = ssz_deserialize(
-                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
-                request_data
-            )
-
-    return ExecutionRequests(
-        deposits=deposits or [],
-        withdrawals=withdrawals or [],
-        consolidations=consolidations or []
-    )
+        assert requests[request_type]["value"] is None, "duplicate request"
+        requests[request_type]["value"] = ssz_deserialize(requests[request_type]["type"], request_data)
+        setattr(execution_requests, requests[request_type]["field"], requests[request_type]["value"])
+    return execution_requests
 ```
 
 ## Attesting
