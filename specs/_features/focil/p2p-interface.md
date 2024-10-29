@@ -21,7 +21,7 @@ This document contains the consensus-layer networking specification for FOCIL.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `inclusion_list_CUT_OFF` | `uint64(9)` | seconds | 9 seconds |
+| `attestation_deadline` | `uint64(4)` | seconds | 4 seconds |
 
 ### Configuration
 
@@ -39,18 +39,21 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 ##### Global topics
 
-FOCIL introduces new global topics for inclusion list.
+FOCIL introduces a new global topic for inclusion lists.
 
 ###### `inclusion_list`
 
 This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on the network, assuming the alias `message = signed_inclusion_list.message`:
 
-- _[REJECT]_ The slot `message.slot` is equal to current slot.
+- _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
+- _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is equal to the previous slot and the current time is less than `attestation_deadline` seconds into the slot.
+- _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the current branch corresponds to `message.inclusion_list_committee_root`, as determined by `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
+- _[REJECT]_ The validator index `message.validator_index` is within the `inclusion_list_committee` corresponding to `message.inclusion_list_committee_root`.  
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The `message` is either the first or second valid message received from the validator with index `message.validator_index`.
-- _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index. 
-- _[REJECT]_ The validator index `message.validator_index` is within the inclusion list committee given by `get_inclusion_list_committee(state, message.slot)`, where the `state` is based on `message.parent_block_root` and processed up to `message.slot`.  If the validator index cannot immediately be verified against the expected committee, the inclusion list MAY be queued for later processing while the committee for the branch of `message.parent_block_root` is calculated -- in such a case do not REJECT, instead IGNORE this message.
+- _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index.
+
 
 ### The Req/Resp domain
 

@@ -67,7 +67,7 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
-    parent_root: Root
+    inclusion_list_committee_root: Root
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
 ```
 

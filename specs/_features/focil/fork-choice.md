@@ -17,6 +17,12 @@
 
 This is the modification of the fork choice accompanying the FOCIL upgrade.
 
+## Configuration
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds | # [New in FOCIL]
+
 ## Helpers
 
 ### New `validate_inclusion_lists`
@@ -50,7 +56,7 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in FOCIL]
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)# [New in FOCIL]
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in FOCIL]
 
 
 ### New `on_inclusion_list`
@@ -58,36 +64,45 @@ class Store(object):
 `on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
 ```python
 def on_inclusion_list(
-        store: Store, signed_inclusion_list: SignedInclusionList) -> None:
+        store: Store, 
+        signed_inclusion_list: SignedInclusionList, 
+        inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]]) -> None:
     """
     ``on_inclusion_list`` verify the inclusion list before importing it to fork choice store.
     If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
     """
     message = signed_inclusion_list.message
-    # Verify inclusion list slot is bounded to the current slot
-    assert get_current_slot(store) == message.slot
+    # Verify inclusion list slot is either from the current or previous slot
+    assert get_current_slot(store) in [message.slot, message.slot + 1]
 
-    assert message.beacon_block_root in store.block_states
-    # Get the inclusion list committee for this slot
-    state = copy(store.block_states[message.beacon_block_root])
-    if state.slot < message.slot:
-        process_slots(state, message.slot)
-    inclusion_list_committee = get_inclusion_list_committee(state, message.slot)
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    # If the inclusion list is from the previous slot, ignore it if already past the attestation deadline
+    if get_current_slot(store) == message.slot + 1:
+        assert is_before_attesting_interval
+
+    # Sanity check that the given `inclusion_list_committee` matches the root in the inclusion list
+    root = message.inclusion_list_committee_root
+    assert hash_tree_root(inclusion_list_committee) == root
 
     # Verify inclusion list validator is part of the committee
     validator_index = message.validator_index
-    assert validator_index.validator_index in inclusion_list_committee
+    assert validator_index in inclusion_list_committee
    
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    root = hash_tree_root(inclusion_list_committee)
+    is_before_freeze_deadline = get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+
+    # Do not process inclusion lists from known equivocators
     if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
-        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]
+        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]:
             il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
             if not il == message:
+                # We have equivocation evidence for `validator_index`, record it as equivocator
                 inclusion_list_equivocators[(message.slot, root)].add(validator_index)
-        else:
+        # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline
+        elif is_before_freeze_deadline:
             inclusion_lists[(message.slot, root)].append(message)
 ```
 
