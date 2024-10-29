@@ -47,7 +47,7 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_valid_block_hash(self: ExecutionEngine,
                             execution_payload: ExecutionPayload,
-                            parent_beacon_block_root,
+                            parent_beacon_block_root: Root,
                             execution_requests_list: Sequence[bytes],
                             target_blobs_per_block: uint64) -> bool:
         return True
