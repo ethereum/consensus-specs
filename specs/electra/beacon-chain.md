@@ -24,12 +24,12 @@
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`DepositRequest`](#depositrequest)
     - [`PendingDeposit`](#pendingdeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
+    - [`PendingConsolidation`](#pendingconsolidation)
+    - [`DepositRequest`](#depositrequest)
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
-    - [`PendingConsolidation`](#pendingconsolidation)
     - [`SingleAttestation`](#singleattestation)
     - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
@@ -202,19 +202,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### New containers
 
-#### `DepositRequest`
-
-*Note*: The container is new in EIP6110.
-
-```python
-class DepositRequest(Container):
-    pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    signature: BLSSignature
-    index: uint64
-```
-
 #### `PendingDeposit`
 
 *Note*: The container is new in EIP7251.
@@ -238,6 +225,30 @@ class PendingPartialWithdrawal(Container):
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
+
+#### `PendingConsolidation`
+
+*Note*: The container is new in EIP7251.
+
+```python
+class PendingConsolidation(Container):
+    source_index: ValidatorIndex
+    target_index: ValidatorIndex
+```
+
+#### `DepositRequest`
+
+*Note*: The container is new in EIP6110.
+
+```python
+class DepositRequest(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+    signature: BLSSignature
+    index: uint64
+```
+
 #### `WithdrawalRequest`
 
 *Note*: The container is new in EIP7251:EIP7002.
@@ -258,16 +269,6 @@ class ConsolidationRequest(Container):
     source_address: ExecutionAddress
     source_pubkey: BLSPubkey
     target_pubkey: BLSPubkey
-```
-
-#### `PendingConsolidation`
-
-*Note*: The container is new in EIP7251.
-
-```python
-class PendingConsolidation(Container):
-    source_index: ValidatorIndex
-    target_index: ValidatorIndex
 ```
 
 #### `SingleAttestation`
@@ -583,10 +584,12 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     output: Set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
-    for index in committee_indices:
-        committee = get_beacon_committee(state, attestation.data.slot, index)
+    for committee_index in committee_indices:
+        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
         committee_attesters = set(
-            index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
+            attester_index for i, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        )
         output = output.union(committee_attesters)
 
         committee_offset += len(committee)
