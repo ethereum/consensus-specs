@@ -12,6 +12,7 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
+  - [Execution layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
