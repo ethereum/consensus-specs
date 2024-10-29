@@ -202,9 +202,9 @@ def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequ
         assert len(request) >= 1
         request_type, request_data = request[0:1], request[1:]
         assert request_type in [
-           DEPOSIT_REQUEST_TYPE,
-           WITHDRAWAL_REQUEST_TYPE,
-           CONSOLIDATION_REQUEST_TYPE,
+            DEPOSIT_REQUEST_TYPE,
+            WITHDRAWAL_REQUEST_TYPE,
+            CONSOLIDATION_REQUEST_TYPE,
         ], f"unexpected request type: {repr(request_type)}"
         assert len(request_data) != 0, "empty request data"
 
