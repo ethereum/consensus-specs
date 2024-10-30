@@ -1341,24 +1341,16 @@ def apply_deposit(state: BeaconState,
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
-            # [New in Electra:EIP7251]
-            state.pending_deposits.append(PendingDeposit(
-                pubkey=pubkey,
-                withdrawal_credentials=withdrawal_credentials,
-                amount=amount,
-                signature=signature,
-                slot=GENESIS_SLOT,  # Use GENESIS_SLOT to distinguish from a pending deposit request
-            ))
-    else:
-        # Increase balance by deposit amount
-        # [Modified in Electra:EIP7251]
-        state.pending_deposits.append(PendingDeposit(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-            signature=signature,
-            slot=GENESIS_SLOT  # Use GENESIS_SLOT to distinguish from a pending deposit request
-        ))
+
+    # Increase balance by deposit amount
+    # [Modified in Electra:EIP7251]
+    state.pending_deposits.append(PendingDeposit(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        signature=signature,
+        slot=GENESIS_SLOT  # Use GENESIS_SLOT to distinguish from a pending deposit request
+    ))
 ```
 
 ###### New `is_valid_deposit_signature`
