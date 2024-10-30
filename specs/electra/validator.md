@@ -194,32 +194,45 @@ def prepare_execution_payload(state: BeaconState,
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    requests = {
-        DEPOSIT_REQUEST_TYPE: {
-            "field": "deposits",
-            "type": List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
-        },
-        WITHDRAWAL_REQUEST_TYPE: {
-            "field": "withdrawals",
-            "type": List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
-        },
-        CONSOLIDATION_REQUEST_TYPE: {
-            "field": "consolidations",
-            "type": List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
-        },
-    }
+    deposits = []
+    withdrawals = []
+    consolidations = []
+
+    request_types = [
+        DEPOSIT_REQUEST_TYPE,
+        WITHDRAWAL_REQUEST_TYPE,
+        CONSOLIDATION_REQUEST_TYPE,
+    ]
 
     prev_request_type = None
-    execution_requests = ExecutionRequests()
     for request in execution_requests_list:
         request_type, request_data = request[0:1], request[1:]
-        assert request_type in requests, "unexpected request type"
+        assert request_type in request_types, "unexpected request type"
         assert len(request_data) != 0, "empty request data"
         assert prev_request_type is None or prev_request_type < request_type, "not ascending order"
         prev_request_type = request_type
-        deserialized_request = ssz_deserialize(requests[request_type]["type"], request_data)
-        setattr(execution_requests, requests[request_type]["field"], deserialized_request)
-    return execution_requests
+
+        if request_type == DEPOSIT_REQUEST_TYPE:
+            deposits = ssz_deserialize(
+                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == WITHDRAWAL_REQUEST_TYPE:
+            withdrawals = ssz_deserialize(
+                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+            consolidations = ssz_deserialize(
+                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+
+    return ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations,
+    )
 ```
 
 ## Attesting
