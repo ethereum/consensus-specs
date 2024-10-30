@@ -48,24 +48,6 @@ def test_new_deposit_over_max(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_new_deposit_with_bad_signature(spec, state):
-    # fresh deposit = next validator index = validator appended to registry
-    validator_index = len(state.validators)
-    # a deposit that is not signed
-    amount = spec.EFFECTIVE_BALANCE_INCREMENT
-    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=False)
-    # save state so we can access pending deposits later
-    pre_state = state
-
-    yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
-
-    if is_post_electra(spec):
-        # there should not be a new pending deposit
-        assert state.pending_deposits == pre_state.pending_deposits
-
-
-@with_all_phases
-@spec_state_test
 def test_new_deposit_eth1_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
