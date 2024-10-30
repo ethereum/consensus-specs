@@ -845,7 +845,6 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
             add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
     else:
         validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
-        # Increase balance
         increase_balance(state, validator_index, deposit.amount)
 ```
 
