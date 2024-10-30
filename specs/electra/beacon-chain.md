@@ -1341,7 +1341,7 @@ def apply_deposit(state: BeaconState,
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
         else:
-          return
+            return
 
     # Increase balance by deposit amount
     # [Modified in Electra:EIP7251]
