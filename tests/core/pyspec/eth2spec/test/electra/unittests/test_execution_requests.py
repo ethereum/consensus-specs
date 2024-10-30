@@ -64,13 +64,33 @@ def test_requests_serialization_round_trip__one_request_with_real_data(spec):
 @with_electra_and_later
 @spec_test
 @single_phase
-def test_requests_deserialize__allow_out_of_order_requests(spec):
+def test_requests_deserialize__reject_duplicate_request(spec):
+    serialized_withdrawal = 76 * b"\x0a"
+    serialized_execution_requests = [
+        spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
+        spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
+    ]
+    try:
+        spec.get_execution_requests(serialized_execution_requests)
+        assert False, "expected exception"
+    except Exception as e:
+        assert "not ascending order" in str(e)
+
+
+@with_electra_and_later
+@spec_test
+@single_phase
+def test_requests_deserialize__reject_out_of_order_requests(spec):
     serialized_execution_requests = [
         spec.WITHDRAWAL_REQUEST_TYPE + 76 * b"\x0a",
         spec.DEPOSIT_REQUEST_TYPE + 192 * b"\x0b",
     ]
     assert int(serialized_execution_requests[0][0]) > int(serialized_execution_requests[1][0])
-    spec.get_execution_requests(serialized_execution_requests)
+    try:
+        spec.get_execution_requests(serialized_execution_requests)
+        assert False, "expected exception"
+    except Exception as e:
+        assert "not ascending order" in str(e)
 
 
 @with_electra_and_later
@@ -83,22 +103,6 @@ def test_requests_deserialize__reject_empty_request(spec):
         assert False, "expected exception"
     except Exception as e:
         assert "empty request data" in str(e)
-
-
-@with_electra_and_later
-@spec_test
-@single_phase
-def test_requests_deserialize__reject_duplicate_request(spec):
-    serialized_withdrawal = 76 * b"\x0a"
-    serialized_execution_requests = [
-        spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
-        spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
-    ]
-    try:
-        spec.get_execution_requests(serialized_execution_requests)
-        assert False, "expected exception"
-    except Exception as e:
-        assert "duplicate request" in str(e)
 
 
 @with_electra_and_later

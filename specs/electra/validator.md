@@ -189,37 +189,36 @@ def prepare_execution_payload(state: BeaconState,
 
 *[New in Electra]*
 
-1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The first byte of each request is used to determine the request type. There can only be one instance of each request type per execution requests.
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The first byte of each request is used to determine the request type. Requests must be order by request type in ascending order. As a result, there can only be one instance of each request type per execution requests.
 2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
     requests = {
         DEPOSIT_REQUEST_TYPE: {
-            "value": None,
             "field": "deposits",
             "type": List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
         },
         WITHDRAWAL_REQUEST_TYPE: {
-            "value": None,
             "field": "withdrawals",
             "type": List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
         },
         CONSOLIDATION_REQUEST_TYPE: {
-            "value": None,
             "field": "consolidations",
             "type": List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
         },
     }
 
+    prev_request_type = None
     execution_requests = ExecutionRequests()
     for request in execution_requests_list:
         request_type, request_data = request[0:1], request[1:]
         assert request_type in requests, "unexpected request type"
         assert len(request_data) != 0, "empty request data"
-        assert requests[request_type]["value"] is None, "duplicate request"
-        requests[request_type]["value"] = ssz_deserialize(requests[request_type]["type"], request_data)
-        setattr(execution_requests, requests[request_type]["field"], requests[request_type]["value"])
+        assert prev_request_type is None or prev_request_type < request_type, "not ascending order"
+        prev_request_type = request_type
+        deserialized_request = ssz_deserialize(requests[request_type]["type"], request_data)
+        setattr(execution_requests, requests[request_type]["field"], deserialized_request)
     return execution_requests
 ```
 
