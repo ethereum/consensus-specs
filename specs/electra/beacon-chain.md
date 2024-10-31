@@ -30,6 +30,7 @@
     - [`DepositRequest`](#depositrequest)
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
+    - [`SingleAttestation`](#singleattestation)
     - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -268,6 +269,16 @@ class ConsolidationRequest(Container):
     source_address: ExecutionAddress
     source_pubkey: BLSPubkey
     target_pubkey: BLSPubkey
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 #### `ExecutionRequests`
