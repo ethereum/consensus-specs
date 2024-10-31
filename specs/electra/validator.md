@@ -177,7 +177,7 @@ def prepare_execution_payload(state: BeaconState,
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         target_blobs_per_block=MAX_BLOBS_PER_BLOCK // 2,  # [New in Electra:EIP7742]
-        maximum_blobs_per_block=MAX_BLOBS_PER_BLOCK,  # [New in Electra:EIP7742]
+        max_blobs_per_block=MAX_BLOBS_PER_BLOCK,  # [New in Electra:EIP7742]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,

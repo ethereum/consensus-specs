@@ -34,5 +34,5 @@ class PayloadAttributes(object):
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
     target_blobs_per_block: uint64  # [New in Electra:EIP7742]
-    maximum_blobs_per_block: uint64  # [New in Electra:EIP7742]
+    max_blobs_per_block: uint64  # [New in Electra:EIP7742]
 ```
