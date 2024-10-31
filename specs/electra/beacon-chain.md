@@ -1338,10 +1338,9 @@ def apply_deposit(state: BeaconState,
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
-        else:
+        if not is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             return
+        add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
 
     # Increase balance by deposit amount
     # [Modified in Electra:EIP7251]
