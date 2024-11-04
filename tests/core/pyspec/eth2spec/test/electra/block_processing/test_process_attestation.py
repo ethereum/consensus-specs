@@ -86,6 +86,7 @@ def test_invalid_nonset_committe_bits(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+@with_presets([MINIMAL], "need multiple committees per slot")
 def test_invalid_nonset_bits_for_one_committee(spec, state):
     """
     EIP-7549 test
