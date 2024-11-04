@@ -56,6 +56,7 @@
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
+    - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -569,6 +570,25 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
         withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index
+    )
+```
+
+#### Modified `get_indexed_attestation`
+
+*Note*: The function is modified to use the new `get_attesting_indices`.
+
+```python
+def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> IndexedAttestation:
+    """
+    Return the indexed attestation corresponding to ``attestation``.
+    """
+    # [Modified in Electra:EIP7549]
+    attesting_indices = get_attesting_indices(state, attestation)
+
+    return IndexedAttestation(
+        attesting_indices=sorted(attesting_indices),
+        data=attestation.data,
+        signature=attestation.signature,
     )
 ```
 
@@ -1254,6 +1274,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ###### Modified `process_attestation`
 
+*Note*: The function is modified to support EIP7549.
+
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
@@ -1264,18 +1286,24 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # [Modified in Electra:EIP7549]
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
-    participants_count = 0
+    committee_offset = 0
     for index in committee_indices:
         assert index < get_committee_count_per_slot(state, data.target.epoch)
         committee = get_beacon_committee(state, data.slot, index)
-        participants_count += len(committee)
+        committee_attesters = set(
+            attester_index for i, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        )
+        assert len(committee_attesters) > 0
+        committee_offset += len(committee)
 
-    assert len(attestation.aggregation_bits) == participants_count
+    # Bitfield length matches total number of participants
+    assert len(attestation.aggregation_bits) == committee_offset
 
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
 
-    # Verify signature
+    # Verify signature [Modified in Electra:EIP7549]
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     # Update epoch participation flags
@@ -1285,6 +1313,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
+    # [Modified in Electra:EIP7549]
     for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
