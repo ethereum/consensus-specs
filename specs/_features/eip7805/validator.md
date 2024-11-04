@@ -1,4 +1,4 @@
-# FOCIL -- Honest Validator
+# EIP-7805 -- Honest Validator
 
 ## Table of contents
 
@@ -25,14 +25,14 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an "honest validator" to implement FOCIL.
+This document represents the changes to be made in the code of an "honest validator" to implement EIP-7805.
 
 ## Prerequisites
 
 This document is an extension of the [Electra -- Honest Validator](../../electra/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [FOCIL](./beacon-chain.md) are requisite for this document and used throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP-7805](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ### Time parameters

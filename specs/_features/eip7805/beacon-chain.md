@@ -1,4 +1,4 @@
-# FOCIL -- The Beacon Chain
+# EIP-7805 -- The Beacon Chain
 
 ## Table of contents
 
@@ -32,7 +32,7 @@
 
 ## Introduction
 
-This is the beacon chain specification to add a fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to the following posts:
+This is the beacon chain specification to add EIP-7805 / fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to the following posts:
 - [Fork-Choice enforced Inclusion Lists (FOCIL): A simple committee-based inclusion list proposal](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
 *Note:* This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
@@ -43,19 +43,19 @@ This is the beacon chain specification to add a fork-choice enforced, committee-
 
 | Name | Value |
 | - | - |
-| `DOMAIN_IL_COMMITTEE`       | `DomainType('0x0C000000')`  # (New in FOCIL)|
+| `DOMAIN_IL_COMMITTEE`       | `DomainType('0x0C000000')`  # (New in EIP-7805)|
 
 ### Inclusion List Committee
 
 | Name | Value | 
 | - | - | 
-| `IL_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in FOCIL) |
+| `IL_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in EIP-7805) |
 
 ### Execution
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(1)` # (New in FOCIL) TODO: Placeholder | 
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(1)` # (New in EIP-7805) TODO: Placeholder | 
 
 ## Containers
 
@@ -127,14 +127,14 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests 
-    il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in FOCIL]
+    il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP-7805]
 ```
 
 #### Engine APIs
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in FOCIL.
+*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in EIP-7805.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
@@ -152,7 +152,7 @@ def notify_new_payload(self: ExecutionEngine,
 ##### Modified `verify_and_notify_new_payload`
 
 *Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `il_transactions`
-when calling `notify_new_payload` in FOCIL.
+when calling `notify_new_payload` in EIP-7805.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -163,7 +163,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     execution_requests = new_payload_request.execution_requests
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    il_transactions = new_payload_request.il_transactions # [New in FOCIL]
+    il_transactions = new_payload_request.il_transactions # [New in EIP-7805]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
@@ -171,7 +171,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.is_valid_versioned_hashes(new_payload_request):
         return False
 
-    # [Modified in FOCIL]
+    # [Modified in EIP-7805]
     if not self.notify_new_payload(
             execution_payload, 
             execution_requests, 

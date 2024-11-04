@@ -1,6 +1,6 @@
-# FOCIL -- Networking
+# EIP-7805 -- Networking
 
-This document contains the consensus-layer networking specification for FOCIL.
+This document contains the consensus-layer networking specification for EIP-7805.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -35,11 +35,11 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 
 | Name                          | Message Type                                         |
 |-------------------------------|------------------------------------------------------|
-| `inclusion_list`    | `SignedInclusionList` [New in FOCIL] |
+| `inclusion_list`    | `SignedInclusionList` [New in EIP-7805] |
 
 ##### Global topics
 
-FOCIL introduces a new global topic for inclusion lists.
+EIP-7805 introduces a new global topic for inclusion lists.
 
 ###### `inclusion_list`
 
@@ -69,7 +69,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type                           |
 |------------------------|------------------------------------------|
-| `FOCIL_FORK_VERSION` | `focil.SignedInclusionList` |
+| `EIP-7805_FORK_VERSION` | `EIP-7805.SignedInclusionList` |
 
 Request Content:
 ```

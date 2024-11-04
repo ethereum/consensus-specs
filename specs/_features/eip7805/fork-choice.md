@@ -1,4 +1,4 @@
-# FOCIL -- Fork Choice
+# EIP-7805 -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -15,13 +15,13 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the FOCIL upgrade.
+This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 ## Configuration
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds | # [New in FOCIL]
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds | # [New in EIP-7805]
 
 ## Helpers
 
@@ -55,9 +55,9 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in FOCIL]
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in FOCIL]
-
+    inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in EIP-7805]
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in EIP-7805]
+```
 
 ### New `on_inclusion_list`
 
