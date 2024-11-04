@@ -792,23 +792,25 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Modified `process_registry_updates`
 
-*Note*: The function `process_registry_updates` is modified to use the updated definition of `initiate_validator_exit`
+*Note*: The function `process_registry_updates` is modified to
+use the updated definitions of `initiate_validator_exit` and `is_eligible_for_activation_queue`
 and changes how the activation epochs are computed for eligible validators.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):
+        if is_eligible_for_activation_queue(validator):  # [Modified in Electra:EIP7251]
             validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if (
             is_active_validator(validator, get_current_epoch(state))
             and validator.effective_balance <= EJECTION_BALANCE
         ):
-            initiate_validator_exit(state, ValidatorIndex(index))
+            initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
 
     # Activate all eligible validators
+    # [Modified in Electra:EIP7251]
     activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     for validator in state.validators:
         if is_eligible_for_activation(state, validator):
