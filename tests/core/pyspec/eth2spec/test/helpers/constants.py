@@ -57,7 +57,7 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7594: DENEB,
+    EIP7594: ELECTRA,
     EIP7732: ELECTRA,
 }
 
