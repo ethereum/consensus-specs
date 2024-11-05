@@ -1288,9 +1288,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
-    for index in committee_indices:
-        assert index < get_committee_count_per_slot(state, data.target.epoch)
-        committee = get_beacon_committee(state, data.slot, index)
+    for committee_index in committee_indices:
+        assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
+        committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = set(
             attester_index for i, attester_index in enumerate(committee)
             if attestation.aggregation_bits[committee_offset + i]
