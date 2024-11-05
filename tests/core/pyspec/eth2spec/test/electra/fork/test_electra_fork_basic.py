@@ -87,11 +87,22 @@ def test_fork_random_large_validator_set(spec, phases, state):
 @with_state
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_fork_pre_activation(spec, phases, state):
+    index = 0
     post_spec = phases[ELECTRA]
-    state.validators[0].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
     post_state = yield from run_fork_test(post_spec, state)
 
-    assert len(post_state.pending_deposits) > 0
+    validator = post_state.validators[index]
+    assert post_state.balances[index] == 0
+    assert validator.effective_balance == 0
+    assert validator.activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
+    assert post_state.pending_deposits == [post_spec.PendingDeposit(
+        pubkey=validator.pubkey,
+        withdrawal_credentials=validator.withdrawal_credentials,
+        amount=state.balances[index],
+        signature=spec.bls.G2_POINT_AT_INFINITY,
+        slot=spec.GENESIS_SLOT,
+    )]
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
@@ -123,13 +134,21 @@ def test_fork_pending_deposits_are_sorted(spec, phases, state):
 @with_state
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
+    index = 0
     post_spec = phases[ELECTRA]
-    validator = state.validators[0]
-    state.balances[0] = post_spec.MIN_ACTIVATION_BALANCE + 1
+    validator = state.validators[index]
+    state.balances[index] = post_spec.MIN_ACTIVATION_BALANCE + 1
     validator.withdrawal_credentials = post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     post_state = yield from run_fork_test(post_spec, state)
 
-    assert len(post_state.pending_deposits) > 0
+    assert post_state.balances[index] == post_spec.MIN_ACTIVATION_BALANCE
+    assert post_state.pending_deposits == [post_spec.PendingDeposit(
+        pubkey=validator.pubkey,
+        withdrawal_credentials=validator.withdrawal_credentials,
+        amount=state.balances[index] - post_spec.MIN_ACTIVATION_BALANCE,
+        signature=spec.bls.G2_POINT_AT_INFINITY,
+        slot=spec.GENESIS_SLOT,
+    )]
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
