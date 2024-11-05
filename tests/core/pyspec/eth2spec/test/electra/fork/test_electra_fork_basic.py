@@ -130,3 +130,61 @@ def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
     post_state = yield from run_fork_test(post_spec, state)
 
     assert len(post_state.pending_deposits) > 0
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_state
+@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
+def test_fork_earliest_exit_epoch_no_validator_exits(spec, phases, state):
+    # advance state so the current epoch is not zero
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    post_spec = phases[ELECTRA]
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # the earliest exit epoch should be the compute_activation_exit_epoch + 1
+    current_epoch = post_spec.compute_epoch_at_slot(post_state.slot)
+    expected_earliest_exit_epoch = post_spec.compute_activation_exit_epoch(current_epoch) + 1
+    assert post_state.earliest_exit_epoch == expected_earliest_exit_epoch
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_state
+@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
+def test_fork_earliest_exit_epoch_is_max_validator_exit_epoch(spec, phases, state):
+    # assign some validators exit epochs
+    state.validators[0].exit_epoch = 20
+    state.validators[1].exit_epoch = 30
+    state.validators[2].exit_epoch = 10
+
+    post_state = yield from run_fork_test(phases[ELECTRA], state)
+
+    # the earliest exit epoch should be the greatest validator exit epoch + 1
+    expected_earliest_exit_epoch = post_state.validators[1].exit_epoch + 1
+    assert post_state.earliest_exit_epoch == expected_earliest_exit_epoch
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_state
+@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
+def test_fork_earliest_exit_epoch_less_than_current_epoch(spec, phases, state):
+    # assign a validator an exit epoch
+    state.validators[0].exit_epoch = 1
+
+    # advance state so the current epoch is not zero
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    post_spec = phases[ELECTRA]
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # the earliest exit epoch should be the compute_activation_exit_epoch + 1
+    current_epoch = post_spec.compute_epoch_at_slot(post_state.slot)
+    expected_earliest_exit_epoch = post_spec.compute_activation_exit_epoch(current_epoch) + 1
+    assert post_state.earliest_exit_epoch == expected_earliest_exit_epoch
