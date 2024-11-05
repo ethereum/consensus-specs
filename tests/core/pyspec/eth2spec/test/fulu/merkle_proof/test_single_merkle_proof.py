@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip7594_and_later,
+    with_fulu_and_later,
     with_test_suite_name,
 )
 from eth2spec.test.helpers.block import (
@@ -62,14 +62,14 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__basic(spec, state):
     yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state)
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
     rng = random.Random(1111)

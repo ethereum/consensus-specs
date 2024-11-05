@@ -1,4 +1,4 @@
-# EIP7594 -- Fork Logic
+# Fulu -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,7 +12,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to EIP7594](#fork-to-eip7594)
+- [Fork to Fulu](#fork-to-fulu)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document describes the process of EIP7594 upgrade.
+This document describes the process of Fulu upgrade.
 
 ## Configuration
 
@@ -28,8 +28,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `EIP7594_FORK_VERSION` | `Version('0x06000000')` |
-| `EIP7594_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `FULU_FORK_VERSION` | `Version('0x06000000')` |
+| `FULU_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -42,8 +42,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP7594_FORK_EPOCH:
-        return EIP7594_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -57,23 +57,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to EIP7594
+## Fork to Fulu
 
 ### Fork trigger
 
-EIP7594 does not need a hard fork. We only add this fork doc for compiling this new feature in pyspec.
+TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
+For now, we assume the condition will be triggered at epoch `FULU_FORK_EPOCH`.
 
-For now, we assume the condition will be triggered at epoch `EIP7594_FORK_EPOCH`.
-
-Note that for the pure EIP7594 networks, we don't apply `upgrade_to_eip7594` since it starts with EIP7594 version logic.
+Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it starts with Fulu version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7594_FORK_EPOCH`,
-an irregular state change is made to upgrade to EIP7594.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == FULU_FORK_EPOCH`,
+an irregular state change is made to upgrade to Fulu.
 
 ```python
-def upgrade_to_eip7594(pre: electra.BeaconState) -> BeaconState:
+def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
     epoch = electra.get_current_epoch(pre)
     post = BeaconState(
         # Versioning
@@ -82,7 +81,7 @@ def upgrade_to_eip7594(pre: electra.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIP7594_FORK_VERSION,  # [Modified in EIP7594]
+            current_version=FULU_FORK_VERSION,  # [Modified in Fulu]
             epoch=epoch,
         ),
         # History
