@@ -250,9 +250,14 @@ gen_list:
 	done
 
 # Run one generator.
+# To check modules for a generator, append modcheck=true, eg:
+#   make gen_genesis modcheck=true
+gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
 gen_%: $(ETH2SPEC) pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
-	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py -o $(TEST_VECTOR_DIR); \
+	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
+		--output $(TEST_VECTOR_DIR) \
+		$(MAYBE_MODCHECK)
 
 # Generate KZG setups.
 gen_kzg_setups: $(ETH2SPEC)

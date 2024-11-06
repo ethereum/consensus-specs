@@ -27,7 +27,7 @@ Features are researched and developed in parallel, and then consolidated into se
 
 | Seq. | Code Name | Fork Epoch | Specs |
 | - | - | - | - |
-| 5 | **Electra** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[Electra fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [full node](specs/electra/light-client/full-node.md), [networking](specs/electra/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/electra/validator.md)</li><li>[P2P networking](specs/electra/p2p-interface.md)</li></ul></ul> |
+| 5 | **Electra** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[Electra fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [networking](specs/electra/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/electra/validator.md)</li><li>[P2P networking](specs/electra/p2p-interface.md)</li></ul></ul> |
 
 ### Outdated Specifications
 
