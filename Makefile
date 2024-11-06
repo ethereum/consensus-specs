@@ -24,6 +24,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	gen_all       \
 	gen_list      \
 	help          \
+	kzg_setups    \
 	lint          \
 	pyspec        \
 	serve_docs    \
@@ -42,10 +43,11 @@ help:
 	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
 	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
 	@echo "make $(BOLD)detect_errors$(NORM) -- detect generator errors"
+	@echo "make $(BOLD)eth2spec$(NORM)      -- force rebuild eth2spec package"
 	@echo "make $(BOLD)gen_<gen>$(NORM)     -- run a single generator"
 	@echo "make $(BOLD)gen_all$(NORM)       -- run all generators"
 	@echo "make $(BOLD)gen_list$(NORM)      -- list all generator targets"
-	@echo "make $(BOLD)eth2spec$(NORM)      -- force rebuild eth2spec package"
+	@echo "make $(BOLD)kzg_setups$(NORM)    -- generate trusted setups"
 	@echo "make $(BOLD)lint$(NORM)          -- run the linters"
 	@echo "make $(BOLD)pyspec$(NORM)        -- generate python specifications"
 	@echo "make $(BOLD)serve_docs$(NORM)    -- start a local docs web server"
@@ -241,7 +243,7 @@ GENERATOR_DIR = $(CURDIR)/tests/generators
 SCRIPTS_DIR = $(CURDIR)/scripts
 GENERATOR_ERROR_LOG_FILE = $(TEST_VECTOR_DIR)/testgen_error_log.txt
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
-GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS)) gen_kzg_setups
+GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
 
 # List available generators.
 gen_list:
@@ -259,16 +261,6 @@ gen_%: $(ETH2SPEC) pyspec
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_MODCHECK)
 
-# Generate KZG setups.
-gen_kzg_setups: $(ETH2SPEC)
-	@for preset in minimal mainnet; do \
-		$(PYTHON_VENV) $(SCRIPTS_DIR)/gen_kzg_trusted_setups.py \
-			--secret=1337 \
-			--g1-length=4096 \
-			--g2-length=65 \
-			--output-dir $(CURDIR)/presets/$$preset/trusted_setups; \
-	done
-
 # Run all generators then check for errors.
 gen_all: $(GENERATOR_TARGETS) detect_errors
 
@@ -280,6 +272,16 @@ detect_errors: $(TEST_VECTOR_DIR)
 	else \
 		echo "[PASSED] error log file does not exist"; \
 	fi
+
+# Generate KZG trusted setups for testing.
+kzg_setups: $(ETH2SPEC)
+	@for preset in minimal mainnet; do \
+		$(PYTHON_VENV) $(SCRIPTS_DIR)/gen_kzg_trusted_setups.py \
+			--secret=1337 \
+			--g1-length=4096 \
+			--g2-length=65 \
+			--output-dir $(CURDIR)/presets/$$preset/trusted_setups; \
+	done
 
 ###############################################################################
 # Cleaning
