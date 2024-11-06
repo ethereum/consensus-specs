@@ -134,18 +134,18 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Withdrawal prefixes
 
-| Name | Value |
-| - | - |
-| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
+| Name | Value | Description |
+| - | - | - |
+| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | *[New in Electra:EIP7251]* Withdrawal credential prefix for a compounding validator |
 
 ## Preset
 
 ### Gwei values
 
-| Name | Value |
-| - | - |
-| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
-| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) |
+| Name | Value | Description |
+| - | - | - |
+| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) | *[New in Electra:EIP7251]* Minimum balance for a validator to become active |
+| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | *[New in Electra:EIP7251]* Maximum balance for a compounding validator |
 
 ### Rewards and penalties
 
