@@ -129,8 +129,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* |
+| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* Value which indicates no start index has been assigned |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 
@@ -144,15 +144,15 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)`  (= 32,000,000,000) |
+| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
 | `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) |
 
 ### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
 
 ### State list lengths
 
@@ -166,14 +166,14 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
-| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA` | `2**0` (= 1) |
+| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) |
 
 ### Execution
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
 | `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(1)` (= 1) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
 
