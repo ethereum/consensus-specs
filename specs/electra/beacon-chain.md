@@ -271,16 +271,6 @@ class ConsolidationRequest(Container):
     target_pubkey: BLSPubkey
 ```
 
-#### `SingleAttestation`
-
-```python
-class SingleAttestation(Container):
-    committee_index: CommitteeIndex
-    attester_index: ValidatorIndex
-    data: AttestationData
-    signature: BLSSignature
-```
-
 #### `ExecutionRequests`
 
 *Note*: This container holds requests from the execution layer that are received in [
@@ -292,6 +282,16 @@ class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Modified Containers
