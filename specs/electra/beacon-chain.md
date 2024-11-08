@@ -1610,11 +1610,19 @@ def process_consolidation_request(
     target_validator = state.validators[target_index]
 
     # Verify source withdrawal credentials
-    has_correct_credential = has_execution_withdrawal_credential(source_validator)
+    has_correct_source_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
         source_validator.withdrawal_credentials[12:] == consolidation_request.source_address
     )
-    if not (has_correct_credential and is_correct_source_address):
+    if not (has_correct_source_credential and is_correct_source_address):
+        return
+
+    # Verify target withdrawal credentials
+    has_correct_target_credential = has_execution_withdrawal_credential(target_validator)
+    is_correct_target_address = (
+        target_validator.withdrawal_credentials[12:] == consolidation_request.source_address
+    )
+    if not (has_correct_target_credential and is_correct_target_address):
         return
 
     # Verify that target has execution withdrawal credentials
