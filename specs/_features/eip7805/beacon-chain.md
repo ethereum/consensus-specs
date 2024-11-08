@@ -43,7 +43,7 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 | Name | Value |
 | - | - |
-| `DOMAIN_IL_COMMITTEE`       | `DomainType('0x0C000000')`  # (New in EIP-7805)|
+| `DOMAIN_IL_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP7805) |
 
 ### Inclusion List Committee
 
@@ -55,7 +55,7 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` |  `uint64(1)` # (New in EIP-7805) TODO: Placeholder | 
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` # (New in EIP-7805) TODO: Placeholder | 
 
 ## Containers
 
@@ -88,14 +88,14 @@ def is_valid_inclusion_list_signature(
         state: BeaconState, 
         signed_inclusion_list: SignedInclusionList) -> bool:
     """
-    Check if ``signed_inclusion_list`` has a valid signature
+    Check if ``signed_inclusion_list`` has a valid signature.
     """
     message = signed_inclusion_list.message
     index = message.validator_index
     pubkey = state.validators[index].pubkey
     domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(message.slot))
     signing_root = compute_signing_root(message, domain)
-    return bls.FastAggregateVerify(pubkey, signing_root, signed_inclusion_list.signature)
+    return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
 ### Beacon State accessors

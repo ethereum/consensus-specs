@@ -21,7 +21,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds | # [New in EIP-7805]
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds  # (New in EIP7805) | 
 
 ## Helpers
 
@@ -30,13 +30,16 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 ```python
 def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE], execution_payload: ExecutionPayload) -> bool:
     """
-    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, that to verify if the `execution_payload` satisfies `inclusion_list_transactions` validity conditions either when all transactions are present in payload or when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
+    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, 
+    that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either when all transactions are present in payload or 
+    when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
     """
     ...
 ```
 
 ### Modified `Store` 
-**Note:** `Store` is modified to track the seen inclusion lists.
+
+**Note:** `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
 
 ```python
 @dataclass
@@ -62,13 +65,14 @@ class Store(object):
 ### New `on_inclusion_list`
 
 `on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
+
 ```python
 def on_inclusion_list(
         store: Store, 
         signed_inclusion_list: SignedInclusionList, 
         inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]]) -> None:
     """
-    ``on_inclusion_list`` verify the inclusion list before importing it to fork choice store.
+    Verify the inclusion list and import it into the fork choice store.
     If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
     """
     message = signed_inclusion_list.message
@@ -98,7 +102,7 @@ def on_inclusion_list(
     if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
         if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]:
             il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
-            if not il == message:
+            if validator_il != message:
                 # We have equivocation evidence for `validator_index`, record it as equivocator
                 inclusion_list_equivocators[(message.slot, root)].add(validator_index)
         # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline

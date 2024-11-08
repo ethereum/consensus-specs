@@ -51,7 +51,7 @@ The body of these function is implementation dependent. The Engine API may be us
 
 ## New inclusion list committee assignment
 
-A validator may be a member of the new Inclusion List Committee (ILC) for a given slot.  To check for ILC assignments the validator uses the helper `get_ilc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
+A validator may be a member of the new Inclusion List Committee (ILC) for a given slot. To check for ILC assignments the validator uses the helper `get_ilc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
 
 ILC selection is only stable within the context of the current and next epoch.
 
@@ -61,7 +61,7 @@ def get_ilc_assignment(
         epoch: Epoch,
         validator_index: ValidatorIndex) -> Optional[Slot]:
     """
-    Returns the slot during the requested epoch in which the validator with index `validator_index`
+    Returns the slot during the requested epoch in which the validator with index ``validator_index``
     is a member of the ILC. Returns None if no assignment is found. 
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -82,18 +82,18 @@ def get_ilc_assignment(
 
 ### Block proposal
 
-Proposers are still expected to propose `SignedBeaconBlock` at the beginning of any slot during which `is_proposer(state, validator_index)` returns `true`. The mechanism to prepare this beacon block and related sidecars differs from previous forks as follows:
+Proposers are still expected to propose `SignedBeaconBlock` at the beginning of any slot during which `is_proposer(state, validator_index)` returns true. The mechanism to prepare this beacon block and related sidecars differs from previous forks as follows:
 
 #### Update execution client with inclusion lists
 
-The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion lists that gathered since `inclusion_list_CUT_OFF`
+The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion lists that gathered since `inclusion_list_CUT_OFF`.
 
 
 ## New inclusion list committee duty
 
 Some validators are selected to submit signed inclusion list. Validators should call `get_ilc_assignment` at the beginning of an epoch to be prepared to submit their inclusion list during the next epoch. 
 
-A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by the `inclusion_list_CUT_OFF` in the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
+A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
 
 #### Constructing a signed inclusion list
 
