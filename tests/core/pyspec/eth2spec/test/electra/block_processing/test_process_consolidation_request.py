@@ -911,10 +911,10 @@ def test_incorrect_no_target_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_incorrect_incorrect_source_address(spec, state):
+def test_incorrect_incorrect_source_address_for_source_withdrawal(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # Set up an otherwise correct consolidation
+    # Set up an otherwise correct consolidation (invalid source withdrawal address, valid target withdrawal address)
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
@@ -922,16 +922,96 @@ def test_incorrect_incorrect_source_address(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, source_index, address=source_address
     )
+    target_address = b"\x33" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, target_index, address=target_address
+    )
     # Make consolidation with different source address
     consolidation = spec.ConsolidationRequest(
         source_address=b"\x33" * 20,
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[source_index].withdrawal_credentials[12:] == consolidation.source_address
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_incorrect_incorrect_source_address_for_target_withdrawal(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # Set up an otherwise correct consolidation (valid source withdrawal address, invalid target withdrawal address)
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, source_index, address=source_address
+    )
+    target_address = b"\x33" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, target_index, address=target_address
+    )
+    # Make consolidation with different source address
+    consolidation = spec.ConsolidationRequest(
+        source_address=b"\x22" * 20,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    # Check the the return condition
+    assert not state.validators[target_index].withdrawal_credentials[12:] == consolidation.source_address
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_incorrect_incorrect_source_address_for_source_and_target_withdrawal(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # Set up an otherwise correct consolidation (invalid source withdrawal address, invalid target withdrawal address)
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, source_index, address=source_address
+    )
+    target_address = b"\x33" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, target_index, address=target_address
+    )
+    # Make consolidation with different source address
+    consolidation = spec.ConsolidationRequest(
+        source_address=b"\x44" * 20,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    # Check the the return condition
+    assert not state.validators[source_index].withdrawal_credentials[12:] == consolidation.source_address
+    assert not state.validators[target_index].withdrawal_credentials[12:] == consolidation.source_address
 
     yield from run_consolidation_processing(
         spec, state, consolidation, success=False
