@@ -223,6 +223,16 @@ with updated field assignments:
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
 - Set `attestation.committee_index = committee_index`, where `committee_index` is the `committee_index` in each individual attestation.
 
+#### Aggregate signature
+
+Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
+
+```python
+def get_aggregate_signature(attestations: Sequence[CommitteeAttestation]) -> BLSSignature:
+    signatures = [attestation.signature for attestation in attestations]
+    return bls.Aggregate(signatures)
+```
+
 ### Broadcast aggregate
 
 `get_aggregate_and_proof` is modified to accept `CommitteeAttestation` for `aggregate`.
