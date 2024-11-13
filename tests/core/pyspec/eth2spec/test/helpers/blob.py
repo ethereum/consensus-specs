@@ -2,6 +2,10 @@ import random
 from rlp import encode, Serializable
 from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
 
+from eth2spec.test.helpers.forks import (
+    is_post_eip7594,
+)
+
 
 class Eip4844RlpTransaction(Serializable):
     fields = (
@@ -99,3 +103,10 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
     )
     opaque_tx = bytes([0x03]) + encode(signed_blob_tx)
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def get_max_blob_count(spec):
+    if is_post_eip7594:
+        return spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
+    else:
+        return spec.config.MAX_BLOBS_PER_BLOCK

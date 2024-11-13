@@ -25,3 +25,16 @@ def test_invariants(spec):
 @single_phase
 def test_polynomical_commitments_sampling(spec):
     assert spec.FIELD_ELEMENTS_PER_EXT_BLOB == 2 * spec.FIELD_ELEMENTS_PER_BLOB
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_networking(spec):
+    assert spec.config.MAX_BLOBS_PER_BLOCK_EIP7594 < spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+    assert (
+        spec.config.MAX_REQUEST_BLOB_SIDECARS_EIP7594 ==
+        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
+    )
+    # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
+    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT_EIP7594 == spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
