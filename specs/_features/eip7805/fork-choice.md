@@ -6,9 +6,13 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Configuration](#configuration)
 - [Helpers](#helpers)
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [Modified `Store`](#modified-store)
+      - [Modified `notify_new_payload`](#modified-notify_new_payload)
+      - [`get_attester_head`](#get_attester_head)
+  - [New `on_inclusion_list`](#new-on_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -60,6 +64,40 @@ class Store(object):
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in EIP-7805]
     inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in EIP-7805]
+    unsatisfied_inclusion_list_blocks: Set[Root] # [New in EIP-7805]
+```
+
+##### Modified `notify_new_payload`
+
+*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in EIP-7805.
+
+```python
+def notify_new_payload(self: ExecutionEngine,
+                       execution_payload: ExecutionPayload,
+                       execution_requests: ExecutionRequests,
+                       parent_beacon_block_root: Root,
+                       il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
+                       store: Store) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    are valid with respect to ``self.execution_state``.
+    """
+    
+    # If execution client returns block does not satisfy inclusion list transactions, cache the block
+    store.unsatisfied_inclusion_list_blocks.add(execution_payload.block_root)
+    ...
+```
+
+##### `get_attester_head`
+
+```python
+def get_attester_head(store: Store, head_root: Root) -> Root:
+  head_block = store.blocks[head_root]
+  
+  if head_root in store.unsatisfied_inclusion_list_blocks:
+    return head_block.parent_root
+  return head_root
+
 ```
 
 ### New `on_inclusion_list`

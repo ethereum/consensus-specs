@@ -24,7 +24,6 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-      - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -131,23 +130,6 @@ class NewPayloadRequest(object):
 ```
 
 #### Engine APIs
-
-##### Modified `notify_new_payload`
-
-*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in EIP-7805.
-
-```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       execution_requests: ExecutionRequests,
-                       parent_beacon_block_root: Root,
-                       il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST] ) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
-    are valid with respect to ``self.execution_state``.
-    """
-    ...
-```
 
 ##### Modified `verify_and_notify_new_payload`
 
