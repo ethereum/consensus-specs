@@ -73,7 +73,8 @@ def on_inclusion_list(
         inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]]) -> None:
     """
     Verify the inclusion list and import it into the fork choice store.
-    If there exists more than 1 inclusion list in store with the same slot and validator index, remove the original one.
+    If there exists more than 1 inclusion list in store with the same slot and validator index, add the equivocator to the ``inclusion_list_equivocators`` cache.
+    Otherwise, add inclusion list to the ``inclusion_lists` cache.
     """
     message = signed_inclusion_list.message
     # Verify inclusion list slot is either from the current or previous slot
