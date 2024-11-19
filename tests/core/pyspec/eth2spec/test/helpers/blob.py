@@ -106,7 +106,7 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
 
 
 def get_max_blob_count(spec):
-    if is_post_eip7594:
+    if is_post_eip7594(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
     else:
         return spec.config.MAX_BLOBS_PER_BLOCK
