@@ -28,8 +28,7 @@
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_BLOBS_PER_BLOCK_EIP7594` | `uint64(8)` | *[New in EIP7494]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
-
+| `MAX_BLOBS_PER_BLOCK_EIP7594` | `uint64(8)` | *[New in EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 #### Execution payload
 

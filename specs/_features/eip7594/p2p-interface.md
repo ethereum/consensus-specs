@@ -52,12 +52,12 @@
 
 *[New in EIP7594]*
 
-| Name                                           | Value                                          | Description                                                               |
-|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
-| `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request  |
-| `BLOB_SIDECAR_SUBNET_COUNT_EIP7594`            | `2**3` (= 8)           | The number of blob sidecar subnets used in the gossipsub protocol. |
+| Name                                           | Value                                                    | Description                                                               |
+|------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
+| `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
+| `BLOB_SIDECAR_SUBNET_COUNT_EIP7594`            | `2**3` (= 8)                                             | The number of blob sidecar subnets used in the gossipsub protocol         |
 
 ### Containers
 
@@ -160,7 +160,6 @@ Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
 
 #### Topics and messages
 
-
 ##### Global topics
 
 ###### `beacon_block`
@@ -215,9 +214,9 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `EIP7594_FORK_VERSION`     | `eip7594.BlobSidecar`           |
+| `fork_version`         | Chunk SSZ type        |
+|------------------------|-----------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
 
 Request Content:
 
@@ -239,7 +238,6 @@ Response Content:
 
 No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
 
-
 ##### BlobSidecarsByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
@@ -250,11 +248,12 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `EIP7594_FORK_VERSION`     | `eip7594.BlobSidecar`           |
+| `fork_version`         | Chunk SSZ type        |
+|------------------------|-----------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -263,6 +262,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
@@ -336,6 +336,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -345,6 +346,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
