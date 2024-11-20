@@ -1,4 +1,5 @@
 from eth_hash.auto import keccak
+from hashlib import sha256
 from trie import HexaryTrie
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
@@ -7,7 +8,12 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
-from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb, is_post_eip7732
+from eth2spec.test.helpers.forks import (
+    is_post_capella,
+    is_post_deneb,
+    is_post_electra,
+    is_post_eip7732,
+)
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -59,13 +65,22 @@ def compute_trie_root_from_indexed_data(data):
     return t.root_hash
 
 
+def compute_requests_hash(block_requests):
+    m = sha256()
+    for r in block_requests:
+        if len(r) > 1:
+            m.update(sha256(r))
+    return m.digest()
+
+
 # https://eips.ethereum.org/EIPS/eip-4895
 # https://eips.ethereum.org/EIPS/eip-4844
 def compute_el_header_block_hash(spec,
                                  payload_header,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
-                                 parent_beacon_block_root=None):
+                                 parent_beacon_block_root=None,
+                                 requests_root=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
@@ -116,6 +131,9 @@ def compute_el_header_block_hash(spec,
         execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
         # parent_beacon_root
         execution_payload_header_rlp.append((Binary(32, 32), parent_beacon_block_root))
+    if is_post_electra(spec):
+        # requests_root
+        execution_payload_header_rlp.append((Binary(32, 32), requests_root))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -191,7 +209,7 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
     return b"\x02" + encode(values, sedes)
 
 
-def compute_el_block_hash_with_parent_root(spec, payload, parent_beacon_block_root):
+def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_root, requests_root):
     if payload == spec.ExecutionPayload():
         return spec.Hash32()
 
@@ -213,25 +231,35 @@ def compute_el_block_hash_with_parent_root(spec, payload, parent_beacon_block_ro
         transactions_trie_root,
         withdrawals_trie_root,
         parent_beacon_block_root,
+        requests_root,
     )
 
 
 def compute_el_block_hash(spec, payload, pre_state):
     parent_beacon_block_root = None
+    requests_root = None
 
     if is_post_deneb(spec):
         previous_block_header = pre_state.latest_block_header.copy()
         if previous_block_header.state_root == spec.Root():
             previous_block_header.state_root = pre_state.hash_tree_root()
         parent_beacon_block_root = previous_block_header.hash_tree_root()
+    if is_post_electra(spec):
+        requests_root = compute_requests_hash([])
 
-    return compute_el_block_hash_with_parent_root(
-        spec, payload, parent_beacon_block_root)
+    return compute_el_block_hash_with_new_fields(
+        spec, payload, parent_beacon_block_root, requests_root)
 
 
 def compute_el_block_hash_for_block(spec, block):
-    return compute_el_block_hash_with_parent_root(
-        spec, block.body.execution_payload, block.parent_root)
+    requests_root = None
+
+    if is_post_electra(spec):
+        requests_list = spec.get_execution_requests_list(block.body.execution_requests)
+        requests_root = compute_requests_hash(requests_list)
+
+    return compute_el_block_hash_with_new_fields(
+        spec, block.body.execution_payload, block.parent_root, requests_root)
 
 
 def build_empty_post_eip7732_execution_payload_header(spec, state):
