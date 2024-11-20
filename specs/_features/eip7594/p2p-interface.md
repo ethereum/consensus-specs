@@ -21,11 +21,15 @@
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+        - [`beacon_block`](#beacon_block)
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
+      - [BlobSidecarsByRange v2](#blobsidecarsbyrange-v2)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [GetMetaData v3](#getmetadata-v3)
@@ -48,10 +52,12 @@
 
 *[New in EIP7594]*
 
-| Name                                           | Value                                          | Description                                                               |
-|------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------|
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                                                    | Description                                                               |
+|------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
+| `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
+| `BLOB_SIDECAR_SUBNET_COUNT_EIP7594`            | `2**3` (= 8)                                             | The number of blob sidecar subnets used in the gossipsub protocol         |
 
 ### Containers
 
@@ -154,6 +160,15 @@ Some gossip meshes are upgraded in the EIP-7594 fork to support upgraded types.
 
 #### Topics and messages
 
+##### Global topics
+
+###### `beacon_block`
+
+*Updated validation*
+
+- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
+  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_EIP7594`
+
 ##### Blob subnets
 
 ###### Deprecated `blob_sidecar_{subnet_id}`
@@ -188,6 +203,75 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 ### The Req/Resp domain
 
 #### Messages
+
+##### BlobSidecarsByRoot v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+
+*[Updated in EIP7594]*
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type        |
+|------------------------|-----------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
+
+Request Content:
+
+```
+(
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+)
+```
+
+Response Content:
+
+```
+(
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+)
+```
+
+*Updated validation*
+
+No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
+
+##### BlobSidecarsByRange v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
+
+*[Updated in EIP7594]*
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type        |
+|------------------------|-----------------------|
+| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
+
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+)
+```
+
+*Updated validation*
+
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` sidecars.
 
 ##### DataColumnSidecarsByRoot v1
 
@@ -252,6 +336,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 | `EIP7594_FORK_VERSION` | `eip7594.DataColumnSidecar` |
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -261,6 +346,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
