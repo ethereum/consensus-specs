@@ -1030,6 +1030,9 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
 
+    if b'' in execution_payload.transactions:
+        return False
+
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
 
