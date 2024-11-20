@@ -65,6 +65,7 @@ def compute_trie_root_from_indexed_data(data):
     return t.root_hash
 
 
+# https://eips.ethereum.org/EIPS/eip-7685
 def compute_requests_hash(block_requests):
     m = sha256()
     for r in block_requests:
