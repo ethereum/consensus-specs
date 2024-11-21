@@ -70,7 +70,7 @@ def compute_requests_hash(block_requests):
     m = sha256()
     for r in block_requests:
         if len(r) > 1:
-            m.update(sha256(r))
+            m.update(sha256(r).digest())
     return m.digest()
 
 

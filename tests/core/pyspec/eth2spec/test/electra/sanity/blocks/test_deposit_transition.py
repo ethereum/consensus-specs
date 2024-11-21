@@ -12,7 +12,7 @@ from eth2spec.test.helpers.deposits import (
     prepare_deposit_request,
 )
 from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash,
+    compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.state import (
@@ -134,7 +134,7 @@ def prepare_state_and_block(spec,
     # Assign deposits and deposit requests
     block.body.deposits = deposits
     block.body.execution_requests.deposits = deposit_requests
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     return state, block
 
@@ -251,7 +251,7 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # Artificially assign deposit's pubkey to a deposit request of the same block
     top_up_keys = [block.body.deposits[0].data.pubkey]
     block.body.execution_requests.deposits[0].pubkey = top_up_keys[0]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     pre_pending_deposits = len(state.pending_deposits)
 
