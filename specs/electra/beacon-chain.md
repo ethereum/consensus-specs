@@ -410,7 +410,7 @@ class BeaconState(Container):
 
 #### Modified `compute_proposer_index`
 
-*Note*: The function `compute_proposer_index` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA`.
+*Note*: The function `compute_proposer_index` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 32-bit random value instead of a 8-bit random byte in the effective balance filter.
 
 ```python
 def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
@@ -418,15 +418,28 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     Return from ``indices`` a random index sampled by effective balance.
     """
     assert len(indices) > 0
-    MAX_RANDOM_BYTE = 2**8 - 1
+
+    # [Modified in Electra]
+    random_value_byte_count = 4
+    MAX_RANDOM_VALUE = 2**(8 * random_value_byte_count) - 1
+    chunks_count = 32 // random_value_byte_count
+
     i = uint64(0)
     total = uint64(len(indices))
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+
+        # [Modified in Electra]
+        start_offset = i % chunks_count
+        end_offset = i % chunks_count + random_value_byte_count
+        random_value_bytes = hash(seed + uint_to_bytes(i // chunks_count))[start_offset:end_offset]
+        random_value = bytes_to_uint64(random_value_bytes)
+
+        # [Modified in Electra]
         effective_balance = state.validators[candidate_index].effective_balance
-        # [Modified in Electra:EIP7251]
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+        effective_balance_increments = effective_balance // EFFECTIVE_BALANCE_INCREMENT
+        max_effective_balance_increments = MAX_EFFECTIVE_BALANCE_ELECTRA // EFFECTIVE_BALANCE_INCREMENT
+        if effective_balance_increments * MAX_RANDOM_VALUE >= max_effective_balance_increments * random_value:
             return candidate_index
         i += 1
 ```
@@ -599,7 +612,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
 #### Modified `get_next_sync_committee_indices`
 
-*Note*: The function `get_next_sync_committee_indices` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA`.
+*Note*: The function `get_next_sync_committee_indices` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 32-bit random value instead of a 8-bit random byte in the effective balance filter.
 
 ```python
 def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
@@ -608,19 +621,31 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     epoch = Epoch(get_current_epoch(state) + 1)
 
-    MAX_RANDOM_BYTE = 2**8 - 1
+    # [Modified in Electra]
+    random_value_byte_count = 4
+    MAX_RANDOM_VALUE = 2**(8 * random_value_byte_count) - 1
+    chunks_count = 32 // random_value_byte_count
     active_validator_indices = get_active_validator_indices(state, epoch)
     active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
-    i = 0
+
+    i = uint64(0)
     sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
         candidate_index = active_validator_indices[shuffled_index]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+
+        # [Modified in Electra]
+        start_offset = i % chunks_count
+        end_offset = i % chunks_count + random_value_byte_count
+        random_value_bytes = hash(seed + uint_to_bytes(i // chunks_count))[start_offset:end_offset]
+        random_value = bytes_to_uint64(random_value_bytes)
+
+        # [Modified in Electra]
         effective_balance = state.validators[candidate_index].effective_balance
-        # [Modified in Electra:EIP7251]
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+        effective_balance_increments = effective_balance // EFFECTIVE_BALANCE_INCREMENT
+        max_effective_balance_increments = MAX_EFFECTIVE_BALANCE_ELECTRA // EFFECTIVE_BALANCE_INCREMENT
+        if effective_balance_increments * MAX_RANDOM_VALUE >= max_effective_balance_increments * random_value:
             sync_committee_indices.append(candidate_index)
         i += 1
     return sync_committee_indices
