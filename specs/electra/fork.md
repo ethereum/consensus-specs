@@ -72,12 +72,13 @@ an irregular state change is made to upgrade to Electra.
 ```python
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     epoch = deneb.get_current_epoch(pre)
-    latest_execution_payload_header = pre.latest_execution_payload_header
 
-    exit_epochs = [v.exit_epoch for v in pre.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    if not exit_epochs:
-        exit_epochs = [get_current_epoch(pre)]
-    earliest_exit_epoch = max(exit_epochs) + 1
+    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(pre))
+    for validator in pre.validators:
+        if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            if validator.exit_epoch > earliest_exit_epoch:
+                earliest_exit_epoch = validator.exit_epoch
+    earliest_exit_epoch += Epoch(1)
 
     post = BeaconState(
         # Versioning
@@ -119,7 +120,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110:EIP7002]
+        latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
@@ -133,7 +134,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         earliest_exit_epoch=earliest_exit_epoch,
         consolidation_balance_to_consume=0,
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
-        pending_balance_deposits=[],
+        pending_deposits=[],
         pending_partial_withdrawals=[],
         pending_consolidations=[],
     )
@@ -152,7 +153,20 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     ))
 
     for index in pre_activation:
-        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+        balance = post.balances[index]
+        post.balances[index] = 0
+        validator = post.validators[index]
+        validator.effective_balance = 0
+        validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
+        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
+        # and GENESIS_SLOT to distinguish from a pending deposit request
+        post.pending_deposits.append(PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=balance,
+            signature=bls.G2_POINT_AT_INFINITY,
+            slot=GENESIS_SLOT,
+        ))
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):

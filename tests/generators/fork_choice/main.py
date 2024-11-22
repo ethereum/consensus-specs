@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
@@ -37,5 +37,6 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
+    check_mods(all_mods, "fork_choice")
 
     run_state_test_generators(runner_name="fork_choice", all_mods=all_mods)

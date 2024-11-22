@@ -35,6 +35,8 @@ The `beacon_block` topic is modified to also support Electra blocks.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of the new attestation type.
 
+The `attester_slashing` topic is modified to support the gossip of the new `AttesterSlashing` type.
+
 The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
@@ -54,9 +56,18 @@ The following validations are added:
 
 ##### `beacon_attestation_{subnet_id}`
 
-The following convenience variables are re-defined
-- `index = get_committee_indices(attestation.committee_bits)[0]`
+The topic is updated to propagate `SingleAttestation` objects.
+
+The following convenience variables are re-defined:
+- `index = attestation.committee_index`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(attestation)`.
-* [REJECT] `attestation.data.index == 0`
+- _[REJECT]_ `attestation.data.index == 0`
+- _[REJECT]_ The attester is a member of the committee -- i.e.
+  `attestation.attester_index in get_beacon_committee(state, attestation.data.slot, index)`.
+
+The following validations are removed:
+- _[REJECT]_ The attestation is unaggregated --
+  that is, it has exactly one participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, index))`.

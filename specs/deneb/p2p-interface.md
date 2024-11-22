@@ -34,6 +34,7 @@ The specification of these changes continues in the same format as the network s
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
@@ -321,6 +322,14 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 |--------------------------------|-------------------------------|
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
 
+###### Blob retrieval via local execution layer client
+
+In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+
+When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
+* update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ##### BlobSidecarsByRange v1
 

@@ -8,16 +8,22 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
   - [Modified Containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
     - [Execution payload](#execution-payload)
+    - [Execution Requests](#execution-requests)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
@@ -32,11 +38,24 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Deneb -- Honest Validator](../../deneb/validator.md) guide.
+This document is an extension of the [Deneb -- Honest Validator](../deneb/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]  # [New in Electra]
+```
 
 ## Containers
 
@@ -57,6 +76,24 @@ class AggregateAndProof(Container):
 class SignedAggregateAndProof(Container):
     message: AggregateAndProof   # [Modified in Electra:EIP7549]
     signature: BLSSignature
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    """
+    # pylint: disable=unused-argument
+    ...
 ```
 
 ## Block proposal
@@ -148,15 +185,34 @@ def prepare_execution_payload(state: BeaconState,
     )
 ```
 
+#### Execution Requests
+
+*[New in Electra]*
+
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined
+in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
+2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
+
+```python
+def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequests:
+    deposits = ssz_deserialize(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], execution_requests[0])
+    withdrawals = ssz_deserialize(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], execution_requests[1])
+    consolidations = ssz_deserialize(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                                     execution_requests[2])
+
+    return ExecutionRequests(deposits, withdrawals, consolidations)
+```
+
 ## Attesting
 
 ### Construct attestation
 
-- Set `attestation_data.index = 0`.
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
-- Let `attestation.committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`.
+The validator creates `attestation` as a `SingleAttestation` container
+with updated field assignments:
 
-*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
+- Set `attestation_data.index = 0`.
+- Set `attestation.committee_index` to the index associated with the validator's committee.
+- Set `attestation.attester_index` to the index of the validator.
 
 ## Attestation aggregation
 
@@ -164,4 +220,4 @@ def prepare_execution_payload(state: BeaconState,
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation.
+- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the bit set corresponding to `committee_index` in each individual attestation.

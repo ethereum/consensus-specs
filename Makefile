@@ -8,10 +8,6 @@ ETH2SPEC_MODULE_DIR = $(PY_SPEC_DIR)/eth2spec
 TEST_REPORT_DIR = $(PY_SPEC_DIR)/test-reports
 TEST_VECTOR_DIR = ../consensus-spec-tests/tests
 GENERATOR_DIR = ./tests/generators
-SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
-SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.sol
-SOLIDITY_FILE_NAME = deposit_contract.json
-DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
 CONFIGS_DIR = ./configs
 TEST_PRESET_TYPE ?= minimal
 # Collect a list of generator names
@@ -34,7 +30,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7732
+ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800 eip7594 eip7732
 # The parameters for commands. Use `foreach` to avoid listing specs again.
 COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), ./eth2spec/$S)
@@ -45,20 +41,12 @@ COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
 COV_INDEX_FILE=$(COV_HTML_OUT_DIR)/index.html
 
 CURRENT_DIR = ${CURDIR}
-LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
 SCRIPTS_DIR = ${CURRENT_DIR}/scripts
 
-export DAPP_SKIP_BUILD:=1
-export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
-export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
-export DAPP_JSON:=build/combined.json
-
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
-        install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
-        compile_deposit_contract test_compile_deposit_contract check_toc \
-        detect_generator_incomplete detect_generator_error_log
+        check_toc detect_generator_incomplete detect_generator_error_log
 
 all: $(PY_SPEC_ALL_TARGETS)
 
@@ -105,7 +93,7 @@ generate_tests: $(GENERATOR_TARGETS)
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec:
-	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
+	@python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
 
 # check the setup tool requirements
 preinstallation:
@@ -141,46 +129,37 @@ endif
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
+# Check all files and error if any ToC were modified.
 check_toc: $(MARKDOWN_FILES:=.toc)
+	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
 
+# Generate ToC sections & save copy of original if modified.
 %.toc:
-	cp $* $*.tmp && \
-	doctoc $* && \
-	diff -q $* $*.tmp && \
-	rm $*.tmp
+	@cp $* $*.tmp; \
+	doctoc $* > /dev/null; \
+	if diff -q $* $*.tmp > /dev/null; then \
+		echo "Good $*"; \
+		rm $*.tmp; \
+	else \
+		echo "\033[1;33m Bad $*\033[0m"; \
+		echo "\033[1;34m See $*.tmp\033[0m"; \
+	fi
 
 codespell:
 	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& python -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
-	&& python -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
+	flake8  --config $(CURRENT_DIR)/flake8.ini ./eth2spec \
+	&& python -m pylint --rcfile $(CURRENT_DIR)/pylint.ini $(PYLINT_SCOPE) \
+	&& python -m mypy --config-file $(CURRENT_DIR)/mypy.ini $(MYPY_SCOPE)
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8 --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(CURRENT_DIR)/flake8.ini
 
-compile_deposit_contract:
-	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
-	@git submodule update --recursive --init
-	@solc --metadata-literal --optimize --optimize-runs 5000000 --bin --abi --combined-json=abi,bin,bin-runtime,srcmap,srcmap-runtime,ast,metadata,storage-layout --overwrite -o build $(SOLIDITY_DEPOSIT_CONTRACT_SOURCE) $(SOLIDITY_DEPOSIT_CONTRACT_DIR)/tests/deposit_contract.t.sol
-	@/bin/echo -n '{"abi": ' > $(SOLIDITY_FILE_NAME)
-	@cat build/DepositContract.abi >> $(SOLIDITY_FILE_NAME)
-	@/bin/echo -n ', "bytecode": "0x' >> $(SOLIDITY_FILE_NAME)
-	@cat build/DepositContract.bin >> $(SOLIDITY_FILE_NAME)
-	@/bin/echo -n '"}' >> $(SOLIDITY_FILE_NAME)
-
-test_deposit_contract:
-	dapp test -v --fuzz-runs 5
-
-install_deposit_contract_web3_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
-
-test_deposit_contract_web3_tests:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
-	python3 -m pytest .
+# If set to true, it will not run generator tests.
+modcheck ?= false
 
 # Runs a generator, identified by param 1
 define run_generator
@@ -200,7 +179,7 @@ define run_generator
 	. venv/bin/activate; \
 	pip3 install ../../../dist/eth2spec-*.whl; \
 	pip3 install 'eth2spec[generator]'; \
-	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
+	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) $(if $(filter true,$(modcheck)),--modcheck); \
 	echo "generator $(1) finished"
 endef
 
