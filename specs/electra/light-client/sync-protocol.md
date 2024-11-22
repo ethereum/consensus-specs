@@ -27,7 +27,6 @@
 This upgrade updates light client data to include the Electra changes to the [`ExecutionPayload`](../beacon-chain.md) structure and to the generalized indices of surrounding containers. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to Electra.
 
 Additional documents describes the impact of the upgrade on certain roles:
-- [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
 ## Custom types
