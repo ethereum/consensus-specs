@@ -24,6 +24,30 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
+### Modified `Store`
+
+*Note*: Blob sidecar store is added to keep track the blob sidecars that have been seen.
+
+```python
+@dataclass
+class Store(object):
+    time: uint64
+    genesis_time: uint64
+    justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    unrealized_justified_checkpoint: Checkpoint
+    unrealized_finalized_checkpoint: Checkpoint
+    proposer_boost_root: Root
+    equivocating_indices: Set[ValidatorIndex]
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
+    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
+    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    blob_sidecars: Dict[BlobIdentifier, BlobSidecar] = field(default_factory=dict) # [New in Deneb]
+```
+
 ### Extended `PayloadAttributes`
 
 `PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
@@ -43,21 +67,74 @@ class PayloadAttributes(object):
 *[New in Deneb:EIP4844]*
 
 The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
-Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
 
 The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
 
 *Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
 
 ```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
-    # `retrieve_blobs_and_proofs` is implementation and context dependent
-    # It returns all the blobs for the given block root, and raises an exception if not available
+def is_data_available(store: Store, beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
     # Note: the p2p network does not guarantee sidecar retrieval outside of
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
-    blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
+    return all(
+        BlobIdentifier(block_root=beacon_block_root, index=index) in store.blob_sidecars
+        for index in range(len(blob_kzg_commitments))
+    )
+```
+## New fork-choice handlers
 
-    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+### `on_blob_sidecar`
+
+```python
+def on_blob_sidecar(store: Store, sidecar: BlobSidecar) -> None:
+    """
+    Run ``on_blob_sidecar`` upon receiving a blob sidecar.
+    """
+    block_header = sidecar.signed_block_header.message
+    # The sidecar's index is consistent with `MAX_BLOBS_PER_BLOCK`
+    assert sidecar.index < MAX_BLOBS_PER_BLOCK
+    # Blob sidecars cannot be in the future. If they are, their consideration must be delayed until they are in the past.
+    assert get_current_slot(store) >= block_header.slot
+
+    # Check that the sidecar is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    assert block_header.slot > finalized_slot
+
+    # Parent block must be known
+    assert block_header.parent_root in store.block_states
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[block_header.parent_root])
+
+    # The block header signature is valid with respect to the proposer pubkey
+    proposer = state.validators[block_header.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    signing_root = compute_signing_root(block_header, domain)
+    assert bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature)
+
+    # The sidecar is from a higher slot than the sidecar's block's parent
+    assert block_header.slot > store.blocks[block_header.parent_root].slot
+
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block_header.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
+
+    # The sidecar's inclusion proof is valid
+    assert verify_blob_sidecar_inclusion_proof(sidecar)
+
+    # The sidecar's blob is valid
+    asesrt verify_blob_kzg_proof(sidecar.blob, sidecar.kzg_commitment, sidecar.kzg_proof)
+
+    # Check block is proposed by the expected proposer
+    process_slots(state, block.slot)
+    assert block.proposer_index == get_beacon_proposer_index(state)
+
+    # Save the blob sidecar
+    blob_identifier = BlobIdentifier(block_root=hash_tree_root(block_header), index=sidecar.index)
+    store.blob_sidecars[blob_identifier] = sidecar
 ```
 
 ## Updated fork-choice handlers
