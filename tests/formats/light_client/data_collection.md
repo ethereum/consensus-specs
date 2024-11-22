@@ -18,7 +18,7 @@ The new block described by the test step should be imported, but does not become
 
 ```yaml
 {
-    fork_digest: string                -- Encoded `ForkDigest`-context of `block`
+    fork_digest: string                -- encoded `ForkDigest`-context of `block`
     data: string                       -- name of the `*.ssz_snappy` file to load
                                           as a `SignedBeaconBlock` object
 }
@@ -44,26 +44,26 @@ The given block (previously imported) should become head, leading to potential u
         bootstraps: [                  -- one entry per `LightClientBootstrap`
             block_root: Bytes32        -- string, hex encoded, with 0x prefix
             bootstrap: {               -- only exists if a `LightClientBootstrap` is available
-                fork_digest: string    -- Encoded `ForkDigest`-context of `data`
+                fork_digest: string    -- encoded `ForkDigest`-context of `data`
                 data: string           -- name of the `*.ssz_snappy` file to load
                                           as a `LightClientBootstrap` object
             }
         ]
         best_updates: [                -- one entry per sync committee period
-            period: int,               -- integer, decimal
+            period: int                -- integer, decimal
             update: {                  -- only exists if a best `LightClientUpdate` is available
-                fork_digest: string    -- Encoded `ForkDigest`-context of `data`
+                fork_digest: string    -- encoded `ForkDigest`-context of `data`
                 data: string           -- name of the `*.ssz_snappy` file to load
                                           as a `LightClientUpdate` object
             }
         ]
         latest_finality_update: {      -- only exists if a `LightClientFinalityUpdate` is available
-            fork_digest: string        -- Encoded `ForkDigest`-context of `data`
+            fork_digest: string        -- encoded `ForkDigest`-context of `data`
             data: string               -- name of the `*.ssz_snappy` file to load
                                           as a `LightClientFinalityUpdate` object
         }
         latest_optimistic_update: {    -- only exists if a `LightClientOptimisticUpdate` is available
-            fork_digest: string        -- Encoded `ForkDigest`-context of `data`
+            fork_digest: string        -- encoded `ForkDigest`-context of `data`
             data: string               -- name of the `*.ssz_snappy` file to load
                                           as a `LightClientOptimisticUpdate` object
         }
