@@ -194,9 +194,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [0]: # (eth2spec: skip)
 
-| `fork_version`                 | Chunk SSZ type                |
-|--------------------------------|-------------------------------|
-| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
+| `fork_version`                 | Chunk SSZ type      |
+|--------------------------------|---------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ##### Attestation subnets
 
@@ -318,9 +318,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [0]: # (eth2spec: skip)
 
-| `fork_version`                 | Chunk SSZ type                |
-|--------------------------------|-------------------------------|
-| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
+| `fork_version`                 | Chunk SSZ type      |
+|--------------------------------|---------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ###### Blob retrieval via local execution layer client
 
@@ -409,9 +409,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [0]: # (eth2spec: skip)
 
-| `fork_version`                 | Chunk SSZ type                |
-|--------------------------------|-------------------------------|
-| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar`           |
+| `fork_version`                 | Chunk SSZ type      |
+|--------------------------------|---------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ## Design decision rationale
 
