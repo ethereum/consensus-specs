@@ -9,18 +9,12 @@ if __name__ == "__main__":
         'sync',
         'update_ranking',
     ]}
-
-    _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.light_client.test_' + key for key in [
-        'data_collection',
-    ]}
-    bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
+    bellatrix_mods = altair_mods
 
     _new_capella_mods = {key: 'eth2spec.test.capella.light_client.test_' + key for key in [
-        'data_collection',
         'single_merkle_proof',
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
-
     deneb_mods = capella_mods
     electra_mods = deneb_mods
 
