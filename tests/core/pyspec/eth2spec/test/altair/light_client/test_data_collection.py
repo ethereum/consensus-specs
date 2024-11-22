@@ -42,13 +42,13 @@ def next_epoch_boundary_slot(spec, slot):
 
 
 @dataclass(frozen=True)
-class BlockId(object):
+class BlockID(object):
     slot: Any
     root: Any
 
 
 def block_to_block_id(block):
-    return BlockId(
+    return BlockID(
         slot=block.message.slot,
         root=block.message.hash_tree_root(),
     )
@@ -57,18 +57,18 @@ def block_to_block_id(block):
 def state_to_block_id(state):
     parent_header = state.latest_block_header.copy()
     parent_header.state_root = state.hash_tree_root()
-    return BlockId(slot=parent_header.slot, root=parent_header.hash_tree_root())
+    return BlockID(slot=parent_header.slot, root=parent_header.hash_tree_root())
 
 
 def bootstrap_bid(bootstrap):
-    return BlockId(
+    return BlockID(
         slot=bootstrap.header.beacon.slot,
         root=bootstrap.header.beacon.hash_tree_root(),
     )
 
 
 def update_attested_bid(update):
-    return BlockId(
+    return BlockID(
         slot=update.attested_header.beacon.slot,
         root=update.attested_header.beacon.hash_tree_root(),
     )
@@ -136,7 +136,7 @@ class LightClientDataCache(object):
     # Cached data for creating future `LightClientUpdate` instances.
     # Key is the block ID of which the post state was used to get the data.
     # Data stored for the finalized head block and all non-finalized blocks.
-    data: Dict[BlockId, CachedLightClientData]
+    data: Dict[BlockID, CachedLightClientData]
 
     # Light client data for the latest slot that was signed by at least
     # `MIN_SYNC_COMMITTEE_PARTICIPANTS`. May be older than head
@@ -147,7 +147,7 @@ class LightClientDataCache(object):
 
 
 @dataclass
-class LightClientDataDb(object):
+class LightClientDataDB(object):
     headers: Dict[Any, ForkedLightClientHeader]  # Root -> ForkedLightClientHeader
     current_branches: Dict[Any, Any]  # Slot -> CurrentSyncCommitteeBranch
     sync_committees: Dict[Any, Any]  # SyncCommitteePeriod -> SyncCommittee
@@ -162,7 +162,7 @@ class LightClientDataStore(object):
     cache: LightClientDataCache
 
     # Persistent light client data
-    db: LightClientDataDb
+    db: LightClientDataDB
 
 
 @dataclass
@@ -179,14 +179,14 @@ class LightClientDataCollectionTest(object):
     states: Dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
     finalized_checkpoint_states: Dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
     latest_finalized_epoch: Any  # Epoch
-    latest_finalized_bid: BlockId
+    latest_finalized_bid: BlockID
     historical_tail_slot: Any  # Slot
 
     # Light client data
     lc_data_store: LightClientDataStore
 
 
-def get_ancestor_of_block_id(test, bid, slot):  # -> Optional[BlockId]
+def get_ancestor_of_block_id(test, bid, slot):  # -> Optional[BlockID]
     try:
         block = test.blocks[bid.root]
         while True:
@@ -198,10 +198,10 @@ def get_ancestor_of_block_id(test, bid, slot):  # -> Optional[BlockId]
         return None
 
 
-def block_id_at_finalized_slot(test, slot):  # -> Optional[BlockId]
+def block_id_at_finalized_slot(test, slot):  # -> Optional[BlockID]
     while slot >= test.historical_tail_slot:
         try:
-            return BlockId(slot=slot, root=test.finalized_block_roots[slot])
+            return BlockID(slot=slot, root=test.finalized_block_roots[slot])
         except KeyError:
             slot = slot - 1
     return None
@@ -586,7 +586,7 @@ def setup_test(spec, state, phases=None):
         states={},
         finalized_checkpoint_states={},
         latest_finalized_epoch=state.finalized_checkpoint.epoch,
-        latest_finalized_bid=BlockId(
+        latest_finalized_bid=BlockID(
             slot=spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch),
             root=state.finalized_checkpoint.root,
         ),
@@ -598,7 +598,7 @@ def setup_test(spec, state, phases=None):
                 latest=ForkedLightClientFinalityUpdate(spec=None, data=None),
                 tail_slot=max(state.slot, spec.compute_start_slot_at_epoch(spec.config.ALTAIR_FORK_EPOCH)),
             ),
-            db=LightClientDataDb(
+            db=LightClientDataDB(
                 headers={},
                 current_branches={},
                 sync_committees={},
@@ -792,7 +792,7 @@ def test_light_client_data_collection(spec, state):
     test = yield from setup_test(spec, state)
 
     # Genesis block is post Altair and is finalized, so can be used as bootstrap
-    genesis_bid = BlockId(slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root())
+    genesis_bid = BlockID(slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root())
     assert bootstrap_bid(get_light_client_bootstrap(test, genesis_bid.root).data) == genesis_bid
 
     # No blocks have been imported, so no other light client data is available
@@ -961,7 +961,7 @@ def run_test_multi_fork(spec, phases, state, fork_1, fork_2):
     test = yield from setup_test(spec, state, phases=phases)
 
     # Genesis block is post Altair and is finalized, so can be used as bootstrap
-    genesis_bid = BlockId(slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root())
+    genesis_bid = BlockID(slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root())
     assert bootstrap_bid(get_light_client_bootstrap(test, genesis_bid.root).data) == genesis_bid
 
     # Shared history up to final epoch of period before `fork_1`
