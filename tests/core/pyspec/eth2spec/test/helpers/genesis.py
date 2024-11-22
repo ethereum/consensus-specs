@@ -67,14 +67,14 @@ def get_sample_genesis_execution_payload_header(spec,
     transactions_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     withdrawals_trie_root = None
     parent_beacon_block_root = None
-    requests_root = None
+    requests_hash = None
 
     if is_post_capella(spec):
         withdrawals_trie_root = bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
     if is_post_deneb(spec):
         parent_beacon_block_root = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
     if is_post_electra(spec):
-        requests_root = sha256(b"").digest()
+        requests_hash = sha256(b"").digest()
 
     payload_header.block_hash = compute_el_header_block_hash(
         spec,
@@ -82,7 +82,7 @@ def get_sample_genesis_execution_payload_header(spec,
         transactions_trie_root,
         withdrawals_trie_root,
         parent_beacon_block_root,
-        requests_root,
+        requests_hash,
     )
     return payload_header
 

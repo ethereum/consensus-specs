@@ -81,7 +81,7 @@ def compute_el_header_block_hash(spec,
                                  transactions_trie_root,
                                  withdrawals_trie_root=None,
                                  parent_beacon_block_root=None,
-                                 requests_root=None):
+                                 requests_hash=None):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
@@ -133,8 +133,8 @@ def compute_el_header_block_hash(spec,
         # parent_beacon_root
         execution_payload_header_rlp.append((Binary(32, 32), parent_beacon_block_root))
     if is_post_electra(spec):
-        # requests_root
-        execution_payload_header_rlp.append((Binary(32, 32), requests_root))
+        # requests_hash
+        execution_payload_header_rlp.append((Binary(32, 32), requests_hash))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -210,7 +210,7 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
     return b"\x02" + encode(values, sedes)
 
 
-def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_root, requests_root):
+def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_root, requests_hash):
     if payload == spec.ExecutionPayload():
         return spec.Hash32()
 
@@ -232,13 +232,13 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
         transactions_trie_root,
         withdrawals_trie_root,
         parent_beacon_block_root,
-        requests_root,
+        requests_hash,
     )
 
 
 def compute_el_block_hash(spec, payload, pre_state):
     parent_beacon_block_root = None
-    requests_root = None
+    requests_hash = None
 
     if is_post_deneb(spec):
         previous_block_header = pre_state.latest_block_header.copy()
@@ -246,21 +246,21 @@ def compute_el_block_hash(spec, payload, pre_state):
             previous_block_header.state_root = pre_state.hash_tree_root()
         parent_beacon_block_root = previous_block_header.hash_tree_root()
     if is_post_electra(spec):
-        requests_root = compute_requests_hash([])
+        requests_hash = compute_requests_hash([])
 
     return compute_el_block_hash_with_new_fields(
-        spec, payload, parent_beacon_block_root, requests_root)
+        spec, payload, parent_beacon_block_root, requests_hash)
 
 
 def compute_el_block_hash_for_block(spec, block):
-    requests_root = None
+    requests_hash = None
 
     if is_post_electra(spec):
         requests_list = spec.get_execution_requests_list(block.body.execution_requests)
-        requests_root = compute_requests_hash(requests_list)
+        requests_hash = compute_requests_hash(requests_list)
 
     return compute_el_block_hash_with_new_fields(
-        spec, block.body.execution_payload, block.parent_root, requests_root)
+        spec, block.body.execution_payload, block.parent_root, requests_hash)
 
 
 def build_empty_post_eip7732_execution_payload_header(spec, state):
