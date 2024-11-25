@@ -42,7 +42,6 @@
     - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
   - [Epoch processing](#epoch-processing)
     - [Registry updates](#registry-updates)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->

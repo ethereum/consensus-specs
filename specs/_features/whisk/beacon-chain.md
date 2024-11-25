@@ -25,7 +25,6 @@
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Deposits](#deposits)
   - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->

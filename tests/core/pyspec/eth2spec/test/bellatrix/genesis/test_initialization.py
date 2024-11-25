@@ -14,7 +14,6 @@ from eth2spec.test.helpers.genesis import (
     get_sample_genesis_execution_payload_header,
 )
 
-
 def eth1_init_data(eth1_block_hash, eth1_timestamp):
     yield 'eth1', {
         'eth1_block_hash': '0x' + eth1_block_hash.hex(),
@@ -71,14 +70,10 @@ def test_initialize_pre_transition_empty_payload(spec):
 
     # initialize beacon_state *with* an *empty* execution_payload_header
     yield 'execution_payload_header', 'meta', True
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
+    state = spec.upgrade_to_bellatrix(state)
     execution_payload_header = spec.ExecutionPayloadHeader()
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash,
-        eth1_timestamp,
-        deposits,
-        execution_payload_header=execution_payload_header,
-    )
-
+    
     assert not spec.is_merge_transition_complete(state)
 
     yield 'execution_payload_header', execution_payload_header
@@ -107,13 +102,10 @@ def test_initialize_post_transition(spec):
 
     # initialize beacon_state *with* an execution_payload_header
     yield 'execution_payload_header', 'meta', True
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
+    state = spec.upgrade_to_bellatrix(state)
     genesis_execution_payload_header = get_sample_genesis_execution_payload_header(spec)
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash,
-        eth1_timestamp,
-        deposits,
-        execution_payload_header=genesis_execution_payload_header,
-    )
+    state.latest_execution_payload_header=genesis_execution_payload_header
 
     yield 'execution_payload_header', genesis_execution_payload_header
 
