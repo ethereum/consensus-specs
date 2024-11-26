@@ -28,8 +28,8 @@
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
-      - [BlobSidecarsByRange v2](#blobsidecarsbyrange-v2)
+      - [BlobSidecarsByRoot v3](#blobsidecarsbyroot-v3)
+      - [BlobSidecarsByRange v3](#blobsidecarsbyrange-v3)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [GetMetaData v3](#getmetadata-v3)
@@ -204,9 +204,9 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 #### Messages
 
-##### BlobSidecarsByRoot v2
+##### BlobSidecarsByRoot v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
 
 *[Updated in EIP7594]*
 
@@ -238,9 +238,9 @@ Response Content:
 
 No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
 
-##### BlobSidecarsByRange v2
+##### BlobSidecarsByRange v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
 
 *[Updated in EIP7594]*
 
