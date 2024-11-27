@@ -12,7 +12,6 @@ if __name__ == "__main__":
     bellatrix_mods = altair_mods
 
     _new_capella_mods = {key: 'eth2spec.test.capella.light_client.test_' + key for key in [
-        'data_collection',
         'single_merkle_proof',
         'sync',
     ]}
