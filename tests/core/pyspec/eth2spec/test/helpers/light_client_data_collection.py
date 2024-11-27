@@ -816,10 +816,14 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
         for bid in bids_a:
             assert get_light_client_bootstrap(test, bid.root).spec is None
         if attested_period == signature_period:
-            assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_a[-1]
+            assert get_lc_update_attested_block_id(
+                get_light_client_update_for_period(test, attested_period).data,
+            ) == bids_a[-1]
         else:
             assert signature_period == attested_period + 1
-            assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_a[-2]
+            assert get_lc_update_attested_block_id(
+                get_light_client_update_for_period(test, attested_period).data,
+            ) == bids_a[-2]
             assert get_light_client_update_for_period(test, signature_period).spec is None
         assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bids_a[-1]
         assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bids_a[-1]
@@ -851,10 +855,14 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
     for bid in bids_b:
         assert get_light_client_bootstrap(test, bid.root).spec is None
     if attested_period == signature_period:
-        assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_b[-1]
+        assert get_lc_update_attested_block_id(
+            get_light_client_update_for_period(test, attested_period).data,
+        ) == bids_b[-1]
     else:
         assert signature_period == attested_period + 1
-        assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_b[-2]
+        assert get_lc_update_attested_block_id(
+            get_light_client_update_for_period(test, attested_period).data,
+        ) == bids_b[-2]
         assert get_light_client_update_for_period(test, signature_period).spec is None
     assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bids_b[-1]
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bids_b[-1]
@@ -879,10 +887,14 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
     for bid in bids_a:
         assert get_light_client_bootstrap(test, bid.root).spec is None
     if attested_period == signature_period:
-        assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_a[-1]
+        assert get_lc_update_attested_block_id(
+            get_light_client_update_for_period(test, attested_period).data,
+        ) == bids_a[-1]
     else:
         assert signature_period == attested_period + 1
-        assert get_lc_update_attested_block_id(get_light_client_update_for_period(test, attested_period).data) == bids_a[-2]
+        assert get_lc_update_attested_block_id(
+            get_light_client_update_for_period(test, attested_period).data,
+        ) == bids_a[-2]
         assert get_light_client_update_for_period(test, signature_period).spec is None
     assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bids_a[-1]
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bids_a[-1]

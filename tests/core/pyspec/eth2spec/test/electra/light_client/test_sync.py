@@ -16,6 +16,7 @@ from eth2spec.test.helpers.light_client_sync import (
     run_lc_sync_test_upgraded_store_with_legacy_data,
 )
 
+
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
 @spec_test
 @with_config_overrides({

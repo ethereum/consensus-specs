@@ -14,6 +14,7 @@ from eth2spec.test.helpers.light_client_data_collection import (
     run_lc_data_collection_test_multi_fork,
 )
 
+
 @with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB])
 @spec_test
 @with_config_overrides({
