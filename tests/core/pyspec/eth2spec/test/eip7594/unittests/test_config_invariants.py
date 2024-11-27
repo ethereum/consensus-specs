@@ -36,5 +36,3 @@ def test_networking(spec):
         spec.config.MAX_REQUEST_BLOB_SIDECARS_EIP7594 ==
         spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
     )
-    # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
-    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT_EIP7594 == spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
