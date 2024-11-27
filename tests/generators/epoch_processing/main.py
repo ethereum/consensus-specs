@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
@@ -40,6 +40,7 @@ if __name__ == "__main__":
     _new_electra_mods_1 = {key: 'eth2spec.test.electra.epoch_processing.test_process_' + key for key in [
         'effective_balance_updates',
         'pending_consolidations',
+        'registry_updates',
     ]}
     # This is a trick to allow tests be split into multiple files and use the same test format.
     _new_electra_mods_2 = {key: 'eth2spec.test.electra.epoch_processing.' + key for key in [
@@ -63,5 +64,6 @@ if __name__ == "__main__":
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
     }
+    check_mods(all_mods, "epoch_processing")
 
     run_state_test_generators(runner_name="epoch_processing", all_mods=all_mods)
