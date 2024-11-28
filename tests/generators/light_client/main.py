@@ -12,6 +12,7 @@ if __name__ == "__main__":
 
     _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.light_client.test_' + key for key in [
         'data_collection',
+        'sync',
     ]}
     bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 
