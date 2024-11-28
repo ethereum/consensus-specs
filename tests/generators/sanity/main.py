@@ -33,6 +33,7 @@ if __name__ == "__main__":
     # do not forget to update sanity/block/__init__.py accordingly.
     _new_electra_mods = {key: 'eth2spec.test.electra.sanity.' + key for key in [
         'blocks',
+        'slots',
     ]}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
