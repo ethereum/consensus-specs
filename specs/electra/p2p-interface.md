@@ -110,6 +110,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type        |
 |------------------------|-----------------------|
+| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
 | `ELECTRA_FORK_VERSION` | `electra.BlobSidecar` |
 
 Request Content:
@@ -144,6 +145,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type        |
 |------------------------|-----------------------|
+| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
 | `ELECTRA_FORK_VERSION` | `electra.BlobSidecar` |
 
 Request Content:
