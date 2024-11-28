@@ -6,7 +6,11 @@ from eth2spec.test.helpers.deposits import prepare_pending_deposit
 from eth2spec.test.helpers.state import transition_to
 
 
-def run_epoch_processing(spec, state, pending_deposits=[], pending_consolidations=[]):
+def run_epoch_processing(spec, state, pending_deposits=None, pending_consolidations=None):
+    if pending_deposits is None:
+        pending_deposits = []
+    if pending_consolidations is None:
+        pending_consolidations = []
     # Transition to the last slot of the epoch
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
     transition_to(spec, state, slot)
@@ -29,7 +33,7 @@ def test_multiple_pending_deposits_same_pubkey(spec, state):
     deposit = prepare_pending_deposit(spec, validator_index=index, amount=spec.MIN_ACTIVATION_BALANCE, signed=True)
     pending_deposits = [deposit, deposit]
 
-    yield from run_epoch_processing(spec, state, pending_deposits)
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
 
     # Check deposit balance is applied correctly
     assert state.balances[index] == sum(d.amount for d in pending_deposits)
@@ -47,7 +51,7 @@ def test_multiple_pending_deposits_same_pubkey_compounding(spec, state):
     )
     pending_deposits = [deposit, deposit]
 
-    yield from run_epoch_processing(spec, state, pending_deposits)
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
 
     # Check deposit balance is applied correctly
     assert state.balances[index] == sum(d.amount for d in pending_deposits)
@@ -69,7 +73,7 @@ def test_multiple_pending_deposits_same_pubkey_below_upward_threshold(spec, stat
     )
     pending_deposits = [deposit_0, deposit_1]
 
-    yield from run_epoch_processing(spec, state, pending_deposits)
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
 
     # Check deposit balance is applied correctly
     assert state.balances[index] == sum(d.amount for d in pending_deposits)
@@ -115,6 +119,11 @@ def test_pending_consolidation(spec, state):
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
     pending_consolidations = [spec.PendingConsolidation(source_index=source_index, target_index=target_index)]
+
+    assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
+    assert state.validators[source_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE
+    assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
 
     yield from run_epoch_processing(spec, state, pending_consolidations=pending_consolidations)
 
