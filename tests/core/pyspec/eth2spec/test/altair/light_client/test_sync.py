@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
     spec_test,
-    with_all_phases_to,
+    with_all_phases_from_to,
     with_light_client,
     with_matching_spec_config,
     with_presets,
@@ -12,7 +12,7 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.constants import (
-    CAPELLA, DENEB, ELECTRA,
+    ALTAIR, CAPELLA, DENEB, ELECTRA,
     MINIMAL,
 )
 from eth2spec.test.helpers.light_client import (
@@ -381,7 +381,7 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     yield from finish_lc_sync_test(test)
 
 
-@with_all_phases_to(CAPELLA, other_phases=[CAPELLA])
+@with_all_phases_from_to(ALTAIR, CAPELLA, other_phases=[CAPELLA])
 @spec_test
 @with_state
 @with_matching_spec_config(emitted_fork=CAPELLA)
@@ -390,7 +390,7 @@ def test_capella_store_with_legacy_data(spec, phases, state):
     yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, CAPELLA)
 
 
-@with_all_phases_to(DENEB, other_phases=[CAPELLA, DENEB])
+@with_all_phases_from_to(ALTAIR, DENEB, other_phases=[CAPELLA, DENEB])
 @spec_test
 @with_state
 @with_matching_spec_config(emitted_fork=DENEB)
@@ -399,7 +399,7 @@ def test_deneb_store_with_legacy_data(spec, phases, state):
     yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, DENEB)
 
 
-@with_all_phases_to(ELECTRA, other_phases=[CAPELLA, DENEB, ELECTRA])
+@with_all_phases_from_to(ALTAIR, ELECTRA, other_phases=[CAPELLA, DENEB, ELECTRA])
 @spec_test
 @with_state
 @with_matching_spec_config(emitted_fork=ELECTRA)
