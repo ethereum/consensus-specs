@@ -9,25 +9,24 @@ if __name__ == "__main__":
         'sync',
         'update_ranking',
     ]}
-    bellatrix_mods = altair_mods
+
+    _new_bellatrix_mods = {key: 'eth2spec.test.bellatrix.light_client.test_' + key for key in [
+        'data_collection',
+    ]}
+    bellatrix_mods = combine_mods(_new_bellatrix_mods, altair_mods)
 
     _new_capella_mods = {key: 'eth2spec.test.capella.light_client.test_' + key for key in [
+        'data_collection',
         'single_merkle_proof',
         'sync',
     ]}
     capella_mods = combine_mods(_new_capella_mods, bellatrix_mods)
 
     _new_deneb_mods = {key: 'eth2spec.test.deneb.light_client.test_' + key for key in [
-        'data_collection',
         'sync',
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
-
-    _new_electra_mods = {key: 'eth2spec.test.electra.light_client.test_' + key for key in [
-        'data_collection',
-        'sync',
-    ]}
-    electra_mods = combine_mods(_new_electra_mods, deneb_mods)
+    electra_mods = deneb_mods
 
     all_mods = {
         ALTAIR: altair_mods,

@@ -436,6 +436,15 @@ def with_all_phases_from_except(earliest_phase, except_phases=None):
     return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
 
 
+def with_all_phases_to(next_phase, all_phases=ALL_PHASES):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in all_phases if is_post_fork(next_phase, phase)])(fn)
+    return decorator
+
+
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
