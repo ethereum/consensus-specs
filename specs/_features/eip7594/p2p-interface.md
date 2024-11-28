@@ -57,7 +57,6 @@
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
 | `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
-| `BLOB_SIDECAR_SUBNET_COUNT_EIP7594`            | `2**3` (= 8)                                             | The number of blob sidecar subnets used in the gossipsub protocol         |
 
 ### Containers
 
