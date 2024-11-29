@@ -18,6 +18,8 @@ from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 
+from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra
+
 
 def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     """
@@ -129,15 +131,26 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[-1 - index]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        _, root, deposit_data_leaves = build_deposit(
-            spec,
-            deposit_data_leaves,
-            pubkeys[index],
-            privkeys[index],
-            spec.MAX_EFFECTIVE_BALANCE,
-            withdrawal_credentials=withdrawal_credentials,
-            signed=True,
-        )
+        if is_post_electra(spec):
+            _, root, deposit_data_leaves = build_deposit(
+                spec,
+                deposit_data_leaves,
+                pubkeys[index],
+                privkeys[index],
+                spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
+                withdrawal_credentials=withdrawal_credentials,
+                signed=True,
+            )
+        else:
+            _, root, deposit_data_leaves = build_deposit(
+                spec,
+                deposit_data_leaves,
+                pubkeys[index],
+                privkeys[index],
+                spec.MAX_EFFECTIVE_BALANCE,
+                withdrawal_credentials=withdrawal_credentials,
+                signed=True,
+            )
 
     # Then for that context, build deposits/proofs
     for i in range(num_deposits):
@@ -257,3 +270,100 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 
     yield 'blocks', [signed_block]
     yield 'post', state
+
+def get_random_execution_requests(spec, state, rng=rng):
+    deposits = get_random_deposits_requests(spec, state, rng)
+    withdrawals = get_random_withdrawals_requests(spec, state, rng)
+    consolidations = get_random_consolidations_requests(spec, state, rng)
+
+    execution_requests = spec.ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations
+    )
+
+    return execution_requests
+
+def get_random_deposits_requests(spec, state, rng=rng):
+    deposits, _ = get_random_deposits(spec, state, rng)
+
+    deposits_requests = []
+
+    for deposit in deposits:
+        deposit_request = spec.DepositRequest(
+            pubkey=deposit.data.pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            amount=deposit.data.amount,
+            signature=deposit.data.signature,
+            index=deposit.data.index,
+        )
+        deposits_requests.append(deposit_request)
+
+    return deposits_requests
+
+
+def get_random_withdrawals_requests(spec, state, rng, num_withdrawals=None):
+    if num_withdrawals is None:
+        num_withdrawals = rng.randint(0, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)
+
+    withdrawals_requests = []
+
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
+    rng.shuffle(active_validator_indices)
+
+    for _ in range(num_withdrawals):
+        if not active_validator_indices:
+            break
+
+        address = rng.getrandbits(160).to_bytes(20, 'big')
+
+        validator_index = active_validator_indices.pop()
+        validator = state.validators[validator_index]
+
+        withdrawal_request = spec.WithdrawalRequest(
+            source_address=address,
+            validator_pubkey=validator.pubkey,
+            amount=spec.FULL_EXIT_REQUEST_AMOUNT,
+        )
+
+        withdrawals_requests.append(withdrawal_request)
+
+    return withdrawals_requests
+
+
+def get_random_consolidations_requests(spec, state, rng, num_consolidations=None):
+    if num_consolidations is None:
+        num_consolidations = rng.randint(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD)
+
+    consolidations_requests = []
+
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
+    rng.shuffle(active_validator_indices)
+
+    for _ in range(num_consolidations):
+        if len(active_validator_indices) < 2:
+            break
+
+        source_address = rng.getrandbits(160).to_bytes(20, 'big')
+
+        source_index = active_validator_indices.pop()
+        target_index = active_validator_indices.pop()
+
+        source_validator = state.validators[source_index]
+        target_validator = state.validators[target_index]
+
+        consolidation_request = spec.ConsolidationRequest(
+            source_address=source_address,
+            source_pubkey=source_validator.pubkey,
+            target_pubkey=target_validator.pubkey,
+        )
+
+        consolidations_requests.append(consolidation_request)
+
+    return consolidations_requests
