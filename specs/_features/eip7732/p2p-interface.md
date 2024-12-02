@@ -1,10 +1,9 @@
 # EIP-7732 -- Networking
 
-This document contains the consensus-layer networking specification for EIP7732.
-
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Modification in EIP-7732](#modification-in-eip-7732)
   - [Preset](#preset)
   - [Configuration](#configuration)
@@ -27,6 +26,12 @@ This document contains the consensus-layer networking specification for EIP7732.
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Introduction
+
+This document contains the consensus-layer networking specification for EIP7732.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in EIP-7732
 

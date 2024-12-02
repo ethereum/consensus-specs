@@ -28,8 +28,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
-
 ## Introduction
 
 For an introduction about DAS itself, see [the DAS participation spec](sampling.md#data-availability-sampling).
