@@ -245,8 +245,13 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     tracker = state.whisk_proposer_trackers[state.slot % WHISK_PROPOSER_TRACKERS_COUNT]
-    k_commitment = state.whisk_k_commitments[block.proposer_index]
-    assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
+    if block.body.whisk_opening_proof == WhiskTrackerProof():
+        # no proof signals tracker is created with insecure initial 'k'
+        k = get_initial_whisk_k(block.proposer_index, block.body.whisk_initial_k_nonce)
+        assert tracker.k_r_G == tracker.r_G * k
+    else:
+        k_commitment = state.whisk_k_commitments[block.proposer_index]
+        assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
 ```
 
 Removed `assert block.proposer_index == get_beacon_proposer_index(state)` check in Whisk.
@@ -299,6 +304,7 @@ class BeaconBlockBody(Container):
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     # Whisk
     whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
+    whisk_initial_k_nonce: uint64
     whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
     whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
     whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
