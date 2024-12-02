@@ -31,10 +31,13 @@ if __name__ == "__main__":
     # This is a "hack" which allows other test files (e.g., test_deposit_transition.py)
     # to reuse the sanity/block test format. If a new test file is added or removed,
     # do not forget to update sanity/block/__init__.py accordingly.
-    _new_electra_mods = {key: 'eth2spec.test.electra.sanity.' + key for key in [
+    _new_electra_mods_1 = {key: 'eth2spec.test.electra.sanity.' + key for key in [
         'blocks',
+    ]}
+    _new_electra_mods_2 = {key: 'eth2spec.test.electra.sanity.test_' + key for key in [
         'slots',
     ]}
+    _new_electra_mods = {**_new_electra_mods_1, **_new_electra_mods_2}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
     all_mods = {
