@@ -65,7 +65,14 @@ def get_default_yaml():
     def _represent_none(self, _):
         return self.represent_scalar('tag:yaml.org,2002:null', 'null')
 
+    def _represent_str(self, data):
+        if data.startswith("0x"):
+            # Without this, a zero-byte hex string is represented without quotes.
+            return self.represent_scalar('tag:yaml.org,2002:str', data, style="'")
+        return self.represent_str(data)
+
     yaml.representer.add_representer(type(None), _represent_none)
+    yaml.representer.add_representer(str, _represent_str)
 
     return yaml
 
@@ -132,7 +139,7 @@ def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
             print(f'Skipping already existing test: {case_dir}')
             is_skip = True
         else:
-            print(f'Warning, output directory {case_dir} already exist,'
+            print(f'Warning, output directory {case_dir} already exist, '
                   ' old files will be deleted and it will generate test vector files with the latest version')
             # Clear the existing case_dir folder
             shutil.rmtree(case_dir)
@@ -187,14 +194,17 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="specify forks to run with. Allows all if no fork names are specified.",
     )
     parser.add_argument(
-        "-c",
-        "--collect-only",
+        "--modcheck",
         action="store_true",
         default=False,
-        help="if set only print tests to generate, do not actually run the test and dump the target data",
+        help="check generator modules, do not run any tests.",
     )
-
     args = parser.parse_args()
+
+    # Bail here if we are checking modules.
+    if args.modcheck:
+        return
+
     output_dir = args.output_dir
     if not args.force:
         file_mode = "x"
@@ -222,8 +232,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if len(presets) != 0:
         print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
-    collect_only = args.collect_only
-
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
@@ -231,9 +239,8 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         all_test_case_params = []
 
     for tprov in test_providers:
-        if not collect_only:
-            # runs anything that we don't want to repeat for every test case.
-            tprov.prepare()
+        # Runs anything that we don't want to repeat for every test case.
+        tprov.prepare()
 
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
@@ -269,14 +276,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
 
-    if collect_only:
-        print(f"Collected {diagnostics_obj.collected_test_count} tests in total")
-    else:
-        summary_message = f"completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
-        summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
-        if span > TIME_THRESHOLD_TO_PRINT:
-            summary_message += f" in {span} seconds"
-        print(summary_message)
+    summary_message = f"completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
+    summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
+    if span > TIME_THRESHOLD_TO_PRINT:
+        summary_message += f" in {span} seconds"
+    print(summary_message)
 
     diagnostics_output = {
         "collected_test_count": diagnostics_obj.collected_test_count,
@@ -356,7 +360,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     test_end = time.time()
     span = round(test_end - test_start, 2)
     if span > TIME_THRESHOLD_TO_PRINT:
-        print(f'    - generated in {span} seconds')
+        print(f'- generated in {span} seconds')
 
     return result
 

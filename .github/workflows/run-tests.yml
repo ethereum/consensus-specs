@@ -45,7 +45,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12.4'
           cache: ''
       - name: Check codespell
         run: make codespell
@@ -55,10 +55,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Setup Rust for dependencies
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12.4'
           cache: ''
       - name: Install pyspec requirements
         run: make install_test
@@ -76,10 +78,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Setup Rust for dependencies
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12.4'
           cache: ''
       - name: set TEST_PRESET_TYPE
         if: github.event.inputs.test_preset_type != ''
@@ -106,3 +110,18 @@ jobs:
         with:
           name: test-reports-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
+
+  gen-modcheck:
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+   steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.4'
+          cache: ''
+      - name: Install pyspec requirements
+        run: make install_test
+      - name: Run generators with --modcheck
+        run: make generate_tests modcheck=true

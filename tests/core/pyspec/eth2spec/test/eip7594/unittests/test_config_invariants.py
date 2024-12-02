@@ -18,7 +18,6 @@ def test_invariants(spec):
     assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
         spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.NUMBER_OF_COLUMNS
     )
-    assert spec.config.MAX_CELLS_IN_EXTENDED_MATRIX == spec.config.MAX_BLOBS_PER_BLOCK * spec.config.NUMBER_OF_COLUMNS
 
 
 @with_eip7594_and_later
@@ -26,3 +25,14 @@ def test_invariants(spec):
 @single_phase
 def test_polynomical_commitments_sampling(spec):
     assert spec.FIELD_ELEMENTS_PER_EXT_BLOB == 2 * spec.FIELD_ELEMENTS_PER_BLOB
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_networking(spec):
+    assert spec.config.MAX_BLOBS_PER_BLOCK_EIP7594 <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+    assert (
+        spec.config.MAX_REQUEST_BLOB_SIDECARS_EIP7594 ==
+        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
+    )
