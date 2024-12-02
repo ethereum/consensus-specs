@@ -10,7 +10,7 @@ class ElectraSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
-from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 '''
 
     @classmethod
@@ -30,7 +30,7 @@ class NoopExecutionEngine(ExecutionEngine):
     def notify_new_payload(self: ExecutionEngine,
                            execution_payload: ExecutionPayload,
                            parent_beacon_block_root: Root,
-                           execution_requests_list: list[bytes]) -> bool:
+                           execution_requests_list: Sequence[bytes]) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,

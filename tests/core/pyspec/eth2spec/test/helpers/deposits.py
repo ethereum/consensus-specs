@@ -271,7 +271,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         pre_effective_balance = state.validators[validator_index].effective_balance
 
     if is_post_electra(spec):
-        pre_pending_deposits = len(state.pending_deposits)
+        pre_pending_deposits_count = len(state.pending_deposits)
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -290,6 +290,8 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
         assert len(state.balances) == pre_validator_count
         if is_top_up:
             assert get_balance(state, validator_index) == pre_balance
+        if is_post_electra(spec):
+            assert len(state.pending_deposits) == pre_pending_deposits_count
     else:
         if is_top_up:
             # Top-ups don't add validators
@@ -313,13 +315,13 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             assert get_balance(state, validator_index) == pre_balance
             assert state.validators[validator_index].effective_balance == pre_effective_balance
             # new correct balance deposit queued up
-            assert len(state.pending_deposits) == pre_pending_deposits + 1
-            assert state.pending_deposits[pre_pending_deposits].pubkey == deposit.data.pubkey
+            assert len(state.pending_deposits) == pre_pending_deposits_count + 1
+            assert state.pending_deposits[pre_pending_deposits_count].pubkey == deposit.data.pubkey
             assert state.pending_deposits[
-                pre_pending_deposits].withdrawal_credentials == deposit.data.withdrawal_credentials
-            assert state.pending_deposits[pre_pending_deposits].amount == deposit.data.amount
-            assert state.pending_deposits[pre_pending_deposits].signature == deposit.data.signature
-            assert state.pending_deposits[pre_pending_deposits].slot == spec.GENESIS_SLOT
+                pre_pending_deposits_count].withdrawal_credentials == deposit.data.withdrawal_credentials
+            assert state.pending_deposits[pre_pending_deposits_count].amount == deposit.data.amount
+            assert state.pending_deposits[pre_pending_deposits_count].signature == deposit.data.signature
+            assert state.pending_deposits[pre_pending_deposits_count].slot == spec.GENESIS_SLOT
 
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
 

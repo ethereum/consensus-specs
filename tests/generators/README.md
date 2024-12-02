@@ -185,6 +185,7 @@ if __name__ == "__main__":
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
     }
+    check_mods(all_mods, "sanity")
 
     run_state_test_generators(runner_name="sanity", all_mods=all_mods)
 ```
