@@ -258,6 +258,7 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
     yield 'blocks', [signed_block]
     yield 'post', state
 
+
 def get_random_execution_requests(spec, state, rng):
     deposits = get_random_deposits_requests(spec, state, rng)
     withdrawals = get_random_withdrawals_requests(spec, state, rng)
