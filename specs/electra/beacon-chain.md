@@ -32,6 +32,7 @@
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`SingleAttestation`](#singleattestation)
+    - [`CommitteeAttestation`](#committeeattestation)
     - [`ExecutionRequests`](#executionrequests)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
@@ -287,6 +288,16 @@ class SingleAttestation(Container):
     committee_index: CommitteeIndex
     attester_index: ValidatorIndex
     data: AttestationData
+    signature: BLSSignature
+```
+
+#### `CommitteeAttestation`
+
+```python
+class CommitteeAttestation(Container):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    committee_index: CommitteeIndex
     signature: BLSSignature
 ```
 
