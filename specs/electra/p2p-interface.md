@@ -1,15 +1,12 @@
 # Electra -- Networking
 
-This document contains the consensus-layer networking specification for Electra.
-
-The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
-
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Modifications in Electra](#modifications-in-electra)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -20,6 +17,12 @@ The specification of these changes continues in the same format as the network s
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the consensus-layer networking specification for Electra.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Electra
 

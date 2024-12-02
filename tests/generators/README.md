@@ -7,7 +7,7 @@ Any issues with the generators and/or generated tests should be filed in the rep
 
 On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
 
-An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
+An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
 ## Table of contents
 
@@ -39,7 +39,7 @@ Prerequisites:
 This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../consensus-spec-tests/tests`).
 
 ```bash
-make clean 
+make clean
 ```
 
 ### Running all test generators
@@ -196,9 +196,9 @@ Recommendations:
 - You can have more than just one test provider.
 - Your test provider is free to output any configuration and combination of runner/handler/fork/case name.
 - You can split your test case generators into different Python files/packages; this is good for code organization.
-- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
+- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary.
 - You may be able to write your test case provider in a way where it does not make assumptions on constants.
-  If so, you can generate test cases with different configurations for the same scenario (see example). 
+  If so, you can generate test cases with different configurations for the same scenario (see example).
 - See [`tests/core/gen_helpers/README.md`](../core/pyspec/eth2spec/gen_helpers/README.md) for command line options for generators.
 
 ## How to add a new test generator
