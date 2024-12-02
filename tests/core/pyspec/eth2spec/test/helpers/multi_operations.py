@@ -271,6 +271,7 @@ def get_random_execution_requests(spec, state, rng):
 
     return execution_requests
 
+
 def get_random_deposits_requests(spec, state, rng, num_deposits=None):
     if num_deposits is None:
         num_deposits = rng.randrange(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
@@ -368,3 +369,4 @@ def get_random_consolidations_requests(spec, state, rng, num_consolidations=None
         consolidations_requests.append(consolidation_request)
 
     return consolidations_requests
+    
