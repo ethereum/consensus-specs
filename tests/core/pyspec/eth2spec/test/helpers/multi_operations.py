@@ -18,8 +18,6 @@ from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 
-from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra
-
 
 def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     """
@@ -131,26 +129,15 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[-1 - index]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        if is_post_electra(spec):
-            _, root, deposit_data_leaves = build_deposit(
-                spec,
-                deposit_data_leaves,
-                pubkeys[index],
-                privkeys[index],
-                spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
-                withdrawal_credentials=withdrawal_credentials,
-                signed=True,
-            )
-        else:
-            _, root, deposit_data_leaves = build_deposit(
-                spec,
-                deposit_data_leaves,
-                pubkeys[index],
-                privkeys[index],
-                spec.MAX_EFFECTIVE_BALANCE,
-                withdrawal_credentials=withdrawal_credentials,
-                signed=True,
-            )
+        _, root, deposit_data_leaves = build_deposit(
+            spec,
+            deposit_data_leaves,
+            pubkeys[index],
+            privkeys[index],
+            spec.MAX_EFFECTIVE_BALANCE,
+            withdrawal_credentials=withdrawal_credentials,
+            signed=True,
+        )
 
     # Then for that context, build deposits/proofs
     for i in range(num_deposits):
@@ -271,7 +258,7 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-def get_random_execution_requests(spec, state, rng=rng):
+def get_random_execution_requests(spec, state, rng):
     deposits = get_random_deposits_requests(spec, state, rng)
     withdrawals = get_random_withdrawals_requests(spec, state, rng)
     consolidations = get_random_consolidations_requests(spec, state, rng)
@@ -284,12 +271,29 @@ def get_random_execution_requests(spec, state, rng=rng):
 
     return execution_requests
 
-def get_random_deposits_requests(spec, state, rng=rng):
-    deposits, _ = get_random_deposits(spec, state, rng)
+def get_random_deposits_requests(spec, state, rng, num_deposits=None):
+    if num_deposits is None:
+        num_deposits = rng.randrange(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
+
+    deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
     deposits_requests = []
 
-    for deposit in deposits:
+    for i in range(num_deposits):
+        index = rng.randrange(0, num_deposits)
+        withdrawal_pubkey = pubkeys[index]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+
+        deposit, _, _ = build_deposit(
+            spec,
+            deposit_data_leaves,
+            pubkeys[index],
+            privkeys[index],
+            rng.randint(spec.MIN_ACTIVATION_BALANCE, spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
+            withdrawal_credentials=withdrawal_credentials,
+            signed=True,
+        )
+
         deposit_request = spec.DepositRequest(
             pubkey=deposit.data.pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
@@ -312,7 +316,6 @@ def get_random_withdrawals_requests(spec, state, rng, num_withdrawals=None):
 
     current_epoch = spec.get_current_epoch(state)
     active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
-    rng.shuffle(active_validator_indices)
 
     for _ in range(num_withdrawals):
         if not active_validator_indices:
@@ -320,13 +323,14 @@ def get_random_withdrawals_requests(spec, state, rng, num_withdrawals=None):
 
         address = rng.getrandbits(160).to_bytes(20, 'big')
 
-        validator_index = active_validator_indices.pop()
+        validator_index = rng.choice(active_validator_indices)
         validator = state.validators[validator_index]
+        validator_balance = state.balances[validator_index]
 
         withdrawal_request = spec.WithdrawalRequest(
             source_address=address,
             validator_pubkey=validator.pubkey,
-            amount=spec.FULL_EXIT_REQUEST_AMOUNT,
+            amount=rng.randint(0, validator_balance),
         )
 
         withdrawals_requests.append(withdrawal_request)
@@ -344,16 +348,13 @@ def get_random_consolidations_requests(spec, state, rng, num_consolidations=None
 
     current_epoch = spec.get_current_epoch(state)
     active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
-    rng.shuffle(active_validator_indices)
 
     for _ in range(num_consolidations):
-        if len(active_validator_indices) < 2:
-            break
 
         source_address = rng.getrandbits(160).to_bytes(20, 'big')
 
-        source_index = active_validator_indices.pop()
-        target_index = active_validator_indices.pop()
+        source_index = rng.choice(active_validator_indices)
+        target_index = rng.choice(active_validator_indices)
 
         source_validator = state.validators[source_index]
         target_validator = state.validators[target_index]
