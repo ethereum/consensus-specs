@@ -370,4 +370,3 @@ def get_random_consolidations_requests(spec, state, rng, num_consolidations=None
         consolidations_requests.append(consolidation_request)
 
     return consolidations_requests
-    
