@@ -86,6 +86,7 @@
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
@@ -197,8 +198,6 @@ This section outlines configurations that are used in this spec.
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
-| `RESP_TIMEOUT` | `10` | The maximum duration in **seconds** for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
@@ -207,6 +206,7 @@ This section outlines configurations that are used in this spec.
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `MAX_CONCURRENT_REQUESTS` | `2` | Maximum number of concurrent requests per protocol ID that a client may issue |
 
 ### MetaData
 
@@ -564,10 +564,9 @@ The request MUST be encoded according to the encoding strategy.
 The requester MUST close the write side of the stream once it finishes writing the request message.
 At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout).
-On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received.
+The requester MUST NOT make more than `MAX_CONCURRENT_REQUESTS` concurrent requests with the same protocol ID.
 
-If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
+If a timeout occurs or the response is no longer relevant, the requester SHOULD reset the stream.
 
 A requester SHOULD read from the stream until either:
 1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
@@ -596,10 +595,10 @@ The responder MUST:
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error.
 Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
 
-The entire request should be read in no more than `RESP_TIMEOUT`.
-Upon a timeout, the responder SHOULD reset the stream.
+The responder MAY rate-limit chunks by withholding each chunk until capacity is available. The responder MUST NOT respond with an error or close the stream when rate limiting.
 
-The responder SHOULD send a `response_chunk` promptly.
+When rate limiting, the responder MUST send each `response_chunk` in full promptly but may introduce delays between each chunk.
+
 Chunks start with a **single-byte** response code which determines the contents of the `response_chunk` (`result` particle in the BNF grammar above).
 For multiple chunks, only the last chunk is allowed to have a non-zero error code (i.e. The chunk stream is terminated once an error occurs).
 
@@ -628,6 +627,8 @@ The `ErrorMessage` schema is:
 
 *Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes).
 Clients MUST treat as valid any byte sequences.
+
+The responder MAY penalise peers that concurrently open more than `MAX_CONCURRENT_REQUESTS` streams for the same request type, for the protocol IDs defined in this specification.
 
 #### Encoding strategies
 
@@ -962,7 +963,8 @@ The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the
 The ENR MAY contain the following entries:
 
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p listening port.
+-  A TCP port (`tcp` field) representing the local libp2p TCP listening port.
+-  A QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port.
 -  A UDP port (`udp` field) representing the local discv5 listening port.
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
@@ -1458,6 +1460,20 @@ For this reason, we remove and replace semver with ordinals that require explici
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
 
+#### What is a typical rate limiting strategy?
+
+The responder typically will want to rate limit requests to protect against spam and to manage resource consumption, while the requester will want to maximise performance based on its own resource allocation strategy. For the network, it is beneficial if available resources are used optimally.
+
+Broadly, the requester does not know the capacity / limit of each server but can derive it from the rate of responses for the purpose of selecting the next peer for a request.
+
+Because the server withholds the response until capacity is available, a client can optimistically send requests without risking running into negative scoring situations or sub-optimal rate polling.
+
+A typical approach for the requester is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
+
+A typical approach for the responder is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
+
+For requesters, rate limiting is not distinguishable from other conditions causing slow responses (slow peers, congestion etc) and since the latter conditions must be handled anyway, including rate limiting in this strategy keeps the implementation simple.
+
 #### Why do we allow empty responses in block requests?
 
 When requesting blocks by range or root, it may happen that there are no blocks in the selected range or the responding node does not have the requested blocks.
@@ -1489,10 +1505,10 @@ If a request for the parent fails, it's indicative of poor peer quality since pe
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time.
 By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale,
-and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
+and the responder might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
 
-To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client.
-The requesting client then goes on to validate the blocks and incorporate them in their own database
+To avoid this race condition, we allow the responder to choose which branch to send to the requester.
+The requester then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
 
 #### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?

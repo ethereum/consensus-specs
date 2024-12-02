@@ -41,7 +41,6 @@ COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
 COV_INDEX_FILE=$(COV_HTML_OUT_DIR)/index.html
 
 CURRENT_DIR = ${CURDIR}
-LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
 GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
 
 SCRIPTS_DIR = ${CURRENT_DIR}/scripts
@@ -151,13 +150,16 @@ codespell:
 
 lint: pyspec
 	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& python -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
-	&& python -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
+	flake8  --config $(CURRENT_DIR)/flake8.ini ./eth2spec \
+	&& python -m pylint --rcfile $(CURRENT_DIR)/pylint.ini $(PYLINT_SCOPE) \
+	&& python -m mypy --config-file $(CURRENT_DIR)/mypy.ini $(MYPY_SCOPE)
 
 lint_generators: pyspec
 	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8 --config $(LINTER_CONFIG_FILE)
+	flake8 --config $(CURRENT_DIR)/flake8.ini
+
+# If set to true, it will not run generator tests.
+modcheck ?= false
 
 # Runs a generator, identified by param 1
 define run_generator
@@ -177,7 +179,7 @@ define run_generator
 	. venv/bin/activate; \
 	pip3 install ../../../dist/eth2spec-*.whl; \
 	pip3 install 'eth2spec[generator]'; \
-	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
+	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) $(if $(filter true,$(modcheck)),--modcheck); \
 	echo "generator $(1) finished"
 endef
 

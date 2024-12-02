@@ -2,6 +2,12 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.context import (
     spec_state_test,
     with_electra_and_later,
+    with_presets,
+    spec_test,
+    single_phase,
+    with_custom_state,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    default_activation_threshold,
 )
 from eth2spec.test.helpers.deposits import prepare_pending_deposit
 from eth2spec.test.helpers.state import (
@@ -9,6 +15,7 @@ from eth2spec.test.helpers.state import (
     advance_finality_to,
     set_full_participation,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 
 
 def run_process_pending_deposits(spec, state):
@@ -488,3 +495,26 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
     assert state.pending_deposits == [
         prepare_pending_deposit(spec, validator_index=1, amount=amount)
     ]
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_process_pending_deposits_scaled_churn(spec, state):
+    index = 0
+    amount = spec.get_activation_exit_churn_limit(state)
+    state.pending_deposits.append(
+        prepare_pending_deposit(spec, index, amount)
+    )
+    pre_balance = state.balances[index]
+
+    yield from run_process_pending_deposits(spec, state)
+
+    assert state.balances[index] == pre_balance + amount
+    assert state.deposit_balance_to_consume == 0
+    assert state.pending_deposits == []

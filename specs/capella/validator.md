@@ -110,7 +110,7 @@ Validator balances are withdrawn periodically via an automatic process. For exit
 There is one prerequisite for this automated process:
 the validator's withdrawal credentials pointing to an execution layer address, i.e. having an `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
-If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to participate in withdrawals the validator must 
+If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to participate in withdrawals the validator must
 create a one-time message to change their withdrawal credential from the version authenticated with a BLS key to the
 version compatible with the execution layer. This message -- a `BLSToExecutionChange` -- is available starting in Capella
 

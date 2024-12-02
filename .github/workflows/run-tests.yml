@@ -69,6 +69,18 @@ jobs:
       - name: Run linter for test generators
         run: make lint_generators
 
+  whitespace:
+    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check for trailing whitespace
+        run: |
+          if git grep -n '[[:blank:]]$'; then
+            echo "Trailing whitespace found. Please fix it."
+            exit 1
+          fi
+
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     needs: [lint,codespell,table_of_contents]
@@ -110,3 +122,18 @@ jobs:
         with:
           name: test-reports-${{ matrix.version }}
           path: tests/core/pyspec/test-reports
+
+  gen-modcheck:
+   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+   steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.4'
+          cache: ''
+      - name: Install pyspec requirements
+        run: make install_test
+      - name: Run generators with --modcheck
+        run: make generate_tests modcheck=true

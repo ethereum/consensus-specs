@@ -9,7 +9,7 @@ from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
 )
 from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash,
+    compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.voluntary_exits import (
     prepare_signed_exits,
@@ -42,7 +42,7 @@ def test_basic_el_withdrawal_request(spec, state):
     )
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_requests.withdrawals = [withdrawal_request]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
@@ -80,7 +80,7 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     )
     block.body.execution_requests.withdrawals = [withdrawal_request]
 
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]
@@ -132,7 +132,7 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
     )
     block_2 = build_empty_block_for_next_slot(spec, state)
     block_2.body.execution_requests.withdrawals = [withdrawal_request]
-    block_2.body.execution_payload.block_hash = compute_el_block_hash(spec, block_2.body.execution_payload, state)
+    block_2.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block_2)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield 'blocks', [signed_block_1, signed_block_2]
@@ -165,7 +165,7 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     block.body.voluntary_exits = signed_voluntary_exits
     block.body.execution_requests.withdrawals = [withdrawal_request]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [signed_block]

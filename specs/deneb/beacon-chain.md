@@ -77,7 +77,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
 
 ## Configuration
 
@@ -294,7 +294,10 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root  # [New in Deneb:EIP4788]
+
+    if b'' in execution_payload.transactions:
+        return False
 
     # [Modified in Deneb:EIP4788]
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):

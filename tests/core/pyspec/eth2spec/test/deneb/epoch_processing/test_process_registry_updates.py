@@ -23,6 +23,8 @@ def run_test_activation_churn_limit(spec, state):
 
     validator_count_0 = len(state.validators)
 
+    balance = spec.MIN_ACTIVATION_BALANCE if is_post_electra(spec) else spec.MAX_EFFECTIVE_BALANCE
+
     for i in range(mock_activations):
         index = validator_count_0 + i
         validator = spec.Validator(
@@ -32,10 +34,10 @@ def run_test_activation_churn_limit(spec, state):
             activation_epoch=spec.FAR_FUTURE_EPOCH,
             exit_epoch=spec.FAR_FUTURE_EPOCH,
             withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+            effective_balance=balance,
         )
         state.validators.append(validator)
-        state.balances.append(spec.MAX_EFFECTIVE_BALANCE)
+        state.balances.append(balance)
         state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.inactivity_scores.append(0)

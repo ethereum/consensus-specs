@@ -189,29 +189,67 @@ def prepare_execution_payload(state: BeaconState,
 
 *[New in Electra]*
 
-1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined
-in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The index of each element in the array determines the type of request.
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The first byte of each request is used to determine the request type. Requests must be ordered by request type in ascending order. As a result, there can only be at most one instance of each request type.
 2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
 
 ```python
-def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequests:
-    deposits = ssz_deserialize(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], execution_requests[0])
-    withdrawals = ssz_deserialize(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], execution_requests[1])
-    consolidations = ssz_deserialize(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
-                                     execution_requests[2])
+def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+    deposits = []
+    withdrawals = []
+    consolidations = []
 
-    return ExecutionRequests(deposits, withdrawals, consolidations)
+    request_types = [
+        DEPOSIT_REQUEST_TYPE,
+        WITHDRAWAL_REQUEST_TYPE,
+        CONSOLIDATION_REQUEST_TYPE,
+    ]
+
+    prev_request_type = None
+    for request in execution_requests_list:
+        request_type, request_data = request[0:1], request[1:]
+
+        # Check that the request type is valid
+        assert request_type in request_types
+        # Check that the request data is not empty
+        assert len(request_data) != 0
+        # Check that requests are in strictly ascending order
+        # Each successive type must be greater than the last with no duplicates
+        assert prev_request_type is None or prev_request_type < request_type
+        prev_request_type = request_type
+
+        if request_type == DEPOSIT_REQUEST_TYPE:
+            deposits = ssz_deserialize(
+                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == WITHDRAWAL_REQUEST_TYPE:
+            withdrawals = ssz_deserialize(
+                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+            consolidations = ssz_deserialize(
+                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+
+    return ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations,
+    )
 ```
 
 ## Attesting
 
 ### Construct attestation
 
-- Set `attestation_data.index = 0`.
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
-- Let `attestation.committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`.
+The validator creates `attestation` as a `SingleAttestation` container
+with updated field assignments:
 
-*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
+- Set `attestation_data.index = 0`.
+- Set `attestation.committee_index` to the index associated with the validator's committee.
+- Set `attestation.attester_index` to the index of the validator.
 
 ## Attestation aggregation
 
@@ -219,4 +257,4 @@ def get_execution_requests(execution_requests: Sequence[bytes]) -> ExecutionRequ
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation.
+- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the bit set corresponding to `committee_index` in each individual attestation.

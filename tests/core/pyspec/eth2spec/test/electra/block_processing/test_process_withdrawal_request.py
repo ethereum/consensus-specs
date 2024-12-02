@@ -13,6 +13,92 @@ from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
 )
+#
+# Run processing
+#
+
+
+def run_withdrawal_request_processing(
+    spec, state, withdrawal_request, valid=True, success=True
+):
+    """
+    Run ``process_withdrawal_request``, yielding:
+      - pre-state ('pre')
+      - withdrawal_request ('withdrawal_request')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    If ``success == False``, it doesn't initiate exit successfully
+    """
+    yield "pre", state
+    yield "withdrawal_request", withdrawal_request
+
+    if not valid:
+        expect_assertion_error(
+            lambda: spec.process_withdrawal_request(
+                state, withdrawal_request
+            )
+        )
+        yield "post", None
+        return
+
+    pre_state = state.copy()
+
+    spec.process_withdrawal_request(
+        state, withdrawal_request
+    )
+
+    yield "post", state
+
+    if not success:
+        # No-op
+        assert pre_state == state
+    else:
+        validator_index = get_validator_index_by_pubkey(
+            state, withdrawal_request.validator_pubkey
+        )
+        pre_exit_epoch = pre_state.validators[validator_index].exit_epoch
+        pre_pending_partial_withdrawals = pre_state.pending_partial_withdrawals.copy()
+        pre_balance = pre_state.balances[validator_index]
+        pre_effective_balance = pre_state.validators[validator_index].effective_balance
+        assert state.balances[validator_index] == pre_balance
+        assert (
+            state.validators[validator_index].effective_balance == pre_effective_balance
+        )
+        # Full exit request
+        if withdrawal_request.amount == spec.FULL_EXIT_REQUEST_AMOUNT:
+            assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
+            assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+            assert spec.get_pending_balance_to_withdraw(state, validator_index) == 0
+            assert state.pending_partial_withdrawals == pre_pending_partial_withdrawals
+        # Partial withdrawal request
+        else:
+            expected_amount_to_withdraw = compute_amount_to_withdraw(
+                spec, pre_state, validator_index, withdrawal_request.amount
+            )
+            assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+            expected_withdrawable_epoch = (
+                state.earliest_exit_epoch
+                + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            )
+            expected_partial_withdrawal = spec.PendingPartialWithdrawal(
+                index=validator_index,
+                amount=expected_amount_to_withdraw,
+                withdrawable_epoch=expected_withdrawable_epoch,
+            )
+            assert (
+                state.pending_partial_withdrawals
+                == pre_pending_partial_withdrawals + [expected_partial_withdrawal]
+            )
+
+
+def compute_amount_to_withdraw(spec, state, index, amount):
+    pending_balance_to_withdraw = spec.get_pending_balance_to_withdraw(state, index)
+    return min(
+        state.balances[index]
+        - spec.MIN_ACTIVATION_BALANCE
+        - pending_balance_to_withdraw,
+        amount,
+    )
 
 
 # Modified tests from 7002. Just testing EL-triggered exits, not partial withdrawals
@@ -124,7 +210,7 @@ def test_basic_withdrawal_request_with_full_partial_withdrawal_queue(spec, state
     )
 
 
-# Invalid tests
+# Tests that should fail
 
 
 @with_electra_and_later
@@ -230,6 +316,31 @@ def test_activation_epoch_less_than_shard_committee_period(spec, state):
     assert spec.get_current_epoch(state) < (
         state.validators[validator_index].activation_epoch
         + spec.config.SHARD_COMMITTEE_PERIOD
+    )
+
+    yield from run_withdrawal_request_processing(
+        spec, state, withdrawal_request, success=False
+    )
+
+
+@with_electra_and_later
+@spec_state_test
+def test_unknown_pubkey(spec, state):
+    rng = random.Random(1344)
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = rng.choice(spec.get_active_validator_indices(state, current_epoch))
+    address = b"\x22" * 20
+    pubkey = spec.BLSPubkey(b"\x23" * 48)
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, validator_index, address=address
+    )
+    withdrawal_request = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=pubkey,
+        amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
 
     yield from run_withdrawal_request_processing(
@@ -862,12 +973,11 @@ def test_incorrect_inactive_validator(spec, state):
     validator_index = rng.choice(spec.get_active_validator_indices(state, current_epoch))
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
-    incorrect_address = b"\x33" * 20
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, address=address
     )
     withdrawal_request = spec.WithdrawalRequest(
-        source_address=incorrect_address,
+        source_address=address,
         validator_pubkey=validator_pubkey,
         amount=spec.FULL_EXIT_REQUEST_AMOUNT,
     )
@@ -878,92 +988,4 @@ def test_incorrect_inactive_validator(spec, state):
 
     yield from run_withdrawal_request_processing(
         spec, state, withdrawal_request, success=False
-    )
-
-#
-# Run processing
-#
-
-
-def run_withdrawal_request_processing(
-    spec, state, withdrawal_request, valid=True, success=True
-):
-    """
-    Run ``process_withdrawal_request``, yielding:
-      - pre-state ('pre')
-      - withdrawal_request ('withdrawal_request')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    If ``success == False``, it doesn't initiate exit successfully
-    """
-    validator_index = get_validator_index_by_pubkey(
-        state, withdrawal_request.validator_pubkey
-    )
-
-    yield "pre", state
-    yield "withdrawal_request", withdrawal_request
-
-    if not valid:
-        expect_assertion_error(
-            lambda: spec.process_withdrawal_request(
-                state, withdrawal_request
-            )
-        )
-        yield "post", None
-        return
-
-    pre_exit_epoch = state.validators[validator_index].exit_epoch
-    pre_pending_partial_withdrawals = state.pending_partial_withdrawals.copy()
-    pre_balance = state.balances[validator_index]
-    pre_effective_balance = state.validators[validator_index].effective_balance
-    pre_state = state.copy()
-    expected_amount_to_withdraw = compute_amount_to_withdraw(
-        spec, state, validator_index, withdrawal_request.amount
-    )
-
-    spec.process_withdrawal_request(
-        state, withdrawal_request
-    )
-
-    yield "post", state
-
-    if not success:
-        # No-op
-        assert pre_state == state
-    else:
-        assert state.balances[validator_index] == pre_balance
-        assert (
-            state.validators[validator_index].effective_balance == pre_effective_balance
-        )
-        # Full exit request
-        if withdrawal_request.amount == spec.FULL_EXIT_REQUEST_AMOUNT:
-            assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
-            assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
-            assert spec.get_pending_balance_to_withdraw(state, validator_index) == 0
-            assert state.pending_partial_withdrawals == pre_pending_partial_withdrawals
-        # Partial withdrawal request
-        else:
-            assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-            expected_withdrawable_epoch = (
-                state.earliest_exit_epoch
-                + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
-            expected_partial_withdrawal = spec.PendingPartialWithdrawal(
-                index=validator_index,
-                amount=expected_amount_to_withdraw,
-                withdrawable_epoch=expected_withdrawable_epoch,
-            )
-            assert (
-                state.pending_partial_withdrawals
-                == pre_pending_partial_withdrawals + [expected_partial_withdrawal]
-            )
-
-
-def compute_amount_to_withdraw(spec, state, index, amount):
-    pending_balance_to_withdraw = spec.get_pending_balance_to_withdraw(state, index)
-    return min(
-        state.balances[index]
-        - spec.MIN_ACTIVATION_BALANCE
-        - pending_balance_to_withdraw,
-        amount,
     )
