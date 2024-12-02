@@ -34,7 +34,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 ```python
 def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE], execution_payload: ExecutionPayload) -> bool:
     """
-    Return ``True`` if and only if the input ``inclusion_list_transactions`` satifies validation, 
+    Return ``True`` if and only if the input ``inclusion_list_transactions`` satisfies validation,
     that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either when all transactions are present in payload or 
     when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
     """
