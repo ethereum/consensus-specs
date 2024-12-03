@@ -1,4 +1,4 @@
-from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
+from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, check_mods
 from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
 
 
