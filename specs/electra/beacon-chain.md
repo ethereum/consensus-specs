@@ -183,7 +183,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
-| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(1)` (= 1) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
@@ -1642,8 +1642,8 @@ def process_consolidation_request(
     if not (has_correct_credential and is_correct_source_address):
         return
 
-    # Verify that target has execution withdrawal credentials
-    if not has_execution_withdrawal_credential(target_validator):
+    # Verify that target has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(target_validator):
         return
 
     # Verify the source and the target are active
@@ -1675,8 +1675,4 @@ def process_consolidation_request(
         source_index=source_index,
         target_index=target_index
     ))
-
-    # Churn any target excess active balance of target and raise its max
-    if has_eth1_withdrawal_credential(target_validator):
-        switch_to_compounding_validator(state, target_index)
 ```
