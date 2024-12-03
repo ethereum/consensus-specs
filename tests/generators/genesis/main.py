@@ -9,7 +9,7 @@ if __name__ == "__main__":
     ]}
 
     altair_mods = phase_0_mods  # No additional Altair specific genesis tests
-    bellatrix_mods = altair_mods  #  No additional Bellatrix specific genesis tests
+    bellatrix_mods = altair_mods  # No additional Bellatrix specific genesis tests
     capella_mods = bellatrix_mods  # No additional Capella specific genesis tests
     deneb_mods = capella_mods  # No additional Deneb specific genesis tests
     electra_mods = deneb_mods  # No additional Electra specific genesis tests
