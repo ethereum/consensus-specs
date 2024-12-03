@@ -136,4 +136,10 @@ jobs:
       - name: Install pyspec requirements
         run: make install_test
       - name: Run generators with --modcheck
-        run: make generate_tests modcheck=true
+        run: make generate_tests modcheck=true 2>&1 | tee consensustestgen.log
+      - name: Check for errors
+        run: |
+          if grep -q "\[ERROR\]" consensustestgen.log; then
+            echo "There is an error in the log"
+            exit 1
+          fi
