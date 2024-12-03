@@ -758,7 +758,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_incorrect_target_bls_credential(spec, state):
+def test_incorrect_target_with_bls_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # Set up a correct consolidation, but target does not have
