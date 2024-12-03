@@ -11,6 +11,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
+    set_compounding_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
 )
 
@@ -573,7 +574,7 @@ def test_incorrect_exceed_pending_consolidations_limit(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
@@ -608,7 +609,7 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE
@@ -642,7 +643,7 @@ def test_incorrect_exited_source(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # exit source
     spec.initiate_validator_exit(state, source_index)
@@ -679,7 +680,7 @@ def test_incorrect_exited_target(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
     # exit target
     spec.initiate_validator_exit(state, 1)
 
@@ -715,7 +716,7 @@ def test_incorrect_inactive_source(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # set source validator as not yet activated
     state.validators[source_index].activation_epoch = spec.FAR_FUTURE_EPOCH
@@ -752,7 +753,7 @@ def test_incorrect_inactive_target(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # set target validator as not yet activated
     state.validators[1].activation_epoch = spec.FAR_FUTURE_EPOCH
@@ -787,7 +788,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not spec.has_execution_withdrawal_credential(state.validators[source_index])
@@ -889,7 +890,7 @@ def test_incorrect_incorrect_source_address(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[source_index].withdrawal_credentials[12:] == consolidation.source_address
@@ -924,7 +925,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
         source_pubkey=b"\x00" * 48,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[source_index].pubkey == consolidation.source_pubkey
@@ -959,7 +960,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=b"\x00" * 48,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[target_index].pubkey == consolidation.target_pubkey
@@ -994,7 +995,7 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Create pending withdrawal
     pending_withdrawal = spec.PendingPartialWithdrawal(
@@ -1033,7 +1034,7 @@ def test_incorrect_source_not_active_long_enough(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
     assert current_epoch < state.validators[source_index].activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
