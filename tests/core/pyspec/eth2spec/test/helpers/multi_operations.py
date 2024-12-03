@@ -291,7 +291,7 @@ def get_random_deposits_requests(spec, state, rng, num_deposits=None):
             deposit_data_leaves,
             pubkeys[index],
             privkeys[index],
-            rng.randint(spec.MIN_ACTIVATION_BALANCE, spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
+            rng.randint(spec.EFFECTIVE_BALANCE_INCREMENT, 2 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
             withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )
@@ -303,6 +303,7 @@ def get_random_deposits_requests(spec, state, rng, num_deposits=None):
             signature=deposit.data.signature,
             index=deposit.data.index,
         )
+
         deposits_requests.append(deposit_request)
 
     return deposits_requests
@@ -352,7 +353,6 @@ def get_random_consolidations_requests(spec, state, rng, num_consolidations=None
     active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
 
     for _ in range(num_consolidations):
-
         source_address = rng.getrandbits(160).to_bytes(20, 'big')
 
         source_index = rng.choice(active_validator_indices)
