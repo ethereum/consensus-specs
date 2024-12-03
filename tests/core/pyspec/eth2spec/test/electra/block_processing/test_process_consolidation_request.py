@@ -277,6 +277,53 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
 )
 @spec_test
 @single_phase
+def test_basic_consolidation_with_compounding_credentials(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+
+    # Set source to compounding credentials
+    source_address = b"\x22" * 20
+    set_compounding_withdrawal_credential(
+        spec, state, source_index, address=source_address
+    )
+    # Make consolidation with source address
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
+
+    # Set the consolidation balance to consume equal to churn limit
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
+    state.consolidation_balance_to_consume = consolidation_churn_limit
+
+    yield from run_consolidation_processing(spec, state, consolidation)
+
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    # Check consolidation churn is decremented correctly
+    assert (
+        state.consolidation_balance_to_consume
+        == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
+    )
+    # Check exit epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_consolidation_churn_limit_balance(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
