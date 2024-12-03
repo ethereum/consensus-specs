@@ -1,19 +1,11 @@
 # Phase 0 -- Networking
 
-This document contains the networking specification for Phase 0.
-
-It consists of four main sections:
-
-1. A specification of the network fundamentals.
-2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
-3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
@@ -114,6 +106,17 @@ It consists of four main sections:
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Phase 0.
+
+It consists of four main sections:
+
+1. A specification of the network fundamentals.
+2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+3. The rationale and further explanation for the design choices made in the previous two sections.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -960,7 +963,8 @@ The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the
 The ENR MAY contain the following entries:
 
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p listening port.
+-  A TCP port (`tcp` field) representing the local libp2p TCP listening port.
+-  A QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port.
 -  A UDP port (`udp` field) representing the local discv5 listening port.
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).

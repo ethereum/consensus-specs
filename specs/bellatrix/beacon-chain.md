@@ -44,7 +44,6 @@
       - [`process_execution_payload`](#process_execution_payload)
   - [Epoch processing](#epoch-processing)
     - [Slashings](#slashings)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -355,10 +354,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
-    if not self.is_valid_block_hash(new_payload_request.execution_payload):
+    execution_payload = new_payload_request.execution_payload
+
+    if b'' in execution_payload.transactions:
         return False
-    if not self.notify_new_payload(new_payload_request.execution_payload):
+
+    if not self.is_valid_block_hash(execution_payload):
         return False
+
+    if not self.notify_new_payload(execution_payload):
+        return False
+
     return True
 ```
 
@@ -433,63 +439,4 @@ def process_slashings(state: BeaconState) -> None:
             penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
             penalty = penalty_numerator // total_balance * increment
             decrease_balance(state, ValidatorIndex(index), penalty)
-```
-
-## Testing
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Bellatrix testing only.
-Modifications include:
-1. Use `BELLATRIX_FORK_VERSION` as the previous and current fork version.
-2. Utilize the Bellatrix `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. Initialize `latest_execution_payload_header`.
-  If `execution_payload_header == ExecutionPayloadHeader()`, then the Merge has not yet occurred.
-  Else, the Merge starts from genesis and the transition is incomplete.
-
-```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    fork = Fork(
-        previous_version=BELLATRIX_FORK_VERSION,  # [Modified in Bellatrix] for testing only
-        current_version=BELLATRIX_FORK_VERSION,  # [Modified in Bellatrix]
-        epoch=GENESIS_EPOCH,
-    )
-    state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
-        fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
-        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-    )
-
-    # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
-        process_deposit(state, deposit)
-
-    # Process activations
-    for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = hash_tree_root(state.validators)
-
-    # Fill in sync committees
-    # Note: A duplicate committee is assigned for the current and next committee at genesis
-    state.current_sync_committee = get_next_sync_committee(state)
-    state.next_sync_committee = get_next_sync_committee(state)
-
-    # [New in Bellatrix] Initialize the execution payload header
-    # If empty, will initialize a chain that has not yet gone through the Merge transition
-    state.latest_execution_payload_header = execution_payload_header
-
-    return state
 ```

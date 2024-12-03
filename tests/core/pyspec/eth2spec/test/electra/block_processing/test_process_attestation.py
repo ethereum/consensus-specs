@@ -88,6 +88,7 @@ def test_invalid_nonset_committee_bits(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+@with_presets([MINIMAL], "need multiple committees per slot")
 def test_invalid_nonset_multiple_committee_bits(spec, state):
     """
     EIP-7549 test
@@ -148,3 +149,33 @@ def test_one_committee_with_gap(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     yield from run_attestation_processing(spec, state, attestation)
+
+
+@with_electra_and_later
+@spec_state_test
+@with_presets([MINIMAL], "need multiple committees per slot")
+def test_invalid_nonset_bits_for_one_committee(spec, state):
+    """
+    EIP-7549 test
+    """
+    # Attestation with full committee participating
+    committee_0 = spec.get_beacon_committee(state, state.slot, 0)
+    attestation_1 = get_valid_attestation(spec, state, index=1, signed=True)
+
+    # Create an on chain aggregate
+    aggregate = spec.Attestation(data=attestation_1.data, signature=attestation_1.signature)
+    aggregate.committee_bits[0] = True
+    aggregate.committee_bits[1] = True
+    aggregate.aggregation_bits = get_empty_eip7549_aggregation_bits(
+        spec, state, aggregate.committee_bits, aggregate.data.slot
+    )
+    committee_offset = len(committee_0)
+    for i in range(len(attestation_1.aggregation_bits)):
+        aggregate.aggregation_bits[committee_offset + i] = attestation_1.aggregation_bits[i]
+
+    # Check that only one committee is presented
+    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(state, attestation_1)
+
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    yield from run_attestation_processing(spec, state, aggregate, valid=False)

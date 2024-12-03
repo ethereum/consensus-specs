@@ -86,11 +86,11 @@ The parameter that is required for executing `on_block(store, block)`.
     block: string           -- the name of the `block_<32-byte-root>.ssz_snappy` file.
                               To execute `on_block(store, block)` with the given attestation.
     blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
-                               The blobs file content is a `List[Blob, MAX_BLOBS_PER_BLOCK]` SSZ object.
+                               The blobs file content is a `List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]` SSZ object.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
-}  
+}
 ```
 
 The file is located in the same folder (see below).

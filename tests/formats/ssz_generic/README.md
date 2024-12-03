@@ -59,7 +59,7 @@ The object, encoded as a YAML structure. Using the same familiar encoding as YAM
 The conditions are the same for each type:
 
 - Encoding: After encoding the given `value` object, the output should match `serialized`.
-- Decoding: After decoding the given `serialized` bytes, it should match the `value` object. 
+- Decoding: After decoding the given `serialized` bytes, it should match the `value` object.
 - Hash-tree-root: the root should match the root declared in the metadata.
 
 ## `invalid`
