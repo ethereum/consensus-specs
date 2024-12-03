@@ -1,7 +1,7 @@
 # Configurations
 
 This directory contains a set of configurations used for testing, testnets, and mainnet.
-A client binary may be compiled for a specific `PRESET_BASE`, 
+A client binary may be compiled for a specific `PRESET_BASE`,
 and then load different configurations around that preset to participate in different networks or tests.
 
 Standard configs:
@@ -24,7 +24,7 @@ In this case, the suffix on the new variable may be removed, and the old variabl
 
 A previous iteration of forking made use of "timelines", but this collides with the definitions used in the spec (variables for special forking slots, etc.), and was not integrated sufficiently in any of the spec tools or implementations.
 Instead, the config essentially doubles as fork definition now, e.g. changing the value for `ALTAIR_FORK_EPOCH` changes the fork.
- 
+
 ## Format
 
 Each preset and configuration is a key-value mapping.
