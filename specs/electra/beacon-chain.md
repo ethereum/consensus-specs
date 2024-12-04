@@ -1004,6 +1004,7 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests  # [New in Electra]
+    target_blobs_per_block: uint64  # [New in Electra:EIP7742]
 ```
 
 #### Engine APIs
@@ -1058,7 +1059,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
-    target_blobs_per_block = MAX_BLOBS_PER_BLOCK // 2  # [New in Electra:EIP7742]
+    target_blobs_per_block = new_payload_request.target_blobs_per_block  # [New in Electra:EIP7742]
 
     if b'' in execution_payload.transactions:
         return False
@@ -1241,6 +1242,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,  # [New in Electra]
+            target_blobs_per_block=MAX_BLOBS_PER_BLOCK // 2,  # [New in Electra:EIP7742]
         )
     )
     # Cache execution payload header
