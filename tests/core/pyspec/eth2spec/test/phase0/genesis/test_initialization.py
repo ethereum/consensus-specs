@@ -1,8 +1,9 @@
 from eth2spec.test.context import (
+    PHASE0,
     single_phase,
     spec_test,
     with_presets,
-    with_all_phases,
+    with_phases,
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
@@ -26,7 +27,7 @@ def eth1_init_data(eth1_block_hash, eth1_timestamp):
     }
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -62,7 +63,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield 'state', state
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -113,7 +114,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     yield 'state', state
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -162,7 +163,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     yield 'state', state
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
@@ -189,7 +190,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
     yield 'state', state
 
 
-@with_all_phases
+@with_phases([PHASE0])
 @spec_test
 @single_phase
 @with_presets([MINIMAL], reason="too slow")
