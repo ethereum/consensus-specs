@@ -12,8 +12,8 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.sharding import (
-    get_sample_opaque_tx,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.debug.random_value import (
     RandomizationMode,
@@ -22,7 +22,7 @@ from eth2spec.debug.random_value import (
 
 
 def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
-    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1)
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=1)
     if rng is None:
         block = build_empty_block_for_next_slot(spec, state)
     else:

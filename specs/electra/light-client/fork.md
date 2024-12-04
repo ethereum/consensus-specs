@@ -33,7 +33,7 @@ def normalize_merkle_branch(branch: Sequence[Bytes32],
 
 ## Upgrading light client data
 
-A Electra `LightClientStore` can still process earlier light client data. In order to do so, that pre-Electra data needs to be locally upgraded to Electra before processing.
+An Electra `LightClientStore` can still process earlier light client data. In order to do so, that pre-Electra data needs to be locally upgraded to Electra before processing.
 
 ```python
 def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
