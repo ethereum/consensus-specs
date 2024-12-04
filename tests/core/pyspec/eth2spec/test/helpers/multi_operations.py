@@ -275,7 +275,7 @@ def get_random_execution_requests(spec, state, rng):
 
 def get_random_deposits_requests(spec, state, rng, num_deposits=None):
     if num_deposits is None:
-        num_deposits = rng.randrange(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
+        num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
