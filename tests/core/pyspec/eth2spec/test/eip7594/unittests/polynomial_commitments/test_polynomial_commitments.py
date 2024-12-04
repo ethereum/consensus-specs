@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     expect_assertion_error,
     with_eip7594_and_later,
 )
-from eth2spec.test.helpers.sharding import (
+from eth2spec.test.helpers.blob import (
     get_sample_blob,
 )
 from eth2spec.utils.bls import BLS_MODULUS
