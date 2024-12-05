@@ -27,7 +27,8 @@
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_BLOBS_PER_BLOCK_EIP7594` | `uint64(8)` | *[New in EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `TARGET_BLOBS_PER_BLOCK_EIP7594` | `uint64(9)` | *[New in EIP7594]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_EIP7594` |
+| `MAX_BLOBS_PER_BLOCK_EIP7594` | `uint64(12)` | *[New in EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 #### Execution payload
 
@@ -53,7 +54,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_ELECTRA,
+            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
         )
     )
     # Cache execution payload header
