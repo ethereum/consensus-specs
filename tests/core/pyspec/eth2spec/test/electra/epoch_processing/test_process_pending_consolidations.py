@@ -244,7 +244,8 @@ def test_pending_consolidation_compounding_creds(spec, state):
     assert state.balances[target_index] == expected_target_balance
     # All source balance is active and moved to the target,
     # because the source validator has compounding credentials
-    assert state.balances[source_index] == state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[source_index] == (
+        state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE)
     assert state.pending_consolidations == []
 
     # Pending balance deposit to the target is not created,
@@ -300,7 +301,8 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
         spec.MIN_ACTIVATION_BALANCE + state_before_consolidation.balances[target_index]
     )
     assert state.balances[target_index] == expected_target_balance
-    assert state.balances[source_index] == state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[source_index] == (
+        state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE)
     assert state.pending_consolidations == []
 
     # Pending deposit to the source was not processed.
