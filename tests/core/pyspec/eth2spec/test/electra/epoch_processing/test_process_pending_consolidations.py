@@ -461,7 +461,7 @@ def prepare_consolidation_and_state(spec, state, source_index, target_index,
     )
     # Set withdrawable epoch to current epoch to allow processing
     state.validators[source_index].withdrawable_epoch = current_epoch
-    
+
     # Set source and target withdrawal credentials
     if creds_type == 'eth1':
         set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
@@ -477,9 +477,10 @@ def prepare_consolidation_and_state(spec, state, source_index, target_index,
     elif eb_to_min_ab == '=':
         source.effective_balance = spec.MIN_ACTIVATION_BALANCE
     elif eb_to_max_eb == '<':
-        source.effective_balance = (spec.MAX_EFFECTIVE_BALANCE_ELECTRA - spec.MIN_ACTIVATION_BALANCE) // 2
+        source.effective_balance = (max_eb - spec.MIN_ACTIVATION_BALANCE) // 2
     else:
-        source.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        # eb_to_max_eb == '='
+        source.effective_balance = max_eb
 
     if balance_to_eb == '<':
         state.balances[source_index] = source.effective_balance - spec.EFFECTIVE_BALANCE_INCREMENT // 2
@@ -511,7 +512,6 @@ def run_balance_computation_test(spec, state, instance_tuples):
         )
         assert state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance
         assert state.balances[target_index] == pre_state.balances[target_index] + consolidated_balance
-
 
 
 @with_electra_and_later
