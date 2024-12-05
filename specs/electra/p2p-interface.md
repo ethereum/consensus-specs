@@ -105,7 +105,7 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
 
-*[Updated in ]*
+*[Updated in Electra:EIP7691]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -140,7 +140,7 @@ No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
 
-*[Updated in ]*
+*[Updated in Electra:EIP7691]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
