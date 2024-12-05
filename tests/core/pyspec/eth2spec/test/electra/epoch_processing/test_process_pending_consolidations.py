@@ -436,3 +436,110 @@ def test_pending_consolidation_source_balance_greater_than_max_effective_compoun
     assert state.balances[target_index] == pre_balance_target + source_max_effective_balance
     assert state.balances[source_index] == excess_source_balance
     assert state.pending_consolidations == []
+
+
+#  *******************************
+#  * CONSOLIDATION BALANCE TESTS *
+#  *******************************
+
+
+def prepare_consolidation_and_state(spec, state, source_index, target_index,
+                                    creds_type, balance_to_eb, eb_to_min_ab, eb_to_max_eb):
+    assert creds_type in ['comp', 'eth1']
+    assert balance_to_eb in ['<', '=', '>']
+    assert eb_to_min_ab in ['<', '=', '>']
+    assert eb_to_max_eb in ['<', '=']
+    if creds_type == 'eth1':
+        assert eb_to_min_ab == eb_to_max_eb
+    else:
+        assert (eb_to_min_ab, eb_to_max_eb) in [('<', '<'), ('=', '<'), ('>', '<'), ('>', '=')]
+
+    # append pending consolidation
+    current_epoch = spec.get_current_epoch(state)
+    state.pending_consolidations.append(
+        spec.PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+    # Set withdrawable epoch to current epoch to allow processing
+    state.validators[source_index].withdrawable_epoch = current_epoch
+    
+    # Set source and target withdrawal credentials
+    if creds_type == 'eth1':
+        set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
+    else:
+        set_compounding_withdrawal_credential_with_balance(spec, state, source_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+    # Set source balances
+    source = state.validators[source_index]
+    max_eb = spec.get_max_effective_balance(source)
+    if eb_to_min_ab == '<':
+        source.effective_balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    elif eb_to_min_ab == '=':
+        source.effective_balance = spec.MIN_ACTIVATION_BALANCE
+    elif eb_to_max_eb == '<':
+        source.effective_balance = (spec.MAX_EFFECTIVE_BALANCE_ELECTRA - spec.MIN_ACTIVATION_BALANCE) // 2
+    else:
+        source.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+
+    if balance_to_eb == '<':
+        state.balances[source_index] = source.effective_balance - spec.EFFECTIVE_BALANCE_INCREMENT // 2
+    elif balance_to_eb == '=':
+        state.balances[source_index] = source.effective_balance
+    else:
+        state.balances[source_index] = source.effective_balance + spec.EFFECTIVE_BALANCE_INCREMENT // 2
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_balance_computation_eth1(spec, state):
+    max_index = 0
+    for balance_to_eb in ['<', '=', '>']:
+        for eb_to_min_ab, eb_to_max_eb in [('<', '<'), ('=', '=')]:
+            source_index = max_index
+            target_index = max_index + 1
+            prepare_consolidation_and_state(
+                spec, state, source_index, target_index,
+                'eth1', balance_to_eb, eb_to_min_ab, eb_to_max_eb
+            )
+            max_index += 2
+
+    pre_state = state.copy()
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
+
+    # Check balances are moved correctly
+    for source_index in range(0, max_index, 2):
+        target_index = source_index + 1
+        consolidated_balance = min(
+            pre_state.validators[source_index].effective_balance, pre_state.balances[source_index]
+        )
+        assert state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance
+        assert state.balances[target_index] == pre_state.balances[target_index] + consolidated_balance
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_balance_computation_compounding(spec, state):
+    max_index = 0
+    for balance_to_eb in ['<', '=', '>']:
+        for eb_to_min_ab, eb_to_max_eb in [('<', '<'), ('=', '<'), ('>', '<'), ('>', '=')]:
+            source_index = max_index
+            target_index = max_index + 1
+            prepare_consolidation_and_state(
+                spec, state, source_index, target_index,
+                'comp', balance_to_eb, eb_to_min_ab, eb_to_max_eb
+            )
+            max_index += 2
+
+    pre_state = state.copy()
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
+
+    # Check balances are moved correctly
+    for source_index in range(0, max_index, 2):
+        target_index = source_index + 1
+        consolidated_balance = min(
+            pre_state.validators[source_index].effective_balance, pre_state.balances[source_index]
+        )
+        assert state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance
+        assert state.balances[target_index] == pre_state.balances[target_index] + consolidated_balance
