@@ -489,19 +489,15 @@ def prepare_consolidation_and_state(spec, state, source_index, target_index,
         state.balances[source_index] = source.effective_balance + spec.EFFECTIVE_BALANCE_INCREMENT // 2
 
 
-@with_electra_and_later
-@spec_state_test
-def test_pending_consolidation_balance_computation_eth1(spec, state):
+def run_balance_computation_test(spec, state, instance_tuples):
     max_index = 0
-    for balance_to_eb in ['<', '=', '>']:
-        for eb_to_min_ab, eb_to_max_eb in [('<', '<'), ('=', '=')]:
-            source_index = max_index
-            target_index = max_index + 1
-            prepare_consolidation_and_state(
-                spec, state, source_index, target_index,
-                'eth1', balance_to_eb, eb_to_min_ab, eb_to_max_eb
-            )
-            max_index += 2
+    for creds_type, balance_to_eb, eb_to_min_ab, eb_to_max_eb in instance_tuples:
+        source_index = max_index
+        target_index = max_index + 1
+        prepare_consolidation_and_state(
+            spec, state, source_index, target_index, creds_type, balance_to_eb, eb_to_min_ab, eb_to_max_eb
+        )
+        max_index += 2
 
     pre_state = state.copy()
 
@@ -515,31 +511,26 @@ def test_pending_consolidation_balance_computation_eth1(spec, state):
         )
         assert state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance
         assert state.balances[target_index] == pre_state.balances[target_index] + consolidated_balance
+
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_consolidation_balance_computation_eth1(spec, state):
+    instances = []
+    for balance_to_eb in ['<', '=', '>']:
+        for eb_to_min_ab, eb_to_max_eb in [('<', '<'), ('=', '=')]:
+            instances.append(('eth1', balance_to_eb, eb_to_min_ab, eb_to_max_eb))
+
+    yield from run_balance_computation_test(spec, state, instances)
 
 
 @with_electra_and_later
 @spec_state_test
 def test_pending_consolidation_balance_computation_compounding(spec, state):
-    max_index = 0
+    instances = []
     for balance_to_eb in ['<', '=', '>']:
         for eb_to_min_ab, eb_to_max_eb in [('<', '<'), ('=', '<'), ('>', '<'), ('>', '=')]:
-            source_index = max_index
-            target_index = max_index + 1
-            prepare_consolidation_and_state(
-                spec, state, source_index, target_index,
-                'comp', balance_to_eb, eb_to_min_ab, eb_to_max_eb
-            )
-            max_index += 2
+            instances.append(('comp', balance_to_eb, eb_to_min_ab, eb_to_max_eb))
 
-    pre_state = state.copy()
-
-    yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
-
-    # Check balances are moved correctly
-    for source_index in range(0, max_index, 2):
-        target_index = source_index + 1
-        consolidated_balance = min(
-            pre_state.validators[source_index].effective_balance, pre_state.balances[source_index]
-        )
-        assert state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance
-        assert state.balances[target_index] == pre_state.balances[target_index] + consolidated_balance
+    yield from run_balance_computation_test(spec, state, instances)
