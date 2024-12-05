@@ -206,8 +206,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP-7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 | `TARGET_BLOBS_PER_BLOCK_ELECTRA` | `uint64(6)` | *[New in Electra:EIP-7691]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_ELECTRA` |
+| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP-7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
