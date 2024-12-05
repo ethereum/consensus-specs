@@ -211,9 +211,9 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 #### Messages
 
-##### BlobSidecarsByRoot v4
+##### BlobSidecarsByRoot v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/4/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
 
 *[Updated in EIP7594]*
 
@@ -223,8 +223,6 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type        |
 |------------------------|-----------------------|
-| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
-| `ELECTRA_FORK_VERSION` | `electra.BlobSidecar` |
 | `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
 
 Request Content:
@@ -247,9 +245,9 @@ Response Content:
 
 No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
 
-##### BlobSidecarsByRange v4
+##### BlobSidecarsByRange v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/4/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
 
 *[Updated in EIP7594]*
 
@@ -259,8 +257,6 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 | `fork_version`         | Chunk SSZ type        |
 |------------------------|-----------------------|
-| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
-| `ELECTRA_FORK_VERSION` | `electra.BlobSidecar` |
 | `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
 
 Request Content:
