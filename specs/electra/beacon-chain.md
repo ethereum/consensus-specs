@@ -32,8 +32,8 @@
     - [`DepositRequest`](#depositrequest)
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
-    - [`SingleAttestation`](#singleattestation)
     - [`ExecutionRequests`](#executionrequests)
+    - [`SingleAttestation`](#singleattestation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -80,6 +80,7 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
@@ -108,7 +109,6 @@
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
         - [New `is_valid_switch_to_compounding_request`](#new-is_valid_switch_to_compounding_request)
         - [New `process_consolidation_request`](#new-process_consolidation_request)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -132,14 +132,14 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* |
+| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* Value which indicates no start index has been assigned |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 
-| Name | Value |
-| - | - |
-| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
+| Name | Value | Description |
+| - | - | - |
+| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | *[New in Electra:EIP7251]* Withdrawal credential prefix for a compounding validator |
 
 ### Execution layer triggered requests
 
@@ -153,17 +153,17 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Gwei values
 
-| Name | Value |
-| - | - |
-| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)`  (= 32,000,000,000) |
-| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) |
+| Name | Value | Description |
+| - | - | - |
+| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) | *[New in Electra:EIP7251]* Minimum balance for a validator to become active |
+| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | *[New in Electra:EIP7251]* Maximum effective balance for a compounding validator |
 
 ### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
 
 ### State list lengths
 
@@ -177,16 +177,16 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
-| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA` | `2**0` (= 1) |
+| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) |
 
 ### Execution
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
-| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(1)` (= 1) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
@@ -289,16 +289,6 @@ class ConsolidationRequest(Container):
     target_pubkey: BLSPubkey
 ```
 
-#### `SingleAttestation`
-
-```python
-class SingleAttestation(Container):
-    committee_index: CommitteeIndex
-    attester_index: ValidatorIndex
-    data: AttestationData
-    signature: BLSSignature
-```
-
 #### `ExecutionRequests`
 
 *Note*: This container holds requests from the execution layer that are received in [
@@ -310,6 +300,16 @@ class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Modified Containers
@@ -1013,21 +1013,41 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests  # [New in Electra]
+    target_blobs_per_block: uint64  # [New in Electra:EIP7742]
 ```
 
 #### Engine APIs
 
+##### Modified `is_valid_block_hash`
+
+*Note*: The function `is_valid_block_hash` is modified to include the additional
+`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
+
+```python
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root,
+                        execution_requests_list: Sequence[bytes],
+                        target_blobs_per_block: uint64) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+*Note*: The function `notify_new_payload` is modified to include the additional
+`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests_list: Sequence[bytes]) -> bool:
+                       execution_requests_list: Sequence[bytes],
+                       target_blobs_per_block: uint64) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1035,8 +1055,9 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
-when calling `notify_new_payload` in Electra.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameters
+`execution_requests_list` and `target_blobs_per_block` when calling `is_valid_block_hash` and
+`notify_new_payload` in Electra.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -1047,11 +1068,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
+    target_blobs_per_block = new_payload_request.target_blobs_per_block  # [New in Electra:EIP7742]
 
     if b'' in execution_payload.transactions:
         return False
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    # [Modified in Electra]
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_list,
+            target_blobs_per_block):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -1061,7 +1088,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.notify_new_payload(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list):
+            execution_requests_list,
+            target_blobs_per_block):
         return False
 
     return True
@@ -1223,6 +1251,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,  # [New in Electra]
+            target_blobs_per_block=MAX_BLOBS_PER_BLOCK // 2,  # [New in Electra:EIP7742]
         )
     )
     # Cache execution payload header
@@ -1652,8 +1681,8 @@ def process_consolidation_request(
     if not (has_correct_credential and is_correct_source_address):
         return
 
-    # Verify that target has execution withdrawal credentials
-    if not has_execution_withdrawal_credential(target_validator):
+    # Verify that target has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(target_validator):
         return
 
     # Verify the source and the target are active
@@ -1685,75 +1714,4 @@ def process_consolidation_request(
         source_index=source_index,
         target_index=target_index
     ))
-
-    # Churn any target excess active balance of target and raise its max
-    if has_eth1_withdrawal_credential(target_validator):
-        switch_to_compounding_validator(state, target_index)
-```
-
-## Testing
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Electra testing only.
-Modifications include:
-1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
-2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. *[New in Electra:EIP6110]* Add `deposit_requests_start_index` variable to the genesis state initialization.
-4. *[New in Electra:EIP7251]* Initialize new fields to support increasing the maximum effective balance.
-
-```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    fork = Fork(
-        previous_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110] for testing only
-        current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
-        epoch=GENESIS_EPOCH,
-    )
-    state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
-        fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
-        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,  # [New in Electra:EIP6110]
-    )
-
-    # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
-        process_deposit(state, deposit)
-
-    # Process deposit balance updates
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    for deposit in state.pending_deposits:
-        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
-        increase_balance(state, validator_index, deposit.amount)
-    state.pending_deposits = []
-
-    # Process activations
-    for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        # [Modified in Electra:EIP7251]
-        validator.effective_balance = min(
-            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_max_effective_balance(validator))
-        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = hash_tree_root(state.validators)
-
-    # Fill in sync committees
-    # Note: A duplicate committee is assigned for the current and next committee at genesis
-    state.current_sync_committee = get_next_sync_committee(state)
-    state.next_sync_committee = get_next_sync_committee(state)
-
-    # Initialize the execution payload header
-    state.latest_execution_payload_header = execution_payload_header
-
-    return state
 ```

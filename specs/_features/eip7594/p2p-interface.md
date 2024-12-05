@@ -8,6 +8,7 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Modifications in EIP-7594](#modifications-in-eip-7594)
   - [Preset](#preset)
   - [Configuration](#configuration)
@@ -35,10 +36,16 @@
       - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [Custody subnet count](#custody-subnet-count)
+      - [Custody group count](#custody-group-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the consensus-layer networking specification for EIP7594.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in EIP-7594
 
@@ -54,10 +61,10 @@
 
 | Name                                           | Value                                                    | Description                                                               |
 |------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                    | The number of data column sidecar subnets used in the gossipsub protocol  |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
 | `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
-| `BLOB_SIDECAR_SUBNET_COUNT_EIP7594`            | `2**3` (= 8)                                             | The number of blob sidecar subnets used in the gossipsub protocol         |
 
 ### Containers
 
@@ -424,10 +431,10 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 
 #### ENR structure
 
-##### Custody subnet count
+##### Custody group count
 
-A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `cgc` to facilitate custody data column discovery.
 
 | Key    | Value                                    |
 |--------|------------------------------------------|
-| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+| `cgc`  | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
