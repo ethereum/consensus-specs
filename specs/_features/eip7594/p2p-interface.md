@@ -215,7 +215,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
 
-*[Updated in EIP7594]*
+*[Modified in EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -249,7 +249,7 @@ No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
 
-*[Updated in EIP7594]*
+*[Modified in EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
