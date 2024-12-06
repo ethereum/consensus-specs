@@ -17,48 +17,29 @@ Use an OS that has Python 3.8 or above. For example, Debian 11 (bullseye)
    ```
 3. Create the specifications and tests:
    ```sh
-   make install_test
-   make pyspec
+   make
    ```
 
 To read more about creating the environment, [see here](core/pyspec/README.md).
 
 ### Running your first test
 
+Use `make` to run the `test_empty_block_transition` tests against the Altair fork like so:
 
-1. Enter the virtual Python environment:
-   ```sh
-   cd ~/consensus-specs
-   . venv/bin/activate
-   ```
-2. Run a sanity check test against Altair fork:
-   ```sh
-   cd tests/core/pyspec
-   python -m pytest -k test_empty_block_transition --fork altair eth2spec
-   ```
-3. The output should be similar to:
-   ```
-   ============================= test session starts ==============================
-   platform linux -- Python 3.9.2, pytest-6.2.5, py-1.10.0, pluggy-1.0.0
-   rootdir: /home/qbzzt1/consensus-specs
-   plugins: cov-2.12.1, forked-1.3.0, xdist-2.3.0
-   collected 629 items / 626 deselected / 3 selected
-
-   eth2spec/test/bellatrix/sanity/test_blocks.py .                              [ 33%]
-   eth2spec/test/phase0/sanity/test_blocks.py ..                            [100%]
-
-   =============================== warnings summary ===============================
-   ../../../venv/lib/python3.9/site-packages/cytoolz/compatibility.py:2
-     /home/qbzzt1/consensus-specs/venv/lib/python3.9/site-packages/cytoolz/compatibility.py:2:
-   DeprecationWarning: The toolz.compatibility module is no longer needed in Python 3 and has
-   been deprecated. Please import these utilities directly from the standard library. This
-   module will be removed in a future release.
-       warnings.warn("The toolz.compatibility module is no longer "
-
-   -- Docs: https://docs.pytest.org/en/stable/warnings.html
-   ================ 3 passed, 626 deselected, 1 warning in 16.81s =================
-   ```
-
+```
+$ make test k=test_empty_block_transition fork=altair
+Building all pyspecs
+...
+================================= test session starts ==================================
+platform darwin -- Python 3.10.3, pytest-8.3.3, pluggy-1.5.0
+rootdir: /Users/jtraglia/Projects/jtraglia/consensus-specs
+plugins: cov-5.0.0, xdist-3.6.1
+20 workers [3 items]
+s..                                                                              [100%]
+=================================== warnings summary ===================================
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================== 2 passed, 1 skipped, 42 warnings in 7.97s =======================
+```
 
 ## The "Hello, World" of Consensus Spec Tests
 
@@ -451,10 +432,7 @@ Add this function to the file `consensus-specs/tests/core/pyspec/eth2spec/test/p
 and run the test against Altair fork:
 
 ```sh
-cd ~/consensus-specs
-. venv/bin/activate
-cd tests/core/pyspec
-python -m pytest -k almost_after --fork altair eth2spec
+make test k=almost_after fork=altair
 ```
 
 You should see it ran successfully (although you might get a warning, you can ignore it)

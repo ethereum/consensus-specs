@@ -6,7 +6,7 @@ This dockerfile sets up the dependencies required to run consensus-spec tests. T
 
 Handy commands:
 - `docker run -it $IMAGE_NAME /bin/sh` will give you a shell inside the docker container to manually run any tests
-- `docker run $IMAGE_NAME make citest` will run the make citest command inside the docker container
+- `docker run $IMAGE_NAME make test` will run the make test command inside the docker container
 
 Ideally manual running of docker containers is for advanced users, we recommend the script based approach described below for most users.
 
