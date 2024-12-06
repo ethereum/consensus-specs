@@ -31,6 +31,7 @@ def test_polynomical_commitments_sampling(spec):
 @spec_test
 @single_phase
 def test_networking(spec):
+    assert spec.config.TARGET_BLOBS_PER_BLOCK_EIP7594 <= spec.config.MAX_BLOBS_PER_BLOCK_EIP7594
     assert spec.config.MAX_BLOBS_PER_BLOCK_EIP7594 <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
     assert (
         spec.config.MAX_REQUEST_BLOB_SIDECARS_EIP7594 ==
