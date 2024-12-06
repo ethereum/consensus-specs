@@ -55,6 +55,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
             target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
+            max_blobs_per_block=MAX_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
         )
     )
     # Cache execution payload header

@@ -706,6 +706,7 @@ def process_execution_payload(state: BeaconState,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
                 execution_requests=requests,
                 target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_ELECTRA,
+                max_blobs_per_block=MAX_BLOBS_PER_BLOCK_ELECTRA,
             )
         )
 
