@@ -353,7 +353,7 @@ def test_unknown_pubkey(spec, state):
 @with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL])
-def  test_basic_partial_withdrawal_request(spec, state):
+def test_basic_partial_withdrawal_request(spec, state):
     rng = random.Random(1344)
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
