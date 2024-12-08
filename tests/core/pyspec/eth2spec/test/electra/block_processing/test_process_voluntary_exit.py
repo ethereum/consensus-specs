@@ -401,7 +401,7 @@ def test_invalid_validator_has_pending_withdrawal(spec, state):
 
     state.pending_partial_withdrawals.append(
         spec.PendingPartialWithdrawal(
-            index=validator_index,
+            validator_index=validator_index,
             amount=1,
             withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
         )

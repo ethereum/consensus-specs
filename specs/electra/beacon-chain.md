@@ -1571,7 +1571,7 @@ def process_withdrawal_request(
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
         withdrawable_epoch = Epoch(exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
         state.pending_partial_withdrawals.append(PendingPartialWithdrawal(
-            index=index,
+            validator_index=index,
             amount=to_withdraw,
             withdrawable_epoch=withdrawable_epoch,
         ))
