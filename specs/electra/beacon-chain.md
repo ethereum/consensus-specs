@@ -239,7 +239,7 @@ class PendingDeposit(Container):
 
 ```python
 class PendingPartialWithdrawal(Container):
-    index: ValidatorIndex
+    validator_index: ValidatorIndex
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
@@ -586,7 +586,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
-        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if
+        withdrawal.validator_index == validator_index
     )
 ```
 
@@ -1127,14 +1128,15 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:
             break
 
-        validator = state.validators[withdrawal.index]
+        validator = state.validators[withdrawal.validator_index]
         has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
+        has_excess_balance = state.balances[withdrawal.validator_index] > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
-            withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+            withdrawable_balance = min(
+                state.balances[withdrawal.validator_index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
-                validator_index=withdrawal.index,
+                validator_index=withdrawal.validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawable_balance,
             ))
