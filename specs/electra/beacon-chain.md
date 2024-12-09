@@ -586,7 +586,7 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
-        withdrawal.amount for withdrawal in state.pending_partial_withdrawals 
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals
         if withdrawal.validator_index == validator_index
     )
 ```
