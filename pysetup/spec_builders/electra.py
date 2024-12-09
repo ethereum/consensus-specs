@@ -31,7 +31,8 @@ class NoopExecutionEngine(ExecutionEngine):
                            execution_payload: ExecutionPayload,
                            parent_beacon_block_root: Root,
                            execution_requests_list: Sequence[bytes],
-                           target_blobs_per_block: uint64) -> bool:
+                           target_blobs_per_block: uint64,
+                           max_blobs_per_block: uint64) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -49,7 +50,8 @@ class NoopExecutionEngine(ExecutionEngine):
                             execution_payload: ExecutionPayload,
                             parent_beacon_block_root: Root,
                             execution_requests_list: Sequence[bytes],
-                            target_blobs_per_block: uint64) -> bool:
+                            target_blobs_per_block: uint64,
+                            max_blobs_per_block: uint64) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
