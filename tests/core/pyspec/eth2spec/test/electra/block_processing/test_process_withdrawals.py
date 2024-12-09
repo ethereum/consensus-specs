@@ -91,14 +91,14 @@ def test_success_excess_balance_but_no_max_effective_balance_compounding(spec, s
 @with_electra_and_later
 @spec_state_test
 def test_pending_withdrawals_one_skipped_one_effective(spec, state):
-    index_0 = 3
-    index_1 = 5
+    validator_index_0 = 3
+    validator_index_1 = 5
 
-    pending_withdrawal_0 = prepare_pending_withdrawal(spec, state, index_0)
-    pending_withdrawal_1 = prepare_pending_withdrawal(spec, state, index_1)
+    pending_withdrawal_0 = prepare_pending_withdrawal(spec, state, validator_index_0)
+    pending_withdrawal_1 = prepare_pending_withdrawal(spec, state, validator_index_1)
 
     # If validator doesn't have an excess balance pending withdrawal is skipped
-    state.balances[index_0] = spec.MIN_ACTIVATION_BALANCE
+    state.balances[validator_index_0] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
     assert state.pending_partial_withdrawals == [pending_withdrawal_0, pending_withdrawal_1]
@@ -155,7 +155,7 @@ def test_pending_withdrawals_exiting_validator(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    spec.initiate_validator_exit(state, pending_withdrawal.index)
+    spec.initiate_validator_exit(state, pending_withdrawal.validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
     yield from run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=0)
@@ -169,7 +169,7 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.validators[pending_withdrawal.index].effective_balance = (
+    state.validators[pending_withdrawal.validator_index].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 
@@ -185,7 +185,7 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.balances[pending_withdrawal.index] = spec.MIN_ACTIVATION_BALANCE
+    state.balances[pending_withdrawal.validator_index] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
     yield from run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=0)

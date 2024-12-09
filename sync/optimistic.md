@@ -326,7 +326,7 @@ optimistic blocks (and vice-versa).
 
 ### Why sync optimistically?
 
-Most execution engines use state sync as a default sync mechanism on Ethereum Mainnet 
+Most execution engines use state sync as a default sync mechanism on Ethereum Mainnet
 because executing blocks from genesis takes several weeks on commodity hardware.
 
 State sync requires the knowledge of the current head of the chain to converge eventually.
