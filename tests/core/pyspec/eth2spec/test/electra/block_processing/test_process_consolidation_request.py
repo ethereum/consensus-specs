@@ -999,7 +999,7 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
 
     # Create pending withdrawal
     pending_withdrawal = spec.PendingPartialWithdrawal(
-        index=0, amount=excess_balance, withdrawable_epoch=current_epoch
+        validator_index=0, amount=excess_balance, withdrawable_epoch=current_epoch
     )
     state.pending_partial_withdrawals.append(pending_withdrawal)
 
