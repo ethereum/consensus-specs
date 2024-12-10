@@ -173,7 +173,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
-        unrealized_justifications={anchor_root: justified_checkpoint}
+        unrealized_justifications={anchor_root: justified_checkpoint},
     )
 ```
 
@@ -551,7 +551,7 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
     # If this is a new slot, reset store.proposer_boost_root
     if current_slot > previous_slot:
         store.proposer_boost_root = Root()
-
+            
     # If a new epoch, pull-up justification and finalization from previous epoch
     if current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
         update_checkpoints(store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint)
