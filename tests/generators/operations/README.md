@@ -8,5 +8,5 @@ An operation test-runner can consume these operation test-suites,
 
 Information on the format of the tests can be found in the [operations test formats documentation](../../formats/operations/README.md).
 
- 
+
 

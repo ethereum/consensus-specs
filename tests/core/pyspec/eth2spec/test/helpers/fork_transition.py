@@ -23,11 +23,15 @@ from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
     prepare_deposit_request,
 )
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_block_hash_for_block,
+)
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
 )
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
+    is_post_bellatrix,
     is_post_electra,
 )
 from eth2spec.test.helpers.state import (
@@ -57,13 +61,15 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-def _set_operations_by_dict(block, operation_dict):
+def _set_operations_by_dict(spec, block, operation_dict):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
         obj = block.body
         for attr in key.split('.')[:-1]:
             obj = getattr(obj, attr)
         setattr(obj, key.split('.')[-1], value)
+    if is_post_bellatrix(spec):
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
 
 def _state_transition_and_sign_block_at_slot(spec,
@@ -87,7 +93,7 @@ def _state_transition_and_sign_block_at_slot(spec,
         block.body.sync_aggregate = sync_aggregate
 
     if operation_dict:
-        _set_operations_by_dict(block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -403,7 +409,7 @@ def run_transition_with_operation(state,
     if is_right_before_fork:
         # add a block with operation.
         block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict)
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(pre_tag(signed_block))
 
