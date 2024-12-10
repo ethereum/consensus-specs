@@ -260,9 +260,9 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 
 
 def get_random_execution_requests(spec, state, rng):
-    deposits = get_random_deposits_requests(spec, state, rng)
-    withdrawals = get_random_withdrawals_requests(spec, state, rng)
-    consolidations = get_random_consolidations_requests(spec, state, rng)
+    deposits = get_random_deposit_requests(spec, state, rng)
+    withdrawals = get_random_withdrawal_requests(spec, state, rng)
+    consolidations = get_random_consolidation_requests(spec, state, rng)
 
     execution_requests = spec.ExecutionRequests(
         deposits=deposits,
@@ -273,19 +273,17 @@ def get_random_execution_requests(spec, state, rng):
     return execution_requests
 
 
-def get_random_deposits_requests(spec, state, rng, num_deposits=None):
+def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     if num_deposits is None:
         num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
-    deposits_requests = []
-
-    for i in range(num_deposits):
+    deposit_requests = []
+    for _ in range(num_deposits):
         index = rng.randrange(0, num_deposits)
         withdrawal_pubkey = pubkeys[index]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,
@@ -295,78 +293,60 @@ def get_random_deposits_requests(spec, state, rng, num_deposits=None):
             withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )
-
-        deposit_request = spec.DepositRequest(
+        deposit_requests.append(spec.DepositRequest(
             pubkey=deposit.data.pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             amount=deposit.data.amount,
             signature=deposit.data.signature,
-            index=deposit.data.index,
-        )
+            index=rng.randrange(0, 2**64),
+        ))
 
-        deposits_requests.append(deposit_request)
-
-    return deposits_requests
+    return deposit_requests
 
 
-def get_random_withdrawals_requests(spec, state, rng, num_withdrawals=None):
+def get_random_withdrawal_requests(spec, state, rng, num_withdrawals=None):
     if num_withdrawals is None:
         num_withdrawals = rng.randint(0, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)
-
-    withdrawals_requests = []
-
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
 
+    withdrawal_requests = []
     for _ in range(num_withdrawals):
         if not active_validator_indices:
             break
 
         address = rng.getrandbits(160).to_bytes(20, 'big')
-
         validator_index = rng.choice(active_validator_indices)
         validator = state.validators[validator_index]
         validator_balance = state.balances[validator_index]
-
-        withdrawal_request = spec.WithdrawalRequest(
+        withdrawal_requests.append(spec.WithdrawalRequest(
             source_address=address,
             validator_pubkey=validator.pubkey,
             amount=rng.randint(0, validator_balance),
-        )
+        ))
 
-        withdrawals_requests.append(withdrawal_request)
-
-    return withdrawals_requests
+    return withdrawal_requests
 
 
-def get_random_consolidations_requests(spec, state, rng, num_consolidations=None):
+def get_random_consolidation_requests(spec, state, rng, num_consolidations=None):
     if num_consolidations is None:
         num_consolidations = rng.randint(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD)
-
-    consolidations_requests = []
-
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     active_validator_indices = spec.get_active_validator_indices(state, current_epoch)
 
+    consolidation_requests = []
     for _ in range(num_consolidations):
         source_address = rng.getrandbits(160).to_bytes(20, 'big')
-
         source_index = rng.choice(active_validator_indices)
         target_index = rng.choice(active_validator_indices)
-
         source_validator = state.validators[source_index]
         target_validator = state.validators[target_index]
-
-        consolidation_request = spec.ConsolidationRequest(
+        consolidation_requests.append(spec.ConsolidationRequest(
             source_address=source_address,
             source_pubkey=source_validator.pubkey,
             target_pubkey=target_validator.pubkey,
-        )
+        ))
 
-        consolidations_requests.append(consolidation_request)
-
-    return consolidations_requests
+    return consolidation_requests
