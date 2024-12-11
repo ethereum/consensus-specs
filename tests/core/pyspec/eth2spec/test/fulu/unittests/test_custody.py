@@ -59,7 +59,7 @@ def test_get_custody_columns_custody_size_more_than_number_of_groups(spec):
     expect_assertion_error(lambda: spec.get_custody_groups(node_id, custody_group_count))
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_compute_columns_for_custody_group_out_of_bound_custody_group(spec):

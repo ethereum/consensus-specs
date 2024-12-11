@@ -1,4 +1,4 @@
-# EIP7594 -- Honest Validator
+# Fulu -- Honest Validator
 
 ## Table of contents
 
@@ -17,14 +17,14 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an "honest validator" to implement EIP7594.
+This document represents the changes to be made in the code of an "honest validator" to implement Fulu.
 
 ## Prerequisites
 
 This document is an extension of the [Electra -- Honest Validator](../electra/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP7594](./beacon-chain.md) are requisite for this document and used throughout.
+All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Fulu](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
 ## Block proposal
@@ -56,8 +56,8 @@ def prepare_execution_payload(state: BeaconState,
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-        target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
-        max_blobs_per_block=MAX_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
+        target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_FULU,  # [Modified in Fulu:EIP7594]
+        max_blobs_per_block=MAX_BLOBS_PER_BLOCK_FULU,  # [Modified in Fulu:EIP7594]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,

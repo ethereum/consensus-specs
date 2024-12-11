@@ -64,7 +64,7 @@ The specification of these changes continues in the same format as the network s
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                    | The number of data column sidecar subnets used in the gossipsub protocol  |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
-| `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
+| `MAX_REQUEST_BLOB_SIDECARS_FULU`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_FULU` | Maximum number of blob sidecars in a single request                       |
 
 ### Containers
 
@@ -174,7 +174,7 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_EIP7594`
+  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_FULU`
 
 ##### Blob subnets
 
@@ -215,21 +215,21 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
 
-*[Modified in EIP7594]*
+*[Modified in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`         | Chunk SSZ type        |
-|------------------------|-----------------------|
-| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
+| `fork_version`      | Chunk SSZ type     |
+|---------------------|--------------------|
+| `FULU_FORK_VERSION` | `fulu.BlobSidecar` |
 
 Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_FULU]
 )
 ```
 
@@ -237,27 +237,27 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_FULU]
 )
 ```
 
 *Updated validation*
 
-No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
+No more than `MAX_REQUEST_BLOB_SIDECARS_FULU` may be requested at a time.
 
 ##### BlobSidecarsByRange v3
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
 
-*[Modified in EIP7594]*
+*[Modified in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`         | Chunk SSZ type        |
-|------------------------|-----------------------|
-| `EIP7594_FORK_VERSION` | `eip7594.BlobSidecar` |
+| `fork_version`      | Chunk SSZ type     |
+|---------------------|--------------------|
+| `FULU_FORK_VERSION` | `fulu.BlobSidecar` |
 
 Request Content:
 
@@ -272,13 +272,13 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_EIP7594]
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_FULU]
 )
 ```
 
 *Updated validation*
 
-Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_FULU` sidecars.
 
 ##### DataColumnSidecarsByRoot v1
 
@@ -290,8 +290,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`         | Chunk SSZ type              |
-|------------------------|-----------------------------|
+| `fork_version`      | Chunk SSZ type           |
+|---------------------|--------------------------|
 | `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
@@ -338,8 +338,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`         | Chunk SSZ type              |
-|------------------------|-----------------------------|
+| `fork_version`      | Chunk SSZ type           |
+|---------------------|--------------------------|
 | `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
