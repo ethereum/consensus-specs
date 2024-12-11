@@ -598,7 +598,6 @@ def create_provider(fork_name: SpecForkName,
 if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg", [
-        # DENEB
         create_provider(DENEB, 'blob_to_kzg_commitment', case01_blob_to_kzg_commitment),
         create_provider(DENEB, 'compute_kzg_proof', case02_compute_kzg_proof),
         create_provider(DENEB, 'verify_kzg_proof', case03_verify_kzg_proof),

@@ -1,4 +1,4 @@
-# EIP7594 -- The Beacon Chain
+# Fulu -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -27,8 +27,8 @@
 
 | Name | Value | Description |
 | - | - | - |
-| `TARGET_BLOBS_PER_BLOCK_EIP7594` | `uint64(9)` | *[New in EIP7594]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_EIP7594` |
-| `MAX_BLOBS_PER_BLOCK_EIP7594` | `uint64(12)` | *[New in EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `TARGET_BLOBS_PER_BLOCK_FULU` | `uint64(9)` | *[New in Fulu:EIP7594]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_FULU` |
+| `MAX_BLOBS_PER_BLOCK_FULU` | `uint64(12)` | *[New in Fulu:EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 #### Execution payload
 
@@ -45,7 +45,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_EIP7594  # [Modified in EIP7594]
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_FULU  # [Modified in Fulu:EIP7594]
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
@@ -54,7 +54,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_EIP7594,  # [Modified in EIP7594]
+            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_FULU,  # [Modified in Fulu:EIP7594]
         )
     )
     # Cache execution payload header

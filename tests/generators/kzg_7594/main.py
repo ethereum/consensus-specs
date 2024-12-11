@@ -6,9 +6,9 @@ from typing import Tuple, Iterable, Any, Callable, Dict
 
 from eth_utils import encode_hex
 
-from eth2spec.eip7594 import spec
+from eth2spec.fulu import spec
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
-from eth2spec.test.helpers.constants import EIP7594
+from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.kzg_tests import (
     CELL_RANDOM_VALID1,
@@ -565,8 +565,7 @@ def create_provider(fork_name: SpecForkName,
 if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_7594", [
-        # EIP-7594
-        create_provider(EIP7594, 'compute_cells_and_kzg_proofs', case_compute_cells_and_kzg_proofs),
-        create_provider(EIP7594, 'verify_cell_kzg_proof_batch', case_verify_cell_kzg_proof_batch),
-        create_provider(EIP7594, 'recover_cells_and_kzg_proofs', case_recover_cells_and_kzg_proofs),
+        create_provider(FULU, 'compute_cells_and_kzg_proofs', case_compute_cells_and_kzg_proofs),
+        create_provider(FULU, 'verify_cell_kzg_proof_batch', case_verify_cell_kzg_proof_batch),
+        create_provider(FULU, 'recover_cells_and_kzg_proofs', case_recover_cells_and_kzg_proofs),
     ])

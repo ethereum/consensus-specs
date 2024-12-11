@@ -1,4 +1,4 @@
-# EIP-7594 -- Data Availability Sampling Core
+# Fulu -- Data Availability Sampling Core
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 

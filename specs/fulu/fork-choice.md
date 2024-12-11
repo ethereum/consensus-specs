@@ -1,4 +1,4 @@
-# EIP-7594 -- Fork Choice
+# Fulu -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying EIP-7594.
+This is the modification of the fork choice accompanying Fulu.
 
 ## Helpers
 
@@ -67,7 +67,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
-    # [Modified in EIP7594]
+    # [Modified in Fulu:EIP7594]
     assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state

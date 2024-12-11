@@ -3,7 +3,7 @@ import random
 from eth2spec.test.context import (
     single_phase,
     spec_test,
-    with_eip7594_and_later,
+    with_fulu_and_later,
 )
 
 
@@ -33,7 +33,7 @@ def _run_get_custody_columns(spec, rng, node_id=None, custody_group_count=None):
     yield 'result', 'meta', python_list_result
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__min_node_id_min_custody_group_count(spec):
@@ -41,7 +41,7 @@ def test_get_custody_columns__min_node_id_min_custody_group_count(spec):
     yield from _run_get_custody_columns(spec, rng, node_id=0, custody_group_count=0)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__min_node_id_max_custody_group_count(spec):
@@ -51,7 +51,7 @@ def test_get_custody_columns__min_node_id_max_custody_group_count(spec):
         custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__max_node_id_min_custody_group_count(spec):
@@ -59,7 +59,7 @@ def test_get_custody_columns__max_node_id_min_custody_group_count(spec):
     yield from _run_get_custody_columns(spec, rng, node_id=2**256 - 1, custody_group_count=0)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__max_node_id_max_custody_group_count(spec):
@@ -70,7 +70,7 @@ def test_get_custody_columns__max_node_id_max_custody_group_count(spec):
     )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__max_node_id_max_custody_group_count_minus_1(spec):
@@ -81,7 +81,7 @@ def test_get_custody_columns__max_node_id_max_custody_group_count_minus_1(spec):
     )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__short_node_id(spec):
@@ -89,7 +89,7 @@ def test_get_custody_columns__short_node_id(spec):
     yield from _run_get_custody_columns(spec, rng, node_id=1048576, custody_group_count=1)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__1(spec):
@@ -97,7 +97,7 @@ def test_get_custody_columns__1(spec):
     yield from _run_get_custody_columns(spec, rng)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__2(spec):
@@ -105,7 +105,7 @@ def test_get_custody_columns__2(spec):
     yield from _run_get_custody_columns(spec, rng)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_get_custody_columns__3(spec):

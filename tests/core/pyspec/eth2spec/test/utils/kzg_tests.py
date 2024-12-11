@@ -6,7 +6,7 @@ from eth_utils import (
 )
 
 from eth2spec.utils import bls
-from eth2spec.eip7594 import spec
+from eth2spec.fulu import spec
 
 
 ###############################################################################
