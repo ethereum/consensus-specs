@@ -13,27 +13,28 @@
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
   - [Data size](#data-size)
-  - [Networking](#networking)
   - [Custody setting](#custody-setting)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
-  - [`get_custody_columns`](#get_custody_columns)
+  - [`get_custody_groups`](#get_custody_groups)
+  - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
   - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
   - [Public, deterministic selection](#public-deterministic-selection)
-- [Subnet sampling](#subnet-sampling)
+- [Custody sampling](#custody-sampling)
 - [Extended data](#extended-data)
 - [Column gossip](#column-gossip)
   - [Parameters](#parameters)
 - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
 - [FAQs](#faqs)
-  - [Row (blob) custody](#row-blob-custody)
-  - [Subnet stability](#subnet-stability)
+  - [Why don't nodes custody rows?](#why-dont-nodes-custody-rows)
+  - [Why don't we rotate custody over time?](#why-dont-we-rotate-custody-over-time)
+  - [Does having a lot of column subnets make the network unstable?](#does-having-a-lot-of-column-subnets-make-the-network-unstable)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -54,6 +55,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `RowIndex` | `uint64` | Row identifier in the matrix of cells |
 | `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
+| `CustodyIndex` | `uint64` | Custody group identifier in the set of custody groups |
 
 ## Configuration
 
@@ -63,18 +65,13 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
-### Networking
-
-| Name | Value | Description |
-| - | - | - |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT` | `uint64(128)` | The number of data column sidecar subnets used in the gossipsub protocol |
-
 ### Custody setting
 
 | Name | Value | Description |
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
-| `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
+| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody |
+| `CUSTODY_REQUIREMENT` | `4` | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ### Containers
 
@@ -102,33 +99,39 @@ class MatrixEntry(Container):
 
 ## Helper functions
 
-### `get_custody_columns`
+### `get_custody_groups`
 
 ```python
-def get_custody_columns(node_id: NodeID, custody_subnet_count: uint64) -> Sequence[ColumnIndex]:
-    assert custody_subnet_count <= DATA_COLUMN_SIDECAR_SUBNET_COUNT
+def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+    assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
-    subnet_ids: List[uint64] = []
+    custody_groups: List[uint64] = []
     current_id = uint256(node_id)
-    while len(subnet_ids) < custody_subnet_count:
-        subnet_id = (
+    while len(custody_groups) < custody_group_count:
+        custody_group = CustodyIndex(
             bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
-            % DATA_COLUMN_SIDECAR_SUBNET_COUNT
+            % NUMBER_OF_CUSTODY_GROUPS
         )
-        if subnet_id not in subnet_ids:
-            subnet_ids.append(subnet_id)
+        if custody_group not in custody_groups:
+            custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
             current_id = NodeID(0)
         current_id += 1
 
-    assert len(subnet_ids) == len(set(subnet_ids))
+    assert len(custody_groups) == len(set(custody_groups))
+    return sorted(custody_groups)
+```
 
-    columns_per_subnet = NUMBER_OF_COLUMNS // DATA_COLUMN_SIDECAR_SUBNET_COUNT
+### `compute_columns_for_custody_group`
+
+```python
+def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[ColumnIndex]:
+    assert custody_group < NUMBER_OF_CUSTODY_GROUPS
+    columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
     return sorted([
-        ColumnIndex(DATA_COLUMN_SIDECAR_SUBNET_COUNT * i + subnet_id)
-        for i in range(columns_per_subnet)
-        for subnet_id in subnet_ids
+        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
+        for i in range(columns_per_group)
     ])
 ```
 
@@ -220,21 +223,21 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 ### Custody requirement
 
-Each node downloads and custodies a minimum of `CUSTODY_REQUIREMENT` subnets per slot. The particular subnets that the node is required to custody are selected pseudo-randomly (more on this below).
+Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group.
 
-A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_subnet_count` field within its ENR. This value can be increased up to `DATA_COLUMN_SIDECAR_SUBNET_COUNT`, indicating a super-full node.
+A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_group_count` field within its ENR. This value can be increased up to `NUMBER_OF_CUSTODY_GROUPS`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
 
 ### Public, deterministic selection
 
-The particular columns that a node custodies are selected pseudo-randomly as a function (`get_custody_columns`) of the node-id and custody size -- importantly this function can be run by any party as the inputs are all public.
+The particular columns/groups that a node custodies are selected pseudo-randomly as a function (`get_custody_groups`) of the node-id and custody size -- importantly this function can be run by any party as the inputs are all public.
 
 *Note*: increasing the `custody_size` parameter for a given `node_id` extends the returned list (rather than being an entirely new shuffle) such that if `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for a subset of the node's custody.
 
-## Subnet sampling
+## Custody sampling
 
-At each slot, a node advertising `custody_subnet_count` downloads a minimum of `subnet_sampling_size = max(SAMPLES_PER_SLOT, custody_subnet_count)` total subnets. The corresponding set of columns is selected by `get_custody_columns(node_id, subnet_sampling_size)`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_columns(node_id, custody_subnet_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
+At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count)` total custody groups. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
 
 ## Extended data
 
@@ -246,7 +249,7 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 
 For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with `cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then `get_data_column_sidecars(signed_block, cells_and_kzg_proofs)`.
 
-Verifiable samples from their respective column are distributed on the assigned subnet. To custody a particular column, a node joins the respective gossipsub subnet. If a node fails to get a column on the column subnet, a node can also utilize the Req/Resp protocol to query the missing column from other peers.
+Verifiable samples from their respective column are distributed on the assigned subnet. To custody columns in a particular custody group, a node joins the respective gossipsub subnets. If a node fails to get columns on the column subnets, a node can also utilize the Req/Resp protocol to query the missing columns from other peers.
 
 ## Reconstruction and cross-seeding
 
@@ -262,7 +265,7 @@ Once the node obtains a column through reconstruction, the node MUST expose the 
 
 ## FAQs
 
-### Row (blob) custody
+### Why don't nodes custody rows?
 
 In the one-dimension construction, a node samples the peers by requesting the whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the blobs by 50% of the columns. Note that nodes can still download the row via `blob_sidecar_{subnet_id}` subnets.
 
@@ -273,6 +276,10 @@ The potential benefits of having row custody could include:
 
 However, for simplicity, we don't assign row custody assignments to nodes in the current design.
 
-### Subnet stability
+### Why don't we rotate custody over time?
 
-To start with a simple, stable backbone, for now, we don't shuffle the subnet assignments via the deterministic custody selection helper `get_custody_columns`. However, staggered rotation likely needs to happen on the order of the pruning period to ensure subnets can be utilized for recovery. For example, introducing an `epoch` argument allows the function to maintain stability over many epochs.
+To start with a simple, stable backbone, for now, we don't shuffle the custody assignments via the deterministic custody selection helper `get_custody_groups`. However, staggered rotation likely needs to happen on the order of the pruning period to ensure subnets can be utilized for recovery. For example, introducing an `epoch` argument allows the function to maintain stability over many epochs.
+
+### Does having a lot of column subnets make the network unstable?
+
+No, the number of subnets doesn't really matter. What matters to the network stability is the number of nodes and the churn rate in the network. If the number of the nodes is too low, it's likely to have a network partition when some nodes are down. For the churn rate, if the churn rate is high, we even need to have a higher number of nodes, since nodes are likely to be turned off more often.

@@ -22,6 +22,7 @@
   - [Withdrawals processing](#withdrawals-processing)
   - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -79,6 +80,7 @@
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
@@ -118,6 +120,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
 * [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
 * [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
+* [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
 *Note:* This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
 
@@ -199,6 +202,13 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
+| `TARGET_BLOBS_PER_BLOCK_ELECTRA` | `uint64(6)` | *[New in Electra:EIP7691]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_ELECTRA` |
+| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+
 ### Validator cycle
 
 | Name | Value |
@@ -229,7 +239,7 @@ class PendingDeposit(Container):
 
 ```python
 class PendingPartialWithdrawal(Container):
-    index: ValidatorIndex
+    validator_index: ValidatorIndex
     amount: Gwei
     withdrawable_epoch: Epoch
 ```
@@ -576,7 +586,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
-        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals
+        if withdrawal.validator_index == validator_index
     )
 ```
 
@@ -1003,21 +1014,41 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests  # [New in Electra]
+    target_blobs_per_block: uint64  # [New in Electra:EIP7742]
 ```
 
 #### Engine APIs
 
+##### Modified `is_valid_block_hash`
+
+*Note*: The function `is_valid_block_hash` is modified to include the additional
+`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
+
+```python
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root,
+                        execution_requests_list: Sequence[bytes],
+                        target_blobs_per_block: uint64) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+*Note*: The function `notify_new_payload` is modified to include the additional
+`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests_list: Sequence[bytes]) -> bool:
+                       execution_requests_list: Sequence[bytes],
+                       target_blobs_per_block: uint64) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -1025,8 +1056,9 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
-when calling `notify_new_payload` in Electra.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameters
+`execution_requests_list` and `target_blobs_per_block` when calling `is_valid_block_hash` and
+`notify_new_payload` in Electra.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -1037,11 +1069,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
+    target_blobs_per_block = new_payload_request.target_blobs_per_block  # [New in Electra:EIP7742]
 
     if b'' in execution_payload.transactions:
         return False
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    # [Modified in Electra]
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_list,
+            target_blobs_per_block):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -1051,7 +1089,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.notify_new_payload(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list):
+            execution_requests_list,
+            target_blobs_per_block):
         return False
 
     return True
@@ -1089,14 +1128,16 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:
             break
 
-        validator = state.validators[withdrawal.index]
+        validator = state.validators[withdrawal.validator_index]
         has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
+        has_excess_balance = state.balances[withdrawal.validator_index] > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
-            withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+            withdrawable_balance = min(
+                state.balances[withdrawal.validator_index] - MIN_ACTIVATION_BALANCE,
+                withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
-                validator_index=withdrawal.index,
+                validator_index=withdrawal.validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawable_balance,
             ))
@@ -1204,7 +1245,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA  # [Modified in Electra:EIP7691]
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
@@ -1213,6 +1254,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,  # [New in Electra]
+            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_ELECTRA,  # [New in Electra:EIP7691:EIP7742]
         )
     )
     # Cache execution payload header
@@ -1530,7 +1572,7 @@ def process_withdrawal_request(
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
         withdrawable_epoch = Epoch(exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
         state.pending_partial_withdrawals.append(PendingPartialWithdrawal(
-            index=index,
+            validator_index=index,
             amount=to_withdraw,
             withdrawable_epoch=withdrawable_epoch,
         ))

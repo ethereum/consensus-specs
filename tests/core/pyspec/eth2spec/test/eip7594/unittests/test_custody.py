@@ -6,13 +6,19 @@ from eth2spec.test.context import (
 )
 
 
-def run_get_custody_columns(spec, peer_count, custody_subnet_count):
-    assignments = [spec.get_custody_columns(node_id, custody_subnet_count) for node_id in range(peer_count)]
+def run_get_custody_columns(spec, peer_count, custody_group_count):
+    assignments = [spec.get_custody_groups(node_id, custody_group_count) for node_id in range(peer_count)]
 
-    columns_per_subnet = spec.config.NUMBER_OF_COLUMNS // spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    columns_per_group = spec.config.NUMBER_OF_COLUMNS // spec.config.NUMBER_OF_CUSTODY_GROUPS
     for assignment in assignments:
-        assert len(assignment) == custody_subnet_count * columns_per_subnet
-        assert len(assignment) == len(set(assignment))
+        columns = []
+        for group in assignment:
+            group_columns = spec.compute_columns_for_custody_group(group)
+            assert len(group_columns) == columns_per_group
+            columns.extend(group_columns)
+
+        assert len(columns) == custody_group_count * columns_per_group
+        assert len(columns) == len(set(columns))
 
 
 @with_eip7594_and_later
@@ -20,9 +26,9 @@ def run_get_custody_columns(spec, peer_count, custody_subnet_count):
 @single_phase
 def test_get_custody_columns_peers_within_number_of_columns(spec):
     peer_count = 10
-    custody_subnet_count = spec.config.CUSTODY_REQUIREMENT
+    custody_group_count = spec.config.CUSTODY_REQUIREMENT
     assert spec.config.NUMBER_OF_COLUMNS > peer_count
-    run_get_custody_columns(spec, peer_count, custody_subnet_count)
+    run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
 @with_eip7594_and_later
@@ -30,24 +36,31 @@ def test_get_custody_columns_peers_within_number_of_columns(spec):
 @single_phase
 def test_get_custody_columns_peers_more_than_number_of_columns(spec):
     peer_count = 200
-    custody_subnet_count = spec.config.CUSTODY_REQUIREMENT
+    custody_group_count = spec.config.CUSTODY_REQUIREMENT
     assert spec.config.NUMBER_OF_COLUMNS < peer_count
-    run_get_custody_columns(spec, peer_count, custody_subnet_count)
+    run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns_maximum_subnets(spec):
+def test_get_custody_columns_maximum_groups(spec):
     peer_count = 10
-    custody_subnet_count = spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    run_get_custody_columns(spec, peer_count, custody_subnet_count)
+    custody_group_count = spec.config.NUMBER_OF_CUSTODY_GROUPS
+    run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
 @with_eip7594_and_later
 @spec_test
 @single_phase
-def test_get_custody_columns_custody_size_more_than_number_of_columns(spec):
+def test_get_custody_columns_custody_size_more_than_number_of_groups(spec):
     node_id = 1
-    custody_subnet_count = spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT + 1
-    expect_assertion_error(lambda: spec.get_custody_columns(node_id, custody_subnet_count))
+    custody_group_count = spec.config.NUMBER_OF_CUSTODY_GROUPS + 1
+    expect_assertion_error(lambda: spec.get_custody_groups(node_id, custody_group_count))
+
+
+@with_eip7594_and_later
+@spec_test
+@single_phase
+def test_compute_columns_for_custody_group_out_of_bound_custody_group(spec):
+    expect_assertion_error(lambda: spec.compute_columns_for_custody_group(spec.config.NUMBER_OF_CUSTODY_GROUPS))

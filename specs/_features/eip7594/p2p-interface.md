@@ -29,14 +29,14 @@
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
-      - [BlobSidecarsByRange v2](#blobsidecarsbyrange-v2)
+      - [BlobSidecarsByRoot v3](#blobsidecarsbyroot-v3)
+      - [BlobSidecarsByRange v3](#blobsidecarsbyrange-v3)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
-      - [Custody subnet count](#custody-subnet-count)
+      - [Custody group count](#custody-group-count)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -61,6 +61,7 @@ The specification of these changes continues in the same format as the network s
 
 | Name                                           | Value                                                    | Description                                                               |
 |------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                    | The number of data column sidecar subnets used in the gossipsub protocol  |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
 | `MAX_REQUEST_BLOB_SIDECARS_EIP7594`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_EIP7594` | Maximum number of blob sidecars in a single request                       |
@@ -210,11 +211,11 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 #### Messages
 
-##### BlobSidecarsByRoot v2
+##### BlobSidecarsByRoot v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
 
-*[Updated in EIP7594]*
+*[Modified in EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -244,11 +245,11 @@ Response Content:
 
 No more than `MAX_REQUEST_BLOB_SIDECARS_EIP7594` may be requested at a time.
 
-##### BlobSidecarsByRange v2
+##### BlobSidecarsByRange v3
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
 
-*[Updated in EIP7594]*
+*[Modified in EIP7594]*
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -430,10 +431,10 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 
 #### ENR structure
 
-##### Custody subnet count
+##### Custody group count
 
-A new field is added to the ENR under the key `csc` to facilitate custody data column discovery.
+A new field is added to the ENR under the key `cgc` to facilitate custody data column discovery.
 
 | Key    | Value                                    |
 |--------|------------------------------------------|
-| `csc`  | Custody subnet count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+| `cgc`  | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
