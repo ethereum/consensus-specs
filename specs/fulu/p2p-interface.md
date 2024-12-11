@@ -59,12 +59,12 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                                                    | Description                                                               |
-|------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------------------------|
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                    | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`           | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                        | The minimum epoch range over which a node must serve data column sidecars |
-| `MAX_REQUEST_BLOB_SIDECARS_FULU`            | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_FULU` | Maximum number of blob sidecars in a single request                       |
+| Name                                           | Value                                                 | Description                                                               |
+|------------------------------------------------|-------------------------------------------------------|---------------------------------------------------------------------------|
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                 | The number of data column sidecar subnets used in the gossipsub protocol  |
+| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`        | Maximum number of data column sidecars in a single request                |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                     | The minimum epoch range over which a node must serve data column sidecars |
+| `MAX_REQUEST_BLOB_SIDECARS_FULU`               | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_FULU` | Maximum number of blob sidecars in a single request                       |
 
 ### Containers
 
