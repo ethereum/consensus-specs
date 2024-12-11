@@ -36,19 +36,10 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: Clean up Spec Repository
-        run: |
-          cd consensus-specs
-          make clean
-      - name: Install dependencies and generate pyspec
-        run: |
-          cd consensus-specs
-          make install_test
-          make -B pyspec
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j 16 generate_tests 2>&1 | tee ../consensustestgen.log
+          make -j 16 gen_all 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
