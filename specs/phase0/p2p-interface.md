@@ -123,8 +123,8 @@ This section outlines the specification for the networking stack in Ethereum con
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently),
 we hereby define a profile for basic interoperability.
 
-All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
-The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
+All implementations MUST support the TCP libp2p transport, MAY support the QUIC (UDP) libp2p transport, and MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
+The libp2p TCP and QUIC (UDP) transports support listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
 Clients must support listening on at least one of IPv4 or IPv6.
 Clients that do _not_ have support for listening on IPv4 SHOULD be cognizant of the potential disadvantages in terms of
