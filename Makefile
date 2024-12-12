@@ -9,7 +9,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	capella   \
 	deneb     \
 	electra   \
-  fulu      \
+	fulu      \
 	whisk     \
 	eip6800   \
 	eip7732
@@ -67,23 +67,6 @@ $(VENV): requirements_preinstallation.txt
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
 	@$(PIP_VENV) install -r requirements_preinstallation.txt
-
-###############################################################################
-# Distribution
-###############################################################################
-
-# The pyspec is rebuilt to enforce the /specs being part of eth2specs source
-# distribution. It could be forgotten otherwise.
-dist_build: $(VENV) pyspec
-	@$(PYTHON_VENV) setup.py sdist bdist_wheel
-
-# Check the distribution for issues.
-dist_check: $(VENV)
-	@$(PYTHON_VENV) -m twine check dist/*
-
-# Upload the distribution to PyPI.
-dist_upload: $(VENV)
-	@$(PYTHON_VENV) -m twine upload dist/*
 
 ###############################################################################
 # Specification
