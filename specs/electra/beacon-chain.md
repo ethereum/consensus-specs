@@ -968,8 +968,8 @@ def process_pending_consolidations(state: BeaconState) -> None:
             break
 
         # Calculate the consolidated balance
-        max_effective_balance = get_max_effective_balance(source_validator)
-        source_effective_balance = min(state.balances[pending_consolidation.source_index], max_effective_balance)
+        source_effective_balance = min(
+            state.balances[pending_consolidation.source_index], source_validator.effective_balance)
 
         # Move active balance to target. Excess balance is withdrawable.
         decrease_balance(state, pending_consolidation.source_index, source_effective_balance)

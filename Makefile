@@ -9,9 +9,9 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	capella   \
 	deneb     \
 	electra   \
+  fulu      \
 	whisk     \
 	eip6800   \
-	eip7594   \
 	eip7732
 
 # A list of fake targets.

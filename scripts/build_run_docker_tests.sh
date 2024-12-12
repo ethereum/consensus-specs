@@ -10,7 +10,7 @@
 
 
 # Set variables
-ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "electra" "whisk" "eip7594")
+ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "electra" "fulu" "whisk")
 TEST_PRESET_TYPE=minimal
 FORK_TO_TEST=phase0
 WORKDIR="//consensus-specs//tests//core//pyspec"
