@@ -206,7 +206,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `TARGET_BLOBS_PER_BLOCK_ELECTRA` | `uint64(6)` | *[New in Electra:EIP7691]* Target number of blobs in a single block limited by `MAX_BLOBS_PER_BLOCK_ELECTRA` |
 | `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
@@ -1014,22 +1013,19 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests  # [New in Electra]
-    target_blobs_per_block: uint64  # [New in Electra:EIP7742]
 ```
 
 #### Engine APIs
 
 ##### Modified `is_valid_block_hash`
 
-*Note*: The function `is_valid_block_hash` is modified to include the additional
-`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
+*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests_list`.
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
                         execution_payload: ExecutionPayload,
                         parent_beacon_block_root: Root,
-                        execution_requests_list: Sequence[bytes],
-                        target_blobs_per_block: uint64) -> bool:
+                        execution_requests_list: Sequence[bytes]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -1038,15 +1034,13 @@ def is_valid_block_hash(self: ExecutionEngine,
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional
-`execution_requests_list` and `target_blobs_per_block` parameters in Electra.
+*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests_list`.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
-                       execution_requests_list: Sequence[bytes],
-                       target_blobs_per_block: uint64) -> bool:
+                       execution_requests_list: Sequence[bytes]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
@@ -1056,9 +1050,8 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameters
-`execution_requests_list` and `target_blobs_per_block` when calling `is_valid_block_hash` and
-`notify_new_payload` in Electra.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter
+`execution_requests_list` when calling `is_valid_block_hash` and `notify_new_payload` in Electra.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -1069,7 +1062,6 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
-    target_blobs_per_block = new_payload_request.target_blobs_per_block  # [New in Electra:EIP7742]
 
     if b'' in execution_payload.transactions:
         return False
@@ -1078,8 +1070,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.is_valid_block_hash(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list,
-            target_blobs_per_block):
+            execution_requests_list):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -1089,8 +1080,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     if not self.notify_new_payload(
             execution_payload,
             parent_beacon_block_root,
-            execution_requests_list,
-            target_blobs_per_block):
+            execution_requests_list):
         return False
 
     return True
@@ -1254,7 +1244,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,  # [New in Electra]
-            target_blobs_per_block=TARGET_BLOBS_PER_BLOCK_ELECTRA,  # [New in Electra:EIP7691:EIP7742]
         )
     )
     # Cache execution payload header
