@@ -24,7 +24,8 @@ from eth2spec.test.helpers.inactivity_scores import (
 from eth2spec.test.helpers.random import (
     randomize_state as randomize_state_helper,
     patch_state_to_non_leaking,
-)
+    randomize_execution_payload_header,
+    )
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
 )
@@ -76,7 +77,7 @@ def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fract
                                             stats,
                                             exit_fraction=exit_fraction,
                                             slash_fraction=slash_fraction)
-    # TODO: randomize execution payload, merge status, etc.
+    randomize_execution_payload_header(spec, state)
     return scenario_state
 
 

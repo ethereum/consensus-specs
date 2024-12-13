@@ -4,6 +4,7 @@ from eth2spec.test.helpers.attestations import cached_prepare_state_with_attesta
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.forks import is_post_altair
 from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.execution_payload import build_randomized_execution_payload_header
 
 
 def set_some_activations(spec, state, rng, activation_epoch=None):
@@ -160,6 +161,10 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     cached_prepare_state_with_attestations(spec, state)
     randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
+
+
+def randomize_execution_payload_header(spec, state, rng=Random(8020)):
+    state.latest_execution_payload_header = build_randomized_execution_payload_header(spec, state, rng)
 
 
 def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):

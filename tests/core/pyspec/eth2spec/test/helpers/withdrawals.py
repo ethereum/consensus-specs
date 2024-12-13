@@ -9,6 +9,20 @@ def get_expected_withdrawals(spec, state):
         return spec.get_expected_withdrawals(state)
 
 
+def get_random_withdrawal(spec, state, rng):
+    if is_post_electra:
+        amount = rng.randint(0, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+    else:
+        amount = rng.randint(0, spec.MAX_EFFECTIVE_BALANCE)
+
+    return spec.Withdrawal(
+        index=rng.randrange(0, spec.MAX_WITHDRAWALS_PER_PAYLOAD),
+        validator_index=rng.randrange(0, len(state.validators)),
+        address=rng.getrandbits(160).to_bytes(20, 'big'),
+        amount=amount,
+    )
+
+
 def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None):
     if withdrawable_epoch is None:
         withdrawable_epoch = spec.get_current_epoch(state)

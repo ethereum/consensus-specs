@@ -1,13 +1,17 @@
 from eth_hash.auto import keccak
 from hashlib import sha256
 from trie import HexaryTrie
+from random import Random
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
+from eth2spec.test.helpers.withdrawals import (
+    get_expected_withdrawals,
+    get_random_withdrawal,
+)
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
@@ -263,6 +267,69 @@ def compute_el_block_hash_for_block(spec, block):
         spec, block.body.execution_payload, block.parent_root, requests_hash)
 
 
+def build_empty_execution_payload_header(spec, state):
+    latest = state.latest_execution_payload_header
+    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    execution_payload_header = spec.ExecutionPayloadHeader(
+        parent_hash = latest.block_hash,
+        fee_recipient = spec.ExecutionAddress(),
+        state_root = latest.state_root,
+        receipts_root = spec.Bytes32(),
+        logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),
+        prev_randao = spec.Bytes32(),
+        block_number = 0,
+        gas_limit = 0,
+        gas_used = 0,
+        timestamp = timestamp,
+        extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
+        base_fee_per_gas = 0,
+        block_hash = compute_el_block_hash(spec, execution_payload, state),
+        transactions_root = spec.hash_tree_root(execution_payload.transactions),
+    )
+    if is_post_capella(spec):
+        execution_payload_header.withdrawals_root = spec.Root()
+
+    if is_post_deneb(spec):
+        execution_payload_header.blob_gas_used = 0
+        execution_payload_header.excess_blob_gas = 0
+
+    return execution_payload_header
+
+
+def build_randomized_execution_payload_header(spec, state, rng=Random(10000)):
+    execution_payload_header = build_empty_execution_payload_header(spec, state)
+    execution_payload = build_randomized_execution_payload(spec, state)
+
+    execution_payload_header.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
+    execution_payload_header.state_root = spec.Bytes32(get_random_bytes_list(rng, 32)),
+    execution_payload_header.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32)),
+    execution_payload_header.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+        get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
+    ),
+    execution_payload_header.prev_randao = spec.Bytes32(get_random_bytes_list(rng, 32)),
+    execution_payload_header.block_number = rng.randint(0, int(10e10)),
+    execution_payload_header.gas_limit = rng.randint(0, int(10e10)),
+    execution_payload_header.gas_used = rng.randint(0, int(10e10)),
+    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
+    execution_payload_header.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
+        get_random_bytes_list(rng, extra_data_length)
+    ),
+    execution_payload_header.base_fee_per_gas = rng.randint(0, int(10e10)),
+    execution_payload_header.block_hash = compute_el_block_hash(spec, execution_payload, state),
+    execution_payload_header.transactions_root = spec.hash_tree_root(execution_payload.transactions),
+
+    if is_post_capella(spec):
+        execution_payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+
+    if is_post_deneb(spec):
+        execution_payload_header.blob_gas_used = rng.randint(0, int(10e10))
+        execution_payload_header.excess_blob_gas = rng.randint(0, int(10e10))
+
+    return execution_payload_header
+
+
 def build_empty_post_eip7732_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
@@ -351,6 +418,15 @@ def build_randomized_execution_payload(spec, state, rng):
         get_random_tx(rng)
         for _ in range(num_transactions)
     ]
+    if is_post_capella(spec):
+        num_withdrawals = rng.randint(0, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+        execution_payload.withdrawals = [
+            get_random_withdrawal(spec, state, rng)
+            for _ in range(num_withdrawals)
+        ]
+    if is_post_deneb(spec):
+        execution_payload.blob_gas_used = rng.randint(0, int(10e10))
+        execution_payload.excess_blob_gas = rng.randint(0, int(10e10))
 
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
