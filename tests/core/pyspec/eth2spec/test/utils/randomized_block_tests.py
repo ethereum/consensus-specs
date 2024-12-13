@@ -252,7 +252,7 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
 def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    # TODO: add MAX_BLOBS_PER_BLOCK_EIP7594 at fulu
+    # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng)
     block.body.execution_payload.transactions.append(opaque_tx)

@@ -1,11 +1,11 @@
 from typing import Dict
 
 from .base import BaseSpecBuilder
-from ..constants import EIP7594
+from ..constants import FULU
 
 
-class EIP7594SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP7594
+class FuluSpecBuilder(BaseSpecBuilder):
+    fork: str = FULU
 
     @classmethod
     def imports(cls, preset_name: str):
