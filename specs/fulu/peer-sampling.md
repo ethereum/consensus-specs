@@ -1,4 +1,4 @@
-# EIP-7594 -- Peer Sampling
+# Fulu -- Peer Sampling
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -23,7 +23,7 @@
 
 ## Introduction
 
-The purpose of this document is to complement [EIP-7594 -- Data Availability Sampling Core](das-core.md) by specifying the peer sampling functionality of the full PeerDAS protocol. Initially, this functionality may not be implemented by all clients. In such cases, it is replaced by [subnet sampling](das-core.md#subnet-sampling), which is an extension of the custody component of the protocol.
+The purpose of this document is to complement [Fulu -- Data Availability Sampling Core](das-core.md) by specifying the peer sampling functionality of the full PeerDAS protocol. Initially, this functionality may not be implemented by all clients. In such cases, it is replaced by [subnet sampling](das-core.md#subnet-sampling), which is an extension of the custody component of the protocol.
 
 ## Helper functions
 
@@ -97,7 +97,7 @@ For reference, the table below shows the number of samples and the number of all
 
 A node SHOULD maintain a diverse set of peers for each column and each slot by verifying responsiveness to sample queries.
 
-A node SHOULD query for samples from selected peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_columns` helper to determine which peer(s) it could request from, identifying a list of candidate peers for each selected column.
+A node SHOULD query for samples from selected peers via `DataColumnSidecarsByRoot` request. A node utilizes `get_custody_groups` helper to determine which peer(s) it could request from, identifying a list of candidate peers for each selected column.
 
 If more than one candidate peer is found for a given column, a node SHOULD randomize its peer selection to distribute sample query load in the network. Nodes MAY use peer scoring to tune this selection (for example, by using weighted selection or by using a cut-off threshold). If possible, it is also recommended to avoid requesting many columns from the same peer in order to avoid relying on and exposing the sample selection to a single peer.
 

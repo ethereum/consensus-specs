@@ -11,6 +11,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
+    set_compounding_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
 )
 
@@ -47,8 +48,8 @@ def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set earliest consolidation epoch to the expected exit epoch
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
@@ -96,59 +97,7 @@ def test_basic_consolidation_with_excess_target_balance(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
-
-    # Set earliest consolidation epoch to the expected exit epoch
-    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
-    state.earliest_consolidation_epoch = expected_exit_epoch
-    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
-    # Set the consolidation balance to consume equal to churn limit
-    state.consolidation_balance_to_consume = consolidation_churn_limit
-
-    # Add excess balance
-    state.balances[target_index] = state.balances[target_index] + spec.EFFECTIVE_BALANCE_INCREMENT
-
-    yield from run_consolidation_processing(spec, state, consolidation)
-
-    # Check consolidation churn is decremented correctly
-    assert (
-        state.consolidation_balance_to_consume
-        == consolidation_churn_limit - spec.MIN_ACTIVATION_BALANCE
-    )
-    # Check exit epoch
-    assert state.validators[source_index].exit_epoch == expected_exit_epoch
-
-
-@with_electra_and_later
-@with_presets([MINIMAL], "need sufficient consolidation churn limit")
-@with_custom_state(
-    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
-def test_basic_consolidation_with_excess_target_balance_and_compounding_credentials(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
-    current_epoch = spec.get_current_epoch(state)
-    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
-
-    # Set source to eth1 credentials
-    source_address = b"\x22" * 20
-    set_eth1_withdrawal_credential_with_balance(
-        spec, state, source_index, address=source_address
-    )
-    # Make consolidation with source address
-    consolidation = spec.ConsolidationRequest(
-        source_address=source_address,
-        source_pubkey=state.validators[source_index].pubkey,
-        target_pubkey=state.validators[target_index].pubkey,
-    )
-
-    # Set target to eth1 credentials
+    # Set target to compounding credentials
     set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set earliest consolidation epoch to the expected exit epoch
@@ -202,8 +151,8 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     yield from run_consolidation_processing(spec, state, consolidation)
 
@@ -247,8 +196,8 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set earliest consolidation epoch to the expected exit epoch
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
@@ -296,8 +245,8 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set earliest consolidation epoch to the first available epoch
     state.earliest_consolidation_epoch = spec.compute_activation_exit_epoch(
@@ -337,7 +286,7 @@ def test_basic_consolidation_with_compounding_credentials(spec, state):
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
 
-    # Set source to eth1 credentials
+    # Set source to compounding credentials
     source_address = b"\x22" * 20
     set_compounding_withdrawal_credential(
         spec, state, source_index, address=source_address
@@ -396,8 +345,8 @@ def test_consolidation_churn_limit_balance(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set source effective balance to consolidation churn limit
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
@@ -446,8 +395,8 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set source effective balance to 2 * consolidation churn limit
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
@@ -495,8 +444,8 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Set target to eth1 credentials
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
 
     # Set source balance higher to 3 * consolidation churn limit
     consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
@@ -625,7 +574,7 @@ def test_incorrect_exceed_pending_consolidations_limit(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
@@ -660,7 +609,7 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE
@@ -694,7 +643,7 @@ def test_incorrect_exited_source(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # exit source
     spec.initiate_validator_exit(state, source_index)
@@ -731,7 +680,7 @@ def test_incorrect_exited_target(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
     # exit target
     spec.initiate_validator_exit(state, 1)
 
@@ -767,7 +716,7 @@ def test_incorrect_inactive_source(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # set source validator as not yet activated
     state.validators[source_index].activation_epoch = spec.FAR_FUTURE_EPOCH
@@ -804,7 +753,7 @@ def test_incorrect_inactive_target(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # set target validator as not yet activated
     state.validators[1].activation_epoch = spec.FAR_FUTURE_EPOCH
@@ -839,7 +788,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not spec.has_execution_withdrawal_credential(state.validators[source_index])
@@ -857,7 +806,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_incorrect_no_target_execution_withdrawal_credential(spec, state):
+def test_incorrect_target_with_bls_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # Set up a correct consolidation, but target does not have
@@ -891,6 +840,39 @@ def test_incorrect_no_target_execution_withdrawal_credential(spec, state):
 )
 @spec_test
 @single_phase
+def test_incorrect_target_with_eth1_credential(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # Set up an otherwise correct consolidation
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state, source_index, address=source_address
+    )
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    # Set target to eth1 credentials
+    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_incorrect_incorrect_source_address(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -908,7 +890,7 @@ def test_incorrect_incorrect_source_address(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[source_index].withdrawal_credentials[12:] == consolidation.source_address
@@ -943,7 +925,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
         source_pubkey=b"\x00" * 48,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[source_index].pubkey == consolidation.source_pubkey
@@ -978,7 +960,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=b"\x00" * 48,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the the return condition
     assert not state.validators[target_index].pubkey == consolidation.target_pubkey
@@ -1013,11 +995,11 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Create pending withdrawal
     pending_withdrawal = spec.PendingPartialWithdrawal(
-        index=0, amount=excess_balance, withdrawable_epoch=current_epoch
+        validator_index=0, amount=excess_balance, withdrawable_epoch=current_epoch
     )
     state.pending_partial_withdrawals.append(pending_withdrawal)
 
@@ -1052,7 +1034,7 @@ def test_incorrect_source_not_active_long_enough(spec, state):
         source_pubkey=state.validators[source_index].pubkey,
         target_pubkey=state.validators[target_index].pubkey,
     )
-    set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
     assert current_epoch < state.validators[source_index].activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
@@ -1228,7 +1210,7 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
         pre_exit_epoch_source = source_validator.exit_epoch
         pre_exit_epoch_target = target_validator.exit_epoch
         pre_pending_consolidations = state.pending_consolidations.copy()
-        pre_target_withdrawal_credentials = target_validator.withdrawal_credentials
+        pre_source_balance = state.balances[source_index]
         pre_target_balance = state.balances[target_index]
     else:
         pre_state = state.copy()
@@ -1266,23 +1248,9 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
             target_index=target_index,
         )
         assert state.pending_consolidations == pre_pending_consolidations + [expected_new_pending_consolidation]
-        # Check excess balance is queued if the target switched to compounding
-        if pre_target_withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
-            post_target_withdrawal_credentials = (
-                spec.COMPOUNDING_WITHDRAWAL_PREFIX + pre_target_withdrawal_credentials[1:]
-            )
-            assert state.validators[target_index].withdrawal_credentials == post_target_withdrawal_credentials
-            assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE
-            if pre_target_balance > spec.MIN_ACTIVATION_BALANCE:
-                assert len(state.pending_deposits) == 1
-                pending_deposit = state.pending_deposits[0]
-                assert pending_deposit.pubkey == target_validator.pubkey
-                assert pending_deposit.withdrawal_credentials == post_target_withdrawal_credentials
-                assert pending_deposit.amount == (pre_target_balance - spec.MIN_ACTIVATION_BALANCE)
-                assert pending_deposit.signature == spec.G2_POINT_AT_INFINITY
-                assert pending_deposit.slot == spec.GENESIS_SLOT
-        else:
-            assert state.balances[target_index] == pre_target_balance
+        # Check no balance move happened
+        assert state.balances[source_index] == pre_source_balance
+        assert state.balances[target_index] == pre_target_balance
     else:
         assert pre_state == state
 

@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_eip7594_and_later,
+    with_fulu_and_later,
 )
 from eth2spec.debug.random_value import (
     RandomizationMode,
@@ -45,7 +45,7 @@ def compute_data_column_sidecar(spec, state):
 # Tests for verify_data_column_sidecar
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__valid(spec, state):
@@ -53,7 +53,7 @@ def test_verify_data_column_sidecar__valid(spec, state):
     assert spec.verify_data_column_sidecar(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
@@ -64,7 +64,7 @@ def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
     assert not spec.verify_data_column_sidecar(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_index(spec, state):
@@ -73,7 +73,7 @@ def test_verify_data_column_sidecar__invalid_index(spec, state):
     assert not spec.verify_data_column_sidecar(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
@@ -82,7 +82,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
     assert not spec.verify_data_column_sidecar(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, state):
@@ -91,7 +91,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, 
     assert not spec.verify_data_column_sidecar(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, state):
@@ -103,7 +103,7 @@ def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, stat
 # Tests for verify_data_column_sidecar_kzg_proofs
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
@@ -111,7 +111,7 @@ def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
     assert spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state):
@@ -120,7 +120,7 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state
     assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, state):
@@ -129,7 +129,7 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, s
     assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state):
@@ -141,7 +141,7 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state)
 # Tests for verify_data_column_sidecar_inclusion_proof
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
@@ -149,7 +149,7 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
     assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
@@ -158,7 +158,7 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
@@ -170,7 +170,7 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitmen
 # Tests for compute_subnet_for_data_column_sidecar
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_compute_subnet_for_data_column_sidecar(spec):
