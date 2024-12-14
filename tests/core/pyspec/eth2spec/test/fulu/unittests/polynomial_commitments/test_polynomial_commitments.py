@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     spec_test,
     single_phase,
     expect_assertion_error,
-    with_eip7594_and_later,
+    with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
     get_sample_blob,
@@ -11,7 +11,7 @@ from eth2spec.test.helpers.blob import (
 from eth2spec.utils.bls import BLS_MODULUS
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_fft(spec):
@@ -45,7 +45,7 @@ def test_fft(spec):
         assert individual_evaluation == poly_eval[i]
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_coset_fft(spec):
@@ -84,7 +84,7 @@ def test_coset_fft(spec):
         assert individual_evaluation == poly_eval[i]
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_construct_vanishing_polynomial(spec):
@@ -108,7 +108,7 @@ def test_construct_vanishing_polynomial(spec):
             assert all(a != spec.BLSFieldElement(0) for a in zero_poly_eval_brp[start:end])
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch_zero_cells(spec):
@@ -121,7 +121,7 @@ def test_verify_cell_kzg_proof_batch_zero_cells(spec):
     )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch(spec):
@@ -173,7 +173,7 @@ def test_verify_cell_kzg_proof_batch(spec):
     )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch_invalid(spec):
@@ -229,7 +229,7 @@ def test_verify_cell_kzg_proof_batch_invalid(spec):
     )
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_recover_cells_and_kzg_proofs(spec):
@@ -268,7 +268,7 @@ def test_recover_cells_and_kzg_proofs(spec):
     assert proofs == recovered_proofs
 
 
-@with_eip7594_and_later
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_multiply_polynomial_degree_overflow(spec):
