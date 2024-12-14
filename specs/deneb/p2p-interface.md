@@ -181,7 +181,7 @@ The following validations MUST pass before forwarding the `blob_sidecar` on the 
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 - _[REJECT]_ The proposer signature of `blob_sidecar.signed_block_header`, is valid with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via gossip or non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `block_header.parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
