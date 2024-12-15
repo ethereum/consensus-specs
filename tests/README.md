@@ -61,7 +61,7 @@ this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/
 @spec_state_test
 ```
 
-[This decorator](https://github.com/qbzzt/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L232-L234) specifies
+[This decorator](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L232-L234) specifies
 that this test is a state transition test, and that it does not include a transition between different forks.
 
 ```python
