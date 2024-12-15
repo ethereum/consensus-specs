@@ -1,9 +1,9 @@
 # SSZ, generic tests
 
-This set of test-suites provides general testing for SSZ:
+This set of test suites provides general testing for SSZ:
  to decode any container/list/vector/other type from binary data, encode it back, and compute the hash-tree-root.
 
-This test collection for general-purpose SSZ is experimental.
+This test collection for general purpose SSZ is experimental.
 The `ssz_static` suite is the required minimal support for SSZ, and should be prioritized.
 
 The `ssz_generic` tests are split up into different handler, each specialized into a SSZ type:
