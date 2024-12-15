@@ -137,4 +137,4 @@ the withdrawal credential change takes effect. No further action is required for
 withdrawal process.
 
 *Note*: A node *should* prioritize locally received `BLSToExecutionChange` operations to ensure these changes make it on-chain
-through self published blocks even if the rest of the network censors.
+through self-published blocks even if the rest of the network censors.
