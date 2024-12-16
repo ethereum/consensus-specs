@@ -26,6 +26,7 @@ This document contains the consensus-layer networking specification for EIP-7805
 ### Configuration
 
 | `MAX_REQUEST_INCLUSION_LIST` | `2**4` (= 16) | Maximum number of inclusion list in a single request |
+| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of inclusion list in bytes |
 
 ### The gossip domain: gossipsub
 
@@ -37,6 +38,7 @@ The new topics along with the type of the `data` field of a gossipsub message ar
 |-------------------------------|------------------------------------------------------|
 | `inclusion_list`    | `SignedInclusionList` [New in EIP-7805] |
 
+
 ##### Global topics
 
 EIP-7805 introduces a new global topic for inclusion lists.
@@ -46,7 +48,7 @@ EIP-7805 introduces a new global topic for inclusion lists.
 This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on the network, assuming the alias `message = signed_inclusion_list.message`:
 
-- _[REJECT]_ The transactions `message.transactions` is not exceeding `MAX_BYTES_PER_INCLUSION_LIST`.
+- _[REJECT]_ The size of `message` is within upperbound `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is equal to the previous slot and the current time is less than `attestation_deadline` seconds into the slot.
 - _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the current branch corresponds to `message.inclusion_list_committee_root`, as determined by `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
