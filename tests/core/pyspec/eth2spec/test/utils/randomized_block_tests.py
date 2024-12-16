@@ -25,7 +25,7 @@ from eth2spec.test.helpers.random import (
     randomize_state as randomize_state_helper,
     patch_state_to_non_leaking,
     randomize_execution_payload_header,
-    )
+)
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
 )

@@ -10,7 +10,7 @@ def get_expected_withdrawals(spec, state):
 
 
 def get_random_withdrawal(spec, state, rng):
-    if is_post_electra:
+    if is_post_electra(spec):
         amount = rng.randint(0, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
     else:
         amount = rng.randint(0, spec.MAX_EFFECTIVE_BALANCE)
