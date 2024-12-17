@@ -193,11 +193,10 @@ This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `MAX_PAYLOAD_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages / RPC chunks. |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
-| `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
@@ -228,6 +227,21 @@ Where
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata,
 is entirely independent of the ENR sequence number,
 and will in most cases be out of sync with the ENR sequence number.
+
+### Maximum message sizes
+
+Maximum message sizes are derived from the maximum payload size that the network can carry according to the following functions:
+
+```python
+def max_compressed_len(n):
+  # Worst-case compressed length for a given payload of size n when using snappy
+  # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
+  return int(32 + n + n / 6)
+
+def max_message_size():
+  # Allow 1024 bytes for framing and encoding overhead but at least 1MB in case MAX_PAYLOAD_SIZE is small.
+  return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024*1024)
+```
 
 ### The gossip domain: gossipsub
 
@@ -273,18 +287,6 @@ Clients MUST reject messages with unknown topic.
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available.
 Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
 
-The uncompressed payload in the [`data`](https://github.com/libp2p/go-libp2p-pubsub/blob/c06df2f9a38e9382e644b241adf0e96e5ca00955/pb/rpc.proto#L19)
-must have has a size no greater than `GOSSIP_MAX_SIZE`.
-
-After compression, the payload in the `data` field must have a size no greater than
-`32 + GOSSIP_MAX_SIZE + GOSSIP_MAX_SIZE / 6` (rounded down), as given by the
-[snappy maximum compressed size function](https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47).
-
-Clients MUST reject (fail validation) messages with payloads that are over these size limits.
-Likewise, clients MUST NOT emit or propagate messages larger than these limits.
-
-Clients MAY use [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds) to determine the payload size limit, when this size is lower than `GOSSIP_MAX_SIZE`.
-
 The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
 since messages are identified by content, anonymous, and signed where necessary in the application layer.
 Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictNoSign`
@@ -299,8 +301,6 @@ The `message-id` of a gossipsub message MUST be the following 20 byte value comp
   i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + message.data)[:20]`.
 
 Where relevant, clients MUST reject messages with `message-id` sizes other than 20 bytes.
-
-Clients MAY reject messages whose protobuf-encoded size exceeds the maximum possible size based on the limits above.
 
 *Note*: The above logic handles two exceptional cases:
 (1) multiple snappy `data` can decompress to the same value,
@@ -516,6 +516,16 @@ so [basic snappy block compression](https://github.com/google/snappy/blob/master
 Implementations MUST use a single encoding for gossip.
 Changing an encoding will require coordination between participating implementations.
 
+#### Gossipsub size limits
+
+Size limits are placed both on the [`RPCMsg`](https://github.com/libp2p/specs/blob/b5f7fce29b32d4c7d0efe37b019936a11e5db872/pubsub/README.md#the-rpc) frame as well as the encoded payload in each [`Message`](https://github.com/libp2p/specs/blob/b5f7fce29b32d4c7d0efe37b019936a11e5db872/pubsub/README.md#the-message).
+
+Clients MUST reject and MUST NOT emit or propagate messages whose size exceed the following limits:
+
+* the size of the encoded `RPCMsg`, including control messages and framing, must not exceed `max_message_size()`
+* the size of the compressed payload in the `Message.data` field must not exceed `max_compressed_len(MAX_PAYLOAD_SIZE)`.
+* the size of the uncompressed payload must not exceed `MAX_PAYLOAD_SIZE` or the [type-specific SSZ bound](#what-are-ssz-type-size-bounds), whichever is lower.
+
 ### The Req/Resp domain
 
 #### Protocol identification
@@ -565,7 +575,7 @@ All other response types (non-Lists) send a single `response_chunk`.
 For both `request`s and `response`s, the `encoding-dependent-header` MUST be valid,
 and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
 This includes type-specific bounds on payload size for some encoding strategies.
-Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks.
+Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_PAYLOAD_SIZE` MUST be applied to all method response chunks.
 
 Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately.
 Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
@@ -679,15 +689,13 @@ When snappy is applied, it can be passed through a buffered Snappy reader to dec
 
 Before reading the payload, the header MUST be validated:
 - The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
-- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds).
+- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds) or `MAX_PAYLOAD_SIZE`, whichever is smaller.
 
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
 
-A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
-- For `ssz_snappy` this is: `32 + n + n // 6`.
-  This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
+A reader MUST NOT read more than `max_compressed_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
 
-A reader SHOULD consider the following cases as invalid input:
+A reader MUST consider the following cases as invalid input:
 - Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected if more bytes are read than required.
 - An early EOF, before fully reading the declared length-prefix worth of SSZ bytes.
 
@@ -1444,7 +1452,7 @@ Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed wi
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length
 * Sanity checking of message length, and enabling much stricter message length limiting based on SSZ type information,
   to provide even more DOS protection than the global message length already does.
-  E.g. a small `Status` message does not nearly require `MAX_CHUNK_SIZE` bytes.
+  E.g. a small `Status` message does not nearly require `MAX_PAYLOAD_SIZE` bytes.
 
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length (unsigned here) ints.
 Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
@@ -1692,6 +1700,22 @@ Other types are static, they have a fixed size: no dynamic-length content is inv
 
 For reference, the type bounds can be computed ahead of time, [as per this example](https://gist.github.com/protolambda/db75c7faa1e94f2464787a480e5d613e).
 It is advisable to derive these lengths from the SSZ type definitions in use, to ensure that version changes do not cause out-of-sync type bounds.
+
+#### Why is the message size defined in terms of application payload?
+
+When transmitting messages over gossipsub and / or req/resp, we want to ensure that the same payload sizes are supported no matter the underlying transport, decoupling the consensus layer from libp2p-induced overhead and the particular transmission strategy.
+
+To derive "encoded size limits" from desired application sizes we take into account snappy compression and framing overhead.
+
+In the case of gossipsub, the protocol supports sending multiple application payloads as well as mixing application data with control messages in each gossipsub frame - the limit is set such that at least one max-sized application-level message together with a small amount (1kb) of gossipsub overhead is allowed - implementations are free to pack multiple smaller application messages into a single gossipsub frame, and / or combine it with control messages as they see fit.
+
+The limit is set on the uncompressed payload size in particular to protect against decompression bombs - although
+
+#### Why is there a limit on message sizes at all?
+
+The message size limit protects against several forms of DoS and network-based amplification attacks and provide upper bounds for resource (network, memory) usage in the client based on protocol requirements to decode, buffer, cache, store and re-transmit messages which in turn translate into performance and protection tradeoffs, ensuring capacity to handle worst cases during recovery from network instability.
+
+In particular, blocks which at the time of writing is the only message type without a practical SSZ-derived upper bound on size cannot be fully verified synchronously as part of gossipsub validity checks meaning that there exist cases where invalid messages signed by a validator may be amplified by the network.
 
 ## libp2p implementations matrix
 
