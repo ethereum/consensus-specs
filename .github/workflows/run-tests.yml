@@ -24,9 +24,9 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  table_of_contents:
-   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-   steps:
+  lint:
+    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -34,40 +34,15 @@ jobs:
         with:
           node-version: '20'
           cache: ''
-      - name: Check table of contents
-        run: npm install -g doctoc@2.2.0 && make check_toc
-
-  codespell:
-   runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-   steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: Check codespell
-        run: make codespell
-
-  lint:
-    runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Rust for dependencies
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12.4'
-          cache: ''
-      - name: Install pyspec requirements
-        run: make install_test
+      - name: Install doctoc
+        run: npm install -g doctoc@2.2.0
       - name: Run linter for pyspec
         run: make lint
-      - name: Run linter for test generators
-        run: make lint_generators
 
   whitespace:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
@@ -83,10 +58,10 @@ jobs:
 
   pyspec-tests:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
-    needs: [lint,codespell,table_of_contents]
+    needs: [lint]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "whisk", "eip7594"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu", "whisk"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -97,26 +72,24 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: github.event.inputs.test_preset_type != ''
         run: |
           echo "spec_test_preset_type=${{ github.event.inputs.test_preset_type || env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: ${{ (github.event_name == 'push' && github.ref_name != 'master') || github.event_name == 'pull_request' }}
         run: |
-          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE}}" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+          echo "spec_test_preset_type=${{ env.TEST_PRESET_TYPE }}" >> $GITHUB_ENV
+      - name: set preset
         if: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
         run: |
           echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
-      - name: set TEST_PRESET_TYPE
+      - name: set preset
         if: github.event.schedule=='0 0 * * *'
         run: |
           echo "spec_test_preset_type=mainnet" >> $GITHUB_ENV
-      - name: Install pyspec requirements
-        run: make install_test
       - name: test-${{ matrix.version }}
-        run: make citest fork=${{ matrix.version }} TEST_PRESET_TYPE=${{env.spec_test_preset_type}}
+        run: make test fork=${{ matrix.version }} preset=${{ env.spec_test_preset_type }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -133,10 +106,8 @@ jobs:
         with:
           python-version: '3.12.4'
           cache: ''
-      - name: Install pyspec requirements
-        run: make install_test
       - name: Run generators with --modcheck
-        run: make generate_tests modcheck=true 2>&1 | tee consensustestgen.log
+        run: make gen_all modcheck=true 2>&1 | tee consensustestgen.log
       - name: Check for errors
         run: |
           if grep -q "\[ERROR\]" consensustestgen.log; then
