@@ -156,10 +156,10 @@ value that Execution Layer client mock returns in responses to the following Eng
 The checks to verify the current status of `store`.
 
 ```yaml
-checks: {<store_attibute>: value}  -- the assertions.
+checks: {<store_attribute>: value}  -- the assertions.
 ```
 
-`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
+`<store_attribute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
 
 ```yaml
 head: {
