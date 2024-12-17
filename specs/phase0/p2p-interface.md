@@ -16,6 +16,7 @@
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
+  - [Maximum message sizes](#maximum-message-sizes)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -28,6 +29,7 @@
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
       - [Attestations and Aggregation](#attestations-and-aggregation)
     - [Encodings](#encodings)
+    - [Gossipsub size limits](#gossipsub-size-limits)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Protocol identification](#protocol-identification)
     - [Req/Resp interaction](#reqresp-interaction)
@@ -102,6 +104,8 @@
     - [Why are we using Snappy for compression?](#why-are-we-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
     - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
+    - [Why is the message size defined in terms of application payload?](#why-is-the-message-size-defined-in-terms-of-application-payload)
+    - [Why is there a limit on message sizes at all?](#why-is-there-a-limit-on-message-sizes-at-all)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -522,7 +526,7 @@ Size limits are placed both on the [`RPCMsg`](https://github.com/libp2p/specs/bl
 
 Clients MUST reject and MUST NOT emit or propagate messages whose size exceed the following limits:
 
-* the size of the encoded `RPCMsg`, including control messages and framing, must not exceed `max_message_size()`
+* the size of the encoded `RPCMsg`, including control messages, framing, topics etc, must not exceed `max_message_size()`
 * the size of the compressed payload in the `Message.data` field must not exceed `max_compressed_len(MAX_PAYLOAD_SIZE)`.
 * the size of the uncompressed payload must not exceed `MAX_PAYLOAD_SIZE` or the [type-specific SSZ bound](#what-are-ssz-type-size-bounds), whichever is lower.
 
