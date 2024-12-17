@@ -56,6 +56,7 @@ def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSide
             'FIELD_ELEMENTS_PER_CELL': spec_object.preset_vars['FIELD_ELEMENTS_PER_CELL'].value,
             'FIELD_ELEMENTS_PER_EXT_BLOB': spec_object.preset_vars['FIELD_ELEMENTS_PER_EXT_BLOB'].value,
             'NUMBER_OF_COLUMNS': spec_object.config_vars['NUMBER_OF_COLUMNS'].value,
+            'MAX_BLOBS_PER_BLOCK_FULU': spec_object.config_vars['MAX_BLOBS_PER_BLOCK_FULU'].value
         }
 
     @classmethod
