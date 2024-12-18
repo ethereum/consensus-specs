@@ -54,15 +54,14 @@ To learn how consensus spec tests are written, let's go over the code:
 
 This [decorator](https://book.pythontips.com/en/latest/decorators.html) specifies that this test
 is applicable to all the phases of consensus layer development. These phases are similar to forks (Istanbul,
-Berlin, London, etc.) in the execution blockchain. If you are interested, [you can see the definition of
-this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L331-L335).
+Berlin, London, etc.) in the execution blockchain.
 
 ```python
 @spec_state_test
 ```
 
-[This decorator](https://github.com/qbzzt/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L232-L234) specifies
-that this test is a state transition test, and that it does not include a transition between different forks.
+This decorator specifies that this test is a state transition test, and that it does not include a transition
+between different forks.
 
 ```python
 def test_empty_block_transition(spec, state):
@@ -162,8 +161,7 @@ find . -name '*.py' -exec grep 'def state_transition_and_sign_block' {} \; -prin
 ```
 
 And you'll find that the function is defined in
-[`eth2spec/test/helpers/state.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/state.py). Looking
-in that file, we see that the second function is:
+`eth2spec/test/helpers/state.py`. Looking in that file, we see that the second function is:
 
 ```python
 def next_slot(spec, state):
@@ -199,8 +197,7 @@ verify this).
 
 It is important to make sure that the system rejects invalid input, so our next step is to deal with cases where the protocol
 is supposed to reject something. To see such a test, look at `test_prev_slot_block_transition` (in the same
-file we used previously,
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py)).
+file we used previously, `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
 
 ```python
 @with_all_phases
@@ -230,8 +227,7 @@ Transition to the new slot, which naturally has a different proposer.
 ```
 
 Specify that the function `transition_unsigned_block` will cause an assertion error.
-You can see this function in
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/block.py),
+You can see this function in `~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`,
 and one of the tests is that the block must be for this slot:
 > ```python
 > assert state.slot == block.slot
