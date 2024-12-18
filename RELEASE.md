@@ -277,11 +277,11 @@ we wait to push these buttons at the same time so their time/date will be approx
 
 > 📝 In order to do this, you must be granted the appropriate access.
 
-Finally, make an annoucement to the Eth R&D server on Discord. This should be posted in the
+Finally, make an announcement to the Eth R&D server on Discord. This should be posted in the
 `#announcements` channel. This will notify client developers of the new release and they will begin
 to incorporate the new reference tests into their client.
 
-Use the following template for your annoucement:
+Use the following template for your announcement:
 
 ```markdown
 Consensus layer specs <version> -- <release-name> -- released!
