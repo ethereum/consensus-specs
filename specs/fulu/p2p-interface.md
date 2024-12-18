@@ -152,14 +152,14 @@ The `MetaData` stored locally by clients is updated with an additional field to 
   seq_number: uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_subnet_count: uint64 # csc
+  custody_group_count: uint64 # cgc
 )
 ```
 
 Where
 
 - `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
-- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
+- `custody_group_count` represents the node's custody group count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
