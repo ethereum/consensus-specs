@@ -5,7 +5,8 @@ from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, c
 
 if __name__ == "__main__":
     fulu_mods = {key: 'eth2spec.test.fulu.networking.test_' + key for key in [
-        'get_custody_columns',
+        'compute_columns_for_custody_group',
+        'get_custody_groups',
     ]}
     all_mods = {
         FULU: fulu_mods
