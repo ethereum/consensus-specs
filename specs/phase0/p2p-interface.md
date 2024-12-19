@@ -127,8 +127,8 @@ This section outlines the specification for the networking stack in Ethereum con
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently),
 we hereby define a profile for basic interoperability.
 
-All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
-The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
+All implementations MUST support the TCP libp2p transport, MAY support the QUIC (UDP) libp2p transport, and MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
+The libp2p TCP and QUIC (UDP) transports support listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
 Clients must support listening on at least one of IPv4 or IPv6.
 Clients that do _not_ have support for listening on IPv4 SHOULD be cognizant of the potential disadvantages in terms of
@@ -963,9 +963,9 @@ The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the
 The ENR MAY contain the following entries:
 
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p TCP listening port.
--  A QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port.
--  A UDP port (`udp` field) representing the local discv5 listening port.
+-  An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening port and/or the corresponding IPv6 port (`tcp6` field).
+-  An IPv4 QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port and/or the corresponding IPv6 port (`quic6` field).
+-  An IPv4 UDP port (`udp` field) representing the local discv5 listening port and/or the corresponding IPv6 port (`udp6` field).
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
