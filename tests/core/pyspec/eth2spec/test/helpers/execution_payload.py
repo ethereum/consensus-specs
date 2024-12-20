@@ -1,6 +1,7 @@
 from eth_hash.auto import keccak
 from hashlib import sha256
 from trie import HexaryTrie
+from random import Random
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
@@ -263,6 +264,41 @@ def compute_el_block_hash_for_block(spec, block):
         spec, block.body.execution_payload, block.parent_root, requests_hash)
 
 
+def build_randomized_execution_payload_header(spec, state, rng=Random(10000)):
+    execution_payload = build_randomized_execution_payload(spec, state)
+    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
+
+    execution_payload_header = spec.ExecutionPayloadHeader(
+        parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
+        fee_recipient=spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
+        state_root=spec.Bytes32(get_random_bytes_list(rng, 32)),
+        receipts_root=spec.Bytes32(get_random_bytes_list(rng, 32)),
+        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+            get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
+        ),
+        prev_randao=spec.Bytes32(get_random_bytes_list(rng, 32)),
+        block_number=rng.randint(0, int(10e10)),
+        gas_limit=rng.randint(0, int(10e10)),
+        gas_used=rng.randint(0, int(10e10)),
+        timestamp=spec.compute_timestamp_at_slot(state, state.slot),
+        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
+            get_random_bytes_list(rng, extra_data_length)
+        ),
+        base_fee_per_gas=rng.randint(0, int(10e10)),
+        block_hash=compute_el_block_hash(spec, execution_payload, state),
+        transactions_root=spec.hash_tree_root(execution_payload.transactions),
+    )
+
+    if is_post_capella(spec):
+        execution_payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+
+    if is_post_deneb(spec):
+        execution_payload_header.blob_gas_used = rng.randint(0, int(10e10))
+        execution_payload_header.excess_blob_gas = rng.randint(0, int(10e10))
+
+    return execution_payload_header
+
+
 def build_empty_post_eip7732_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
@@ -330,6 +366,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 
 
 def build_randomized_execution_payload(spec, state, rng):
+    from eth2spec.test.helpers.random import exit_random_validators
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
     execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
@@ -351,6 +388,22 @@ def build_randomized_execution_payload(spec, state, rng):
         get_random_tx(rng)
         for _ in range(num_transactions)
     ]
+
+    if is_post_capella(spec):
+        current_epoch = spec.get_current_epoch(state)
+        exit_random_validators(
+            spec,
+            state,
+            rng,
+            exit_epoch=current_epoch,
+            withdrawable_epoch=current_epoch,
+            from_epoch=current_epoch
+        )
+        execution_payload.withdrawals = get_expected_withdrawals(spec, state)
+
+    if is_post_deneb(spec):
+        execution_payload.blob_gas_used = rng.randint(0, int(10e10))
+        execution_payload.excess_blob_gas = rng.randint(0, int(10e10))
 
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
