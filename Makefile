@@ -16,7 +16,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 
 # A list of fake targets.
 .PHONY: \
-	check_toc     \
 	clean         \
 	coverage      \
 	detect_errors \
@@ -39,7 +38,6 @@ NORM = $(shell tput sgr0)
 
 # Print target descriptions.
 help:
-	@echo "make $(BOLD)check_toc$(NORM)     -- check table of contents"
 	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
 	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
 	@echo "make $(BOLD)detect_errors$(NORM) -- detect generator errors"
@@ -85,7 +83,7 @@ $(ETH2SPEC): setup.py | $(VENV)
 
 # Force rebuild/install the eth2spec package.
 eth2spec:
-	$(MAKE) --always-make $(ETH2SPEC)
+	@$(MAKE) --always-make $(ETH2SPEC)
 
 # Create the pyspec for all phases.
 pyspec: $(VENV) setup.py
@@ -99,6 +97,8 @@ pyspec: $(VENV) setup.py
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
+# Note: for debugging output to show, print to stderr.
+#
 # To run a specific test, append k=<test>, eg:
 #   make test k=test_verify_kzg_proof
 # To run tests for a specific fork, append fork=<fork>, eg:
@@ -117,6 +117,7 @@ test: $(ETH2SPEC) pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
 		-n auto \
+		--capture=no \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
@@ -193,10 +194,6 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-# Check all files and error if any ToC were modified.
-check_toc: $(MARKDOWN_FILES:=.toc)
-	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
-
 # Generate ToC sections & save copy of original if modified.
 %.toc:
 	@cp $* $*.tmp; \
@@ -209,8 +206,12 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 		echo "\033[1;34m See $*.tmp\033[0m"; \
 	fi
 
+# Check all files and error if any ToC were modified.
+_check_toc: $(MARKDOWN_FILES:=.toc)
+	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
+
 # Check for mistakes.
-lint: $(ETH2SPEC) pyspec check_toc
+lint: $(ETH2SPEC) pyspec _check_toc
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
@@ -235,17 +236,19 @@ gen_list:
 	done
 
 # Run one generator.
+# This will forcibly rebuild eth2spec just in case.
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
-gen_%: $(ETH2SPEC) pyspec
+gen_%: eth2spec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_MODCHECK)
 
 # Run all generators then check for errors.
-gen_all: $(GENERATOR_TARGETS) detect_errors
+gen_all: $(GENERATOR_TARGETS)
+	@$(MAKE) detect_errors
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
