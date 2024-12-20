@@ -111,7 +111,7 @@ Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
 The network attestation aggregates contain only the assigned committee attestations.
 Committee attestations received by the block proposer from the committee aggregators with different `committee_index` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
-The proposer should run the following function to construct an on chain final aggregate form a list of committee attestations with equal `AttestationData`:
+The proposer should run the following function to construct an on-chain final aggregate from a list of committee attestations with equal `AttestationData`:
 
 ```python
 def compute_on_chain_aggregate(committee_attestations: Sequence[CommitteeAttestation]) -> Attestation:
@@ -221,30 +221,4 @@ with updated field assignments:
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_index = committee_index`, where `committee_index` is the `committee_index` in each individual attestation.
-
-#### Aggregate signature
-
-Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
-
-```python
-def get_aggregate_signature(attestations: Sequence[CommitteeAttestation]) -> BLSSignature:
-    signatures = [attestation.signature for attestation in attestations]
-    return bls.Aggregate(signatures)
-```
-
-### Broadcast aggregate
-
-`get_aggregate_and_proof` is modified to accept `CommitteeAttestation` for `aggregate`.
-
-```python
-def get_aggregate_and_proof(state: BeaconState,
-                            aggregator_index: ValidatorIndex,
-                            committee_attestation: CommitteeAttestation,
-                            privkey: int) -> AggregateAndProof:
-    return AggregateAndProof(
-        aggregator_index=aggregator_index,
-        aggregate=committee_attestation,
-        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
-    )
-```
+- Set `attestation.committee_index` to the index associated with the validator's committee.
