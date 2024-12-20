@@ -120,7 +120,7 @@ def prepare_pending_withdrawal(spec, state, validator_index,
     )
 
     withdrawal = spec.PendingPartialWithdrawal(
-        index=validator_index,
+        validator_index=validator_index,
         amount=amount,
         withdrawable_epoch=withdrawable_epoch,
     )
@@ -238,7 +238,7 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
         assert len(pending_withdrawal_requests) <= len(execution_payload.withdrawals)
         for index, request in enumerate(pending_withdrawal_requests):
             withdrawal = execution_payload.withdrawals[index]
-            assert withdrawal.validator_index == request.index
+            assert withdrawal.validator_index == request.validator_index
             assert withdrawal.amount == request.amount
 
     return expected_withdrawals
