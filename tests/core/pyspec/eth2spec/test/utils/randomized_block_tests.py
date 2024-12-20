@@ -87,7 +87,6 @@ def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fractio
                                                stats,
                                                exit_fraction=exit_fraction,
                                                slash_fraction=slash_fraction)
-    # TODO: randomize withdrawals
     return scenario_state
 
 
@@ -97,7 +96,6 @@ def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=
                                              stats,
                                              exit_fraction=exit_fraction,
                                              slash_fraction=slash_fraction)
-    # TODO: randomize execution payload
     return scenario_state
 
 
