@@ -124,12 +124,12 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ```python
 class Validator(sharding.Validator):
-    # next_custody_secret_to_reveal is initialised to the custody period
+    # next_custody_secret_to_reveal is initialized to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
     # TODO: The max_reveal_lateness doesn't really make sense anymore.
-    # So how do we incentivise early custody key reveals now?
+    # So how do we incentivize early custody key reveals now?
     all_custody_secrets_revealed_epoch: Epoch  # to be initialized to FAR_FUTURE_EPOCH
 ```
 
@@ -446,7 +446,7 @@ def process_chunk_challenge_response(state: BeaconState,
     challenge = matching_challenges[0]
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
-    # Verify the chunk matches the crosslink data root
+    # Verify the chunk matches the cross link data root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
@@ -619,7 +619,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         for attester_index in attesters:
             if attester_index != custody_slashing.malefactor_index:
                 increase_balance(state, attester_index, whistleblower_reward)
-        # No special whisteblower reward: it is expected to be an attester. Others are free to slash too however.
+        # No special whistleblower reward: it is expected to be an attester. Others are free to slash too however.
     else:
         # The claim was false, the custody bit was correct. Slash the whistleblower that induced this work.
         slash_validator(state, custody_slashing.whistleblower_index)
