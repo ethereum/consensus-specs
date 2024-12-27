@@ -25,7 +25,6 @@
     - [`BeaconBlockBody`](#beaconblockbody)
   - [Deposits](#deposits)
   - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -55,7 +54,7 @@ This document details the beacon chain additions and changes of to support the W
 | `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
 | `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step              |
 | `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
-| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
+| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of an opening proof                                |
 
 ## Configuration
 
@@ -96,7 +95,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 | --------------------- | ------------------------------------------------------------------------------- |
 | `BLS_G1_GENERATOR`    | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
 | `BLS_MODULUS`         | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
-| `CURDLEPROOFS_CRS`    | TBD | 
+| `CURDLEPROOFS_CRS`    | TBD |
 
 ### Curdleproofs and opening proofs
 
@@ -423,7 +422,7 @@ def add_validator_to_registry(state: BeaconState,
     # [New in Whisk]
     k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators) - 1))
     state.whisk_trackers.append(get_initial_tracker(k))
-    state.whisk_k_commitments.append(get_k_commitment(k)) 
+    state.whisk_k_commitments.append(get_k_commitment(k))
 ```
 
 ### `get_beacon_proposer_index`
@@ -435,26 +434,4 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
-```
-
-## Testing
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified purely for Whisk testing.
-
-```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    state_capella = capella.initialize_beacon_state_from_eth1(
-        eth1_block_hash,
-        eth1_timestamp,
-        deposits,
-        execution_payload_header,
-    )
-    state = upgrade_to_whisk(state_capella)
-    state.fork.previous_version = WHISK_FORK_VERSION
-    state.fork.current_version = WHISK_FORK_VERSION
-    return state
 ```

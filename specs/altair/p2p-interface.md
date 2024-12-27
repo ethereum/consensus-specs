@@ -1,18 +1,12 @@
 # Altair -- Networking
 
-This document contains the networking specification for Altair.
-This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "Phase 0 document" hereafter.
-Readers should understand the Phase 0 document and use it as a basis to understand the changes outlined in this document.
-
-Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery domain. Some Phase 0 features will be deprecated, but not removed immediately.
-
-
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -38,6 +32,14 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Altair.
+This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "Phase 0 document" hereafter.
+Readers should understand the Phase 0 document and use it as a basis to understand the changes outlined in this document.
+
+Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
 
@@ -140,7 +142,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
 - _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_sync_committee_aggregator(contribution_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is in the declared subcommittee of the current sync committee --
   i.e. `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
-- _[IGNORE]_ The block being signed (`contribution_and_proof.contribution.beacon_block_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sync committee contributions for processing once block is received)
+- _[IGNORE]_ The block being signed (`contribution_and_proof.contribution.beacon_block_root`) has been seen (via gossip or non-gossip sources) (a client MAY queue sync committee contributions for processing once block is received)
 - _[REJECT]_ The block being signed (`contribution_and_proof.contribution.beacon_block_root`) passes validation.
 - _[IGNORE]_ A valid sync committee contribution with equal `slot`, `beacon_block_root` and `subcommittee_index` whose `aggregation_bits` is non-strict superset has _not_ already been seen.
 - _[IGNORE]_ The sync committee contribution is the first valid contribution received for the aggregator with index `contribution_and_proof.aggregator_index`
@@ -163,7 +165,7 @@ The following validations MUST pass before forwarding the `sync_committee_messag
 - _[IGNORE]_ The message's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `sync_committee_message.slot == current_slot`.
 - _[REJECT]_ The `subnet_id` is valid for the given validator, i.e. `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync committee along with the correct subcommittee.
-- _[IGNORE]_ The block being signed (`sync_committee_message.beacon_block_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sync committee messages for processing once block is retrieved).
+- _[IGNORE]_ The block being signed (`sync_committee_message.beacon_block_root`) has been seen (via gossip or non-gossip sources) (a client MAY queue sync committee messages for processing once block is retrieved).
 - _[REJECT]_ The block being signed (`sync_committee_message.beacon_block_root`) passes validation.
 - _[IGNORE]_ There has been no other valid sync committee message for the declared `slot` for the validator referenced by `sync_committee_message.validator_index`, unless the block being signed (`beacon_block_root`) matches the local head as selected by fork choice, and the earlier valid sync committee message does not match
   (this requires maintaining a cache of size `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that can be flushed after each slot).
