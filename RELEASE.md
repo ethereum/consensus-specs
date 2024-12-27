@@ -29,11 +29,13 @@ This document describes the necessary steps to produce a consensus-specs release
 
 ## Open a Release Pull Request
 
-> 📝 Try to do this at least a few days prior to the release.
+> [!NOTE]
+> Try to do this at least a few days prior to the release.
 
 First, create a PR which merges `dev` into `master`.
 
-> 💡 Click on the following link to draft a PR:
+> [!TIP]
+> Click on the following link to draft a PR:
 > * https://github.com/ethereum/consensus-specs/compare/dev...master?expand=1
 
 Title this PR "Release &lt;version&gt;" (_e.g._, "Release v1.5.0-alpha.10").
@@ -54,7 +56,8 @@ should review these PRs soon.
 
 Next, update the `VERSION.txt` file which contains the eth2spec version.
 
-> 💡 Click on the following link to open the GitHub editor for this file:
+> [!TIP]
+> Click on the following link to open the GitHub editor for this file:
 > * https://github.com/ethereum/consensus-specs/edit/dev/tests/core/pyspec/eth2spec/VERSION.txt
 
 Next, change the version to the appropriate value and click the "Commit changes..." button.
@@ -68,7 +71,8 @@ Next, click the "Propose changes" button and proceed to make the PR.
 Generally, names are based on some theme. For example, for Electra, releases are named after
 Electric-type Pokemon.
 
-> 📝 Please ensure that the name you choose does not have an unwanted meaning in other languages;
+> [!NOTE]
+> Please ensure that the name you choose does not have an unwanted meaning in other languages;
 use [WordSafety.com](http://wordsafety.com) to check this.
 
 ## Generate Reference Tests
@@ -87,7 +91,10 @@ git lfs install
 
 Next, clone the consensus-spec-tests repository. You only need latest commit.
 
-> 📝 A full checkout (without `--depth=1`) could take a very long time.
+> [!NOTE]
+> You only need the latest commit in order to make the release. Use `--depth=1`
+to do this. Please note that even this may take some time to checkout, as the
+combined size of the test vectors is multiple gigabytes.
 
 ```bash
 git clone https://github.com/ethereum/consensus-spec-tests.git --depth=1
@@ -136,7 +143,8 @@ Next, check for errors by searching for "ERROR" in test logfile.
 grep "ERROR" ../consensustestgen.log
 ```
 
-> 📝 If there is an error: (1) determine what the issue is, (2) create/merge a PR to fix the issue,
+> [!WARNING]
+> If there is an error: (1) determine what the issue is, (2) create/merge a PR to fix the issue,
 and (3) restart the release process.
 
 Next, change directory to the consensus-spec-tests repository:
@@ -163,7 +171,8 @@ git add .
 
 Next, commit the changes.
 
-> 📝 Commits to consensus-spec-tests must be signed. Please refer to [Signing
+> [!IMPORTANT]
+> Commits to consensus-spec-tests must be signed. Please refer to [Signing
 Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
 for instructions on setting this up.
 
@@ -197,7 +206,8 @@ tar -czvf mainnet.tar.gz tests/mainnet
 
 First, begin to draft a new consensus-spec-tests release.
 
-> 💡 Click on the following link to draft a new release:
+> [!TIP]
+> Click on the following link to draft a new release:
 > * https://github.com/ethereum/consensus-spec-tests/releases/new
 
 Next, click the "Choose a tag" button to create a new tag. Type in the release version (_e.g._,
@@ -215,19 +225,22 @@ Detailed changelog can be found in [<version> specs release](https://github.com/
 
 Next, upload the tarballs from the [Bundle Reference Tests]() section to the release.
 
-> 📝 This is expected to take a while if your upload speed is below average. The tarballs are at
-least 1 GiB in total. There is a progress bar shown for each artifact.
+> [!NOTE]
+> This is expected to take a while if your upload speed is below average. The tarballs are at
+least 1 gigabyte in total. There is a progress bar shown for each artifact.
 
 Next, if this is an alpha/beta release, please select the "Set as a pre-release" checkbox, otherwise
 select the "Set as the latest release" checkbox.
 
-> 🙅 Do no click the release button just yet.
+> [!IMPORTANT]
+> Do no click the release button just yet.
 
 ## Create Specs Release
 
 First, begin to draft a new consensus-specs release.
 
-> 💡 Click on the following link to draft a new release:
+> [!TIP]
+> Click on the following link to draft a new release:
 > * https://github.com/ethereum/consensus-specs/releases/new
 
 Next, click the "Choose a tag" button to create a new tag. Type in the release version (_e.g._,
@@ -262,7 +275,8 @@ _PR showing full diff can be found here: <this-PR-number>_
 If this is an alpha/beta release, please select the "Set as a pre-release" checkbox, otherwise
 select the "Set as the latest release" checkbox.
 
-> 🙅 Do no click the release button just yet.
+> [!IMPORTANT]
+> Do no click the release button just yet.
 
 ## Click the Release Buttons
 
@@ -270,12 +284,14 @@ select the "Set as the latest release" checkbox.
 
 2. Then, click the release button for consensus-spec-tests.
 
-> 📝 It should be done in this order because the tests release references the specs release. Also,
+> [!NOTE]
+> It should be done in this order because the tests release references the specs release. Also,
 we wait to push these buttons at the same time so their time/date will be approximately the same.
 
 ## Make an Announcement
 
-> 📝 In order to do this, you must be granted the appropriate access.
+> [!IMPORTANT]
+> In order to do this, you must be granted the appropriate access.
 
 Finally, make an announcement to the Eth R&D server on Discord. This should be posted in the
 `#announcements` channel. This will notify client developers of the new release and they will begin
