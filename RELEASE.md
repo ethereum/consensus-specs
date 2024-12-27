@@ -89,12 +89,12 @@ git lfs install
 
 ### Prepare Tests Repository
 
-Next, clone the consensus-spec-tests repository. You only need latest commit.
+Next, clone the consensus-spec-tests repository.
 
 > [!NOTE]
-> You only need the latest commit in order to make the release. Use `--depth=1`
-to do this. Please note that even this may take some time to checkout, as the
-combined size of the test vectors is multiple gigabytes.
+> Only the single latest commit is needed to make the release. Use `--depth=1` to do this. Please
+> note that even this may take some time to checkout, as the combined size of the test vectors is
+> multiple gigabytes.
 
 ```bash
 git clone https://github.com/ethereum/consensus-spec-tests.git --depth=1
@@ -144,8 +144,8 @@ grep "ERROR" ../consensustestgen.log
 ```
 
 > [!WARNING]
-> If there is an error: (1) determine what the issue is, (2) create/merge a PR to fix the issue,
-and (3) restart the release process.
+> If there is an error: (1) determine what the issue is, (2) create/merge a PR to fix the issue, and
+> (3) restart the release process.
 
 Next, change directory to the consensus-spec-tests repository:
 
@@ -173,8 +173,8 @@ Next, commit the changes.
 
 > [!IMPORTANT]
 > Commits to consensus-spec-tests must be signed. Please refer to [Signing
-Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
-for instructions on setting this up.
+> Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
+> for instructions on setting this up.
 
 ```bash
 git commit --gpg-sign --message "release <version> tests"
@@ -227,7 +227,7 @@ Next, upload the tarballs from the [Bundle Reference Tests]() section to the rel
 
 > [!NOTE]
 > This is expected to take a while if your upload speed is below average. The tarballs are at
-least 1 gigabyte in total. There is a progress bar shown for each artifact.
+> least 1 gigabyte in total. There is a progress bar shown for each artifact.
 
 Next, if this is an alpha/beta release, please select the "Set as a pre-release" checkbox, otherwise
 select the "Set as the latest release" checkbox.
@@ -286,7 +286,7 @@ select the "Set as the latest release" checkbox.
 
 > [!NOTE]
 > It should be done in this order because the tests release references the specs release. Also,
-we wait to push these buttons at the same time so their time/date will be approximately the same.
+> we wait to push these buttons at the same time so their time/date will be approximately the same.
 
 ## Make an Announcement
 
