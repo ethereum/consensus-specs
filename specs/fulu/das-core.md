@@ -105,19 +105,20 @@ class MatrixEntry(Container):
 def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
-    custody_groups: List[uint64] = []
     current_id = uint256(node_id)
+    custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
-            bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8])
             % NUMBER_OF_CUSTODY_GROUPS
         )
         if custody_group not in custody_groups:
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = NodeID(0)
-        current_id += 1
+            current_id = uint256(0)
+        else:
+            current_id += 1
 
     assert len(custody_groups) == len(set(custody_groups))
     return sorted(custody_groups)
