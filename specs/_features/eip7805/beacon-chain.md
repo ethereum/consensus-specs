@@ -42,7 +42,7 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 | Name | Value |
 | - | - |
-| `DOMAIN_IL_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP7805) |
+| `DOMAIN_IL_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP-7805) |
 
 ### Inclusion List Committee
 
@@ -108,7 +108,7 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[Valid
     indices = get_active_validator_indices(state, epoch)
     start = (slot % SLOTS_PER_EPOCH) * IL_COMMITTEE_SIZE
     end = start + IL_COMMITTEE_SIZE
-    return [indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)] for i in range(start, end)]
 ```
 
 ## Beacon chain state transition function
