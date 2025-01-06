@@ -308,7 +308,15 @@ def test_apply_pending_deposit_top_up__zero_balance(spec, state):
 def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
-    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=False)
+
+    # ensure the deposit signature is incorrect
+    assert not spec.is_valid_deposit_signature(
+        pending_deposit.pubkey,
+        pending_deposit.withdrawal_credentials,
+        pending_deposit.amount,
+        pending_deposit.signature
+    )
 
     # invalid signatures, in top-ups, are allowed!
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
