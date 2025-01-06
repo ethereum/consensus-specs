@@ -1,4 +1,4 @@
-# EIP-7594 -- Fork Choice
+# Fulu -- Fork Choice
 
 ## Table of contents
 <!-- TOC -->
@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying EIP-7594.
+This is the modification of the fork choice accompanying Fulu.
 
 ## Helpers
 
@@ -25,10 +25,10 @@ This is the modification of the fork choice accompanying EIP-7594.
 ```python
 def is_data_available(beacon_block_root: Root) -> bool:
     # `retrieve_column_sidecars` is implementation and context dependent, replacing
-    # `retrieve_blobs_and_proofs`. For the given block root, it returns all column 
-    # sidecars to sample, or raises an exception if they are not available. 
-    # The p2p network does not guarantee sidecar retrieval outside of 
-    # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.  
+    # `retrieve_blobs_and_proofs`. For the given block root, it returns all column
+    # sidecars to sample, or raises an exception if they are not available.
+    # The p2p network does not guarantee sidecar retrieval outside of
+    # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
     return all(
         verify_data_column_sidecar(column_sidecar)
@@ -67,7 +67,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
-    # [Modified in EIP7594]
+    # [Modified in Fulu:EIP7594]
     assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state
