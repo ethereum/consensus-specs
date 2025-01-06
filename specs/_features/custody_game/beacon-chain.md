@@ -619,7 +619,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         for attester_index in attesters:
             if attester_index != custody_slashing.malefactor_index:
                 increase_balance(state, attester_index, whistleblower_reward)
-        # No special whisteblower reward: it is expected to be an attester. Others are free to slash too however.
+        # No special whistleblower reward: it is expected to be an attester. Others are free to slash too however.
     else:
         # The claim was false, the custody bit was correct. Slash the whistleblower that induced this work.
         slash_validator(state, custody_slashing.whistleblower_index)

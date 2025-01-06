@@ -24,6 +24,8 @@
     - [Deposits](#deposits)
     - [Execution payload](#execution-payload)
     - [Execution Requests](#execution-requests)
+  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+    - [Sidecar](#sidecar)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
@@ -239,6 +241,17 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         withdrawals=withdrawals,
         consolidations=consolidations,
     )
+```
+
+### Constructing the `BlobSidecar`s
+
+#### Sidecar
+
+*[Modified in Electra:EIP7691]*
+
+```python
+def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> SubnetID:
+    return SubnetID(blob_index % BLOB_SIDECAR_SUBNET_COUNT_ELECTRA)
 ```
 
 ## Attesting
