@@ -29,8 +29,6 @@
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BlobSidecarsByRoot v3](#blobsidecarsbyroot-v3)
-      - [BlobSidecarsByRange v3](#blobsidecarsbyrange-v3)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [GetMetaData v3](#getmetadata-v3)
@@ -64,7 +62,6 @@ The specification of these changes continues in the same format as the network s
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                                 | The number of data column sidecar subnets used in the gossipsub protocol  |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS`        | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                     | The minimum epoch range over which a node must serve data column sidecars |
-| `MAX_REQUEST_BLOB_SIDECARS_FULU`               | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_FULU` | Maximum number of blob sidecars in a single request                       |
 
 ### Containers
 
@@ -210,75 +207,6 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 ### The Req/Resp domain
 
 #### Messages
-
-##### BlobSidecarsByRoot v3
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/3/`
-
-*[Modified in Fulu:EIP7594]*
-
-The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[1]: # (eth2spec: skip)
-
-| `fork_version`      | Chunk SSZ type     |
-|---------------------|--------------------|
-| `FULU_FORK_VERSION` | `fulu.BlobSidecar` |
-
-Request Content:
-
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_FULU]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_FULU]
-)
-```
-
-*Updated validation*
-
-No more than `MAX_REQUEST_BLOB_SIDECARS_FULU` may be requested at a time.
-
-##### BlobSidecarsByRange v3
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/3/`
-
-*[Modified in Fulu:EIP7594]*
-
-The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[1]: # (eth2spec: skip)
-
-| `fork_version`      | Chunk SSZ type     |
-|---------------------|--------------------|
-| `FULU_FORK_VERSION` | `fulu.BlobSidecar` |
-
-Request Content:
-
-```
-(
-  start_slot: Slot
-  count: uint64
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_FULU]
-)
-```
-
-*Updated validation*
-
-Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_FULU` sidecars.
 
 ##### DataColumnSidecarsByRoot v1
 
