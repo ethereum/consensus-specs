@@ -3,7 +3,7 @@ name: Publish docs
 on:
   push:
     branches:
-      - master 
+      - master
 permissions:
   contents: write
 jobs:
@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build docs
-        run: make copy_docs
+        run: make _copy_docs
       - uses: actions/setup-python@v4
         with:
           python-version: 3.x

@@ -16,6 +16,7 @@ from eth2spec.test.helpers.multi_operations import (
     get_random_bls_to_execution_changes,
     get_random_sync_aggregate,
     prepare_state_and_get_random_deposits,
+    get_random_execution_requests,
 )
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -250,7 +251,7 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
 def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    # TODO: add MAX_BLOBS_PER_BLOCK_EIP7594 at fulu
+    # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng)
     block.body.execution_payload.transactions.append(opaque_tx)
@@ -262,6 +263,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
 
 def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
+    block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
 
     return block
 

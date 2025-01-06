@@ -1,4 +1,4 @@
-# EIP-7594 -- Polynomial Commitments Sampling
+# Fulu -- Polynomial Commitments Sampling
 
 ## Table of contents
 
@@ -24,7 +24,6 @@
   - [Polynomials in coefficient form](#polynomials-in-coefficient-form)
     - [`polynomial_eval_to_coeff`](#polynomial_eval_to_coeff)
     - [`add_polynomialcoeff`](#add_polynomialcoeff)
-    - [`neg_polynomialcoeff`](#neg_polynomialcoeff)
     - [`multiply_polynomialcoeff`](#multiply_polynomialcoeff)
     - [`divide_polynomialcoeff`](#divide_polynomialcoeff)
     - [`interpolate_polynomialcoeff`](#interpolate_polynomialcoeff)
@@ -250,16 +249,6 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     a, b = (a, b) if len(a) >= len(b) else (b, a)
     length_a, length_b = len(a), len(b)
     return PolynomialCoeff([a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)])
-```
-
-#### `neg_polynomialcoeff`
-
-```python
-def neg_polynomialcoeff(a: PolynomialCoeff) -> PolynomialCoeff:
-    """
-    Negative of coefficient form polynomial ``a``.
-    """
-    return PolynomialCoeff([-x for x in a])
 ```
 
 #### `multiply_polynomialcoeff`
