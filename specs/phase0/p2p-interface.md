@@ -338,7 +338,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 - _[REJECT]_ The block is from a higher slot than its parent.
@@ -387,7 +387,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
 - _[REJECT]_ The signature of `aggregate` is valid.
 - _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The aggregate attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
@@ -462,7 +462,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.

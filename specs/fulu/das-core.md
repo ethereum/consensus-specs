@@ -105,19 +105,20 @@ class MatrixEntry(Container):
 def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
-    custody_groups: List[uint64] = []
     current_id = uint256(node_id)
+    custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
-            bytes_to_uint64(hash(uint_to_bytes(uint256(current_id)))[0:8])
+            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8])
             % NUMBER_OF_CUSTODY_GROUPS
         )
         if custody_group not in custody_groups:
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = NodeID(0)
-        current_id += 1
+            current_id = uint256(0)
+        else:
+            current_id += 1
 
     assert len(custody_groups) == len(set(custody_groups))
     return sorted(custody_groups)
@@ -237,7 +238,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 
 ## Custody sampling
 
-At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count)` total custody groups. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
+At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count * columns_per_group)` total columns, where `columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS`. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
 
 ## Extended data
 

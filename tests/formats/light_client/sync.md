@@ -47,8 +47,8 @@ should be executed with the specified parameters:
 
 ```yaml
 {
-    current_slot: int                  -- integer, decimal
-    checks: {<store_attibute>: value}  -- the assertions.
+    current_slot: int                   -- integer, decimal
+    checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
 
@@ -60,11 +60,11 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 
 ```yaml
 {
-    update_fork_digest: string         -- encoded `ForkDigest`-context of `update`
-    update: string                     -- name of the `*.ssz_snappy` file to load
-                                          as a `LightClientUpdate` object
-    current_slot: int                  -- integer, decimal
-    checks: {<store_attibute>: value}  -- the assertions.
+    update_fork_digest: string          -- encoded `ForkDigest`-context of `update`
+    update: string                      -- name of the `*.ssz_snappy` file to load
+                                           as a `LightClientUpdate` object
+    current_slot: int                   -- integer, decimal
+    checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
 
@@ -78,8 +78,8 @@ The `store` should be upgraded to reflect the new `store_fork_digest`:
 
 ```yaml
 {
-    store_fork_digest: string          -- encoded `ForkDigest`-context of `store`
-    checks: {<store_attibute>: value}  -- the assertions.
+    store_fork_digest: string           -- encoded `ForkDigest`-context of `store`
+    checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
 

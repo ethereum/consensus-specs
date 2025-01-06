@@ -152,14 +152,14 @@ The `MetaData` stored locally by clients is updated with an additional field to 
   seq_number: uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_subnet_count: uint64 # csc
+  custody_group_count: uint64 # cgc
 )
 ```
 
 Where
 
 - `seq_number`, `attnets`, and `syncnets` have the same meaning defined in the Altair document.
-- `custody_subnet_count` represents the node's custody subnet count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
+- `custody_group_count` represents the node's custody group count. Clients MAY reject peers with a value less than `CUSTODY_REQUIREMENT`.
 
 ### The gossip domain: gossipsub
 
@@ -174,7 +174,7 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_FULU`
+  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_FULU`
 
 ##### Blob subnets
 
@@ -195,7 +195,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
 - _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via both gossip and non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
+- _[IGNORE]_ The sidecar's block's parent (defined by `block_header.parent_root`) has been seen (via gossip or non-gossip sources) (a client MAY queue sidecars for processing once the parent block is retrieved).
 - _[REJECT]_ The sidecar's block's parent (defined by `block_header.parent_root`) passes validation.
 - _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent (defined by `block_header.parent_root`).
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's block -- i.e. `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
