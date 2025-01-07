@@ -17,6 +17,8 @@
   - [Configuration](#configuration)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
+    - [`max_compressed_len`](#max_compressed_len)
+    - [`max_message_size`](#max_message_size)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -236,15 +238,21 @@ and will in most cases be out of sync with the ENR sequence number.
 
 Maximum message sizes are derived from the maximum payload size that the network can carry according to the following functions:
 
-```python
-def max_compressed_len(n):
-  # Worst-case compressed length for a given payload of size n when using snappy
-  # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-  return int(32 + n + n / 6)
+#### `max_compressed_len`
 
-def max_message_size():
-  # Allow 1024 bytes for framing and encoding overhead but at least 1MB in case MAX_PAYLOAD_SIZE is small.
-  return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024*1024)
+```python
+def max_compressed_len(n: uint64) -> uint64:
+    # Worst-case compressed length for a given payload of size n when using snappy
+    # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
+    return uint64(32 + n + n / 6)
+```
+
+#### `max_message_size`
+
+```python
+def max_message_size() -> uint64:
+    # Allow 1024 bytes for framing and encoding overhead but at least 1MiB in case MAX_PAYLOAD_SIZE is small.
+    return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024 * 1024)
 ```
 
 ### The gossip domain: gossipsub
