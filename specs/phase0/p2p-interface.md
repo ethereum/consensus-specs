@@ -1721,6 +1721,8 @@ To derive "encoded size limits" from desired application sizes, we take into acc
 
 In the case of gossipsub, the protocol supports sending multiple application payloads as well as mixing application data with control messages in each gossipsub frame. The limit is set such that at least one max-sized application-level message together with a small amount (1 KiB) of gossipsub overhead is allowed. Implementations are free to pack multiple smaller application messages into a single gossipsub frame, and/or combine it with control messages as they see fit.
 
+The limit is set on the uncompressed payload size in particular to protect against decompression bombs.
+
 #### Why is there a limit on message sizes at all?
 
 The message size limit protects against several forms of DoS and network-based amplification attacks and provides upper bounds for resource (network, memory) usage in the client based on protocol requirements to decode, buffer, cache, store and re-transmit messages which in turn translate into performance and protection tradeoffs, ensuring capacity to handle worst cases during recovery from network instability.
