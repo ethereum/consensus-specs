@@ -199,7 +199,7 @@ This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `MAX_PAYLOAD_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages / RPC chunks |
+| `MAX_PAYLOAD_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
@@ -294,7 +294,7 @@ This defines both the type of data being sent on the topic and how the data fiel
 - `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire.
   See the [Encodings](#Encodings) section for further details.
 
-Clients MUST reject messages with unknown topic.
+Clients MUST reject messages with an unknown topic.
 
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available.
 Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
