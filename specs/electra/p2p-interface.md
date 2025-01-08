@@ -19,8 +19,8 @@
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
-      - [BlobSidecarsByRange v2](#blobsidecarsbyrange-v2)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -110,9 +110,9 @@ The following validations are removed:
 
 #### Messages
 
-##### BlobSidecarsByRoot v2
+##### BlobSidecarsByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 *[Modified in Electra:EIP7691]*
 
@@ -136,9 +136,9 @@ Response Content:
 
 No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
 
-##### BlobSidecarsByRange v2
+##### BlobSidecarsByRange v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
 *[Modified in Electra:EIP7691]*
 
