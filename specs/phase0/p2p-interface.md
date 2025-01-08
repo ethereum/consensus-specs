@@ -242,7 +242,7 @@ Maximum message sizes are derived from the maximum payload size that the network
 
 ```python
 def max_compressed_len(n: uint64) -> uint64:
-    # Worst-case compressed length for a given payload of size n when using snappy
+    # Worst-case compressed length for a given payload of size n when using snappy:
     # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
     return uint64(32 + n + n / 6)
 ```
@@ -534,9 +534,9 @@ Size limits are placed both on the [`RPCMsg`](https://github.com/libp2p/specs/bl
 
 Clients MUST reject and MUST NOT emit or propagate messages whose size exceed the following limits:
 
-* the size of the encoded `RPCMsg`, including control messages, framing, topics etc, must not exceed `max_message_size()`
-* the size of the compressed payload in the `Message.data` field must not exceed `max_compressed_len(MAX_PAYLOAD_SIZE)`.
-* the size of the uncompressed payload must not exceed `MAX_PAYLOAD_SIZE` or the [type-specific SSZ bound](#what-are-ssz-type-size-bounds), whichever is lower.
+* The size of the encoded `RPCMsg` (including control messages, framing, topics, etc) must not exceed `max_message_size()`.
+* The size of the compressed payload in the `Message.data` field must not exceed `max_compressed_len(MAX_PAYLOAD_SIZE)`.
+* The size of the uncompressed payload must not exceed `MAX_PAYLOAD_SIZE` or the [type-specific SSZ bound](#what-are-ssz-type-size-bounds), whichever is lower.
 
 ### The Req/Resp domain
 
@@ -1715,19 +1715,17 @@ It is advisable to derive these lengths from the SSZ type definitions in use, to
 
 #### Why is the message size defined in terms of application payload?
 
-When transmitting messages over gossipsub and / or req/resp, we want to ensure that the same payload sizes are supported no matter the underlying transport, decoupling the consensus layer from libp2p-induced overhead and the particular transmission strategy.
+When transmitting messages over gossipsub and/or the req/resp domain, we want to ensure that the same payload sizes are supported regardless of the underlying transport, decoupling the consensus layer from libp2p-induced overhead and the particular transmission strategy.
 
-To derive "encoded size limits" from desired application sizes we take into account snappy compression and framing overhead.
+To derive "encoded size limits" from desired application sizes, we take into account snappy compression and framing overhead.
 
-In the case of gossipsub, the protocol supports sending multiple application payloads as well as mixing application data with control messages in each gossipsub frame - the limit is set such that at least one max-sized application-level message together with a small amount (1kb) of gossipsub overhead is allowed - implementations are free to pack multiple smaller application messages into a single gossipsub frame, and / or combine it with control messages as they see fit.
-
-The limit is set on the uncompressed payload size in particular to protect against decompression bombs - although
+In the case of gossipsub, the protocol supports sending multiple application payloads as well as mixing application data with control messages in each gossipsub frame. The limit is set such that at least one max-sized application-level message together with a small amount (1 KiB) of gossipsub overhead is allowed. Implementations are free to pack multiple smaller application messages into a single gossipsub frame, and/or combine it with control messages as they see fit.
 
 #### Why is there a limit on message sizes at all?
 
-The message size limit protects against several forms of DoS and network-based amplification attacks and provide upper bounds for resource (network, memory) usage in the client based on protocol requirements to decode, buffer, cache, store and re-transmit messages which in turn translate into performance and protection tradeoffs, ensuring capacity to handle worst cases during recovery from network instability.
+The message size limit protects against several forms of DoS and network-based amplification attacks and provides upper bounds for resource (network, memory) usage in the client based on protocol requirements to decode, buffer, cache, store and re-transmit messages which in turn translate into performance and protection tradeoffs, ensuring capacity to handle worst cases during recovery from network instability.
 
-In particular, blocks which at the time of writing is the only message type without a practical SSZ-derived upper bound on size cannot be fully verified synchronously as part of gossipsub validity checks meaning that there exist cases where invalid messages signed by a validator may be amplified by the network.
+In particular, blocks—-currently the only message type without a practical SSZ-derived upper bound on size—-cannot be fully verified synchronously as part of gossipsub validity checks. This means that there exist cases where invalid messages signed by a validator may be amplified by the network.
 
 ## libp2p implementations matrix
 
