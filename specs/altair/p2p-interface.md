@@ -1,18 +1,12 @@
 # Altair -- Networking
 
-This document contains the networking specification for Altair.
-This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "Phase 0 document" hereafter.
-Readers should understand the Phase 0 document and use it as a basis to understand the changes outlined in this document.
-
-Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery domain. Some Phase 0 features will be deprecated, but not removed immediately.
-
-
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -33,9 +27,19 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery 
       - [GetMetaData v2](#getmetadata-v2)
     - [Transitioning from v1 to v2](#transitioning-from-v1-to-v2)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
+    - [ENR structure](#enr-structure)
+      - [Sync committee bitfield](#sync-committee-bitfield)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Altair.
+This document should be viewed as additive to the [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as the "Phase 0 document" hereafter.
+Readers should understand the Phase 0 document and use it as a basis to understand the changes outlined in this document.
+
+Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
 
@@ -287,10 +291,16 @@ the responder MUST return the **InvalidRequest** response code.
 
 ### The discovery domain: discv5
 
-The `attnets` key of the ENR is used as defined in the Phase 0 document.
+#### ENR structure
+
+##### Sync committee bitfield
 
 An additional bitfield is added to the ENR under the key `syncnets` to facilitate sync committee subnet discovery.
 The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet.
 The `i`th bit is set in this bitfield if the validator is currently subscribed to the `sync_committee_{i}` topic.
+
+| Key          | Value                                            |
+|:-------------|:-------------------------------------------------|
+| `syncnets`    | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]`        |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for further details on how the new bits are used.

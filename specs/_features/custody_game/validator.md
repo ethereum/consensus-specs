@@ -1,7 +1,7 @@
 # Custody Game -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
-This is an accompanying document to the [Custody Game](./), which describes the expected actions of a "validator"
+This is an accompanying document to [Custody Game -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator"
 participating in the shard data Custody Game.
 
 ## Table of contents
@@ -52,7 +52,7 @@ Up to `MAX_CUSTODY_KEY_REVEALS`, [`CustodyKeyReveal`](./beacon-chain.md#custodyk
 
 ##### Early derived secret reveals
 
-Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./beacon-chain.md#earlyderivedsecretreveal) objects can be included in the `block`. The early derived secret reveals must satisfy the verification conditions found in [early derived secret reveal processing](beacon-chain.md#custody-key-reveals). The validator receives a small "whistleblower" reward for each early derived secrete reveal included.
+Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./beacon-chain.md#earlyderivedsecretreveal) objects can be included in the `block`. The early derived secret reveals must satisfy the verification conditions found in [early derived secret reveal processing](beacon-chain.md#custody-key-reveals). The validator receives a small "whistleblower" reward for each early derived secret reveal included.
 
 #### Construct attestation
 

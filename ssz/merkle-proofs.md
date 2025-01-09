@@ -71,7 +71,7 @@ Note that the generalized index has the convenient property that the two childre
 ```python
 def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
     """
-    Return an array representing the tree nodes by generalized index: 
+    Return an array representing the tree nodes by generalized index:
     [0, 1, 2, 3, 4, 5, 6, 7], where each layer is a power of 2. The 0 index is ignored. The 1 index is the root.
     The result will be twice the size as the padded bottom layer for the input leaves.
     """
@@ -167,7 +167,7 @@ def get_item_position(typ: SSZType, index_or_variable_name: Union[int, SSZVariab
 ```
 
 ```python
-def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
+def get_generalized_index(typ: SSZType, *path: PyUnion[int, SSZVariableName]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
@@ -176,8 +176,8 @@ def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableNam
     for p in path:
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
-            typ = uint64
             assert issubclass(typ, (List, ByteList))
+            typ = uint64
             root = GeneralizedIndex(root * 2 + 1)
         else:
             pos, _, _ = get_item_position(typ, p)
@@ -257,7 +257,7 @@ We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree need
 x x . . . . x *
 ```
 
-. are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, only one node more than would be required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
+. are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, the same amount required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
 
 First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 

@@ -5,6 +5,7 @@ venv
 .venv
 /.pytest_cache
 *.swp
+.eth2spec
 
 build/
 output/
@@ -21,9 +22,11 @@ tests/core/pyspec/eth2spec/altair/
 tests/core/pyspec/eth2spec/bellatrix/
 tests/core/pyspec/eth2spec/capella/
 tests/core/pyspec/eth2spec/deneb/
-tests/core/pyspec/eth2spec/eip6110/
-tests/core/pyspec/eth2spec/eip7002/
+tests/core/pyspec/eth2spec/electra/
+tests/core/pyspec/eth2spec/fulu/
 tests/core/pyspec/eth2spec/whisk/
+tests/core/pyspec/eth2spec/eip6800/
+tests/core/pyspec/eth2spec/eip7732/
 
 # coverage reports
 .htmlcov
@@ -46,3 +49,6 @@ docs/ssz
 docs/fork_choice
 docs/README.md
 site
+
+# docker test results
+testResults

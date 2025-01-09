@@ -59,7 +59,7 @@ New global topics are added to provide light clients with the latest updates.
 This topic is used to propagate the latest `LightClientFinalityUpdate` to light clients, allowing them to keep track of the latest `finalized_header`.
 
 The following validations MUST pass before forwarding the `finality_update` on the network.
-- _[IGNORE]_ The `finalized_header.beacon.slot` is greater than that of all previously forwarded `finality_update`s
+- _[IGNORE]_ The `finalized_header.beacon.slot` is greater than that of all previously forwarded `finality_update`s, or it matches the highest previously forwarded slot and also has a `sync_aggregate` indicating supermajority (> 2/3) sync committee participation while the previously forwarded `finality_update` for that slot did not indicate supermajority
 - _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `finality_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
@@ -71,7 +71,7 @@ For light clients, the following validations MUST additionally pass before forwa
 
 Light clients SHOULD call `process_light_client_finality_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`.
+The gossip `ForkDigestValue` is determined based on `compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -99,7 +99,7 @@ For light clients, the following validations MUST additionally pass before forwa
 
 Light clients SHOULD call `process_light_client_optimistic_update` even if the message is ignored.
 
-The gossip `ForkDigest`-context is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`.
+The gossip `ForkDigestValue` is determined based on `compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 

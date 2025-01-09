@@ -1,19 +1,11 @@
 # Phase 0 -- Networking
 
-This document contains the networking specification for Phase 0.
-
-It consists of four main sections:
-
-1. A specification of the network fundamentals.
-2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
-3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
-
 ## Table of contents
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
@@ -94,6 +86,7 @@ It consists of four main sections:
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
@@ -113,6 +106,17 @@ It consists of four main sections:
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Phase 0.
+
+It consists of four main sections:
+
+1. A specification of the network fundamentals.
+2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+3. The rationale and further explanation for the design choices made in the previous two sections.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -194,8 +198,6 @@ This section outlines configurations that are used in this spec.
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
 | `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
-| `RESP_TIMEOUT` | `10` | The maximum duration in **seconds** for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
@@ -204,6 +206,7 @@ This section outlines configurations that are used in this spec.
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `MAX_CONCURRENT_REQUESTS` | `2` | Maximum number of concurrent requests per protocol ID that a client may issue |
 
 ### MetaData
 
@@ -245,7 +248,7 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/blob/master
 - `fanout_ttl` (ttl for fanout maps for topics we are not subscribed to but have published to, seconds): 60
 - `mcache_len` (number of windows to retain full messages in cache for `IWANT` responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
-- `seen_ttl` (number of heartbeat intervals to retain message IDs): 550
+- `seen_ttl` (expiry time for cache of seen message ids, seconds): SECONDS_PER_SLOT * SLOTS_PER_EPOCH * 2
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
@@ -330,12 +333,12 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
   i.e. validate that `signed_beacon_block.message.slot <= current_slot`
   (a client MAY queue future blocks for processing at the appropriate slot).
 - _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
-  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+  i.e. validate that `signed_beacon_block.message.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
   (a client MAY choose to validate and store such blocks for additional purposes -- e.g. slashing detection, archive nodes, etc).
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 - _[REJECT]_ The block is from a higher slot than its parent.
@@ -353,31 +356,42 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 The `beacon_aggregate_and_proof` topic is used to propagate aggregated attestations (as `SignedAggregateAndProof`s)
 to subscribing nodes (typically validators) to be included in future blocks.
 
+We define the following variables for convenience:
+- `aggregate_and_proof = signed_aggregate_and_proof.message`
+- `aggregate = aggregate_and_proof.aggregate`
+- `index = aggregate.data.index`
+- `aggregation_bits = attestation.aggregation_bits`
+
 The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network.
-(We define the following for convenience -- `aggregate_and_proof = signed_aggregate_and_proof.message` and `aggregate = aggregate_and_proof.aggregate`)
+- _[REJECT]_ The committee index is within the expected range -- i.e. `index < get_committee_count_per_slot(state, aggregate.data.target.epoch)`.
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
 - _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e. `aggregate.data.target.epoch ==
   compute_epoch_at_slot(aggregate.data.slot)`
+- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
+  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, index))`.
+- _[REJECT]_ The aggregate attestation has participants --
+  that is, `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[IGNORE]_ A valid aggregate attestation defined by `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict superset has _not_ already been seen.
   (via aggregate gossip, within a verified block, or through the creation of an equivalent aggregate locally).
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the aggregator
   with index `aggregate_and_proof.aggregator_index` for the epoch `aggregate.data.target.epoch`.
-- _[REJECT]_ The attestation has participants --
-  that is, `len(get_attesting_indices(state, aggregate.data, aggregate.aggregation_bits)) >= 1`.
+- _[REJECT]_ The attestation has participants -- that is, `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot --
-  i.e. `is_aggregator(state, aggregate.data.slot, aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+  i.e. `is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof)` returns `True`.
 - _[REJECT]_ The aggregator's validator index is within the committee --
-  i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, aggregate.data.index)`.
+  i.e. `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, index)`.
 - _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature
   of the `aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
 - _[REJECT]_ The signature of `aggregate` is valid.
 - _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
+- _[REJECT]_ The aggregate attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
+  `get_checkpoint_block(store, aggregate.data.beacon_block_root, aggregate.data.target.epoch) == aggregate.data.target.root`
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
@@ -424,10 +438,14 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
 The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated attestations
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
+We define the following variables for convenience:
+- `index = attestation.data.index`
+- `aggregation_bits = attestation.aggregation_bits`
+
 The following validations MUST pass before forwarding the `attestation` on the subnet.
-- _[REJECT]_ The committee index is within the expected range -- i.e. `data.index < get_committee_count_per_slot(state, data.target.epoch)`.
+- _[REJECT]_ The committee index is within the expected range -- i.e. `index < get_committee_count_per_slot(state, attestation.data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
-  i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index) == subnet_id`,
+  i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, index) == subnet_id`,
   where `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
   which may be pre-computed along with the committee information for the signature check.
 - _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots
@@ -437,14 +455,14 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[REJECT]_ The attestation's epoch matches its target -- i.e. `attestation.data.target.epoch ==
   compute_epoch_at_slot(attestation.data.slot)`
 - _[REJECT]_ The attestation is unaggregated --
-  that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+  that is, it has exactly one participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(attestation.aggregation_bits) == len(get_beacon_committee(state, data.slot, data.index))`.
+  `len(aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, index))`.
 - _[IGNORE]_ There has been no other valid attestation seen on an attestation subnet
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
@@ -546,10 +564,9 @@ The request MUST be encoded according to the encoding strategy.
 The requester MUST close the write side of the stream once it finishes writing the request message.
 At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout).
-On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received.
+The requester MUST NOT make more than `MAX_CONCURRENT_REQUESTS` concurrent requests with the same protocol ID.
 
-If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
+If a timeout occurs or the response is no longer relevant, the requester SHOULD reset the stream.
 
 A requester SHOULD read from the stream until either:
 1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
@@ -578,10 +595,10 @@ The responder MUST:
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error.
 Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
 
-The entire request should be read in no more than `RESP_TIMEOUT`.
-Upon a timeout, the responder SHOULD reset the stream.
+The responder MAY rate-limit chunks by withholding each chunk until capacity is available. The responder MUST NOT respond with an error or close the stream when rate limiting.
 
-The responder SHOULD send a `response_chunk` promptly.
+When rate limiting, the responder MUST send each `response_chunk` in full promptly but may introduce delays between each chunk.
+
 Chunks start with a **single-byte** response code which determines the contents of the `response_chunk` (`result` particle in the BNF grammar above).
 For multiple chunks, only the last chunk is allowed to have a non-zero error code (i.e. The chunk stream is terminated once an error occurs).
 
@@ -610,6 +627,8 @@ The `ErrorMessage` schema is:
 
 *Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes).
 Clients MUST treat as valid any byte sequences.
+
+The responder MAY penalise peers that concurrently open more than `MAX_CONCURRENT_REQUESTS` streams for the same request type, for the protocol IDs defined in this specification.
 
 #### Encoding strategies
 
@@ -691,9 +710,9 @@ The fields are, as seen by the client at the time of sending the message:
     - `current_fork_version` is the fork version at the node's current epoch defined by the wall-clock time
       (not necessarily the epoch to which the node is sync)
     - `genesis_validators_root` is the static `Root` found in `state.genesis_validators_root`
-- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block
+- `finalized_root`: `store.finalized_checkpoint.root` according to [fork choice](./fork-choice.md).
   (Note this defaults to `Root(b'\x00' * 32)` for the genesis finalized checkpoint).
-- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
+- `finalized_epoch`: `store.finalized_checkpoint.epoch` according to [fork choice](./fork-choice.md).
 - `head_root`: The `hash_tree_root` root of the current head block (`BeaconBlock`).
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
@@ -856,6 +875,9 @@ Clients MUST support requesting blocks since the latest finalized epoch.
 Clients MUST respond with at least one block, if they have it.
 Clients MAY limit the number of blocks in the response.
 
+Clients MAY include a block in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
+
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
 ##### Ping
@@ -941,7 +963,8 @@ The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the
 The ENR MAY contain the following entries:
 
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p listening port.
+-  A TCP port (`tcp` field) representing the local libp2p TCP listening port.
+-  A QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port.
 -  A UDP port (`udp` field) representing the local discv5 listening port.
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
@@ -1437,6 +1460,20 @@ For this reason, we remove and replace semver with ordinals that require explici
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
 
+#### What is a typical rate limiting strategy?
+
+The responder typically will want to rate limit requests to protect against spam and to manage resource consumption, while the requester will want to maximise performance based on its own resource allocation strategy. For the network, it is beneficial if available resources are used optimally.
+
+Broadly, the requester does not know the capacity / limit of each server but can derive it from the rate of responses for the purpose of selecting the next peer for a request.
+
+Because the server withholds the response until capacity is available, a client can optimistically send requests without risking running into negative scoring situations or sub-optimal rate polling.
+
+A typical approach for the requester is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
+
+A typical approach for the responder is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
+
+For requesters, rate limiting is not distinguishable from other conditions causing slow responses (slow peers, congestion etc) and since the latter conditions must be handled anyway, including rate limiting in this strategy keeps the implementation simple.
+
 #### Why do we allow empty responses in block requests?
 
 When requesting blocks by range or root, it may happen that there are no blocks in the selected range or the responding node does not have the requested blocks.
@@ -1468,10 +1505,10 @@ If a request for the parent fails, it's indicative of poor peer quality since pe
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time.
 By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale,
-and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
+and the responder might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
 
-To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client.
-The requesting client then goes on to validate the blocks and incorporate them in their own database
+To avoid this race condition, we allow the responder to choose which branch to send to the requester.
+The requester then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
 
 #### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?

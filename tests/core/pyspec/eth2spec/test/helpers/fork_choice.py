@@ -92,14 +92,11 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
-    parent_block = store.blocks[attestation.data.beacon_block_root]
-    pre_state = store.block_states[spec.hash_tree_root(parent_block)]
-    block_time = pre_state.genesis_time + parent_block.slot * spec.config.SECONDS_PER_SLOT
-    next_epoch_time = block_time + spec.SLOTS_PER_EPOCH * spec.config.SECONDS_PER_SLOT
-
-    if store.time < next_epoch_time:
-        spec.on_tick(store, next_epoch_time)
-        test_steps.append({'tick': int(next_epoch_time)})
+    # Make get_current_slot(store) >= attestation.data.slot + 1
+    min_time_to_include = (attestation.data.slot + 1) * spec.config.SECONDS_PER_SLOT
+    if store.time < min_time_to_include:
+        spec.on_tick(store, min_time_to_include)
+        test_steps.append({'tick': int(min_time_to_include)})
 
     yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
@@ -147,6 +144,7 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
+    assert time >= store.time
     spec.on_tick(store, time)
     test_steps.append({'tick': int(time)})
     output_store_checks(spec, store, test_steps)
@@ -180,7 +178,7 @@ def add_block(spec,
 
     # Check blob_data
     if blob_data is not None:
-        blobs = spec.List[spec.Blob, spec.MAX_BLOBS_PER_BLOCK](blob_data.blobs)
+        blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
         blobs_root = blobs.hash_tree_root()
         yield get_blobs_file_name(blobs_root=blobs_root), blobs
 

@@ -25,26 +25,28 @@ An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-tran
 
 ## Condition
 
-A handler of the `epoch_processing` test-runner should process these cases, 
+A handler of the `epoch_processing` test-runner should process these cases,
  calling the corresponding processing implementation (same name, prefixed with `process_`).
 This excludes the other parts of the epoch-transition.
 The provided pre-state is already transitioned to just before the specific sub-transition of focus of the handler.
 
 Sub-transitions:
 
-- `justification_and_finalization`
-- `inactivity_updates` (Altair)
-- `rewards_and_penalties`
-- `registry_updates`
-- `slashings`
-- `eth1_data_reset`
-- `effective_balance_updates`
-- `slashings_reset`
-- `randao_mixes_reset`
-- `historical_roots_update` (Phase0, Altair, Bellatrix only)
-- `historical_summaries_update` (Capella)
-- `participation_record_updates` (Phase 0 only)
-- `participation_flag_updates` (Altair)
-- `sync_committee_updates` (Altair)
+- `eth1_data_reset` (>=Phase0)
+- `historical_roots_update` (>=Phase0,<=Bellatrix)
+- `justification_and_finalization` (>=Phase0)
+- `participation_record_updates` (==Phase0)
+- `randao_mixes_reset` (>=Phase0)
+- `registry_updates` (>=Phase0)
+- `rewards_and_penalties` (>=Phase0)
+- `slashings_reset` (>=Phase0)
+- `slashings` (>=Phase0)
+- `inactivity_updates` (>=Altair)
+- `participation_flag_updates` (>=Altair)
+- `sync_committee_updates` (>=Altair)
+- `historical_summaries_update` (>=Capella)
+- `effective_balance_updates` (>=Electra)
+- `pending_consolidations` (>=Electra)
+- `pending_deposits` (>=Electra)
 
 The resulting state should match the expected `post` state.

@@ -1,15 +1,19 @@
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
-from py_ecc.bls.g2_primatives import signature_to_G2 as _signature_to_G2
+from py_ecc.bls.g2_primitives import signature_to_G2 as _signature_to_G2
+from py_ecc.utils import prime_field_inv as py_ecc_prime_field_inv
 from py_ecc.optimized_bls12_381 import (  # noqa: F401
     G1 as py_ecc_G1,
     G2 as py_ecc_G2,
     Z1 as py_ecc_Z1,
+    Z2 as py_ecc_Z2,
     add as py_ecc_add,
     multiply as py_ecc_mul,
     neg as py_ecc_neg,
     pairing as py_ecc_pairing,
     final_exponentiate as py_ecc_final_exponentiate,
     FQ12 as py_ecc_GT,
+    FQ,
+    FQ2,
 )
 from py_ecc.bls.g2_primitives import (  # noqa: F401
     curve_order as BLS_MODULUS,
@@ -31,6 +35,28 @@ import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
 import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
 
 
+class py_ecc_Scalar(FQ):
+    field_modulus = BLS_MODULUS
+
+    def __init__(self, value):
+        """
+        Force underlying value to be a native integer.
+        """
+        super().__init__(int(value))
+
+    def pow(self, exp):
+        """
+        Raises the self to the power of the given exponent.
+        """
+        return self**int(exp)
+
+    def inverse(self):
+        """
+        Computes the modular inverse of self.
+        """
+        return py_ecc_Scalar(py_ecc_prime_field_inv(self.n, self.field_modulus))
+
+
 class fastest_bls:
     G1 = arkworks_G1
     G2 = arkworks_G2
@@ -48,8 +74,9 @@ class fastest_bls:
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
-# To change bls implementation, default to PyECC for correctness. Milagro is a good faster alternative.
-bls = py_ecc_bls
+# Default to fastest_bls
+bls = fastest_bls
+Scalar = fastest_bls.Scalar
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
@@ -63,6 +90,8 @@ def use_milagro():
     """
     global bls
     bls = milagro_bls
+    global Scalar
+    Scalar = py_ecc_Scalar
 
 
 def use_arkworks():
@@ -71,6 +100,8 @@ def use_arkworks():
     """
     global bls
     bls = arkworks_bls
+    global Scalar
+    Scalar = arkworks_Scalar
 
 
 def use_py_ecc():
@@ -79,6 +110,8 @@ def use_py_ecc():
     """
     global bls
     bls = py_ecc_bls
+    global Scalar
+    Scalar = py_ecc_Scalar
 
 
 def use_fastest():
@@ -87,6 +120,8 @@ def use_fastest():
     """
     global bls
     bls = fastest_bls
+    global Scalar
+    Scalar = fastest_bls.Scalar
 
 
 def only_with_bls(alt_return=None):
@@ -218,10 +253,47 @@ def multiply(point, scalar):
     `point` can either be in G1 or G2
     """
     if bls == arkworks_bls or bls == fastest_bls:
-        int_as_bytes = scalar.to_bytes(32, 'little')
-        scalar = arkworks_Scalar.from_le_bytes(int_as_bytes)
+        if not isinstance(scalar, arkworks_Scalar):
+            return point * arkworks_Scalar(int(scalar))
         return point * scalar
-    return py_ecc_mul(point, scalar)
+    return py_ecc_mul(point, int(scalar))
+
+
+def multi_exp(points, scalars):
+    """
+    Performs a multi-scalar multiplication between
+    `points` and `scalars`.
+    `points` can either be in G1 or G2.
+    """
+    # Since this method accepts either G1 or G2, we need to know
+    # the type of the point to return. Hence, we need at least one point.
+    if not points or not scalars:
+        raise Exception("Cannot call multi_exp with zero points or zero scalars")
+
+    if bls == arkworks_bls or bls == fastest_bls:
+        # If using py_ecc Scalars, convert to arkworks Scalars.
+        if not isinstance(scalars[0], arkworks_Scalar):
+            scalars = [arkworks_Scalar(int(s)) for s in scalars]
+
+        # Check if we need to perform a G1 or G2 multiexp
+        if isinstance(points[0], arkworks_G1):
+            return arkworks_G1.multiexp_unchecked(points, scalars)
+        elif isinstance(points[0], arkworks_G2):
+            return arkworks_G2.multiexp_unchecked(points, scalars)
+        else:
+            raise Exception("Invalid point type")
+
+    result = None
+    if isinstance(points[0][0], FQ):
+        result = Z1()
+    elif isinstance(points[0][0], FQ2):
+        result = Z2()
+    else:
+        raise Exception("Invalid point type")
+
+    for point, scalar in zip(points, scalars):
+        result = add(result, multiply(point, scalar))
+    return result
 
 
 def neg(point):
@@ -241,6 +313,15 @@ def Z1():
     if bls == arkworks_bls or bls == fastest_bls:
         return arkworks_G1.identity()
     return py_ecc_Z1
+
+
+def Z2():
+    """
+    Returns the identity point in G2
+    """
+    if bls == arkworks_bls or bls == fastest_bls:
+        return arkworks_G2.identity()
+    return py_ecc_Z2
 
 
 def G1():

@@ -201,7 +201,7 @@ def run_get_inclusion_delay_deltas(spec, state):
             # Track proposer of earliest included attestation for the validator defined by index
             earliest_attestation = min([
                 a for a in eligible_attestations
-                if index in spec.get_attesting_indices(state, a.data, a.aggregation_bits)
+                if index in spec.get_attesting_indices(state, a)
             ], key=lambda a: a.inclusion_delay)
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 

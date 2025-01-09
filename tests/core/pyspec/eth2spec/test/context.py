@@ -3,34 +3,35 @@ from copy import deepcopy
 from dataclasses import dataclass
 import importlib
 
-from eth2spec.phase0 import mainnet as spec_phase0_mainnet, minimal as spec_phase0_minimal
-from eth2spec.altair import mainnet as spec_altair_mainnet, minimal as spec_altair_minimal
-from eth2spec.bellatrix import mainnet as spec_bellatrix_mainnet, minimal as spec_bellatrix_minimal
-from eth2spec.capella import mainnet as spec_capella_mainnet, minimal as spec_capella_minimal
-from eth2spec.deneb import mainnet as spec_deneb_mainnet, minimal as spec_deneb_minimal
-from eth2spec.eip6110 import mainnet as spec_eip6110_mainnet, minimal as spec_eip6110_minimal
-from eth2spec.eip7002 import mainnet as spec_eip7002_mainnet, minimal as spec_eip7002_minimal
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    EIP6110, EIP7002,
-    MINIMAL, MAINNET,
+    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
+    FULU,
+    WHISK,
+    MINIMAL,
     ALL_PHASES,
-    ALL_FORK_UPGRADES,
+    POST_FORK_OF,
+    ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
 )
-from .helpers.forks import is_post_fork
-from .helpers.typing import SpecForkName, PresetBaseName
+from .helpers.forks import is_post_fork, is_post_electra
 from .helpers.genesis import create_genesis_state
+from .helpers.typing import (
+    Spec,
+    SpecForks,
+)
+from .helpers.specs import (
+    spec_targets,
+)
 from .utils import (
     vector_test,
     with_meta_tags,
 )
 
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict, Protocol, Dict
+from typing import Any, Callable, Sequence, Dict
 
 from lru import LRU
 
@@ -41,68 +42,11 @@ DEFAULT_TEST_PRESET = MINIMAL
 DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
-# TODO: currently phases are defined as python modules.
-# It would be better if they would be more well-defined interfaces for stronger typing.
-
-class Configuration(Protocol):
-    PRESET_BASE: str
-
-
-class Spec(Protocol):
-    fork: str
-    config: Configuration
-
-
-class SpecPhase0(Spec):
-    ...
-
-
-class SpecAltair(Spec):
-    ...
-
-
-class SpecBellatrix(Spec):
-    ...
-
-
-class SpecCapella(Spec):
-    ...
-
-
 @dataclass(frozen=True)
 class ForkMeta:
     pre_fork_name: str
     post_fork_name: str
     fork_epoch: int
-
-
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
-    MINIMAL: {
-        PHASE0: spec_phase0_minimal,
-        ALTAIR: spec_altair_minimal,
-        BELLATRIX: spec_bellatrix_minimal,
-        CAPELLA: spec_capella_minimal,
-        DENEB: spec_deneb_minimal,
-        EIP6110: spec_eip6110_minimal,
-        EIP7002: spec_eip7002_minimal,
-    },
-    MAINNET: {
-        PHASE0: spec_phase0_mainnet,
-        ALTAIR: spec_altair_mainnet,
-        BELLATRIX: spec_bellatrix_mainnet,
-        CAPELLA: spec_capella_mainnet,
-        DENEB: spec_deneb_mainnet,
-        EIP6110: spec_eip6110_mainnet,
-        EIP7002: spec_eip7002_mainnet,
-    },
-}
-
-
-class SpecForks(TypedDict, total=False):
-    PHASE0: SpecPhase0
-    ALTAIR: SpecAltair
-    BELLATRIX: SpecBellatrix
-    CAPELLA: SpecCapella
 
 
 def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
@@ -142,7 +86,10 @@ def default_activation_threshold(spec: Spec):
     Helper method to use the default balance activation threshold for state creation for tests.
     Usage: `@with_custom_state(threshold_fn=default_activation_threshold, ...)`
     """
-    return spec.MAX_EFFECTIVE_BALANCE
+    if is_post_electra(spec):
+        return spec.MIN_ACTIVATION_BALANCE
+    else:
+        return spec.MAX_EFFECTIVE_BALANCE
 
 
 def zero_activation_threshold(spec: Spec):
@@ -162,6 +109,18 @@ def default_balances(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
+def default_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of default balances for Electra.
+    Usage: `@with_custom_state(balances_fn=default_balances_electra, ...)`
+    """
+    if not is_post_electra(spec):
+        return default_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
+
 def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
@@ -176,8 +135,7 @@ def scaled_churn_balances_min_churn_limit(spec: Spec):
 def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
-    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
@@ -191,6 +149,19 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     """
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
+    """
+    Helper method to create enough validators to scale the churn limit.
+    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
+    """
+    num_validators = (
+        2 * spec.config.CHURN_LIMIT_QUOTIENT
+        * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
+        // spec.MIN_ACTIVATION_BALANCE)
+    return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
 
 with_state = with_custom_state(default_balances, default_activation_threshold)
@@ -214,6 +185,21 @@ def misc_balances(spec: Spec):
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
     balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
+    rng = Random(1234)
+    rng.shuffle(balances)
+    return balances
+
+
+def misc_balances_electra(spec: Spec):
+    """
+    Helper method to create a series of balances that includes some misc. balances for Electra.
+    Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
+    """
+    if not is_post_electra(spec):
+        return misc_balances(spec)
+
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    balances = [spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)]
     rng = Random(1234)
     rng.shuffle(balances)
     return balances
@@ -434,12 +420,35 @@ def with_all_phases(fn):
     return with_phases(ALL_PHASES)(fn)
 
 
-def with_all_phases_from(earliest_phase):
+def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
     def decorator(fn):
-        return with_phases([phase for phase in ALL_PHASES if is_post_fork(phase, earliest_phase)])(fn)
+        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
+    return decorator
+
+
+def with_all_phases_from_except(earliest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+
+
+def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=ALL_PHASES):
+    """
+    A decorator factory for running a tests with every phase
+    from a given start phase up to and excluding a given end phase
+    """
+    def decorator(fn):
+        return with_phases(
+            [phase for phase in all_phases if (
+                phase != to_phase and is_post_fork(to_phase, phase)
+                and is_post_fork(phase, from_phase)
+            )],
+            other_phases=other_phases,
+        )(fn)
     return decorator
 
 
@@ -525,7 +534,7 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw['phase']
                     _phases = [phase]
-                    _other_phases = [ALL_FORK_UPGRADES[phase]]
+                    _other_phases = [POST_FORK_OF[phase]]
                     ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
                 else:
                     # When running pytest, go through `fork_metas` instead of using `phases`
@@ -563,8 +572,9 @@ with_altair_and_later = with_all_phases_from(ALTAIR)
 with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
-with_eip6110_and_later = with_all_phases_from(EIP6110)
-with_eip7002_and_later = with_all_phases_from(EIP7002)
+with_electra_and_later = with_all_phases_from(ELECTRA)
+with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

@@ -1,4 +1,6 @@
+import random
 from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.context import (
     with_capella_and_later,
     spec_state_test,
@@ -20,6 +22,7 @@ from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
 )
 from eth2spec.test.helpers.withdrawals import (
+    get_expected_withdrawals,
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
@@ -202,7 +205,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, index, current_epoch)
-    assert len(spec.get_expected_withdrawals(state)) == 1
+    assert len(get_expected_withdrawals(spec, state)) == 1
 
     yield 'pre', state
 
@@ -214,7 +217,7 @@ def test_full_withdrawal_in_epoch_transition(spec, state):
     yield 'post', state
 
     assert state.balances[index] == 0
-    assert len(spec.get_expected_withdrawals(state)) == 0
+    assert len(get_expected_withdrawals(spec, state)) == 0
 
 
 @with_capella_and_later
@@ -224,7 +227,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
     pre_balance = state.balances[index]
 
-    assert len(spec.get_expected_withdrawals(state)) == 1
+    assert len(get_expected_withdrawals(spec, state)) == 1
 
     yield 'pre', state
 
@@ -238,7 +241,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     assert state.balances[index] < pre_balance
     # Potentially less than due to sync committee penalty
     assert state.balances[index] <= spec.MAX_EFFECTIVE_BALANCE
-    assert len(spec.get_expected_withdrawals(state)) == 0
+    assert len(get_expected_withdrawals(spec, state)) == 0
 
 
 @with_capella_and_later
@@ -250,7 +253,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
         index = (i + state.next_withdrawal_index) % len(state.validators)
         set_validator_partially_withdrawable(spec, state, index, excess_balance=1000000000000)
 
-    assert len(spec.get_expected_withdrawals(state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    assert (len(get_expected_withdrawals(spec, state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD)
 
     yield 'pre', state
 
@@ -261,18 +264,19 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    assert len(spec.get_expected_withdrawals(state)) == 1
+    assert len(get_expected_withdrawals(spec, state)) == 1
 
 
 def _perform_valid_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
-        spec, state, num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2,
+        spec, state, rng=random.Random(42),
+        num_partial_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2,
         num_full_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2)
 
     next_slot(spec, state)
     pre_next_withdrawal_index = state.next_withdrawal_index
 
-    expected_withdrawals = spec.get_expected_withdrawals(state)
+    expected_withdrawals = get_expected_withdrawals(spec, state)
 
     pre_state = state.copy()
 
@@ -360,10 +364,17 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     yield 'blocks', [signed_block]
     yield 'post', state
 
-    # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
-    validator = state.validators[validator_index]
-    balance = state.balances[validator_index]
-    assert spec.is_partially_withdrawable_validator(validator, balance)
+    if is_post_electra(spec):
+        assert state.pending_deposits[0].pubkey == deposit.data.pubkey
+        assert state.pending_deposits[0].withdrawal_credentials == deposit.data.withdrawal_credentials
+        assert state.pending_deposits[0].amount == deposit.data.amount
+        assert state.pending_deposits[0].signature == deposit.data.signature
+        assert state.pending_deposits[0].slot == spec.GENESIS_SLOT
+    else:
+        # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
+        validator = state.validators[validator_index]
+        balance = state.balances[validator_index]
+        assert spec.is_partially_withdrawable_validator(validator, balance)
 
 
 @with_capella_and_later
@@ -395,9 +406,13 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
     signed_block_1 = state_transition_and_sign_block(spec, state, block)
 
+    balance = state.balances[validator_index]
+    if is_post_electra(spec):
+        balance += state.pending_deposits[0].amount
+
     assert spec.is_fully_withdrawable_validator(
         state.validators[validator_index],
-        state.balances[validator_index],
+        balance,
         spec.get_current_epoch(state)
     )
 

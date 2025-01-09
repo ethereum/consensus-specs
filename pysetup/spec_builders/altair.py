@@ -27,24 +27,24 @@ GeneralizedIndex = NewType('GeneralizedIndex', int)
     @classmethod
     def sundry_functions(cls) -> str:
         return '''
-def get_generalized_index(ssz_class: Any, *path: Sequence[PyUnion[int, SSZVariableName]]) -> GeneralizedIndex:
+def get_generalized_index(ssz_class: Any, *path: PyUnion[int, SSZVariableName]) -> GeneralizedIndex:
     ssz_path = Path(ssz_class)
     for item in path:
         ssz_path = ssz_path / item
     return GeneralizedIndex(ssz_path.gindex())
 
 
-def compute_merkle_proof_for_state(state: BeaconState,
-                                   index: GeneralizedIndex) -> Sequence[Bytes32]:
-    return build_proof(state.get_backing(), index)'''
+def compute_merkle_proof(object: SSZObject,
+                         index: GeneralizedIndex) -> list[Bytes32]:
+    return build_proof(object.get_backing(), index)'''
 
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {
-            'FINALIZED_ROOT_INDEX': 'GeneralizedIndex(105)',
-            'CURRENT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(54)',
-            'NEXT_SYNC_COMMITTEE_INDEX': 'GeneralizedIndex(55)',
+            'FINALIZED_ROOT_GINDEX': 'GeneralizedIndex(105)',
+            'CURRENT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(54)',
+            'NEXT_SYNC_COMMITTEE_GINDEX': 'GeneralizedIndex(55)',
         }
 
     @classmethod

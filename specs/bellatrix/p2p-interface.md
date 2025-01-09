@@ -1,17 +1,12 @@
 # Bellatrix -- Networking
 
-This document contains the networking specification for the Bellatrix.
-
-The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite. This document should be viewed as additive to the documents from [Phase 0](../phase0/p2p-interface.md) and from [Altair](../altair/p2p-interface.md)
-and will be referred to as the "Phase 0 document" and "Altair document" respectively, hereafter.
-Readers should understand the Phase 0 and Altair documents and use them as a basis to understand the changes outlined in this document.
-
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+  - [Introduction](#introduction)
   - [Modifications in Bellatrix](#modifications-in-bellatrix)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
@@ -31,6 +26,14 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Bellatrix.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite. This document should be viewed as additive to the documents from [Phase 0](../phase0/p2p-interface.md) and from [Altair](../altair/p2p-interface.md)
+and will be referred to as the "Phase 0 document" and "Altair document" respectively, hereafter.
+Readers should understand the Phase 0 and Altair documents and use them as a basis to understand the changes outlined in this document.
 
 ## Modifications in Bellatrix
 
@@ -76,7 +79,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
   then validate the following:
     - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
        -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
-    - If `exection_payload` verification of block's parent by an execution node is *not* complete:
+    - If `execution_payload` verification of block's parent by an execution node is *not* complete:
     	- [REJECT] The block's parent (defined by `block.parent_root`) passes all
     	  validation (excluding execution node verification of the `block.body.execution_payload`).
     - otherwise:
@@ -146,7 +149,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
 field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in
-place at Phase 0, so GOSSIP_MAX_SIZE has increased to 10 Mib on the network. 
+place at Phase 0, so GOSSIP_MAX_SIZE has increased to 10 Mib on the network.
 At the `GAS_LIMIT` (~30M) currently seen on mainnet in 2021, a single transaction
 filled entirely with data at a cost of 16 gas per byte can create a valid
 `ExecutionPayload` of ~2 MiB. Thus we need a size limit to at least account for
@@ -168,7 +171,7 @@ Similar to the discussion about the maximum gossip size increase, the
 `ExecutionPayload` type can cause `BeaconBlock`s to exceed the 1 MiB bounds put
 in place during Phase 0.
 
-As with the gossip limit, 10 MiB is selected because this is firmly below any
+As with the gossip limit, 10 MiB is selected because this is firmly above any
 valid block sizes in the range of gas limits expected in the medium term.
 
 As with both gossip and req/rsp maximum values, type-specific limits should

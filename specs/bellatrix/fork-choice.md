@@ -11,6 +11,7 @@
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
       - [`safe_block_hash`](#safe_block_hash)
+      - [`should_override_forkchoice_update`](#should_override_forkchoice_update)
 - [Helpers](#helpers)
   - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
@@ -74,7 +75,87 @@ As per EIP-3675, before a post-transition block is finalized, `notify_forkchoice
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_payload_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_payload_hash) function.
+[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash) function.
+
+##### `should_override_forkchoice_update`
+
+If proposer boost re-orgs are implemented and enabled (see `get_proposer_head`) then additional care
+must be taken to ensure that the proposer is able to build an execution payload.
+
+If a beacon node knows it will propose the next block then it SHOULD NOT call
+`notify_forkchoice_updated` if it detects the current head to be weak and potentially capable of
+being re-orged. Complete information for evaluating `get_proposer_head` _will not_ be available
+immediately after the receipt of a new block, so an approximation of those conditions should be
+used when deciding whether to send or suppress a fork choice notification. The exact conditions
+used may be implementation-specific, a suggested implementation is below.
+
+Let `validator_is_connected(validator_index: ValidatorIndex) -> bool` be a function that indicates
+whether the validator with `validator_index` is connected to the node (e.g. has sent an unexpired
+proposer preparation message).
+
+```python
+def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
+    head_block = store.blocks[head_root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+    current_slot = get_current_slot(store)
+    proposal_slot = head_block.slot + Slot(1)
+
+    # Only re-org the head_block block if it arrived later than the attestation deadline.
+    head_late = is_head_late(store, head_root)
+
+    # Shuffling stable.
+    shuffling_stable = is_shuffling_stable(proposal_slot)
+
+    # FFG information of the new head_block will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, proposal_slot)
+
+    # Only suppress the fork choice update if we are confident that we will propose the next block.
+    parent_state_advanced = store.block_states[parent_root].copy()
+    process_slots(parent_state_advanced, proposal_slot)
+    proposer_index = get_beacon_proposer_index(parent_state_advanced)
+    proposing_reorg_slot = validator_is_connected(proposer_index)
+
+    # Single slot re-org.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Note that this condition is different from `get_proposer_head`
+    current_time_ok = (head_block.slot == current_slot
+                       or (proposal_slot == current_slot and proposing_on_time))
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Check the head weight only if the attestations from the head slot have already been applied.
+    # Implementations may want to do this in different ways, e.g. by advancing
+    # `store.time` early, or by counting queued attestations during the head block's slot.
+    if current_slot > head_block.slot:
+        head_weak = is_head_weak(store, head_root)
+        parent_strong = is_parent_strong(store, parent_root)
+    else:
+        head_weak = True
+        parent_strong = True
+
+    return all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
+                proposing_reorg_slot, single_slot_reorg,
+                head_weak, parent_strong])
+```
+
+*Note*: The ordering of conditions is a suggestion only. Implementations are free to
+optimize by re-ordering the conditions from least to most expensive and by returning early if
+any of the early conditions are `False`.
+
+In case `should_override_forkchoice_update` returns `True`, a node SHOULD instead call
+`notify_forkchoice_updated` with parameters appropriate for building upon the parent block. Care
+must be taken to compute the correct `payload_attributes`, as they may change depending on the slot
+of the block to be proposed (due to withdrawals).
+
+If `should_override_forkchoice_update` returns `True` but `get_proposer_head` later chooses the
+canonical head rather than its parent, then this is a misprediction that will cause the node
+to construct a payload with less notice. The result of `get_proposer_head` MUST be preferred over
+the result of `should_override_forkchoice_update` (when proposer reorgs are enabled).
 
 ## Helpers
 
@@ -191,11 +272,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add proposer score boost if the block is timely
+    # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely and not conflicting with an existing block
     is_first_block = store.proposer_boost_root == Root()
-    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
+    if is_timely and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

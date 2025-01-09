@@ -7,7 +7,7 @@ from eth2spec.test.context import (
     expect_assertion_error,
     always_bls
 )
-from eth2spec.test.helpers.sharding import (
+from eth2spec.test.helpers.blob import (
     get_sample_blob,
     get_poly_in_both_forms,
     eval_poly_in_coeff_form,
@@ -32,10 +32,6 @@ def bls_add_one(x):
     )
 
 
-def field_element_bytes(x):
-    return int.to_bytes(x % BLS_MODULUS, 32, "big")
-
-
 @with_deneb_and_later
 @spec_test
 @single_phase
@@ -43,7 +39,7 @@ def test_verify_kzg_proof(spec):
     """
     Test the wrapper functions (taking bytes arguments) for computing and verifying KZG proofs.
     """
-    x = field_element_bytes(3)
+    x = spec.bls_field_to_bytes(spec.BLSFieldElement(3))
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -58,7 +54,7 @@ def test_verify_kzg_proof_incorrect_proof(spec):
     """
     Test the wrapper function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = field_element_bytes(3465)
+    x = spec.bls_field_to_bytes(spec.BLSFieldElement(3465))
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     proof, y = spec.compute_kzg_proof(blob, x)
@@ -74,7 +70,7 @@ def test_verify_kzg_proof_impl(spec):
     """
     Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
     """
-    x = BLS_MODULUS - 1
+    x = spec.BLSFieldElement(BLS_MODULUS - 1)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -90,7 +86,7 @@ def test_verify_kzg_proof_impl_incorrect_proof(spec):
     """
     Test the implementation function `verify_kzg_proof` fails on an incorrect proof.
     """
-    x = 324561
+    x = spec.BLSFieldElement(324561)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -113,16 +109,16 @@ def test_barycentric_outside_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n_samples = 12
 
     for _ in range(n_samples):
         # Get a random evaluation point and make sure it's not a root of unity
-        z = rng.randint(0, BLS_MODULUS - 1)
+        z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
         while z in roots_of_unity_brp:
-            z = rng.randint(0, BLS_MODULUS - 1)
+            z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
@@ -139,22 +135,24 @@ def test_barycentric_outside_domain(spec):
 @single_phase
 def test_barycentric_within_domain(spec):
     """
-    Test barycentric formula correctness by using it to evaluate a polynomial at all the points of its domain
+    Test barycentric formula correctness by using it to evaluate a polynomial at various points inside its domain
     (the roots of unity).
 
     Then make sure that we would get the same result if we evaluated it from coefficient form without using the
     barycentric formula
     """
+    rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n = len(poly_coeff)
 
-    # Iterate over the entire domain
-    for i in range(n):
+    # Iterate over some roots of unity
+    for i in range(12):
+        i = rng.randint(0, n - 1)
         # Grab a root of unity and use it as the evaluation point
-        z = int(roots_of_unity_brp[i])
+        z = roots_of_unity_brp[i]
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
@@ -175,15 +173,17 @@ def test_compute_kzg_proof_within_domain(spec):
     Create and verify KZG proof that p(z) == y
     where z is in the domain of our KZG scheme (i.e. a relevant root of unity).
     """
+    rng = random.Random(5566)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.ROOTS_OF_UNITY)
+    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
 
-    for i, z in enumerate(roots_of_unity_brp):
+    # Let's test some roots of unity
+    for _ in range(6):
+        z = rng.choice(roots_of_unity_brp)
         proof, y = spec.compute_kzg_proof_impl(polynomial, z)
-
         assert spec.verify_kzg_proof_impl(commitment, z, y, proof)
 
 
@@ -214,29 +214,6 @@ def test_verify_blob_kzg_proof_incorrect_proof(spec):
     proof = bls_add_one(proof)
 
     assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
-
-
-@with_deneb_and_later
-@spec_test
-@single_phase
-def test_bls_modular_inverse(spec):
-    """
-    Verify computation of multiplicative inverse
-    """
-    rng = random.Random(5566)
-
-    # Should fail for x == 0
-    expect_assertion_error(lambda: spec.bls_modular_inverse(0))
-    expect_assertion_error(lambda: spec.bls_modular_inverse(spec.BLS_MODULUS))
-    expect_assertion_error(lambda: spec.bls_modular_inverse(2 * spec.BLS_MODULUS))
-
-    # Test a trivial inversion
-    assert 1 == int(spec.bls_modular_inverse(1))
-
-    # Test a random inversion
-    r = rng.randint(0, spec.BLS_MODULUS - 1)
-    r_inv = int(spec.bls_modular_inverse(r))
-    assert r * r_inv % BLS_MODULUS == 1
 
 
 @with_deneb_and_later

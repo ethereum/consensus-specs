@@ -1,4 +1,5 @@
 from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     with_deneb_and_later,
@@ -22,6 +23,8 @@ def run_test_activation_churn_limit(spec, state):
 
     validator_count_0 = len(state.validators)
 
+    balance = spec.MIN_ACTIVATION_BALANCE if is_post_electra(spec) else spec.MAX_EFFECTIVE_BALANCE
+
     for i in range(mock_activations):
         index = validator_count_0 + i
         validator = spec.Validator(
@@ -31,10 +34,10 @@ def run_test_activation_churn_limit(spec, state):
             activation_epoch=spec.FAR_FUTURE_EPOCH,
             exit_epoch=spec.FAR_FUTURE_EPOCH,
             withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+            effective_balance=balance,
         )
         state.validators.append(validator)
-        state.balances.append(spec.MAX_EFFECTIVE_BALANCE)
+        state.balances.append(balance)
         state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.inactivity_scores.append(0)
@@ -47,7 +50,9 @@ def run_test_activation_churn_limit(spec, state):
     # Half should churn in first run of registry update
     for i in range(mock_activations):
         index = validator_count_0 + i
-        if index < validator_count_0 + churn_limit_0:
+        # NOTE: activations are gated different after EIP-7251
+        # all eligible validators have been activated
+        if index < validator_count_0 + churn_limit_0 or is_post_electra(spec):
             # The eligible validators within the activation churn limit should have been activated
             assert state.validators[index].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:

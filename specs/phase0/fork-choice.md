@@ -16,9 +16,12 @@
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
+    - [`get_current_store_epoch`](#get_current_store_epoch)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
+    - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
@@ -26,6 +29,15 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
+    - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
+      - [`is_head_late`](#is_head_late)
+      - [`is_shuffling_stable`](#is_shuffling_stable)
+      - [`is_ffg_competitive`](#is_ffg_competitive)
+      - [`is_finalization_ok`](#is_finalization_ok)
+      - [`is_proposing_on_time`](#is_proposing_on_time)
+      - [`is_head_weak`](#is_head_weak)
+      - [`is_parent_strong`](#is_parent_strong)
+      - [`get_proposer_head`](#get_proposer_head)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
       - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
     - [`on_tick` helpers](#on_tick-helpers)
@@ -76,11 +88,16 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Configuration
 
-| Name                   | Value        |
-| ---------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST` | `uint64(40)` |
+| Name                                  | Value        |
+| ------------------------------------- | ------------ |
+| `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)` |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
+| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
 
-- The proposer score boost is worth `PROPOSER_SCORE_BOOST` percentage of the committee's weight, i.e., for slot with committee weight `committee_weight` the boost weight is equal to `(committee_weight * PROPOSER_SCORE_BOOST) // 100`.
+- The proposer score boost and re-org weight threshold are percentage
+  values that are measured with respect to the weight of a single committee. See
+  `calculate_committee_fraction`.
 
 ### Helpers
 
@@ -115,6 +132,7 @@ class Store(object):
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
@@ -124,8 +142,7 @@ class Store(object):
 
 ```python
 def is_previous_epoch_justified(store: Store) -> bool:
-    current_slot = get_current_slot(store)
-    current_epoch = compute_epoch_at_slot(current_slot)
+    current_epoch = get_current_store_epoch(store)
     return store.justified_checkpoint.epoch + 1 == current_epoch
 ```
 
@@ -174,6 +191,13 @@ def get_current_slot(store: Store) -> Slot:
     return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
 ```
 
+#### `get_current_store_epoch`
+
+```python
+def get_current_store_epoch(store: Store) -> Epoch:
+    return compute_epoch_at_slot(get_current_slot(store))
+```
+
 #### `compute_slots_since_epoch_start`
 
 ```python
@@ -191,6 +215,14 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     return root
 ```
 
+#### `calculate_committee_fraction`
+
+```python
+def calculate_committee_fraction(state: BeaconState, committee_percent: uint64) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return Gwei((committee_weight * committee_percent) // 100)
+```
+
 #### `get_checkpoint_block`
 
 ```python
@@ -200,6 +232,15 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     """
     epoch_first_slot = compute_start_slot_at_epoch(epoch)
     return get_ancestor(store, root, epoch_first_slot)
+```
+
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ```
 
 #### `get_weight`
@@ -225,8 +266,7 @@ def get_weight(store: Store, root: Root) -> Gwei:
     proposer_score = Gwei(0)
     # Boost is applied if ``root`` is an ancestor of ``proposer_boost_root``
     if get_ancestor(store, store.proposer_boost_root, store.blocks[root].slot) == root:
-        committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-        proposer_score = (committee_weight * PROPOSER_SCORE_BOOST) // 100
+        proposer_score = get_proposer_score(store)
     return attestation_score + proposer_score
 ```
 
@@ -238,7 +278,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
     Compute the voting source checkpoint in event that block with root ``block_root`` is the head block
     """
     block = store.blocks[block_root]
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     block_epoch = compute_epoch_at_slot(block.slot)
     if current_epoch > block_epoch:
         # The block is from a prior epoch, the voting source will be pulled-up
@@ -247,7 +287,6 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         # The block is not from a prior epoch, therefore the voting source is not pulled up
         head_state = store.block_states[block_root]
         return head_state.current_justified_checkpoint
-
 ```
 
 #### `filter_block_tree`
@@ -271,22 +310,16 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
             return True
         return False
 
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     voting_source = get_voting_source(store, block_root)
 
-    # The voting source should be at the same height as the store's justified checkpoint
+    # The voting source should be either at the same height as the store's justified checkpoint or
+    # not more than two epochs ago
     correct_justified = (
         store.justified_checkpoint.epoch == GENESIS_EPOCH
         or voting_source.epoch == store.justified_checkpoint.epoch
+        or voting_source.epoch + 2 >= current_epoch
     )
-
-    # If the previous epoch is justified, the block should be pulled-up. In this case, check that unrealized
-    # justification is higher than the store and that the voting source is not more than two epochs ago
-    if not correct_justified and is_previous_epoch_justified(store):
-        correct_justified = (
-            store.unrealized_justifications[block_root].epoch >= store.justified_checkpoint.epoch and
-            voting_source.epoch + 2 >= current_epoch
-        )
 
     finalized_checkpoint_block = get_checkpoint_block(
         store,
@@ -374,7 +407,113 @@ def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint:
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
+#### Proposer head and reorg helpers
 
+_Implementing these helpers is optional_.
+
+##### `is_head_late`
+```python
+def is_head_late(store: Store, head_root: Root) -> bool:
+    return not store.block_timeliness[head_root]
+```
+
+##### `is_shuffling_stable`
+```python
+def is_shuffling_stable(slot: Slot) -> bool:
+    return slot % SLOTS_PER_EPOCH != 0
+```
+
+##### `is_ffg_competitive`
+
+```python
+def is_ffg_competitive(store: Store, head_root: Root, parent_root: Root) -> bool:
+    return (store.unrealized_justifications[head_root] == store.unrealized_justifications[parent_root])
+```
+
+##### `is_finalization_ok`
+
+```python
+def is_finalization_ok(store: Store, slot: Slot) -> bool:
+    epochs_since_finalization = compute_epoch_at_slot(slot) - store.finalized_checkpoint.epoch
+    return epochs_since_finalization <= REORG_MAX_EPOCHS_SINCE_FINALIZATION
+```
+
+##### `is_proposing_on_time`
+
+```python
+def is_proposing_on_time(store: Store) -> bool:
+    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
+    return time_into_slot <= proposer_reorg_cutoff
+```
+
+##### `is_head_weak`
+
+```python
+def is_head_weak(store: Store, head_root: Root) -> bool:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
+    head_weight = get_weight(store, head_root)
+    return head_weight < reorg_threshold
+```
+
+##### `is_parent_strong`
+
+```python
+def is_parent_strong(store: Store, parent_root: Root) -> bool:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    parent_weight = get_weight(store, parent_root)
+    return parent_weight > parent_threshold
+```
+
+##### `get_proposer_head`
+
+```python
+def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
+    head_block = store.blocks[head_root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+
+    # Only re-org the head block if it arrived later than the attestation deadline.
+    head_late = is_head_late(store, head_root)
+
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = is_shuffling_stable(slot)
+
+    # Ensure that the FFG information of the new head will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org if we are proposing on-time.
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Only re-org a single slot at most.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Check that the head has few enough votes to be overpowered by our proposer boost.
+    assert store.proposer_boost_root != head_root  # ensure boost has worn off
+    head_weak = is_head_weak(store, head_root)
+
+    # Check that the missing votes are assigned to the parent and not being hoarded.
+    parent_strong = is_parent_strong(store, parent_root)
+
+    if all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
+            proposing_on_time, single_slot_reorg, head_weak, parent_strong]):
+        # We can re-org the current head by building upon its parent block.
+        return parent_root
+    else:
+        return head_root
+```
+
+*Note*: The ordering of conditions is a suggestion only. Implementations are free to
+optimize by re-ordering the conditions from least to most expensive and by returning early if
+any of the early conditions are `False`.
 
 #### Pull-up tip helpers
 
@@ -391,7 +530,7 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 
     # If the block is from a prior epoch, apply the realized values
     block_epoch = compute_epoch_at_slot(store.blocks[block_root].slot)
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     if block_epoch < current_epoch:
         update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
 ```
@@ -428,7 +567,7 @@ def validate_target_epoch_against_current_time(store: Store, attestation: Attest
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    current_epoch = get_current_store_epoch(store)
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     # If attestation target is from a future epoch, delay consideration until the epoch arrives
@@ -525,7 +664,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         block.parent_root,
         store.finalized_checkpoint.epoch,
     )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block    
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
@@ -536,11 +675,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add proposer score boost if the block is timely
+    # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
     is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely and not conflicting with an existing block
     is_first_block = store.proposer_boost_root == Root()
-    if get_current_slot(store) == block.slot and is_before_attesting_interval and is_first_block:
+    if is_timely and is_first_block:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

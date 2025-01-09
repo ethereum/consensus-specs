@@ -1,7 +1,5 @@
 # Deneb -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -11,17 +9,18 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
   - [Blob](#blob)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [Extended containers](#extended-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
@@ -44,7 +43,6 @@
     - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
   - [Epoch processing](#epoch-processing)
     - [Registry updates](#registry-updates)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -67,17 +65,10 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ## Constants
 
-### Domain types
-
-| Name | Value |
-| - | - |
-| `DOMAIN_BLOB_SIDECAR` | `DomainType('0x0B000000')` |
-
 ### Blob
 
 | Name | Value |
 | - | - |
-| `BLOB_TX_TYPE` | `uint8(0x03)` |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
@@ -86,13 +77,18 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `LIMIT_BLOBS_PER_TX` (see EIP 4844) |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
+
+## Configuration
+
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
 | `MAX_BLOBS_PER_BLOCK`            | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
 and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
-
-## Configuration
 
 ### Validator cycle
 
@@ -174,6 +170,53 @@ class ExecutionPayloadHeader(Container):
     withdrawals_root: Root
     blob_gas_used: uint64  # [New in Deneb:EIP4844]
     excess_blob_gas: uint64  # [New in Deneb:EIP4844]
+```
+
+#### `BeaconState`
+
+```python
+class BeaconState(Container):
+    # Versioning
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # Randomness
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    # Slashings
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # Finality
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    # Inactivity
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # Sync
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # Execution
+    latest_execution_payload_header: ExecutionPayloadHeader  # [Modified in Deneb:EIP4844]
+    # Withdrawals
+    next_withdrawal_index: WithdrawalIndex
+    next_withdrawal_validator_index: ValidatorIndex
+    # Deep history valid from Capella onwards
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
 ```
 
 ## Helper functions
@@ -270,7 +313,7 @@ def is_valid_block_hash(self: ExecutionEngine,
 def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
-    ``new_payload_request.execution_payload`` matches ``new_payload_request.version_hashes``.
+    ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
     ...
 ```
@@ -298,7 +341,10 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root  # [New in Deneb:EIP4788]
+
+    if b'' in execution_payload.transactions:
+        return False
 
     # [Modified in Deneb:EIP4788]
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
@@ -345,7 +391,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in get_attesting_indices(state, data, attestation.aggregation_bits):
+    for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
@@ -466,60 +512,4 @@ def process_registry_updates(state: BeaconState) -> None:
     for index in activation_queue[:get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-```
-
-## Testing
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Deneb testing only.
-
-The `BeaconState` initialization is unchanged, except for the use of the updated `deneb.BeaconBlockBody` type
-when initializing the first body-root.
-
-```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    fork = Fork(
-        previous_version=DENEB_FORK_VERSION,  # [Modified in Deneb] for testing only
-        current_version=DENEB_FORK_VERSION,  # [Modified in Deneb]
-        epoch=GENESIS_EPOCH,
-    )
-    state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
-        fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
-        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-    )
-
-    # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
-        process_deposit(state, deposit)
-
-    # Process activations
-    for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = hash_tree_root(state.validators)
-
-    # Fill in sync committees
-    # Note: A duplicate committee is assigned for the current and next committee at genesis
-    state.current_sync_committee = get_next_sync_committee(state)
-    state.next_sync_committee = get_next_sync_committee(state)
-
-    # Initialize the execution payload header
-    # If empty, will initialize a chain that has not yet gone through the Merge transition
-    state.latest_execution_payload_header = execution_payload_header
-
-    return state
 ```
