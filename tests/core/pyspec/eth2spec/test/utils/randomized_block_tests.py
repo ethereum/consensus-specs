@@ -8,7 +8,7 @@ from random import Random
 from typing import Callable
 
 from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash,
+    compute_el_block_hash_for_block,
     build_randomized_execution_payload,
 )
 from eth2spec.test.helpers.multi_operations import (
@@ -255,7 +255,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng)
     block.body.execution_payload.transactions.append(opaque_tx)
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     block.body.blob_kzg_commitments = blob_kzg_commitments
 
     return block
@@ -264,6 +264,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
 def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     return block
 

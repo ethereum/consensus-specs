@@ -148,8 +148,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 #### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
-field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in
-place at Phase 0, so GOSSIP_MAX_SIZE has increased to 10 Mib on the network.
+field -- `transactions` -- which can validly exceed the `MAX_PAYLOAD_SIZE` limit (1 MiB) put in
+place at Phase 0, so MAX_PAYLOAD_SIZE has increased to 10 MiB on the network.
 At the `GAS_LIMIT` (~30M) currently seen on mainnet in 2021, a single transaction
 filled entirely with data at a cost of 16 gas per byte can create a valid
 `ExecutionPayload` of ~2 MiB. Thus we need a size limit to at least account for

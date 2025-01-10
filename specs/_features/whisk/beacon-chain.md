@@ -54,7 +54,7 @@ This document details the beacon chain additions and changes of to support the W
 | `WHISK_PROPOSER_TRACKERS_COUNT`    | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
 | `WHISK_VALIDATORS_PER_SHUFFLE`     | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step              |
 | `WHISK_MAX_SHUFFLE_PROOF_SIZE`     | `uint64(2**15)`            | max size of a shuffle proof                                 |
-| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of a opening proof                                 |
+| `WHISK_MAX_OPENING_PROOF_SIZE`     | `uint64(2**10)`            | max size of an opening proof                                |
 
 ## Configuration
 
