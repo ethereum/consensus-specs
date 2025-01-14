@@ -1,4 +1,5 @@
 from eth2spec.gen_helpers.gen_base import gen_runner
+from eth2spec.gen_helpers.gen_base import settings
 from ruamel.yaml import YAML
 
 from instance_generator import (
@@ -70,12 +71,27 @@ def main():
         required=True,
         help='Path to a file with test generator configurations'
     )
+    arg_parser.add_argument(
+        '--fc-gen-multi-processing',
+        dest='fc_gen_multi_processing',
+        action='store_true',
+        default=False,
+        required=False,
+        help='If set generates tests in the multi-processing mode',
+    )
 
     args = arg_parser.parse_args()
 
     with open(args.fc_gen_config, 'r') as f:
         yaml = YAML(typ='safe')
         test_gen_config = yaml.load(f)
+    
+    if args.fc_gen_multi_processing:
+        settings.GENERATOR_MODE = settings.MODE_MULTIPROCESSING
+        print('generating tests in multi-processing mode')
+    else:
+        settings.GENERATOR_MODE = settings.MODE_SINGLE_PROCESS
+        print('generating tests in single process mode')
     
     run_test_config(test_gen_config, debug = args.fc_gen_debug, arg_parser=arg_parser)
 
