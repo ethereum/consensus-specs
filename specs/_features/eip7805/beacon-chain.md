@@ -147,8 +147,7 @@ def is_valid_block_hash(self: ExecutionEngine,
                         execution_payload: ExecutionPayload,
                         parent_beacon_block_root: Root,
                         execution_requests_list: Sequence[bytes],
-                        inclusion_list_transactions:
-                        List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                        inclusion_list_transactions: Sequence[Transaction]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -164,8 +163,7 @@ def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
                        execution_requests_list: Sequence[bytes],
-                       inclusion_list_transactions:
-                       List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                       inclusion_list_transactions: Sequence[Transaction]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
@@ -178,8 +176,8 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `inclusion_list_transactions`
-when calling `notify_new_payload` in EIP-7805.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter
+`inclusion_list_transactions` when calling `notify_new_payload` in EIP-7805.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -225,13 +223,17 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    # Verify inclusion list transactions
+    inclusion_list_transactions: Sequence[Transaction] = []  # TODO: where do we get this?
+    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_INCLUSION_LIST
+    # Verify the payload with the execution engine
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            inclusion_list_transactions=[],  # TODO: where do we get this?
+            inclusion_list_transactions=inclusion_list_transactions,
         )
     )
     # Cache execution payload header
