@@ -186,11 +186,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    execution_requests = new_payload_request.execution_requests
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)
     inclusion_list_transactions = new_payload_request.inclusion_list_transactions # [New in EIP-7805]
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    if b'' in execution_payload.transactions:
+        return False
+
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_list):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -199,8 +205,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     # [Modified in EIP-7805]
     if not self.notify_new_payload(
             execution_payload,
-            execution_requests,
             parent_beacon_block_root,
+            execution_requests_list,
             inclusion_list_transactions):
         return False
 
