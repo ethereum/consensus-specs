@@ -21,6 +21,7 @@ ELECTRA = SpecForkName('electra')
 FULU = SpecForkName('fulu')
 WHISK = SpecForkName('whisk')
 EIP7732 = SpecForkName('eip7732')
+EIP7805 = SpecForkName('eip7805')
 
 #
 # SpecFork settings
@@ -59,6 +60,7 @@ PREVIOUS_FORK_OF = {
     WHISK: CAPELLA,
     FULU: ELECTRA,
     EIP7732: ELECTRA,
+    EIP7805: ELECTRA,
 }
 
 # For fork transition tests

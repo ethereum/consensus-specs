@@ -11,10 +11,13 @@ from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
     with_presets,
+    with_all_phases_from_except,
 )
 from eth2spec.test.helpers.constants import (
     MAINNET,
     MINIMAL,
+    ALTAIR,
+    EIP7805,
 )
 
 rng = random.Random(1337)
@@ -139,7 +142,7 @@ def test_process_sync_committee_contributions(spec, state):
     spec.process_block(state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [EIP7805])
 @spec_state_test
 @always_bls
 def test_get_sync_committee_message(spec, state):

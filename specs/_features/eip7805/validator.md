@@ -50,7 +50,7 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 *Note*: `engine_getInclusionListV1` and `engine_updateBlockWithInclusionListV1` functions are added to the `ExecutionEngine` protocol for use as a validator.
 
-The body of these function is implementation dependent. The Engine API may be used to implement it with an external execution engine. 
+The body of these function is implementation dependent. The Engine API may be used to implement it with an external execution engine.
 
 ## New inclusion list committee assignment
 
@@ -65,7 +65,7 @@ def get_inclusion_committee_assignment(
         validator_index: ValidatorIndex) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with index ``validator_index``
-    is a member of the ILC. Returns None if no assignment is found. 
+    is a member of the ILC. Returns None if no assignment is found.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
     assert epoch <= next_epoch
@@ -79,7 +79,7 @@ def get_inclusion_committee_assignment(
 
 ### Lookahead
 
-`get_inclusion_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting their assigned ILC slot. 
+`get_inclusion_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting their assigned ILC slot.
 
 ## New proposer duty
 
@@ -94,7 +94,7 @@ The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_L
 
 ## New inclusion list committee duty
 
-Some validators are selected to submit signed inclusion list. Validators should call `get_inclusion_committee_assignment` at the beginning of an epoch to be prepared to submit their inclusion list during the next epoch. 
+Some validators are selected to submit signed inclusion list. Validators should call `get_inclusion_committee_assignment` at the beginning of an epoch to be prepared to submit their inclusion list during the next epoch.
 
 A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
 
@@ -132,7 +132,8 @@ Set `attestation_data.beacon_block_root = get_attester_head(store, head_root)`.
 def get_sync_committee_message(state: BeaconState,
                                block_root: Root,
                                validator_index: ValidatorIndex,
-                               privkey: int) -> SyncCommitteeMessage:
+                               privkey: int,
+                               store: Store) -> SyncCommitteeMessage:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
     signing_root = compute_signing_root(block_root, domain)

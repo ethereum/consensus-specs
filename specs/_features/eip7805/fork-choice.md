@@ -112,6 +112,7 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
 ```python
 def on_inclusion_list(
         store: Store,
+        state: BeaconState,
         signed_inclusion_list: SignedInclusionList,
         inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]) -> None:
     """
@@ -144,15 +145,18 @@ def on_inclusion_list(
     is_before_freeze_deadline = get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
 
     # Do not process inclusion lists from known equivocators
-    if validator_index not in inclusion_list_equivocators[(message.slot, root)]:
-        if validator_index in [il.validator_index for il in inclusion_lists[(message.slot, root)]]:
-            il = [il for il in inclusion_lists[(message.slot, root)] if il.validator_index == validator_index][0]
+    if validator_index not in store.inclusion_list_equivocators[(message.slot, root)]:
+        if validator_index in [il.validator_index for il in store.inclusion_lists[(message.slot, root)]]:
+            validator_il = [
+                il for il in store.inclusion_lists[(message.slot, root)]
+                if il.validator_index == validator_index
+            ][0]
             if validator_il != message:
                 # We have equivocation evidence for `validator_index`, record it as equivocator
-                inclusion_list_equivocators[(message.slot, root)].add(validator_index)
+                store.inclusion_list_equivocators[(message.slot, root)].add(validator_index)
         # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline
         elif is_before_freeze_deadline:
-            inclusion_lists[(message.slot, root)].append(message)
+            store.inclusion_lists[(message.slot, root)].append(message)
 ```
 
 
