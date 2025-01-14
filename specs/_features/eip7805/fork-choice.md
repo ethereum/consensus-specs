@@ -32,11 +32,15 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 ### New `validate_inclusion_lists`
 
 ```python
-def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE], execution_payload: ExecutionPayload) -> bool:
+def validate_inclusion_lists(store: Store,
+                             inclusion_list_transactions:
+                             List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE],
+                             execution_payload: ExecutionPayload) -> bool:
     """
     Return ``True`` if and only if the input ``inclusion_list_transactions`` satisfies validation,
-    that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either when all transactions are present in payload or
-    when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
+    that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity
+    conditions either when all transactions are present in payload or when any missing transactions
+    are found to be invalid when appended to the end of the payload unless the block is full.
     """
     ...
 ```
@@ -62,9 +66,10 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict) # [New in EIP-7805]
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict) # [New in EIP-7805]
-    unsatisfied_inclusion_list_blocks: Set[Root] # [New in EIP-7805]
+    inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict)  # [New in EIP-7805]
+    # [New in EIP-7805]
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
+    unsatisfied_inclusion_list_blocks: Set[Root]  # [New in EIP-7805]
 ```
 
 ##### Modified `notify_new_payload`
@@ -92,11 +97,11 @@ def notify_new_payload(self: ExecutionEngine,
 
 ```python
 def get_attester_head(store: Store, head_root: Root) -> Root:
-  head_block = store.blocks[head_root]
+    head_block = store.blocks[head_root]
 
-  if head_root in store.unsatisfied_inclusion_list_blocks:
-    return head_block.parent_root
-  return head_root
+    if head_root in store.unsatisfied_inclusion_list_blocks:
+        return head_block.parent_root
+    return head_root
 
 ```
 
@@ -110,9 +115,10 @@ def on_inclusion_list(
         signed_inclusion_list: SignedInclusionList,
         inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]) -> None:
     """
-    Verify the inclusion list and import it into the fork choice store.
-    If there exists more than 1 inclusion list in store with the same slot and validator index, add the equivocator to the ``inclusion_list_equivocators`` cache.
-    Otherwise, add inclusion list to the ``inclusion_lists` cache.
+    Verify the inclusion list and import it into the fork choice store. If there exists more than 1
+    inclusion list in store with the same slot and validator index, add the equivocator to the
+    ``inclusion_list_equivocators`` cache. Otherwise, add inclusion list to the ``inclusion_lists`
+    cache.
     """
     message = signed_inclusion_list.message
     # Verify inclusion list slot is either from the current or previous slot

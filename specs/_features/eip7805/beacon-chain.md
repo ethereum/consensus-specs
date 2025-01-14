@@ -46,15 +46,15 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 ### Inclusion List Committee
 
-| Name | Value | 
-| - | - | 
+| Name | Value |
+| - | - |
 | `IL_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in EIP-7805) |
 
 ### Execution
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` # (New in EIP-7805) TODO: Placeholder | 
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` # (New in EIP-7805) TODO: Placeholder |
 
 ## Containers
 
@@ -84,7 +84,7 @@ class SignedInclusionList(Container):
 
 ```python
 def is_valid_inclusion_list_signature(
-        state: BeaconState, 
+        state: BeaconState,
         signed_inclusion_list: SignedInclusionList) -> bool:
     """
     Check if ``signed_inclusion_list`` has a valid signature.
@@ -108,7 +108,10 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[Valid
     indices = get_active_validator_indices(state, epoch)
     start = (slot % SLOTS_PER_EPOCH) * IL_COMMITTEE_SIZE
     end = start + IL_COMMITTEE_SIZE
-    return [indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)] for i in range(start, end)]
+    return [
+        indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
+        for i in range(start, end)
+    ]
 ```
 
 ## Beacon chain state transition function
@@ -125,7 +128,7 @@ class NewPayloadRequest(object):
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests 
+    execution_requests: ExecutionRequests
     il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP-7805]
 ```
 
@@ -155,8 +158,8 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
     # [Modified in EIP-7805]
     if not self.notify_new_payload(
-            execution_payload, 
-            execution_requests, 
+            execution_payload,
+            execution_requests,
             parent_beacon_block_root,
             il_transactions):
         return False
