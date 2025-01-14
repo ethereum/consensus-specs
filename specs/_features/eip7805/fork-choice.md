@@ -42,6 +42,7 @@ def validate_inclusion_lists(store: Store,
     conditions either when all transactions are present in payload or when any missing transactions
     are found to be invalid when appended to the end of the payload unless the block is full.
     """
+    # pylint: disable=unused-argument
     ...
 ```
 
@@ -81,6 +82,7 @@ def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        execution_requests: ExecutionRequests,
                        parent_beacon_block_root: Root,
+                       execution_requests_list: Sequence[bytes],
                        il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
                        store: Store) -> bool:
     """
