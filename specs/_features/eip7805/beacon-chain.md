@@ -18,7 +18,7 @@
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
-    - [`get_inclusion_list_committee`](#get_inclusion_list_committee)
+    - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
@@ -45,19 +45,19 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 | Name | Value |
 | - | - |
-| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP-7805) |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0C000000')` |
 
 ### Inclusion List Committee
 
 | Name | Value |
 | - | - |
-| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in EIP-7805) |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16) |
 
 ### Execution
 
 | Name | Value |
 | - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` # (New in EIP-7805) TODO: Placeholder |
+| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` **TBD** |
 
 ## Containers
 
@@ -102,7 +102,7 @@ def is_valid_inclusion_list_signature(
 
 ### Beacon State accessors
 
-#### `get_inclusion_list_committee`
+#### New `get_inclusion_list_committee`
 
 ```python
 def get_inclusion_list_committee(state: BeaconState,
@@ -133,7 +133,7 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests
-    inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP-7805]
+    inclusion_list_transactions: Sequence[Transaction]  # [New in EIP-7805]
 ```
 
 #### Engine APIs

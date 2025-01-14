@@ -10,7 +10,7 @@
 - [Helpers](#helpers)
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [Modified `Store`](#modified-store)
-      - [`get_attester_head`](#get_attester_head)
+      - [New `get_attester_head`](#new-get_attester_head)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -24,7 +24,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds  # (New in EIP7805) |
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds |
 
 ## Helpers
 
@@ -72,7 +72,7 @@ class Store(object):
     unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)  # [New in EIP-7805]
 ```
 
-##### `get_attester_head`
+##### New `get_attester_head`
 
 ```python
 def get_attester_head(store: Store, head_root: Root) -> Root:
@@ -126,11 +126,11 @@ def on_inclusion_list(
     # Do not process inclusion lists from known equivocators
     if validator_index not in store.inclusion_list_equivocators[(message.slot, root)]:
         if validator_index in [il.validator_index for il in store.inclusion_lists[(message.slot, root)]]:
-            validator_il = [
+            validator_inclusion_list = [
                 il for il in store.inclusion_lists[(message.slot, root)]
                 if il.validator_index == validator_index
             ][0]
-            if validator_il != message:
+            if validator_inclusion_list != message:
                 # We have equivocation evidence for `validator_index`, record it as equivocator
                 store.inclusion_list_equivocators[(message.slot, root)].add(validator_index)
         # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline

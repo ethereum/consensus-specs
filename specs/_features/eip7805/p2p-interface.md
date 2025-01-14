@@ -25,6 +25,8 @@ This document contains the consensus-layer networking specification for EIP-7805
 
 ### Configuration
 
+| Name | Value | Description |
+| - | - | - |
 | `MAX_REQUEST_INCLUSION_LIST` | `2**4` (= 16) | Maximum number of inclusion list in a single request |
 | `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of inclusion list in bytes |
 
@@ -34,10 +36,9 @@ This document contains the consensus-layer networking specification for EIP-7805
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name                          | Message Type                                         |
-|-------------------------------|------------------------------------------------------|
-| `inclusion_list`    | `SignedInclusionList` [New in EIP-7805] |
-
+| Name | Message Type |
+| - | - |
+| `inclusion_list` | `SignedInclusionList` |
 
 ##### Global topics
 
@@ -69,8 +70,8 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 
 [1]: # (eth2spec: skip)
 
-| `fork_version`         | Chunk SSZ type                           |
-|------------------------|------------------------------------------|
+| `fork_version`         | Chunk SSZ type                 |
+|------------------------|--------------------------------|
 | `EIP7805_FORK_VERSION` | `EIP-7805.SignedInclusionList` |
 
 Request Content:
