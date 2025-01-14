@@ -35,4 +35,4 @@ I.e. `mapping[i]` is the shuffled location of `i`.
 ## Condition
 
 The resulting list should match the expected output after shuffling the implied input, using the given `seed`.
-The output is checked using the `mapping`, based on the shuffling test type (e.g. can be backwards shuffling). 
+The output is checked using the `mapping`, based on the shuffling test type (e.g. can be backwards shuffling).

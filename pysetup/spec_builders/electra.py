@@ -10,6 +10,7 @@ class ElectraSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
+from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 '''
 
     @classmethod
@@ -28,8 +29,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def notify_new_payload(self: ExecutionEngine,
                            execution_payload: ExecutionPayload,
-                           execution_requests: ExecutionRequests,
-                           parent_beacon_block_root: Root) -> bool:
+                           parent_beacon_block_root: Root,
+                           execution_requests_list: Sequence[bytes]) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -45,7 +46,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_valid_block_hash(self: ExecutionEngine,
                             execution_payload: ExecutionPayload,
-                            parent_beacon_block_root: Root) -> bool:
+                            parent_beacon_block_root: Root,
+                            execution_requests_list: Sequence[bytes]) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:

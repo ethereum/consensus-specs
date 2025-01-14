@@ -21,12 +21,17 @@ from eth2spec.test.helpers.constants import (
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
+    prepare_deposit_request,
+)
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
 )
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
+    is_post_bellatrix,
     is_post_electra,
 )
 from eth2spec.test.helpers.state import (
@@ -37,6 +42,12 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.voluntary_exits import (
     prepare_signed_exits,
 )
+from eth2spec.test.helpers.withdrawals import (
+    prepare_withdrawal_request,
+)
+from eth2spec.test.helpers.consolidations import (
+    prepare_switch_to_compounding_request,
+)
 
 
 class OperationType(Enum):
@@ -45,11 +56,20 @@ class OperationType(Enum):
     DEPOSIT = auto()
     VOLUNTARY_EXIT = auto()
     BLS_TO_EXECUTION_CHANGE = auto()
+    DEPOSIT_REQUEST = auto()
+    WITHDRAWAL_REQUEST = auto()
+    CONSOLIDATION_REQUEST = auto()
 
 
-def _set_operations_by_dict(block, operation_dict):
+def _set_operations_by_dict(spec, block, operation_dict):
     for key, value in operation_dict.items():
-        setattr(block.body, key, value)
+        # to handle e.g. `execution_requests.deposits` and `deposits`
+        obj = block.body
+        for attr in key.split('.')[:-1]:
+            obj = getattr(obj, attr)
+        setattr(obj, key.split('.')[-1], value)
+    if is_post_bellatrix(spec):
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
 
 def _state_transition_and_sign_block_at_slot(spec,
@@ -73,7 +93,7 @@ def _state_transition_and_sign_block_at_slot(spec,
         block.body.sync_aggregate = sync_aggregate
 
     if operation_dict:
-        _set_operations_by_dict(block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -328,6 +348,21 @@ def run_transition_with_operation(state,
         selected_validator_index = 0
         bls_to_execution_changes = [get_signed_address_change(spec, state, selected_validator_index)]
         operation_dict = {'bls_to_execution_changes': bls_to_execution_changes}
+    elif operation_type == OperationType.DEPOSIT_REQUEST:
+        # create a new deposit request
+        selected_validator_index = len(state.validators)
+        amount = post_spec.MIN_ACTIVATION_BALANCE
+        deposit_request = prepare_deposit_request(post_spec, selected_validator_index, amount, signed=True)
+        operation_dict = {'execution_requests.deposits': [deposit_request]}
+    elif operation_type == OperationType.WITHDRAWAL_REQUEST:
+        selected_validator_index = 0
+        withdrawal_request = prepare_withdrawal_request(
+            post_spec, state, selected_validator_index, amount=post_spec.FULL_EXIT_REQUEST_AMOUNT)
+        operation_dict = {'execution_requests.withdrawals': [withdrawal_request]}
+    elif operation_type == OperationType.CONSOLIDATION_REQUEST:
+        selected_validator_index = 0
+        consolidation_request = prepare_switch_to_compounding_request(post_spec, state, selected_validator_index)
+        operation_dict = {'execution_requests.consolidations': [consolidation_request]}
 
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
@@ -352,6 +387,20 @@ def run_transition_with_operation(state,
         elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
             validator = state.validators[selected_validator_index]
             assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        elif operation_type == OperationType.DEPOSIT_REQUEST:
+            assert state.pending_deposits == [post_spec.PendingDeposit(
+                pubkey=deposit_request.pubkey,
+                withdrawal_credentials=deposit_request.withdrawal_credentials,
+                amount=deposit_request.amount,
+                signature=deposit_request.signature,
+                slot=state.slot,
+            )]
+        elif operation_type == OperationType.WITHDRAWAL_REQUEST:
+            validator = state.validators[selected_validator_index]
+            assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
+        elif operation_type == OperationType.CONSOLIDATION_REQUEST:
+            validator = state.validators[selected_validator_index]
+            assert validator.withdrawal_credentials[:1] == post_spec.COMPOUNDING_WITHDRAWAL_PREFIX
 
     yield "pre", state
 
@@ -360,7 +409,7 @@ def run_transition_with_operation(state,
     if is_right_before_fork:
         # add a block with operation.
         block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict)
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(pre_tag(signed_block))
 

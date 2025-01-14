@@ -18,8 +18,8 @@ SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
 ELECTRA = SpecForkName('electra')
+FULU = SpecForkName('fulu')
 WHISK = SpecForkName('whisk')
-EIP7594 = SpecForkName('eip7594')
 EIP7732 = SpecForkName('eip7732')
 
 #
@@ -37,12 +37,12 @@ ALL_PHASES = (
     *MAINNET_FORKS,
     ELECTRA,
     # Experimental patches
-    EIP7594,
+    FULU,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, EIP7594, WHISK)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, WHISK)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK, EIP7732)
 
@@ -57,7 +57,7 @@ PREVIOUS_FORK_OF = {
     ELECTRA: DENEB,
     # Experimental patches
     WHISK: CAPELLA,
-    EIP7594: DENEB,
+    FULU: ELECTRA,
     EIP7732: ELECTRA,
 }
 
@@ -74,7 +74,10 @@ POST_FORK_OF = {
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()
 DENEB_TRANSITION_UPGRADES_AND_AFTER = {key: value for key, value in POST_FORK_OF.items()
                                        if key not in [PHASE0, ALTAIR, BELLATRIX]}
+ELECTRA_TRANSITION_UPGRADES_AND_AFTER = {key: value for key, value in POST_FORK_OF.items()
+                                         if key not in [PHASE0, ALTAIR, BELLATRIX, CAPELLA]}
 AFTER_DENEB_PRE_POST_FORKS = DENEB_TRANSITION_UPGRADES_AND_AFTER.items()
+AFTER_ELECTRA_PRE_POST_FORKS = ELECTRA_TRANSITION_UPGRADES_AND_AFTER.items()
 
 #
 # Config and Preset

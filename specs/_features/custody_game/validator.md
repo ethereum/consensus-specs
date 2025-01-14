@@ -1,7 +1,7 @@
 # Custody Game -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
-This is an accompanying document to the [Custody Game](./), which describes the expected actions of a "validator"
+This is an accompanying document to [Custody Game -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator"
 participating in the shard data Custody Game.
 
 ## Table of contents

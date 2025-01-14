@@ -12,6 +12,7 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
+  - [Execution layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -19,17 +20,20 @@
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
+  - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`DepositRequest`](#depositrequest)
-    - [`PendingBalanceDeposit`](#pendingbalancedeposit)
+    - [`PendingDeposit`](#pendingdeposit)
     - [`PendingPartialWithdrawal`](#pendingpartialwithdrawal)
+    - [`PendingConsolidation`](#pendingconsolidation)
+    - [`DepositRequest`](#depositrequest)
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
-    - [`PendingConsolidation`](#pendingconsolidation)
     - [`ExecutionRequests`](#executionrequests)
+    - [`SingleAttestation`](#singleattestation)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -60,7 +64,6 @@
     - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
     - [New `switch_to_compounding_validator`](#new-switch_to_compounding_validator)
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
-    - [New `queue_entire_balance_and_reset_validator`](#new-queue_entire_balance_and_reset_validator)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
     - [Modified `slash_validator`](#modified-slash_validator)
@@ -69,13 +72,15 @@
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
     - [Modified `process_slashings`](#modified-process_slashings)
-    - [New `process_pending_balance_deposits`](#new-process_pending_balance_deposits)
+    - [New `apply_pending_deposit`](#new-apply_pending_deposit)
+    - [New `process_pending_deposits`](#new-process_pending_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
+      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
@@ -83,16 +88,18 @@
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
+      - [New `get_execution_requests_list`](#new-get_execution_requests_list)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposits](#deposits)
+        - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
+        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
         - [Modified `apply_deposit`](#modified-apply_deposit)
         - [New `is_valid_deposit_signature`](#new-is_valid_deposit_signature)
-        - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
-        - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
+        - [Modified `process_deposit`](#modified-process_deposit)
       - [Voluntary exits](#voluntary-exits)
         - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
@@ -100,8 +107,8 @@
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
       - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
+        - [New `is_valid_switch_to_compounding_request`](#new-is_valid_switch_to_compounding_request)
         - [New `process_consolidation_request`](#new-process_consolidation_request)
-- [Testing](#testing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -113,8 +120,9 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
 * [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
 * [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
+* [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
-*Note:* This specification is built upon [Deneb](../deneb/beacon_chain.md) and is under active development.
+*Note:* This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -124,36 +132,44 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Description |
 | - | - | - |
-| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* |
+| `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* Value which indicates no start index has been assigned |
+| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 
+| Name | Value | Description |
+| - | - | - |
+| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | *[New in Electra:EIP7251]* Withdrawal credential prefix for a compounding validator |
+
+### Execution layer triggered requests
+
 | Name | Value |
 | - | - |
-| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` |
+| `DEPOSIT_REQUEST_TYPE` | `Bytes1('0x00')` |
+| `WITHDRAWAL_REQUEST_TYPE` | `Bytes1('0x01')` |
+| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
 
 ## Preset
 
 ### Gwei values
 
-| Name | Value |
-| - | - |
-| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)`  (= 32,000,000,000) |
-| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) |
+| Name | Value | Description |
+| - | - | - |
+| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) | *[New in Electra:EIP7251]* Minimum balance for a validator to become active |
+| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | *[New in Electra:EIP7251]* Maximum effective balance for a compounding validator |
 
 ### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)`  (= 4,096) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
 
 ### State list lengths
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `PENDING_BALANCE_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending balance deposits |
+| `PENDING_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending deposits |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
 | `PENDING_CONSOLIDATIONS_LIMIT` | `uint64(2**18)` (= 262,144) | pending consolidations |
 
@@ -161,16 +177,16 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_ATTESTER_SLASHINGS_ELECTRA`   | `2**0` (= 1) | *[New in Electra:EIP7549]* |
-| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) | *[New in Electra:EIP7549]* |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA` | `2**0` (= 1) |
+| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) |
 
 ### Execution
 
 | Name | Value | Description |
 | - | - | - |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of deposit receipts allowed in each payload |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload |
 | `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
-| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(1)` (= 1) | *[New in Electra:EIP7002]* Maximum number of execution layer consolidation requests in each payload |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
@@ -178,7 +194,19 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
 
+### Pending deposits processing
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
+
 ## Configuration
+
+### Execution
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
@@ -190,6 +218,40 @@ The following values are (non-configurable) constants used throughout the specif
 ## Containers
 
 ### New containers
+
+#### `PendingDeposit`
+
+*Note*: The container is new in EIP7251.
+
+```python
+class PendingDeposit(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+    signature: BLSSignature
+    slot: Slot
+```
+
+#### `PendingPartialWithdrawal`
+
+*Note*: The container is new in EIP7251.
+
+```python
+class PendingPartialWithdrawal(Container):
+    validator_index: ValidatorIndex
+    amount: Gwei
+    withdrawable_epoch: Epoch
+```
+
+#### `PendingConsolidation`
+
+*Note*: The container is new in EIP7251.
+
+```python
+class PendingConsolidation(Container):
+    source_index: ValidatorIndex
+    target_index: ValidatorIndex
+```
 
 #### `DepositRequest`
 
@@ -204,26 +266,6 @@ class DepositRequest(Container):
     index: uint64
 ```
 
-#### `PendingBalanceDeposit`
-
-*Note*: The container is new in EIP7251.
-
-```python
-class PendingBalanceDeposit(Container):
-    index: ValidatorIndex
-    amount: Gwei
-```
-
-#### `PendingPartialWithdrawal`
-
-*Note*: The container is new in EIP7251.
-
-```python
-class PendingPartialWithdrawal(Container):
-    index: ValidatorIndex
-    amount: Gwei
-    withdrawable_epoch: Epoch
-```
 #### `WithdrawalRequest`
 
 *Note*: The container is new in EIP7251:EIP7002.
@@ -246,16 +288,6 @@ class ConsolidationRequest(Container):
     target_pubkey: BLSPubkey
 ```
 
-#### `PendingConsolidation`
-
-*Note*: The container is new in EIP7251.
-
-```python
-class PendingConsolidation(Container):
-    source_index: ValidatorIndex
-    target_index: ValidatorIndex
-```
-
 #### `ExecutionRequests`
 
 *Note*: This container holds requests from the execution layer that are received in [
@@ -267,6 +299,16 @@ class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
+```
+
+#### `SingleAttestation`
+
+```python
+class SingleAttestation(Container):
+    committee_index: CommitteeIndex
+    attester_index: ValidatorIndex
+    data: AttestationData
+    signature: BLSSignature
 ```
 
 ### Modified Containers
@@ -373,7 +415,7 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch  # [New in Electra:EIP7251]
     consolidation_balance_to_consume: Gwei  # [New in Electra:EIP7251]
     earliest_consolidation_epoch: Epoch  # [New in Electra:EIP7251]
-    pending_balance_deposits: List[PendingBalanceDeposit, PENDING_BALANCE_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
+    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]  # [New in Electra:EIP7251]
     # [New in Electra:EIP7251]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in Electra:EIP7251]
@@ -385,7 +427,7 @@ class BeaconState(Container):
 
 #### Modified `compute_proposer_index`
 
-*Note*: The function `compute_proposer_index` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA`.
+*Note*: The function `compute_proposer_index` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 16-bit random value instead of an 8-bit random byte in the effective balance filter.
 
 ```python
 def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
@@ -393,15 +435,18 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
     Return from ``indices`` a random index sampled by effective balance.
     """
     assert len(indices) > 0
-    MAX_RANDOM_BYTE = 2**8 - 1
+    MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
     i = uint64(0)
     total = uint64(len(indices))
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        # [Modified in Electra]
+        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        offset = i % 16 * 2
+        random_value = bytes_to_uint64(random_bytes[offset:offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance
         # [Modified in Electra:EIP7251]
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+        if effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value:
             return candidate_index
         i += 1
 ```
@@ -543,7 +588,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
     return sum(
-        withdrawal.amount for withdrawal in state.pending_partial_withdrawals if withdrawal.index == validator_index
+        withdrawal.amount for withdrawal in state.pending_partial_withdrawals
+        if withdrawal.validator_index == validator_index
     )
 ```
 
@@ -559,10 +605,12 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     output: Set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
-    for index in committee_indices:
-        committee = get_beacon_committee(state, attestation.data.slot, index)
+    for committee_index in committee_indices:
+        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
         committee_attesters = set(
-            index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
+            attester_index for i, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        )
         output = output.union(committee_attesters)
 
         committee_offset += len(committee)
@@ -572,7 +620,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 
 #### Modified `get_next_sync_committee_indices`
 
-*Note*: The function `get_next_sync_committee_indices` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA`.
+*Note*: The function `get_next_sync_committee_indices` is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 16-bit random value instead of an 8-bit random byte in the effective balance filter.
 
 ```python
 def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
@@ -581,19 +629,22 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     epoch = Epoch(get_current_epoch(state) + 1)
 
-    MAX_RANDOM_BYTE = 2**8 - 1
+    MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
     active_validator_indices = get_active_validator_indices(state, epoch)
     active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
-    i = 0
+    i = uint64(0)
     sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
         candidate_index = active_validator_indices[shuffled_index]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        # [Modified in Electra]
+        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        offset = i % 16 * 2
+        random_value = bytes_to_uint64(random_bytes[offset:offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance
         # [Modified in Electra:EIP7251]
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_byte:
+        if effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value:
             sync_committee_indices.append(candidate_index)
         i += 1
     return sync_committee_indices
@@ -628,9 +679,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
-    if has_eth1_withdrawal_credential(validator):
-        validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
-        queue_excess_active_balance(state, index)
+    validator.withdrawal_credentials = COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+    queue_excess_active_balance(state, index)
 ```
 
 #### New `queue_excess_active_balance`
@@ -641,23 +691,16 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
     if balance > MIN_ACTIVATION_BALANCE:
         excess_balance = balance - MIN_ACTIVATION_BALANCE
         state.balances[index] = MIN_ACTIVATION_BALANCE
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=excess_balance)
-        )
-```
-
-#### New `queue_entire_balance_and_reset_validator`
-
-```python
-def queue_entire_balance_and_reset_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    balance = state.balances[index]
-    state.balances[index] = 0
-    validator = state.validators[index]
-    validator.effective_balance = 0
-    validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-    state.pending_balance_deposits.append(
-        PendingBalanceDeposit(index=index, amount=balance)
-    )
+        validator = state.validators[index]
+        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
+        # and GENESIS_SLOT to distinguish from a pending deposit request
+        state.pending_deposits.append(PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=excess_balance,
+            signature=bls.G2_POINT_AT_INFINITY,
+            slot=GENESIS_SLOT,
+        ))
 ```
 
 #### New `compute_exit_epoch_and_update_churn`
@@ -761,7 +804,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings(state)  # [Modified in Electra:EIP7251]
     process_eth1_data_reset(state)
-    process_pending_balance_deposits(state)  # [New in Electra:EIP7251]
+    process_pending_deposits(state)  # [New in Electra:EIP7251]
     process_pending_consolidations(state)  # [New in Electra:EIP7251]
     process_effective_balance_updates(state)  # [Modified in Electra:EIP7251]
     process_slashings_reset(state)
@@ -773,23 +816,25 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Modified `process_registry_updates`
 
-*Note*: The function `process_registry_updates` is modified to use the updated definition of `initiate_validator_exit`
+*Note*: The function `process_registry_updates` is modified to
+use the updated definitions of `initiate_validator_exit` and `is_eligible_for_activation_queue`
 and changes how the activation epochs are computed for eligible validators.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):
+        if is_eligible_for_activation_queue(validator):  # [Modified in Electra:EIP7251]
             validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if (
             is_active_validator(validator, get_current_epoch(state))
             and validator.effective_balance <= EJECTION_BALANCE
         ):
-            initiate_validator_exit(state, ValidatorIndex(index))
+            initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
 
     # Activate all eligible validators
+    # [Modified in Electra:EIP7251]
     activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     for validator in state.validators:
         if is_eligible_for_activation(state, validator):
@@ -818,45 +863,99 @@ def process_slashings(state: BeaconState) -> None:
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
-#### New `process_pending_balance_deposits`
+#### New `apply_pending_deposit`
 
 ```python
-def process_pending_balance_deposits(state: BeaconState) -> None:
+def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
+    """
+    Applies ``deposit`` to the ``state``.
+    """
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if deposit.pubkey not in validator_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature
+        ):
+            add_validator_to_registry(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount)
+    else:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        increase_balance(state, validator_index, deposit.amount)
+```
+
+#### New `process_pending_deposits`
+
+Iterating over `pending_deposits` queue this function runs the following checks before applying pending deposit:
+1. All Eth1 bridge deposits are processed before the first deposit request gets processed.
+2. Deposit position in the queue is finalized.
+3. Deposit does not exceed the `MAX_PENDING_DEPOSITS_PER_EPOCH` limit.
+4. Deposit does not exceed the activation churn limit.
+
+```python
+def process_pending_deposits(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
     deposits_to_postpone = []
+    is_churn_limit_reached = False
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
 
-    for deposit in state.pending_balance_deposits:
-        validator = state.validators[deposit.index]
-        # Validator is exiting, postpone the deposit until after withdrawable epoch
-        if validator.exit_epoch < FAR_FUTURE_EPOCH:
-            if next_epoch <= validator.withdrawable_epoch:
-                deposits_to_postpone.append(deposit)
+    for deposit in state.pending_deposits:
+        # Do not process deposit requests if Eth1 bridge deposits are not yet applied.
+        if (
+            # Is deposit request
+            deposit.slot > GENESIS_SLOT and
+            # There are pending Eth1 bridge deposits
+            state.eth1_deposit_index < state.deposit_requests_start_index
+        ):
+            break
+
+        # Check if deposit has been finalized, otherwise, stop processing.
+        if deposit.slot > finalized_slot:
+            break
+
+        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
+            break
+
+        # Read validator state
+        is_validator_exited = False
+        is_validator_withdrawn = False
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        if deposit.pubkey in validator_pubkeys:
+            validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
+            is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
+            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
+
+        if is_validator_withdrawn:
             # Deposited balance will never become active. Increase balance but do not consume churn
-            else:
-                increase_balance(state, deposit.index, deposit.amount)
-        # Validator is not exiting, attempt to process deposit
+            apply_pending_deposit(state, deposit)
+        elif is_validator_exited:
+            # Validator is exiting, postpone the deposit until after withdrawable epoch
+            deposits_to_postpone.append(deposit)
         else:
-            # Deposit does not fit in the churn, no more deposit processing in this epoch.
-            if processed_amount + deposit.amount > available_for_processing:
+            # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
+            is_churn_limit_reached = processed_amount + deposit.amount > available_for_processing
+            if is_churn_limit_reached:
                 break
-            # Deposit fits in the churn, process it. Increase balance and consume churn.
-            else:
-                increase_balance(state, deposit.index, deposit.amount)
-                processed_amount += deposit.amount
+
+            # Consume churn and apply deposit.
+            processed_amount += deposit.amount
+            apply_pending_deposit(state, deposit)
+
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_balance_deposits = state.pending_balance_deposits[next_deposit_index:]
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
 
-    if len(state.pending_balance_deposits) == 0:
-        state.deposit_balance_to_consume = Gwei(0)
-    else:
+    # Accumulate churn only if the churn limit has been hit.
+    if is_churn_limit_reached:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
-
-    state.pending_balance_deposits += deposits_to_postpone
+    else:
+        state.deposit_balance_to_consume = Gwei(0)
 ```
 
 #### New `process_pending_consolidations`
@@ -873,12 +972,9 @@ def process_pending_consolidations(state: BeaconState) -> None:
         if source_validator.withdrawable_epoch > next_epoch:
             break
 
-        # Churn any target excess active balance of target and raise its max
-        switch_to_compounding_validator(state, pending_consolidation.target_index)
-
         # Calculate the consolidated balance
-        max_effective_balance = get_max_effective_balance(source_validator)
-        source_effective_balance = min(state.balances[pending_consolidation.source_index], max_effective_balance)
+        source_effective_balance = min(
+            state.balances[pending_consolidation.source_index], source_validator.effective_balance)
 
         # Move active balance to target. Excess balance is withdrawable.
         decrease_balance(state, pending_consolidation.source_index, source_effective_balance)
@@ -927,17 +1023,32 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
+##### Modified `is_valid_block_hash`
+
+*Note*: The function `is_valid_block_hash` is modified to include the additional `execution_requests_list`.
+
+```python
+def is_valid_block_hash(self: ExecutionEngine,
+                        execution_payload: ExecutionPayload,
+                        parent_beacon_block_root: Root,
+                        execution_requests_list: Sequence[bytes]) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
+    """
+    ...
+```
+
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests` parameter in Electra.
+*Note*: The function `notify_new_payload` is modified to include the additional `execution_requests_list`.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
-                       execution_requests: ExecutionRequests,
-                       parent_beacon_block_root: Root) -> bool:
+                       parent_beacon_block_root: Root,
+                       execution_requests_list: Sequence[bytes]) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
     """
     ...
@@ -945,8 +1056,8 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `execution_requests`
-when calling `notify_new_payload` in Electra.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter
+`execution_requests_list` when calling `is_valid_block_hash` and `notify_new_payload` in Electra.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,
@@ -955,10 +1066,17 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    execution_requests = new_payload_request.execution_requests  # [New in Electra]
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
+    execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)  # [New in Electra]
 
-    if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
+    if b'' in execution_payload.transactions:
+        return False
+
+    # [Modified in Electra]
+    if not self.is_valid_block_hash(
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_list):
         return False
 
     if not self.is_valid_versioned_hashes(new_payload_request):
@@ -966,9 +1084,9 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
     # [Modified in Electra]
     if not self.notify_new_payload(
-            execution_payload, 
-            execution_requests, 
-            parent_beacon_block_root):
+            execution_payload,
+            parent_beacon_block_root,
+            execution_requests_list):
         return False
 
     return True
@@ -999,32 +1117,38 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
+    processed_partial_withdrawals_count = 0
 
     # [New in Electra:EIP7251] Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:
             break
 
-        validator = state.validators[withdrawal.index]
+        validator = state.validators[withdrawal.validator_index]
         has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        has_excess_balance = state.balances[withdrawal.index] > MIN_ACTIVATION_BALANCE
+        has_excess_balance = state.balances[withdrawal.validator_index] > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
-            withdrawable_balance = min(state.balances[withdrawal.index] - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+            withdrawable_balance = min(
+                state.balances[withdrawal.validator_index] - MIN_ACTIVATION_BALANCE,
+                withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
-                validator_index=withdrawal.index,
+                validator_index=withdrawal.validator_index,
                 address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                 amount=withdrawable_balance,
             ))
             withdrawal_index += WithdrawalIndex(1)
 
-    partial_withdrawals_count = len(withdrawals)
+        processed_partial_withdrawals_count += 1
 
     # Sweep for remaining.
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     for _ in range(bound):
         validator = state.validators[validator_index]
-        balance = state.balances[validator_index]
+        # [Modified in Electra:EIP7251]
+        partially_withdrawn_balance = sum(
+            withdrawal.amount for withdrawal in withdrawals if withdrawal.validator_index == validator_index)
+        balance = state.balances[validator_index] - partially_withdrawn_balance
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -1044,7 +1168,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-    return withdrawals, partial_withdrawals_count
+    return withdrawals, processed_partial_withdrawals_count
 ```
 
 ##### Modified `process_withdrawals`
@@ -1053,7 +1177,8 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals, partial_withdrawals_count = get_expected_withdrawals(state)  # [Modified in Electra:EIP7251]
+    # [Modified in Electra:EIP7251]
+    expected_withdrawals, processed_partial_withdrawals_count = get_expected_withdrawals(state)
 
     assert payload.withdrawals == expected_withdrawals
 
@@ -1061,7 +1186,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update pending partial withdrawals [New in Electra:EIP7251]
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_count:]
+    state.pending_partial_withdrawals = state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
 
     # Update the next withdrawal index if this block contained withdrawals
     if len(expected_withdrawals) != 0:
@@ -1082,6 +1207,25 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Execution payload
 
+##### New `get_execution_requests_list`
+
+*Note*: Encodes execution requests as defined by [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
+
+```python
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
+    requests = [
+        (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
+        (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
+        (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+    ]
+
+    return [
+        request_type + ssz_serialize(request_data)
+        for request_type, request_data in requests
+        if len(request_data) != 0
+    ]
+```
+
 ##### Modified `process_execution_payload`
 
 *Note*: The function `process_execution_payload` is modified to pass `execution_requests` into `execution_engine.verify_and_notify_new_payload` (via the updated `NewPayloadRequest`).
@@ -1097,15 +1241,15 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA  # [Modified in Electra:EIP7691]
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
-            execution_requests=body.execution_requests,  # [New in Electra]
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=body.execution_requests,  # [New in Electra]
         )
     )
     # Cache execution payload header
@@ -1165,6 +1309,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ###### Modified `process_attestation`
 
+*Note*: The function is modified to support EIP7549.
+
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
@@ -1175,13 +1321,19 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # [Modified in Electra:EIP7549]
     assert data.index == 0
     committee_indices = get_committee_indices(attestation.committee_bits)
-    participants_count = 0
-    for index in committee_indices:
-        assert index < get_committee_count_per_slot(state, data.target.epoch)
-        committee = get_beacon_committee(state, data.slot, index)
-        participants_count += len(committee)
+    committee_offset = 0
+    for committee_index in committee_indices:
+        assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
+        committee = get_beacon_committee(state, data.slot, committee_index)
+        committee_attesters = set(
+            attester_index for i, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        )
+        assert len(committee_attesters) > 0
+        committee_offset += len(committee)
 
-    assert len(attestation.aggregation_bits) == participants_count
+    # Bitfield length matches total number of participants
+    assert len(attestation.aggregation_bits) == committee_offset
 
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
@@ -1210,6 +1362,48 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
+###### Modified `get_validator_from_deposit`
+
+*Note*: The function is modified to use `MAX_EFFECTIVE_BALANCE_ELECTRA` for compounding withdrawal credential.
+
+```python
+def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64) -> Validator:
+    validator = Validator(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        effective_balance=Gwei(0),
+        slashed=False,
+        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
+        activation_epoch=FAR_FUTURE_EPOCH,
+        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+    )
+
+    # [Modified in Electra:EIP7251]
+    max_effective_balance = get_max_effective_balance(validator)
+    validator.effective_balance = min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
+
+    return validator
+```
+
+###### Modified `add_validator_to_registry`
+
+*Note*: The function `add_validator_to_registry` is modified to use the modified `get_validator_from_deposit`.
+
+```python
+def add_validator_to_registry(state: BeaconState,
+                              pubkey: BLSPubkey,
+                              withdrawal_credentials: Bytes32,
+                              amount: uint64) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)  # [Modified in Electra:EIP7251]
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, amount)
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, uint64(0))
+```
+
 ###### Modified `apply_deposit`
 
 *Note*: The function `apply_deposit` is modified to support EIP7251.
@@ -1224,21 +1418,19 @@ def apply_deposit(state: BeaconState,
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
-    else:
-        # Increase balance by deposit amount
-        index = ValidatorIndex(validator_pubkeys.index(pubkey))
-        state.pending_balance_deposits.append(
-            PendingBalanceDeposit(index=index, amount=amount)
-        )  # [Modified in Electra:EIP7251]
-        # Check if valid deposit switch to compounding credentials
-        if (
-            is_compounding_withdrawal_credential(withdrawal_credentials)
-            and has_eth1_withdrawal_credential(state.validators[index])
-            and is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature)
-        ):
-            switch_to_compounding_validator(state, index)
+            add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))  # [Modified in Electra:EIP7251]
+        else:
+            return
 
+    # Increase balance by deposit amount
+    # [Modified in Electra:EIP7251]
+    state.pending_deposits.append(PendingDeposit(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        signature=signature,
+        slot=GENESIS_SLOT  # Use GENESIS_SLOT to distinguish from a pending deposit request
+    ))
 ```
 
 ###### New `is_valid_deposit_signature`
@@ -1258,39 +1450,31 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
     return bls.Verify(pubkey, signing_root, signature)
 ```
 
-###### Modified `add_validator_to_registry`
+###### Modified `process_deposit`
 
-*Note*: The function `add_validator_to_registry` is modified to initialize the validator with a balance of zero and add a pending balance deposit to the queue.
-
-```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
-    index = get_index_for_new_validator(state)
-    validator = get_validator_from_deposit(pubkey, withdrawal_credentials)
-    set_or_append_list(state.validators, index, validator)
-    set_or_append_list(state.balances, index, 0)  # [Modified in Electra:EIP7251]
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, uint64(0))
-    state.pending_balance_deposits.append(PendingBalanceDeposit(index=index, amount=amount))  # [New in Electra:EIP7251]
-```
-
-###### Modified `get_validator_from_deposit`
-
-*Note*: The function `get_validator_from_deposit` is modified to initialize the validator with an effective balance of zero.
+*Note*: The function `process_deposit` is modified to to use the modified `apply_deposit`.
 
 ```python
-def get_validator_from_deposit(pubkey: BLSPubkey, withdrawal_credentials: Bytes32) -> Validator:
-    return Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-        effective_balance=0,  # [Modified in Electra:EIP7251]
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    # Verify the Merkle branch
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(deposit.data),
+        branch=deposit.proof,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
+    )
+
+    # Deposits must be processed in order
+    state.eth1_deposit_index += 1
+
+    # [Modified in Electra:EIP7251]
+    apply_deposit(
+        state=state,
+        pubkey=deposit.data.pubkey,
+        withdrawal_credentials=deposit.data.withdrawal_credentials,
+        amount=deposit.data.amount,
+        signature=deposit.data.signature,
     )
 ```
 
@@ -1383,7 +1567,7 @@ def process_withdrawal_request(
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
         withdrawable_epoch = Epoch(exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
         state.pending_partial_withdrawals.append(PendingPartialWithdrawal(
-            index=index,
+            validator_index=index,
             amount=to_withdraw,
             withdrawable_epoch=withdrawable_epoch,
         ))
@@ -1399,16 +1583,56 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
         state.deposit_requests_start_index = deposit_request.index
 
-    apply_deposit(
-        state=state,
+    # Create pending deposit
+    state.pending_deposits.append(PendingDeposit(
         pubkey=deposit_request.pubkey,
         withdrawal_credentials=deposit_request.withdrawal_credentials,
         amount=deposit_request.amount,
         signature=deposit_request.signature,
-    )
+        slot=state.slot,
+    ))
 ```
 
 ##### Execution layer consolidation requests
+
+###### New `is_valid_switch_to_compounding_request`
+
+```python
+def is_valid_switch_to_compounding_request(
+    state: BeaconState,
+    consolidation_request: ConsolidationRequest
+) -> bool:
+    # Switch to compounding requires source and target be equal
+    if consolidation_request.source_pubkey != consolidation_request.target_pubkey:
+        return False
+
+    # Verify pubkey exists
+    source_pubkey = consolidation_request.source_pubkey
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if source_pubkey not in validator_pubkeys:
+        return False
+
+    source_validator = state.validators[ValidatorIndex(validator_pubkeys.index(source_pubkey))]
+
+    # Verify request has been authorized
+    if source_validator.withdrawal_credentials[12:] != consolidation_request.source_address:
+        return False
+
+    # Verify source withdrawal credentials
+    if not has_eth1_withdrawal_credential(source_validator):
+        return False
+
+    # Verify the source is active
+    current_epoch = get_current_epoch(state)
+    if not is_active_validator(source_validator, current_epoch):
+        return False
+
+    # Verify exit for source has not been initiated
+    if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return False
+
+    return True
+```
 
 ###### New `process_consolidation_request`
 
@@ -1417,6 +1641,16 @@ def process_consolidation_request(
     state: BeaconState,
     consolidation_request: ConsolidationRequest
 ) -> None:
+    if is_valid_switch_to_compounding_request(state, consolidation_request):
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        request_source_pubkey = consolidation_request.source_pubkey
+        source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
+        switch_to_compounding_validator(state, source_index)
+        return
+
+    # Verify that source != target, so a consolidation cannot be used as an exit.
+    if consolidation_request.source_pubkey == consolidation_request.target_pubkey:
+        return
     # If the pending consolidations queue is full, consolidation requests are ignored
     if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
         return
@@ -1437,10 +1671,6 @@ def process_consolidation_request(
     source_validator = state.validators[source_index]
     target_validator = state.validators[target_index]
 
-    # Verify that source != target, so a consolidation cannot be used as an exit.
-    if source_index == target_index:
-        return
-
     # Verify source withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(source_validator)
     is_correct_source_address = (
@@ -1449,8 +1679,8 @@ def process_consolidation_request(
     if not (has_correct_credential and is_correct_source_address):
         return
 
-    # Verify that target has execution withdrawal credentials
-    if not has_execution_withdrawal_credential(target_validator):
+    # Verify that target has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(target_validator):
         return
 
     # Verify the source and the target are active
@@ -1464,6 +1694,12 @@ def process_consolidation_request(
         return
     if target_validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
+    # Verify the source has been active long enough
+    if current_epoch < source_validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+    # Verify the source has no pending withdrawals in the queue
+    if get_pending_balance_to_withdraw(state, source_index) > 0:
+        return
 
     # Initiate source validator exit and append pending consolidation
     source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
@@ -1476,69 +1712,4 @@ def process_consolidation_request(
         source_index=source_index,
         target_index=target_index
     ))
-```
-
-## Testing
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure Electra testing only.
-Modifications include:
-1. Use `ELECTRA_FORK_VERSION` as the previous and current fork version.
-2. Utilize the Electra `BeaconBlockBody` when constructing the initial `latest_block_header`.
-3. *[New in Electra:EIP6110]* Add `deposit_requests_start_index` variable to the genesis state initialization.
-4. *[New in Electra:EIP7251]* Initialize new fields to support increasing the maximum effective balance.
-
-```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    fork = Fork(
-        previous_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110] for testing only
-        current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
-        epoch=GENESIS_EPOCH,
-    )
-    state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
-        fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
-        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,  # [New in Electra:EIP6110]
-    )
-
-    # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
-        process_deposit(state, deposit)
-
-    # Process deposit balance updates
-    for deposit in state.pending_balance_deposits:
-        increase_balance(state, deposit.index, deposit.amount)
-    state.pending_balance_deposits = []
-
-    # Process activations
-    for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        # [Modified in Electra:EIP7251]
-        validator.effective_balance = min(
-            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_max_effective_balance(validator))
-        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = hash_tree_root(state.validators)
-
-    # Fill in sync committees
-    # Note: A duplicate committee is assigned for the current and next committee at genesis
-    state.current_sync_committee = get_next_sync_committee(state)
-    state.next_sync_committee = get_next_sync_committee(state)
-
-    # Initialize the execution payload header
-    state.latest_execution_payload_header = execution_payload_header
-
-    return state
 ```
