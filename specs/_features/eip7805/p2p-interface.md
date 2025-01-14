@@ -21,7 +21,7 @@ This document contains the consensus-layer networking specification for EIP-7805
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `attestation_deadline` | `uint64(4)` | seconds | 4 seconds |
+| `ATTESTATION_DEADLINE` | `uint64(4)` | seconds | 4 seconds |
 
 ### Configuration
 
@@ -50,9 +50,9 @@ The following validations MUST pass before forwarding the `inclusion_list` on th
 
 - _[REJECT]_ The size of `message` is within upperbound `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
-- _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is equal to the previous slot and the current time is less than `attestation_deadline` seconds into the slot.
+- _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is equal to the previous slot and the current time is less than `ATTESTATION_DEADLINE` seconds into the slot.
 - _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the current branch corresponds to `message.inclusion_list_committee_root`, as determined by `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
-- _[REJECT]_ The validator index `message.validator_index` is within the `inclusion_list_committee` corresponding to `message.inclusion_list_committee_root`.  
+- _[REJECT]_ The validator index `message.validator_index` is within the `inclusion_list_committee` corresponding to `message.inclusion_list_committee_root`.
 - _[REJECT]_ The transactions `message.transactions` length is within upperbound `MAX_TRANSACTIONS_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The `message` is either the first or second valid message received from the validator with index `message.validator_index`.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect to the validator index.

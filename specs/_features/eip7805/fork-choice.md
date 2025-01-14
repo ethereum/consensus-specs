@@ -10,7 +10,6 @@
 - [Helpers](#helpers)
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [Modified `Store`](#modified-store)
-      - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [`get_attester_head`](#get_attester_head)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
 
@@ -70,29 +69,7 @@ class Store(object):
     inclusion_lists: Dict[Tuple[Slot, Root], List[InclusionList]] = field(default_factory=dict)  # [New in EIP-7805]
     # [New in EIP-7805]
     inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
-    unsatisfied_inclusion_list_blocks: Set[Root]  # [New in EIP-7805]
-```
-
-##### Modified `notify_new_payload`
-
-*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions` parameter in EIP-7805.
-
-```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       execution_requests: ExecutionRequests,
-                       parent_beacon_block_root: Root,
-                       execution_requests_list: Sequence[bytes],
-                       il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
-                       store: Store) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
-    are valid with respect to ``self.execution_state``.
-    """
-
-    # If execution client returns block does not satisfy inclusion list transactions, cache the block
-    store.unsatisfied_inclusion_list_blocks.add(execution_payload.block_root)
-    ...
+    unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)  # [New in EIP-7805]
 ```
 
 ##### `get_attester_head`
