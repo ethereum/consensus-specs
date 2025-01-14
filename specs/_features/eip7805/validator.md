@@ -112,7 +112,7 @@ The validator creates the `signed_inclusion_list` as follows:
 ```python
 def get_inclusion_list_signature(
         state: BeaconState, inclusion_list: InclusionList, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot))
+    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot))
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
 ```

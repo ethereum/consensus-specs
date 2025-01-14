@@ -77,7 +77,7 @@ Request Content:
 ```
 (
   slot: Slot
-  committee_indices: Bitvector[IL_COMMITTEE_SIZE]
+  committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
 )
 ```
 

@@ -33,7 +33,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 ```python
 def validate_inclusion_lists(store: Store,
                              inclusion_list_transactions:
-                             List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE],
+                             List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * INCLUSION_LIST_COMMITTEE_SIZE],
                              execution_payload: ExecutionPayload) -> bool:
     """
     Return ``True`` if and only if the input ``inclusion_list_transactions`` satisfies validation,
@@ -93,7 +93,7 @@ def on_inclusion_list(
         store: Store,
         state: BeaconState,
         signed_inclusion_list: SignedInclusionList,
-        inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]) -> None:
+        inclusion_list_committee: Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]) -> None:
     """
     Verify the inclusion list and import it into the fork choice store. If there exists more than 1
     inclusion list in store with the same slot and validator index, add the equivocator to the

@@ -45,13 +45,13 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 | Name | Value |
 | - | - |
-| `DOMAIN_IL_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP-7805) |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0C000000')`  # (New in EIP-7805) |
 
 ### Inclusion List Committee
 
 | Name | Value |
 | - | - |
-| `IL_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in EIP-7805) |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  # (New in EIP-7805) |
 
 ### Execution
 
@@ -95,7 +95,7 @@ def is_valid_inclusion_list_signature(
     message = signed_inclusion_list.message
     index = message.validator_index
     pubkey = state.validators[index].pubkey
-    domain = get_domain(state, DOMAIN_IL_COMMITTEE, compute_epoch_at_slot(message.slot))
+    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(message.slot))
     signing_root = compute_signing_root(message, domain)
     return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
@@ -105,12 +105,13 @@ def is_valid_inclusion_list_signature(
 #### `get_inclusion_list_committee`
 
 ```python
-def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, IL_COMMITTEE_SIZE]:
+def get_inclusion_list_committee(state: BeaconState,
+                                 slot: Slot) -> Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]:
     epoch = compute_epoch_at_slot(slot)
-    seed = get_seed(state, epoch, DOMAIN_IL_COMMITTEE)
+    seed = get_seed(state, epoch, DOMAIN_INCLUSION_LIST_COMMITTEE)
     indices = get_active_validator_indices(state, epoch)
-    start = (slot % SLOTS_PER_EPOCH) * IL_COMMITTEE_SIZE
-    end = start + IL_COMMITTEE_SIZE
+    start = (slot % SLOTS_PER_EPOCH) * INCLUSION_LIST_COMMITTEE_SIZE
+    end = start + INCLUSION_LIST_COMMITTEE_SIZE
     return [
         indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
         for i in range(start, end)
