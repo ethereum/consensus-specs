@@ -133,21 +133,22 @@ class NewPayloadRequest(object):
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests
-    il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP-7805]
+    inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]  # [New in EIP-7805]
 ```
 
 #### Engine APIs
 
 ##### Modified `is_valid_block_hash`
 
-*Note*: The function `is_valid_block_hash` is modified to include the additional `il_transactions`.
+*Note*: The function `is_valid_block_hash` is modified to include the additional `inclusion_list_transactions`.
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
                         execution_payload: ExecutionPayload,
                         parent_beacon_block_root: Root,
                         execution_requests_list: Sequence[bytes],
-                        il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                        inclusion_list_transactions:
+                        List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -156,14 +157,15 @@ def is_valid_block_hash(self: ExecutionEngine,
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `il_transactions`.
+*Note*: The function `notify_new_payload` is modified to include the additional `inclusion_list_transactions`.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
                        execution_payload: ExecutionPayload,
                        parent_beacon_block_root: Root,
                        execution_requests_list: Sequence[bytes],
-                       il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                       inclusion_list_transactions:
+                       List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
@@ -176,7 +178,7 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `il_transactions`
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter `inclusion_list_transactions`
 when calling `notify_new_payload` in EIP-7805.
 
 ```python
@@ -188,7 +190,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
     execution_payload = new_payload_request.execution_payload
     execution_requests = new_payload_request.execution_requests
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
-    il_transactions = new_payload_request.il_transactions # [New in EIP-7805]
+    inclusion_list_transactions = new_payload_request.inclusion_list_transactions # [New in EIP-7805]
 
     if not self.is_valid_block_hash(execution_payload, parent_beacon_block_root):
         return False
@@ -201,7 +203,7 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
             execution_payload,
             execution_requests,
             parent_beacon_block_root,
-            il_transactions):
+            inclusion_list_transactions):
         return False
 
     return True
@@ -229,7 +231,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            il_transactions=[],  # TODO: where do we get this?
+            inclusion_list_transactions=[],  # TODO: where do we get this?
         )
     )
     # Cache execution payload header
