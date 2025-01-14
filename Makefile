@@ -212,7 +212,7 @@ _check_toc: $(MARKDOWN_FILES:=.toc)
 	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
 
 # Check for mistakes.
-lint: $(ETH2SPEC) pyspec _check_toc
+lint: eth2spec pyspec _check_toc
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
