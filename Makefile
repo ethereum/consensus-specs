@@ -12,7 +12,8 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	fulu      \
 	whisk     \
 	eip6800   \
-	eip7732
+	eip7732   \
+	eip7805
 
 # A list of fake targets.
 .PHONY: \

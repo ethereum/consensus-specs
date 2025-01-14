@@ -25,7 +25,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds  # (New in EIP7805) | 
+| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds  # (New in EIP7805) |
 
 ## Helpers
 
@@ -35,13 +35,13 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 def validate_inclusion_lists(store: Store, inclusion_list_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST * IL_COMMITTEE_SIZE], execution_payload: ExecutionPayload) -> bool:
     """
     Return ``True`` if and only if the input ``inclusion_list_transactions`` satisfies validation,
-    that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either when all transactions are present in payload or 
+    that to verify if the ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either when all transactions are present in payload or
     when any missing transactions are found to be invalid when appended to the end of the payload unless the block is full.
     """
     ...
 ```
 
-### Modified `Store` 
+### Modified `Store`
 
 **Note:** `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
 
@@ -79,10 +79,10 @@ def notify_new_payload(self: ExecutionEngine,
                        il_transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST],
                        store: Store) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` and ``execution_requests`` 
+    Return ``True`` if and only if ``execution_payload`` and ``execution_requests``
     are valid with respect to ``self.execution_state``.
     """
-    
+
     # If execution client returns block does not satisfy inclusion list transactions, cache the block
     store.unsatisfied_inclusion_list_blocks.add(execution_payload.block_root)
     ...
@@ -93,7 +93,7 @@ def notify_new_payload(self: ExecutionEngine,
 ```python
 def get_attester_head(store: Store, head_root: Root) -> Root:
   head_block = store.blocks[head_root]
-  
+
   if head_root in store.unsatisfied_inclusion_list_blocks:
     return head_block.parent_root
   return head_root
@@ -106,9 +106,9 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
 
 ```python
 def on_inclusion_list(
-        store: Store, 
-        signed_inclusion_list: SignedInclusionList, 
-        inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]]) -> None:
+        store: Store,
+        signed_inclusion_list: SignedInclusionList,
+        inclusion_list_committee: Vector[ValidatorIndex, IL_COMMITTEE_SIZE]) -> None:
     """
     Verify the inclusion list and import it into the fork choice store.
     If there exists more than 1 inclusion list in store with the same slot and validator index, add the equivocator to the ``inclusion_list_equivocators`` cache.
@@ -131,7 +131,7 @@ def on_inclusion_list(
     # Verify inclusion list validator is part of the committee
     validator_index = message.validator_index
     assert validator_index in inclusion_list_committee
-   
+
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
