@@ -266,35 +266,28 @@ def compute_el_block_hash_for_block(spec, block):
 
 def build_randomized_execution_payload_header(spec, state, rng=Random(10000)):
     execution_payload = build_randomized_execution_payload(spec, state, rng)
-    extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
-
     execution_payload_header = spec.ExecutionPayloadHeader(
-        parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
-        fee_recipient=spec.ExecutionAddress(get_random_bytes_list(rng, 20)),
-        state_root=spec.Bytes32(get_random_bytes_list(rng, 32)),
-        receipts_root=spec.Bytes32(get_random_bytes_list(rng, 32)),
-        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
-            get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
-        ),
-        prev_randao=spec.Bytes32(get_random_bytes_list(rng, 32)),
-        block_number=rng.randint(0, int(10e10)),
-        gas_limit=rng.randint(0, int(10e10)),
-        gas_used=rng.randint(0, int(10e10)),
-        timestamp=spec.compute_timestamp_at_slot(state, state.slot),
-        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
-            get_random_bytes_list(rng, extra_data_length)
-        ),
-        base_fee_per_gas=rng.randint(0, int(10e10)),
-        block_hash=compute_el_block_hash(spec, execution_payload, state),
+        parent_hash=execution_payload.parent_hash,
+        fee_recipient=execution_payload.fee_recipient,
+        state_root=execution_payload.state_root,
+        receipts_root=execution_payload.receipts_root,
+        logs_bloom=execution_payload.logs_bloom,
+        prev_randao=execution_payload.prev_randao,
+        block_number=execution_payload.block_number,
+        gas_limit=execution_payload.gas_limit,
+        gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
+        extra_data=execution_payload.extra_data,
+        base_fee_per_gas=execution_payload.base_fee_per_gas,
+        block_hash=execution_payload.block_hash,
         transactions_root=spec.hash_tree_root(execution_payload.transactions),
     )
 
     if is_post_capella(spec):
         execution_payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
-
     if is_post_deneb(spec):
-        execution_payload_header.blob_gas_used = rng.randint(0, int(10e10))
-        execution_payload_header.excess_blob_gas = rng.randint(0, int(10e10))
+        execution_payload_header.blob_gas_used = execution_payload.blob_gas_used
+        execution_payload_header.excess_blob_gas = execution_payload.excess_blob_gas
 
     return execution_payload_header
 
