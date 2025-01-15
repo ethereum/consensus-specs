@@ -150,7 +150,6 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 ### BLS12-381 helpers
 
-
 #### `multi_exp`
 
 This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
@@ -380,7 +379,6 @@ def verify_kzg_proof(commitment_bytes: Bytes48,
                                  bytes_to_bls_field(y_bytes),
                                  bytes_to_kzg_proof(proof_bytes))
 ```
-
 
 #### `verify_kzg_proof_impl`
 

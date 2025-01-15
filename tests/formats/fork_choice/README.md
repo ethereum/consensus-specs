@@ -3,6 +3,7 @@
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -190,6 +191,7 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
 ```
 
 For example:
+
 ```yaml
 - checks:
     time: 192

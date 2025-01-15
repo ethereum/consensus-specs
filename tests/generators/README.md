@@ -14,7 +14,6 @@ An automated nightly tests release system, with a config filter applied, is bein
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
   - [Running all test generators](#running-all-test-generators)
@@ -24,8 +23,6 @@ An automated nightly tests release system, with a config filter applied, is bein
 - [How to remove a test generator](#how-to-remove-a-test-generator)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-
 
 ## How to run generators
 
@@ -51,7 +48,6 @@ make -j 4 gen_all
 ```
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
-
 
 ### Running a single generator
 
@@ -193,7 +189,6 @@ To add a new test generator that builds `New Tests`:
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
-
 
 ## How to remove a test generator
 

@@ -19,7 +19,6 @@
 
 This document describes the process of Whisk upgrade.
 
-
 ```
 """
     WHISK_FORK_EPOCH
