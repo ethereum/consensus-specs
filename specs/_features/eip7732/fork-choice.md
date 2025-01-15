@@ -1,6 +1,9 @@
 # EIP-7732 -- Fork Choice
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -53,6 +56,7 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 ## Containers
 
 ### New `ChildNode`
+
 Auxiliary class to consider `(block, slot, bool)` LMD voting
 
 ```python
@@ -65,6 +69,7 @@ class ChildNode(Container):
 ## Helpers
 
 ### Modified `LatestMessage`
+
 **Note:** The class is modified to keep track of the slot instead of the epoch.
 
 ```python
@@ -75,6 +80,7 @@ class LatestMessage(object):
 ```
 
 ### Modified `update_latest_messages`
+
 **Note:** the function `update_latest_messages` is updated to use the attestation slot instead of target. Notice that this function is only called on validated attestations and validators cannot attest twice in the same epoch without equivocating. Notice also that target epoch number and slot number are validated on `validate_on_attestation`.
 
 ```python
@@ -88,6 +94,7 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 ```
 
 ### Modified `Store`
+
 **Note:** `Store` is modified to track the intermediate states of "empty" consensus blocks, that is, those consensus blocks for which the corresponding execution payload has not been revealed or has not been included on chain.
 
 ```python
@@ -193,6 +200,7 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
 ```
 
 ### Modified `get_ancestor`
+
 **Note:** `get_ancestor` is modified to return whether the chain is based on an *empty* or *full* block.
 
 ```python
@@ -213,6 +221,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
 ```
 
 ### Modified `get_checkpoint_block`
+
 **Note:** `get_checkpoint_block` is modified to use the new `get_ancestor`
 
 ```python
@@ -223,7 +232,6 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     epoch_first_slot = compute_start_slot_at_epoch(epoch)
     return get_ancestor(store, root, epoch_first_slot).root
 ```
-
 
 ### `is_supporting_vote`
 
@@ -245,7 +253,9 @@ def is_supporting_vote(store: Store, node: ChildNode, message: LatestMessage) ->
 ```
 
 ### New `compute_proposer_boost`
+
 This is a helper to compute the proposer boost. It applies the proposer boost to any ancestor of the proposer boost root taking into account the payload presence. There is one exception: if the requested node has the same root and slot as the block with the proposer boost root, then the proposer boost is applied to both empty and full versions of the node.
+
 ```python
 def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
     if store.proposer_boost_root == Root():
@@ -264,6 +274,7 @@ def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) ->
 ```
 
 ### New `compute_withhold_boost`
+
 This is a similar helper that applies for the withhold boost. In this case this always takes into account the reveal status.
 
 ```python
@@ -283,6 +294,7 @@ def compute_withhold_boost(store: Store, state: BeaconState, node: ChildNode) ->
 ```
 
 ### New `compute_reveal_boost`
+
 This is a similar helper to the last two, the only difference is that the reveal boost is only applied to the full version of the node when querying for the same slot as the revealed payload.
 
 ```python

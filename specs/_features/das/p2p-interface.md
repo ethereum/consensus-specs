@@ -95,7 +95,6 @@ Since the messages are content-addressed (instead of origin-stamped),
 multiple publishers of the same samples on a vertical subnet do not hurt performance,
 but actually improve it by shortcutting regular propagation on the vertical subnet, and thus lowering the latency to a sample.
 
-
 ### Vertical subnets
 
 Vertical subnets propagate the samples to every peer that is interested.
@@ -161,7 +160,6 @@ Take `blob = signed_blob.blob`:
 
 The [DAS participation spec](sampling.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
-
 #### Vertical subnets: `das_sample_{subnet_index}`
 
 Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial),
@@ -185,7 +183,6 @@ The following validations MUST pass before forwarding the `sample` on the vertic
 Upon receiving a valid sample, it SHOULD be retained for a buffer period if the local node is part of the backbone that covers this sample.
 This is to serve other peers that may have missed it.
 
-
 ## DAS in the Req-Resp domain: Pull
 
 To pull samples from nodes, in case of network instability when samples are unavailable, a new query method is added to the Req-Resp domain.
@@ -201,6 +198,7 @@ Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 **Protocol ID:** `/eth2/das/req/query/1/`
 
 Request Content:
+
 ```
 (
   sample_index: SampleIndex
@@ -208,6 +206,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   DASSample

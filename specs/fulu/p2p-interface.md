@@ -234,7 +234,7 @@ Response Content:
 
 ```
 (
-    List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
 )
 ```
 

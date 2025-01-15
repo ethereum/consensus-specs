@@ -341,6 +341,7 @@ When clients use the local execution layer to retrieve blobs, they MUST behave a
 *[New in Deneb:EIP4844]*
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -349,6 +350,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]

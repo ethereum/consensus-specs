@@ -1,8 +1,9 @@
 # How to add a new feature proposal in consensus-specs
 
+## Table of contents
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-## Table of Contents
 
 - [A. Make it executable for linter checks](#a-make-it-executable-for-linter-checks)
   - [1. Create a folder under `./specs/_features`](#1-create-a-folder-under-specs_features)
@@ -23,7 +24,6 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-
 ## A. Make it executable for linter checks
 
 ### 1. Create a folder under `./specs/_features`
@@ -35,6 +35,7 @@ For example, if it's an `EIP-9999` CL spec, you can create a `./specs/_features/
 For example, if the latest fork is Capella, use `./specs/capella` content as your "previous fork".
 
 ### 3. Write down your proposed `beacon-chain.md` change
+
 - You can either use [Beacon Chain Spec Template](./templates/beacon-chain-template.md), or make a copy of the latest fork content and then edit it.
 - Tips:
     - We use [`doctoc`](https://www.npmjs.com/package/doctoc) tool to generate the table of content.
@@ -50,8 +51,11 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
         - Use simple Python rather than the fancy Python dark magic.
 
 ### 4. Add `fork.md`
+
 You can refer to the previous fork's `fork.md` file.
+
 ### 5. Make it executable
+
 - Update Pyspec [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py) with the new feature name.
 - Update helpers for [`setup.py`](https://github.com/ethereum/consensus-specs/blob/dev/setup.py) for building the spec:
     - Update [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/constants.py) with the new feature name as Pyspec `constants.py` defined.
@@ -63,17 +67,21 @@ You can refer to the previous fork's `fork.md` file.
 ## B: Make it executable for pytest and test generator
 
 ### 1. [Optional] Add `light-client/*` docs if you updated the content of `BeaconBlock`
+
 - You can refer to the previous fork's `light-client/*` file.
 - Add the path of the new markdown files in [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/dev/pysetup/md_doc_paths.py)'s `get_md_doc_paths` function.
 
 ### 2. Add the mainnet and minimal presets and update the configs
+
 - Add presets: `presets/mainnet/<new-feature-name>.yaml` and `presets/minimal/<new-feature-name>.yaml`
 - Update configs: `configs/mainnet.yaml` and `configs/minimal.yaml`
 
 ### 3. Update [`context.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py)
+
 - [Optional] Add `with_<new-feature-name>_and_later` decorator for writing pytest cases. e.g., `with_capella_and_later`.
 
 ### 4. Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/constants.py)
+
 - Add `<NEW_FEATURE>` to `ALL_PHASES` and `TESTGEN_FORKS`
 
 ### 5. Update [`genesis.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/genesis.py):
@@ -94,6 +102,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 - If the given feature changes `ExecutionPayload` fields, you have to set the initial values by updating `get_sample_genesis_execution_payload_header` helper.
 
 ### 6. Update CI configurations
+
 - Update [GitHub Actions config](https://github.com/ethereum/consensus-specs/blob/dev/.github/workflows/run-tests.yml)
     - Update `pyspec-tests.strategy.matrix.version` list by adding new feature to it
 - Update [CircleCI config](https://github.com/ethereum/consensus-specs/blob/dev/.circleci/config.yml)
@@ -102,7 +111,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 ## Others
 
 ### Bonus
+
 - Add `validator.md` if honest validator behavior changes with the new feature.
 
 ### Need help?
+
 You can tag spec elves for cleaning up your PR. 🧚

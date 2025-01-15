@@ -44,7 +44,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations, and hints what the best known algorithms for these implementations are included below.
@@ -57,7 +56,6 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | - | - | - |
 | `BLS_MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
-
 
 ### KZG Trusted setup
 
@@ -258,7 +256,6 @@ def multiply_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoeff
         r = add_polynomials(r, summand)
     return r
 ```
-
 
 #### `interpolate_polynomial`
 
