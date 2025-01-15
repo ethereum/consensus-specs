@@ -23,7 +23,6 @@ The `ssz_generic` tests are split up into different handler, each specialized in
 - Containers
     - `containers`
 
-
 ## Format
 
 For each type, a `valid` and an `invalid` suite is implemented.
@@ -74,7 +73,6 @@ The `serialized` data should simply not be decoded without raising an error.
 Note that for some type declarations in the invalid suite, the type itself may technically be invalid.
 This is a valid way of detecting `invalid` data too. E.g. a 0-length basic vector.
 
-
 ## Type declarations
 
 Most types are not as static, and can reasonably be constructed during test runtime from the test case name.
@@ -97,7 +95,6 @@ Data:
 {length}: an unsigned integer
 ```
 
-
 ### `bitlist`
 
 ```
@@ -109,7 +106,6 @@ Data:
 
 {limit}: the list limit, in bits, of the bitlist. Does not include the length-delimiting bit in the serialized form.
 ```
-
 
 ### `bitvector`
 

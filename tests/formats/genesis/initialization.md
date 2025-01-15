@@ -11,7 +11,6 @@ eth1_block_hash: Bytes32  -- A `Bytes32` hex encoded, with prefix 0x. The root o
 eth1_timestamp: int       -- An integer. The timestamp of the block, in seconds.
 ```
 
-
 ### `meta.yaml`
 
 A yaml file to help read the deposit count:
