@@ -265,7 +265,7 @@ def compute_el_block_hash_for_block(spec, block):
 
 
 def build_randomized_execution_payload_header(spec, state, rng=Random(10000)):
-    execution_payload = build_randomized_execution_payload(spec, state)
+    execution_payload = build_randomized_execution_payload(spec, state, rng)
     extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
 
     execution_payload_header = spec.ExecutionPayloadHeader(
@@ -366,8 +366,8 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 
 
 def build_randomized_execution_payload(spec, state, rng):
-    from eth2spec.test.helpers.random import exit_random_validators
     execution_payload = build_empty_execution_payload(spec, state)
+    # Note: the payload's parent hash is already populated
     execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
     execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
     execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
@@ -382,24 +382,12 @@ def build_randomized_execution_payload(spec, state, rng):
         get_random_bytes_list(rng, extra_data_length)
     )
     execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
-
-    num_transactions = rng.randint(0, 100)
     execution_payload.transactions = [
         get_random_tx(rng)
-        for _ in range(num_transactions)
+        for _ in range(rng.randint(0, 100))
     ]
 
-    if is_post_capella(spec):
-        current_epoch = spec.get_current_epoch(state)
-        exit_random_validators(
-            spec,
-            state,
-            rng,
-            exit_epoch=current_epoch,
-            withdrawable_epoch=current_epoch,
-            from_epoch=current_epoch
-        )
-        execution_payload.withdrawals = get_expected_withdrawals(spec, state)
+    # Note: for Capella, the payload's withdrawals are already populated
 
     if is_post_deneb(spec):
         execution_payload.blob_gas_used = rng.randint(0, int(10e10))
