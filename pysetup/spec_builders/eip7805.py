@@ -15,8 +15,7 @@ class NoopExecutionEngine(ExecutionEngine):
                            execution_payload: ExecutionPayload,
                            parent_beacon_block_root: Root,
                            execution_requests_list: Sequence[bytes],
-                           inclusion_list_transactions:
-                           List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                           inclusion_list_transactions: Sequence[Transaction]) -> bool:
         return True
 
     def notify_forkchoice_updated(self: ExecutionEngine,
@@ -34,8 +33,7 @@ class NoopExecutionEngine(ExecutionEngine):
                             execution_payload: ExecutionPayload,
                             parent_beacon_block_root: Root,
                             execution_requests_list: Sequence[bytes],
-                            inclusion_list_transactions:
-                            List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]) -> bool:
+                            inclusion_list_transactions: Sequence[Transaction]) -> bool:
         return True
 
     def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
