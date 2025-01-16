@@ -23,8 +23,8 @@
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -150,32 +150,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-##### BlobSidecarsByRoot v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
-
-*[Modified in Electra:EIP7691]*
-
-Request Content:
-
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-*Updated validation*
-
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
-
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
@@ -202,3 +176,29 @@ Response Content:
 *Updated validation*
 
 Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+
+##### BlobSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+
+*[Modified in Electra:EIP7691]*
+
+Request Content:
+
+```
+(
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+)
+```
+
+Response Content:
+
+```
+(
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+)
+```
+
+*Updated validation*
+
+No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
