@@ -21,6 +21,8 @@
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 
@@ -111,6 +113,42 @@ The following validations are removed:
 ### The Req/Resp domain
 
 #### Messages
+
+##### BeaconBlocksByRange v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
+
+The Electra fork-digest is introduced to the `context` enum to specify Electra beacon block type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+
+##### BeaconBlocksByRoot v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
 ##### BlobSidecarsByRoot v1
 
