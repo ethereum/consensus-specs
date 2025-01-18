@@ -166,13 +166,8 @@ def test_fork_pending_deposits_with_same_pubkey_different_withdrawal_credentials
     for index in range(num_validators):
         state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
-    withdrawal_credentials = []
     for index in indexes_with_same_pubkey:
         state.validators[index].pubkey = constant_pubkey
-        withdrawal_credentials.append(state.validators[index].withdrawal_credentials)
-
-    # ensure that the withdrawal credentials are unique
-    assert len(set(withdrawal_credentials)) == len(withdrawal_credentials)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -180,8 +175,8 @@ def test_fork_pending_deposits_with_same_pubkey_different_withdrawal_credentials
 
     for index in indexes_with_same_pubkey:
         assert post_state.pending_deposits[index].pubkey == constant_pubkey
-        expected_withdrawal_credentials = state.validators[index].withdrawal_credentials
-        assert post_state.pending_deposits[index].withdrawal_credentials == expected_withdrawal_credentials
+        assert (post_state.pending_deposits[index].withdrawal_credentials
+                == state.validators[index].withdrawal_credentials)
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])

@@ -1,3 +1,4 @@
+import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -262,3 +263,31 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     assert state.pending_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
     amount_from_deposit = block.body.execution_requests.deposits[0].amount
     assert state.pending_deposits[pre_pending_deposits + 1].amount == amount_from_deposit
+
+
+@with_phases([ELECTRA])
+@spec_state_test
+def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_credentials(spec, state):
+    deposit_count = 1
+    deposit_request_count = 4
+
+    state, block = prepare_state_and_block(spec, state,
+                                           deposit_cnt=deposit_count,
+                                           deposit_request_cnt=deposit_request_count)
+    
+    # pick 2 indices among deposit requests to have the same pubkey as the deposit
+    indexes_with_same_pubkey = random.sample(range(deposit_count, deposit_request_count), 2)
+    for index in indexes_with_same_pubkey:
+        block.body.execution_requests.deposits[index].pubkey = block.body.deposits[0].data.pubkey
+
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    deposit_requests = block.body.execution_requests.deposits.copy()
+
+    yield from run_deposit_transition_block(spec, state, block)
+
+    assert len(state.pending_deposits) == deposit_request_count + deposit_count
+    for index in indexes_with_same_pubkey:
+        assert state.pending_deposits[deposit_count + index].pubkey == deposit_requests[index].pubkey
+        assert (state.pending_deposits[deposit_count + index].withdrawal_credentials
+                == deposit_requests[index].withdrawal_credentials)
