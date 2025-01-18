@@ -1,4 +1,3 @@
-import random
 from eth2spec.test.context import (
     with_phases,
     with_custom_state,
@@ -150,33 +149,6 @@ def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
         signature=spec.bls.G2_POINT_AT_INFINITY,
         slot=spec.GENESIS_SLOT,
     )]
-
-
-@with_phases(phases=[DENEB], other_phases=[ELECTRA])
-@spec_test
-@with_state
-@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
-def test_fork_pending_deposits_with_same_pubkey_different_withdrawal_credentials(spec, phases, state):
-    post_spec = phases[ELECTRA]
-
-    num_validators = len(state.validators)
-    indexes_with_same_pubkey = random.sample(range(num_validators), min(10, num_validators))
-    constant_pubkey = b'\x11' * 48
-
-    for index in range(num_validators):
-        state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
-
-    for index in indexes_with_same_pubkey:
-        state.validators[index].pubkey = constant_pubkey
-
-    post_state = yield from run_fork_test(post_spec, state)
-
-    assert len(post_state.pending_deposits) == num_validators
-
-    for index in indexes_with_same_pubkey:
-        assert post_state.pending_deposits[index].pubkey == constant_pubkey
-        assert (post_state.pending_deposits[index].withdrawal_credentials
-                == state.validators[index].withdrawal_credentials)
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])

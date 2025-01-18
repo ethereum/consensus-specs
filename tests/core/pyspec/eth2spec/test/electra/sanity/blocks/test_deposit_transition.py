@@ -274,7 +274,7 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
     state, block = prepare_state_and_block(spec, state,
                                            deposit_cnt=deposit_count,
                                            deposit_request_cnt=deposit_request_count)
-    
+
     # pick 2 indices among deposit requests to have the same pubkey as the deposit
     indexes_with_same_pubkey = random.sample(range(deposit_count, deposit_request_count), 2)
     for index in indexes_with_same_pubkey:
