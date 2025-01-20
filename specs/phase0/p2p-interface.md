@@ -41,12 +41,12 @@
     - [Encoding strategies](#encoding-strategies)
       - [SSZ-snappy encoding strategy](#ssz-snappy-encoding-strategy)
     - [Messages](#messages)
-      - [Status](#status)
-      - [Goodbye](#goodbye)
-      - [BeaconBlocksByRange](#beaconblocksbyrange)
-      - [BeaconBlocksByRoot](#beaconblocksbyroot)
-      - [Ping](#ping)
-      - [GetMetaData](#getmetadata)
+      - [Status v1](#status-v1)
+      - [Goodbye v1](#goodbye-v1)
+      - [BeaconBlocksByRange v1](#beaconblocksbyrange-v1)
+      - [BeaconBlocksByRoot v1](#beaconblocksbyroot-v1)
+      - [Ping v1](#ping-v1)
+      - [GetMetaData v1](#getmetadata-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -722,7 +722,7 @@ Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload
 
 #### Messages
 
-##### Status
+##### Status v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/status/1/``
 
@@ -770,7 +770,7 @@ SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange`
 the client might need to send `Status` request again to learn if the peer has a higher head.
 Implementers are free to implement such behavior in their own way.
 
-##### Goodbye
+##### Goodbye v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
 
@@ -796,7 +796,7 @@ The request/response MUST be encoded as a single SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### BeaconBlocksByRange
+##### BeaconBlocksByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
 
@@ -875,7 +875,7 @@ In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_roo
 After the initial block, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-##### BeaconBlocksByRoot
+##### BeaconBlocksByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/1/`
 
@@ -918,7 +918,7 @@ Clients SHOULD NOT respond with blocks that fail the beacon chain state transiti
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
-##### Ping
+##### Ping v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
 
@@ -950,7 +950,7 @@ The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### GetMetaData
+##### GetMetaData v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
 
