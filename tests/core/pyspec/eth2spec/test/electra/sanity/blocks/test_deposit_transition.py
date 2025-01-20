@@ -275,8 +275,8 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
                                            deposit_request_cnt=deposit_request_count)
 
     # pick 2 indices among deposit requests to have the same pubkey as the deposit
-    indexes_with_same_pubkey = [1, 3]
-    for index in indexes_with_same_pubkey:
+    indices_with_same_pubkey = [1, 3]
+    for index in indices_with_same_pubkey:
         block.body.execution_requests.deposits[index].pubkey = block.body.deposits[0].data.pubkey
 
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
@@ -286,7 +286,7 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
     yield from run_deposit_transition_block(spec, state, block)
 
     assert len(state.pending_deposits) == deposit_request_count + deposit_count
-    for index in indexes_with_same_pubkey:
+    for index in indices_with_same_pubkey:
         assert state.pending_deposits[deposit_count + index].pubkey == deposit_requests[index].pubkey
         assert (state.pending_deposits[deposit_count + index].withdrawal_credentials
                 == deposit_requests[index].withdrawal_credentials)
