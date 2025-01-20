@@ -76,8 +76,8 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of subnets an honest node custodies and serves samples from |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of subnets an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional subnet to custody |
+| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
 
 ### Containers
 
@@ -231,16 +231,16 @@ A node stores the custodied columns for the duration of the pruning period and r
 
 ### Validator custody
 
-A node with validators attached downloads and custodies a higher minimum of subnets per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET` subnets per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `DATA_COLUMN_SIDECAR_SUBNET_COUNT`.
+A node with validators attached downloads and custodies a higher minimum of custody groups per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
     total_node_balance = sum(state.balances[index] for index in validator_indices)
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET
-    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
-This higher custody is advertised in the node's ENR by setting a higher `custody_subnet_count`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. 
+This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. 
 
 ### Public, deterministic selection
 
