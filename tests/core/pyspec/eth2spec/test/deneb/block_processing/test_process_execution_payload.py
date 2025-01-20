@@ -235,7 +235,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    #  the transaction doesn't contain any blob, but commitments are provided
+    # the transaction doesn't contain any blob, but commitments are provided
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
