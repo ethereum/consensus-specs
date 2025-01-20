@@ -1,4 +1,3 @@
-import random
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -276,7 +275,7 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
                                            deposit_request_cnt=deposit_request_count)
 
     # pick 2 indices among deposit requests to have the same pubkey as the deposit
-    indexes_with_same_pubkey = random.sample(range(deposit_count, deposit_request_count), 2)
+    indexes_with_same_pubkey = [1, 3]
     for index in indexes_with_same_pubkey:
         block.body.execution_requests.deposits[index].pubkey = block.body.deposits[0].data.pubkey
 
