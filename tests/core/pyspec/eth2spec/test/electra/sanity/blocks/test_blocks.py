@@ -19,6 +19,7 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
+    set_compounding_withdrawal_credential_with_balance,
 )
 
 
@@ -172,3 +173,79 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     yield 'post', state
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+@with_electra_and_later
+@spec_state_test
+def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    validator_index = 0
+    address = b'\x22' * 20
+    balance = spec.MIN_ACTIVATION_BALANCE + 2000000000
+    set_compounding_withdrawal_credential_with_balance(spec, state, validator_index, balance, balance, address)
+
+    assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
+
+    validator_pubkey = state.validators[validator_index].pubkey
+    withdrawal_request_1 = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=validator_pubkey,
+        amount=spec.Gwei(1),
+    )
+    withdrawal_request_2 = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=validator_pubkey,
+        amount=spec.Gwei(2),
+    )
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.withdrawals = [withdrawal_request_1, withdrawal_request_2]
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert len(state.pending_partial_withdrawals) == 2
+    assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+@with_electra_and_later
+@spec_state_test
+def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    validator_indices = [1, 2]
+    addresses = [bytes([v * 0x11]) * 20 for v in validator_indices]
+    balances = [spec.MIN_ACTIVATION_BALANCE + v * 2000000000 for v in validator_indices]
+
+    for validator_index, address, balance in zip(validator_indices, addresses, balances):
+        set_compounding_withdrawal_credential_with_balance(spec, state, validator_index, balance, balance, address)
+        assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield 'pre', state
+
+    withdrawal_requests = []
+
+    for validator_index, address in zip(validator_indices, addresses):
+        validator_pubkey = state.validators[validator_index].pubkey
+        withdrawal_request = spec.WithdrawalRequest(
+            source_address=address,
+            validator_pubkey=validator_pubkey,
+            amount=spec.Gwei(validator_index),
+        )
+        withdrawal_requests.append(withdrawal_request)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.withdrawals = withdrawal_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert len(state.pending_partial_withdrawals) == 2
+    for validator_index in validator_indices:
+        assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
