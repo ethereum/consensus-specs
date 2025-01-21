@@ -58,7 +58,7 @@
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
-    - [New `new-get_pending_deposits_for_validator`](#new-new-get_pending_deposits_for_validator)
+    - [New `get_pending_deposits_for_validator`](#new-get_pending_deposits_for_validator)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -594,7 +594,7 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
     )
 ```
 
-#### New `new-get_pending_deposits_for_validator`
+#### New `get_pending_deposits_for_validator`
 
 ```python
 def get_pending_deposits_for_validator(state: BeaconState, pubkey: BLSPubkey) -> Gwei:
@@ -603,7 +603,6 @@ def get_pending_deposits_for_validator(state: BeaconState, pubkey: BLSPubkey) ->
         if deposit.pubkey == pubkey
     )
 ```
-
 
 #### Modified `get_attesting_indices`
 
@@ -1507,6 +1506,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     # Only exit validator if it has no pending withdrawals in the queue
     assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0  # [New in Electra:EIP7251]
+    # Only exit validator if it has no pending deposits in the queue
     assert get_pending_deposits_for_validator(state, voluntary_exit.pubkey) == 0  # [New in Electra:EIP7251]
     # Verify signature
     domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)
