@@ -578,7 +578,7 @@ setup(
     python_requires=">=3.9, <4",
     extras_require={
         "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==3.3.1", "codespell<3.0.0,>=2.0.0"],
+        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==3.3.1", "codespell==2.4.0"],
         "generator": ["setuptools>=72.0.0", "pytest>4.4", "python-snappy==0.7.3", "filelock", "pathos==0.3.0"],
         "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
     },
