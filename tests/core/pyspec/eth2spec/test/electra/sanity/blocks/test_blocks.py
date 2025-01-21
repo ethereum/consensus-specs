@@ -174,6 +174,7 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
+
 @with_electra_and_later
 @spec_state_test
 def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
@@ -210,6 +211,7 @@ def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
 
     assert len(state.pending_partial_withdrawals) == 2
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
 
 @with_electra_and_later
 @spec_state_test
