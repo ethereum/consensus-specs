@@ -1,5 +1,7 @@
 # Electra -- Networking
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -19,8 +21,10 @@
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -110,31 +114,41 @@ The following validations are removed:
 
 #### Messages
 
-##### BlobSidecarsByRoot v1
+##### BeaconBlocksByRange v2
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-*[Modified in Electra:EIP7691]*
+The Electra fork-digest is introduced to the `context` enum to specify Electra beacon block type.
 
-Request Content:
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
+[0]: # (eth2spec: skip)
 
-Response Content:
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
+##### BeaconBlocksByRoot v2
 
-*Updated validation*
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`           | Chunk SSZ type                |
+|--------------------------|-------------------------------|
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
 ##### BlobSidecarsByRange v1
 
@@ -162,3 +176,29 @@ Response Content:
 *Updated validation*
 
 Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+
+##### BlobSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+
+*[Modified in Electra:EIP7691]*
+
+Request Content:
+
+```
+(
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+)
+```
+
+Response Content:
+
+```
+(
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+)
+```
+
+*Updated validation*
+
+No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.

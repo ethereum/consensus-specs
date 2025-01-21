@@ -1,6 +1,7 @@
 # Phase 0 -- Networking
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -40,12 +41,12 @@
     - [Encoding strategies](#encoding-strategies)
       - [SSZ-snappy encoding strategy](#ssz-snappy-encoding-strategy)
     - [Messages](#messages)
-      - [Status](#status)
-      - [Goodbye](#goodbye)
-      - [BeaconBlocksByRange](#beaconblocksbyrange)
-      - [BeaconBlocksByRoot](#beaconblocksbyroot)
-      - [Ping](#ping)
-      - [GetMetaData](#getmetadata)
+      - [Status v1](#status-v1)
+      - [Goodbye v1](#goodbye-v1)
+      - [BeaconBlocksByRange v1](#beaconblocksbyrange-v1)
+      - [BeaconBlocksByRoot v1](#beaconblocksbyroot-v1)
+      - [Ping v1](#ping-v1)
+      - [GetMetaData v1](#getmetadata-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -184,8 +185,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `NodeID`   | `uint256` | node identifier   |
-| `SubnetID` | `uint64`  | subnet identifier |
+| `NodeID` | `uint256` | node identifier |
+| `SubnetID` | `uint64` | subnet identifier |
 
 ### Constants
 
@@ -198,16 +199,16 @@ We define the following Python custom types for type hinting and readability:
 This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
-|---|---|---|
+| - | - | - |
 | `MAX_PAYLOAD_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
-| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
@@ -422,7 +423,6 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
   `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
 
-
 ###### `voluntary_exit`
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary validator exits to proposers on the network.
@@ -496,8 +496,6 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
-
-
 
 ##### Attestations and Aggregation
 
@@ -724,11 +722,12 @@ Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload
 
 #### Messages
 
-##### Status
+##### Status v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/status/1/``
 
 Request, Response Content:
+
 ```
 (
   fork_digest: ForkDigest
@@ -738,6 +737,7 @@ Request, Response Content:
   head_slot: Slot
 )
 ```
+
 The fields are, as seen by the client at the time of sending the message:
 
 - `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
@@ -770,16 +770,18 @@ SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange`
 the client might need to send `Status` request again to learn if the peer has a higher head.
 Implementers are free to implement such behavior in their own way.
 
-##### Goodbye
+##### Goodbye v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
 
 Request, Response Content:
+
 ```
 (
   uint64
 )
 ```
+
 Client MAY send goodbye messages upon disconnection. The reason field MAY be one of the following values:
 
 - 1: Client shut down.
@@ -794,11 +796,12 @@ The request/response MUST be encoded as a single SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### BeaconBlocksByRange
+##### BeaconBlocksByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -808,6 +811,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
@@ -871,7 +875,7 @@ In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_roo
 After the initial block, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-##### BeaconBlocksByRoot
+##### BeaconBlocksByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/1/`
 
@@ -914,7 +918,7 @@ Clients SHOULD NOT respond with blocks that fail the beacon chain state transiti
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
-##### Ping
+##### Ping v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
 
@@ -946,7 +950,7 @@ The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### GetMetaData
+##### GetMetaData v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
 
@@ -1008,9 +1012,9 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 The ENR `attnets` entry signifies the attestation subnet bitfield with the following form
 to more easily discover peers participating in particular attestation gossip subnets.
 
-| Key          | Value                                            |
-|:-------------|:-------------------------------------------------|
-| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+| Key       | Value                                     |
+|:----------|:------------------------------------------|
+| `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `attnets` entry with the same value as `MetaData.attnets`.
 
@@ -1021,17 +1025,17 @@ If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally 
 ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version,
 and next fork epoch to ensure connections are made with peers on the intended Ethereum network.
 
-| Key          | Value               |
-|:-------------|:--------------------|
-| `eth2`       | SSZ `ENRForkID`        |
+| Key    | Value           |
+|:-------|:----------------|
+| `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded object (`ENRForkID`)
 
 ```
 (
-    fork_digest: ForkDigest
-    next_fork_version: Version
-    next_fork_epoch: Epoch
+  fork_digest: ForkDigest
+  next_fork_version: Version
+  next_fork_epoch: Epoch
 )
 ```
 
@@ -1339,7 +1343,6 @@ Some examples of where messages could be duplicated:
   does not provide enough responsiveness during adverse conditions.
 - `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
   Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
-
 
 #### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 

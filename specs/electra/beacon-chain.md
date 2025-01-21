@@ -169,7 +169,7 @@ The following values are (non-configurable) constants used throughout the specif
 ### State list lengths
 
 | Name | Value | Unit |
-| - | - | :-: |
+| - | - | - |
 | `PENDING_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending deposits |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
 | `PENDING_CONSOLIDATIONS_LIMIT` | `uint64(2**18)` (= 262,144) | pending consolidations |
@@ -828,27 +828,24 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Modified `process_registry_updates`
 
-*Note*: The function `process_registry_updates` is modified to
-use the updated definitions of `initiate_validator_exit` and `is_eligible_for_activation_queue`
-and changes how the activation epochs are computed for eligible validators.
+*Note*: The function `process_registry_updates` is modified to use the updated definitions of
+`initiate_validator_exit` and `is_eligible_for_activation_queue`, changes how the activation epochs
+are computed for eligible validators, and processes activations in the same loop as activation
+eligibility updates and ejections.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
-    # Process activation eligibility and ejections
+    current_epoch = get_current_epoch(state)
+    activation_epoch = compute_activation_exit_epoch(current_epoch)
+
+    # Process activation eligibility, ejections, and activations
     for index, validator in enumerate(state.validators):
         if is_eligible_for_activation_queue(validator):  # [Modified in Electra:EIP7251]
-            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
+            validator.activation_eligibility_epoch = current_epoch + 1
 
-        if (
-            is_active_validator(validator, get_current_epoch(state))
-            and validator.effective_balance <= EJECTION_BALANCE
-        ):
+        if is_active_validator(validator, current_epoch) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
 
-    # Activate all eligible validators
-    # [Modified in Electra:EIP7251]
-    activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
-    for validator in state.validators:
         if is_eligible_for_activation(state, validator):
             validator.activation_epoch = activation_epoch
 ```
