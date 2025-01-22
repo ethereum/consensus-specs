@@ -261,3 +261,23 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments, valid=False)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_empty_blob(spec, state):
+    """
+    The blob is empty but commitment is valid
+    """
+
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=1)
+
+    empty_blob = b'\x00' * spec.BYTES_PER_BLOB
+    blob_kzg_commitments[0] = spec.blob_to_kzg_commitment(empty_blob)
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments, valid=True)
