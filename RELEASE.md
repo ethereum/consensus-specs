@@ -15,6 +15,7 @@
   - [Prepare Tests Repository](#prepare-tests-repository)
   - [Commit Reference Tests](#commit-reference-tests)
   - [Bundle Reference Tests](#bundle-reference-tests)
+- [Merge the Release Pull Request](#merge-the-release-pull-request)
 - [Create Tests Release](#create-tests-release)
 - [Create Specs Release](#create-specs-release)
 - [Click the Release Buttons](#click-the-release-buttons)
@@ -215,6 +216,12 @@ tar -czvf minimal.tar.gz tests/minimal
 tar -czvf mainnet.tar.gz tests/mainnet
 ```
 
+## Merge the Release Pull Request
+
+After successfully generating the test vectors, we have confidence that the release is fine. We can
+now merge the release pull request which brings changes from the development branch into the master
+branch. Releases are made from the master branch.
+
 ## Create Tests Release
 
 First, begin to draft a new consensus-spec-tests release.
@@ -260,6 +267,9 @@ Next, click the "Choose a tag" button to create a new tag. Type in the release v
 "v1.5.0-alpha.10") and click the "Create new tag: &lt;version&gt; on publish" button.
 
 Next, change the target from `dev` to `master`.
+
+> [!IMPORTANT]
+> Do not forget this to change the target branch.
 
 Next, provide a title "&lt;release-name&gt;" (_e.g._, "Bellibolt").
 
