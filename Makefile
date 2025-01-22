@@ -61,10 +61,9 @@ PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
 
 # Make a virtual environment will all of the necessary dependencies.
-$(VENV): requirements_preinstallation.txt
+$(VENV): pyproject.toml
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
-	@$(PIP_VENV) install -r requirements_preinstallation.txt
 
 ###############################################################################
 # Specification

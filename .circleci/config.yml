@@ -36,13 +36,13 @@ commands:
     steps:
       - restore_cached_venv:
           venv_name: v32-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
           venv_name: v32-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
           venv_path: ./venv
 jobs:
   checkout_specs:
