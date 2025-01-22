@@ -560,5 +560,4 @@ setup(
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'presets', 'specs', 'presets', 'sync'],
     py_modules=["eth2spec"],
     cmdclass=commands,
-    python_requires=">=3.9,<4",
 )
