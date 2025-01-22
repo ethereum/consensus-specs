@@ -54,15 +54,14 @@ To learn how consensus spec tests are written, let's go over the code:
 
 This [decorator](https://book.pythontips.com/en/latest/decorators.html) specifies that this test
 is applicable to all the phases of consensus layer development. These phases are similar to forks (Istanbul,
-Berlin, London, etc.) in the execution blockchain. If you are interested, [you can see the definition of
-this decorator here](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L331-L335).
+Berlin, London, etc.) in the execution blockchain.
 
 ```python
 @spec_state_test
 ```
 
-[This decorator](https://github.com/qbzzt/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/context.py#L232-L234) specifies
-that this test is a state transition test, and that it does not include a transition between different forks.
+This decorator specifies that this test is a state transition test, and that it does not include a transition
+between different forks.
 
 ```python
 def test_empty_block_transition(spec, state):
@@ -124,8 +123,6 @@ More `yield` statements. The output of a consensus test is:
 5. `'post'`
 6. The state after the test
 
-
-
 ```python
     # One vote for the eth1
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
@@ -142,7 +139,6 @@ Finally we assertions that test the transition was legitimate. In this case we h
 1. One item was added to `eth1_data_votes`
 2. The new block's `parent_root` is the same as the block in the previous location
 3. The random data that every block includes was changed.
-
 
 ## New Tests
 
@@ -162,8 +158,7 @@ find . -name '*.py' -exec grep 'def state_transition_and_sign_block' {} \; -prin
 ```
 
 And you'll find that the function is defined in
-[`eth2spec/test/helpers/state.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/state.py). Looking
-in that file, we see that the second function is:
+`eth2spec/test/helpers/state.py`. Looking in that file, we see that the second function is:
 
 ```python
 def next_slot(spec, state):
@@ -174,7 +169,6 @@ def next_slot(spec, state):
 ```
 
 This looks like exactly what we need. So we add this call before we create the empty block:
-
 
 ```python
 .
@@ -193,14 +187,11 @@ This looks like exactly what we need. So we add this call before we create the e
 That's it. Our new test works (copy `test_empty_block_transition`, rename it, add the `next_slot` call, and then run it to
 verify this).
 
-
-
 ## Tests Designed to Fail
 
 It is important to make sure that the system rejects invalid input, so our next step is to deal with cases where the protocol
 is supposed to reject something. To see such a test, look at `test_prev_slot_block_transition` (in the same
-file we used previously,
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py)).
+file we used previously, `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
 
 ```python
 @with_all_phases
@@ -230,8 +221,7 @@ Transition to the new slot, which naturally has a different proposer.
 ```
 
 Specify that the function `transition_unsigned_block` will cause an assertion error.
-You can see this function in
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/helpers/block.py),
+You can see this function in `~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`,
 and one of the tests is that the block must be for this slot:
 > ```python
 > assert state.slot == block.slot
@@ -264,7 +254,6 @@ for the current state.
 This is the way we specify that a test is designed to fail - failed tests have no post state,
 because the processing mechanism errors out before creating it.
 
-
 ## Attestation Tests
 
 The consensus layer doesn't provide any direct functionality to end users. It does
@@ -284,7 +273,6 @@ which is how they get on chain to form consensus, reward honest validators, etc.
 [You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
 Lets go over it line by line.
 
-
 ```python
 @with_all_phases
 @spec_state_test
@@ -295,7 +283,6 @@ def test_success(spec, state):
 [This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120)
 creates a valid attestation (which can then be modified to make it invalid if needed).
 To see an attestion "from the inside" we need to follow it.
-
 
 > ```python
 >  def get_valid_attestation(spec,
@@ -376,14 +363,12 @@ Currently a single block is sufficient, but that may change in the future.
 [This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L13-L50)
 processes the attestation and returns the result.
 
-
 ### Adding an Attestation Test
 
 Attestations can't happen in the same block as the one about which they are attesting, or in a block that is
 after the block is finalized. This is specified as part of the specs, in the `process_attestation` function
 (which is created from the spec by the `make pyspec` command you ran earlier). Here is the relevant code
 fragment:
-
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:

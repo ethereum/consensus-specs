@@ -153,6 +153,7 @@ To construct a `BlobSidecar`, a `blob_sidecar` is defined with the necessary con
 Blobs associated with a block are packaged into sidecar objects for distribution to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 
 Each `sidecar` is obtained from:
+
 ```python
 def get_blob_sidecars(signed_block: SignedBeaconBlock,
                       blobs: Sequence[Blob],

@@ -1,7 +1,5 @@
 # Altair Light Client -- Full Node
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -146,7 +144,7 @@ Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `
 
 - `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.beacon.slot`
 - `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
-- Only `LightClientUpdate` with `next_sync_committee` as selected by fork choice are provided, regardless of ranking by `is_better_update`. To uniquely identify a non-finalized sync committee fork, all of `period`, `current_sync_committee` and `next_sync_committee` need to be incorporated, as sync committees may reappear over time.
+- Only `LightClientUpdate` with `sync_aggregate` from blocks on the canonical chain as selected by fork choice are considered, regardless of ranking by `is_better_update`. `LightClientUpdate` referring to orphaned blocks SHOULD NOT be provided.
 
 ### `create_light_client_finality_update`
 

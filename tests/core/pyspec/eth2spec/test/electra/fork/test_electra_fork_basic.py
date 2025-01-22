@@ -155,6 +155,40 @@ def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
+def test_fork_inactive_compounding_validator_with_excess_balance(spec, phases, state):
+    index = 0
+    post_spec = phases[ELECTRA]
+    validator = state.validators[index]
+
+    # set validator balance greater than min_activation_balance
+    state.balances[index] = post_spec.MIN_ACTIVATION_BALANCE + 1
+    # set validator as not active yet
+    validator.activation_epoch = spec.FAR_FUTURE_EPOCH
+    # set validator activation eligibility epoch to the latest finalized epoch
+    validator.activation_eligibility_epoch = state.finalized_checkpoint.epoch
+    # give the validator compounding withdrawal credentials
+    validator.withdrawal_credentials = post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # the validator cannot be activated again
+    assert post_state.validators[index].activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
+    # the validator should now have a zero balance
+    assert post_state.balances[index] == 0
+    # there should be a single pending deposit for this validator
+    assert post_state.pending_deposits == [post_spec.PendingDeposit(
+        pubkey=validator.pubkey,
+        withdrawal_credentials=validator.withdrawal_credentials,
+        amount=state.balances[index],
+        signature=spec.bls.G2_POINT_AT_INFINITY,
+        slot=spec.GENESIS_SLOT,
+    )]
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA])
+@spec_test
+@with_state
+@with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_fork_earliest_exit_epoch_no_validator_exits(spec, phases, state):
     # advance state so the current epoch is not zero
     next_epoch(spec, state)

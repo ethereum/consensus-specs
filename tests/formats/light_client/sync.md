@@ -9,8 +9,8 @@ This series of tests provides reference test vectors for validating that a light
 ```yaml
 genesis_validators_root: Bytes32  -- string, hex encoded, with 0x prefix
 trusted_block_root: Bytes32       -- string, hex encoded, with 0x prefix
-bootstrap_fork_digest: string     -- Encoded `ForkDigest`-context of `bootstrap`
-store_fork_digest: string         -- Encoded `ForkDigest`-context of `store` object being tested
+bootstrap_fork_digest: string     -- encoded `ForkDigest`-context of `bootstrap`
+store_fork_digest: string         -- encoded `ForkDigest`-context of `store` object being tested
 ```
 
 ### `bootstrap.ssz_snappy`
@@ -47,7 +47,7 @@ should be executed with the specified parameters:
 
 ```yaml
 {
-    current_slot: int                  -- integer, decimal
+    current_slot: int                   -- integer, decimal
     checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
@@ -60,10 +60,10 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 
 ```yaml
 {
-    update_fork_digest: string         -- Encoded `ForkDigest`-context of `update`
-    update: string                     -- name of the `*.ssz_snappy` file to load
-                                          as a `LightClientUpdate` object
-    current_slot: int                  -- integer, decimal
+    update_fork_digest: string          -- encoded `ForkDigest`-context of `update`
+    update: string                      -- name of the `*.ssz_snappy` file to load
+                                           as a `LightClientUpdate` object
+    current_slot: int                   -- integer, decimal
     checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
@@ -78,7 +78,7 @@ The `store` should be upgraded to reflect the new `store_fork_digest`:
 
 ```yaml
 {
-    store_fork_digest: string          -- Encoded `ForkDigest`-context of `store`
+    store_fork_digest: string           -- encoded `ForkDigest`-context of `store`
     checks: {<store_attribute>: value}  -- the assertions.
 }
 ```
