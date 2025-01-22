@@ -2,7 +2,7 @@
 requires = [
   "marko==1.0.2",
   "ruamel.yaml==0.17.21",
-  "setuptools>=72.0.0",
+  "setuptools==75.8.0",
   "wheel==0.45.1",
 ]
 
@@ -15,25 +15,25 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9,<4.0"
 dependencies = [
   "curdleproofs==0.1.2",
-  "eth-typing>=3.2.0,<4.0.0",
-  "eth-utils>=2.0.0,<3",
+  "eth-typing==3.5.2",
+  "eth-utils==2.3.2",
   "lru-dict==1.2.0",
   "marko==1.0.2",
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.3.8",
   "py_ecc==6.0.0",
-  "pycryptodome>=3.19.1",
+  "pycryptodome==3.21.0",
   "remerkleable==0.1.28",
   "ruamel.yaml==0.17.21",
-  "setuptools>=72.0.0",
-  "trie>=3,<4",
+  "setuptools==75.8.0",
+  "trie==3.0.1",
 ]
 
 [project.optional-dependencies]
 test = [
-  "pytest-cov",
-  "pytest-xdist",
-  "pytest>=4.4",
+  "pytest-cov==6.0.0",
+  "pytest-xdist==3.6.1",
+  "pytest==8.3.4",
 ]
 lint = [
   "codespell==2.4.0",
@@ -42,9 +42,9 @@ lint = [
   "pylint==3.3.1",
 ]
 generator = [
-  "filelock",
+  "filelock==3.17.0",
   "pathos==0.3.0",
-  "pytest>4.4",
+  "pytest==8.3.4",
   "python-snappy==0.7.3",
 ]
 docs = [
