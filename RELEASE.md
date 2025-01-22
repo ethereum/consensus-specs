@@ -133,6 +133,19 @@ Next, use `make gen_all` to generate all the reference tests. The following comm
 generators in parallel for maximum speed. The console output is saved to a file so we can check for
 errors afterwards.
 
+> [!TIP]
+> Instead of this, another option is to use the test vectors that are automatically generated each
+> night. To download these files, click the following link, then click the latest action run, and
+> then download all of the artifacts. Please note, if there has been a change to the dev branch
+> after the test vectors were generated, you can manually trigger the action with the "Run workflow"
+> button.
+>
+> * https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml
+>
+> After downloading these artifacts, move them to the `consensus-spec-tests` directory. Then unzip
+> each, then untar each of the `*.tar.gz` files. Use `unzip <file>.zip` and `tar -xvf <file>.tar.gz`
+> to do this. Note that the "Bundle Reference Tests" section can be skipped if this route is taken.
+
 ```bash
 make --jobs gen_all 2>&1 | tee ../consensustestgen.log
 ```
