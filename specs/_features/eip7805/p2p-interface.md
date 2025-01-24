@@ -5,9 +5,8 @@ This document contains the consensus-layer networking specification for EIP-7805
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Configuration](#configuration)
-  - [Time parameters](#time-parameters)
-  - [Inclusion list parameters](#inclusion-list-parameters)
+- [Modifications in EIP-7805](#modifications-in-eip-7805)
+  - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -18,15 +17,13 @@ This document contains the consensus-layer networking specification for EIP-7805
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Configuration
+## Modifications in EIP-7805
 
-### Time parameters
+### Configuration
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `ATTESTATION_DEADLINE` | `SECONDS_PER_SLOT // 3` | seconds | 4 seconds |
-
-### Inclusion list parameters
 
 | Name | Value | Description |
 | - | - | - |
