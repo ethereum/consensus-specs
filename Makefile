@@ -19,7 +19,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	clean         \
 	coverage      \
 	detect_errors \
-	eth2spec      \
 	gen_all       \
 	gen_list      \
 	help          \
@@ -41,7 +40,6 @@ help:
 	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
 	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
 	@echo "make $(BOLD)detect_errors$(NORM) -- detect generator errors"
-	@echo "make $(BOLD)eth2spec$(NORM)      -- force rebuild eth2spec package"
 	@echo "make $(BOLD)gen_<gen>$(NORM)     -- run a single generator"
 	@echo "make $(BOLD)gen_all$(NORM)       -- run all generators"
 	@echo "make $(BOLD)gen_list$(NORM)      -- list all generator targets"
@@ -60,10 +58,11 @@ PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
 
-# Make a virtual environment will all of the necessary dependencies.
-$(VENV): pyproject.toml
+# Make a virtual environment.
+$(VENV):
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
+	@$(PIP_VENV) install --quiet uv==0.5.24
 
 ###############################################################################
 # Specification
@@ -71,21 +70,11 @@ $(VENV): pyproject.toml
 
 TEST_LIBS_DIR = $(CURDIR)/tests/core
 PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-SITE_PACKAGES := $(wildcard $(VENV)/lib/python*/site-packages)
-ETH2SPEC := $(SITE_PACKAGES)/eth2spec
-
-# Install the eth2spec package.
-# The pipe indicates that venv is an order-only prerequisite.
-# When restoring venv cache, its timestamp is newer than eth2spec.
-$(ETH2SPEC): setup.py | $(VENV)
-	@$(PIP_VENV) install .[docs,lint,test,generator]
-
-# Force rebuild/install the eth2spec package.
-eth2spec:
-	@$(MAKE) --always-make $(ETH2SPEC)
 
 # Create the pyspec for all phases.
-pyspec: $(VENV) setup.py
+pyspec: $(VENV) setup.py pyproject.toml
+	@echo "Building eth2spec"
+	@$(PYTHON_VENV) -m uv pip install .[docs,lint,test,generator]
 	@echo "Building all pyspecs"
 	@$(PYTHON_VENV) setup.py pyspecdev
 
@@ -112,7 +101,7 @@ test: MAYBE_TEST := $(if $(k),-k=$(k))
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := --preset=$(if $(preset),$(preset),minimal)
 test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
-test: $(ETH2SPEC) pyspec
+test: pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
 		-n auto \
@@ -136,7 +125,7 @@ COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(
 # Run pytest with coverage tracking
 _test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
 _test_with_coverage: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-_test_with_coverage: $(ETH2SPEC) pyspec
+_test_with_coverage: pyspec
 	@$(PYTHON_VENV) -m pytest \
 		-n auto \
 		$(MAYBE_TEST) \
@@ -210,7 +199,7 @@ _check_toc: $(MARKDOWN_FILES:=.toc)
 	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
 
 # Check for mistakes.
-lint: $(ETH2SPEC) pyspec _check_toc
+lint: pyspec _check_toc
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
@@ -235,11 +224,11 @@ gen_list:
 	done
 
 # Run one generator.
-# This will forcibly rebuild eth2spec just in case.
+# This will forcibly rebuild pyspec just in case.
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
-gen_%: eth2spec
+gen_%: pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
@@ -259,7 +248,7 @@ detect_errors: $(TEST_VECTOR_DIR)
 	fi
 
 # Generate KZG trusted setups for testing.
-kzg_setups: $(ETH2SPEC)
+kzg_setups: pyspec
 	@for preset in minimal mainnet; do \
 		$(PYTHON_VENV) $(SCRIPTS_DIR)/gen_kzg_trusted_setups.py \
 			--secret=1337 \
