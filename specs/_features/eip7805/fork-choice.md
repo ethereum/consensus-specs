@@ -6,8 +6,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Fork choice](#fork-choice)
-  - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `Store`](#modified-store)
     - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
@@ -21,13 +22,15 @@
 
 This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
-## Fork choice
+## Configuration
 
-### Configuration
+### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `VIEW_FREEZE_DEADLINE` | `uint64(9)` | seconds | 9 seconds |
+| `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
+
+## Fork choice
 
 ### Helpers
 

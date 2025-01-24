@@ -5,25 +5,28 @@ This document contains the consensus-layer networking specification for EIP-7805
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Time parameters](#time-parameters)
 - [Configuration](#configuration)
-- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [Topics and messages](#topics-and-messages)
-    - [Global topics](#global-topics)
-      - [`inclusion_list`](#inclusion_list)
-- [The Req/Resp domain](#the-reqresp-domain)
-  - [Messages](#messages)
-    - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
+  - [Time parameters](#time-parameters)
+  - [Inclusion list parameters](#inclusion-list-parameters)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+    - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+        - [`inclusion_list`](#inclusion_list)
+  - [The Req/Resp domain](#the-reqresp-domain)
+    - [Messages](#messages)
+      - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Configuration
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `ATTESTATION_DEADLINE` | `uint64(4)` | seconds | 4 seconds |
+| `ATTESTATION_DEADLINE` | `SECONDS_PER_SLOT // 3` | seconds | 4 seconds |
 
-### Configuration
+### Inclusion list parameters
 
 | Name | Value | Description |
 | - | - | - |

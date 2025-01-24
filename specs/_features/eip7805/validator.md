@@ -8,6 +8,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Protocol](#protocol)
   - [`ExecutionEngine`](#executionengine)
@@ -38,11 +39,13 @@ All behaviors and definitions defined in this document, and documents it extends
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP-7805](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
 
+## Configuration
+
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `PROPOSER_INCLUSION_LIST_CUT_OFF` | `uint64(11)` | seconds | 11 seconds |
+| `PROPOSER_INCLUSION_LIST_CUT_OFF` | `SECONDS_PER_SLOT - 1` | seconds | 11 seconds |
 
 ## Protocol
 
