@@ -29,8 +29,8 @@
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+      - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
@@ -208,56 +208,6 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 #### Messages
 
-##### DataColumnSidecarsByRoot v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
-
-*[New in Fulu:EIP7594]*
-
-The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[1]: # (eth2spec: skip)
-
-| `fork_version`      | Chunk SSZ type           |
-|---------------------|--------------------------|
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
-
-Request Content:
-
-```
-(
-  List[DataColumnIdentifier, MAX_REQUEST_DATA_COLUMN_SIDECARS]
-)
-```
-
-Response Content:
-
-```
-(
-    List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
-)
-```
-
-Requests sidecars by block root and index.
-The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
-It may be less in the case that the responding peer is missing blocks or sidecars.
-
-Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
-
-No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
-
-The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
-
-Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the data column sidecar in the response.
-
-Clients MUST respond with at least one sidecar, if they have it.
-Clients MAY limit the number of blocks and sidecars in the response.
-
-Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
-Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
-Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
-
 ##### DataColumnSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
@@ -338,6 +288,56 @@ Of note, blocks from slots before the finalization MUST lead to the finalized bl
 Clients MUST respond with data column sidecars that are consistent from a single chain within the context of the request.
 
 After the initial data column sidecar, clients MAY stop in the process of responding if their fork choice changes the view of the chain in the context of the request.
+
+##### DataColumnSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
+
+*[New in Fulu:EIP7594]*
+
+The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[1]: # (eth2spec: skip)
+
+| `fork_version`      | Chunk SSZ type           |
+|---------------------|--------------------------|
+| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+
+Request Content:
+
+```
+(
+  List[DataColumnIdentifier, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+)
+```
+
+Response Content:
+
+```
+(
+  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+)
+```
+
+Requests sidecars by block root and index.
+The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing blocks or sidecars.
+
+Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
+
+No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
+
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the data column sidecar in the response.
+
+Clients MUST respond with at least one sidecar, if they have it.
+Clients MAY limit the number of blocks and sidecars in the response.
+
+Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
 
 ##### GetMetaData v3
 

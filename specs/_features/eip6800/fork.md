@@ -1,7 +1,10 @@
 # EIP-6800 -- Fork Logic
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -15,6 +18,7 @@
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
@@ -28,7 +32,6 @@ Warning: this configuration is not definitive.
 | - | - |
 | `EIP6800_FORK_VERSION` | `Version('0x05000000')` |
 | `EIP6800_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
-
 
 ## Helper functions
 

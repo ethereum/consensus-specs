@@ -30,9 +30,9 @@
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
         - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
@@ -271,69 +271,6 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 Clients SHOULD include a block in the response as soon as it passes the gossip validation rules.
 Clients SHOULD NOT respond with blocks that fail the beacon chain state transition.
 
-##### BlobSidecarsByRoot v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
-
-*[New in Deneb:EIP4844]*
-
-Request Content:
-
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
-)
-```
-
-Requests sidecars by block root and index.
-The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
-It may be less in the case that the responding peer is missing blocks or sidecars.
-
-Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
-
-No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
-
-`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
-
-The response MUST consist of zero or more `response_chunk`.
-Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
-
-Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob sidecar in the response.
-
-Clients MUST respond with at least one sidecar, if they have it.
-Clients MAY limit the number of blocks and sidecars in the response.
-
-Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
-Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
-Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
-
-For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))` is used to select the fork namespace of the Response type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[0]: # (eth2spec: skip)
-
-| `fork_version`                 | Chunk SSZ type      |
-|--------------------------------|---------------------|
-| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
-
-###### Blob retrieval via local execution layer client
-
-In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
-Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
-
-When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
-* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
-* update gossip rule related data structures (i.e. update the anti-equivocation cache).
-
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
@@ -341,6 +278,7 @@ When clients use the local execution layer to retrieve blobs, they MUST behave a
 *[New in Deneb:EIP4844]*
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -349,6 +287,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
@@ -415,6 +354,69 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`                 | Chunk SSZ type      |
 |--------------------------------|---------------------|
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
+
+##### BlobSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
+
+*[New in Deneb:EIP4844]*
+
+Request Content:
+
+```
+(
+  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
+)
+```
+
+Response Content:
+
+```
+(
+  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
+)
+```
+
+Requests sidecars by block root and index.
+The response is a list of `BlobSidecar` whose length is less than or equal to the number of requests.
+It may be less in the case that the responding peer is missing blocks or sidecars.
+
+Before consuming the next response chunk, the response reader SHOULD verify the blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t. the expected KZG commitments through `verify_blob_kzg_proof`.
+
+No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
+
+`BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when receiving a block with a transaction whose corresponding blob is missing).
+
+The response MUST consist of zero or more `response_chunk`.
+Each _successful_ `response_chunk` MUST contain a single `BlobSidecar` payload.
+
+Clients MUST support requesting sidecars since `minimum_request_epoch`, where `minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`. If any root in the request content references a block earlier than `minimum_request_epoch`, peers MAY respond with error code `3: ResourceUnavailable` or not include the blob sidecar in the response.
+
+Clients MUST respond with at least one sidecar, if they have it.
+Clients MAY limit the number of blocks and sidecars in the response.
+
+Clients SHOULD include a sidecar in the response as soon as it passes the gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail gossip validation rules.
+Clients SHOULD NOT respond with sidecars related to blocks that fail the beacon chain state transition
+
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`                 | Chunk SSZ type      |
+|--------------------------------|---------------------|
+| `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
+
+###### Blob retrieval via local execution layer client
+
+In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+
+When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
+* update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ## Design decision rationale
 

@@ -35,14 +35,14 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v32-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
+          venv_name: v33-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v32-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "requirements_preinstallation.txt" }}
+          venv_name: v33-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
           venv_path: ./venv
 jobs:
   checkout_specs:
@@ -75,7 +75,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
-          command: make eth2spec
+          command: make pyspec
       - save_pyspec_cached_venv
   test-phase0:
     docker:

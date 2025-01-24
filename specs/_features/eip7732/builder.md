@@ -1,7 +1,10 @@
 # EIP-7732 -- Honest Builder
 
-This is an accompanying document which describes the expected actions of a "builder" participating in the Ethereum proof-of-stake protocol.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
+## Table of contents
+
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -13,8 +16,11 @@ This is an accompanying document which describes the expected actions of a "buil
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
+
+This is an accompanying document which describes the expected actions of a "builder" participating in the Ethereum proof-of-stake protocol.
 
 With the EIP-7732 Fork, the protocol includes new staked participants of the protocol called *Builders*. While Builders are a subset of the validator set, they have extra attributions that are optional. Validators may opt to not be builders and as such we collect the set of guidelines for those validators that want to act as builders in this document.
 
@@ -113,7 +119,9 @@ To construct the `execution_payload_envelope` the builder must perform the follo
 After setting these parameters, the builder should run `process_execution_payload(state, signed_envelope, verify=False)` and this function should not trigger an exception.
 
 6. Set `state_root` to `hash_tree_root(state)`.
+
 After preparing the `envelope` the builder should sign the envelope using:
+
 ```python
 def get_execution_payload_envelope_signature(
         state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int) -> BLSSignature:
@@ -121,6 +129,7 @@ def get_execution_payload_envelope_signature(
     signing_root = compute_signing_root(envelope, domain)
     return bls.Sign(privkey, signing_root)
 ```
+
 The builder assembles then `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)` and broadcasts it on the `execution_payload` global gossip topic.
 
 ### Honest payload withheld messages

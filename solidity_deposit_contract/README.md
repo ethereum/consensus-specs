@@ -14,6 +14,7 @@ In August 2020, version `r2` was released with metadata modifications and relice
 ## Compiling solidity deposit contract
 
 In this directory run:
+
 ```sh
 make compile_deposit_contract
 ```
