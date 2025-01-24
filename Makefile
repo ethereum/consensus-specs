@@ -62,6 +62,7 @@ CODESPELL_VENV = $(VENV)/bin/codespell
 $(VENV):
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
+	@$(PIP_VENV) install --quiet uv==0.5.24
 
 ###############################################################################
 # Specification
@@ -73,7 +74,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 # Create the pyspec for all phases.
 pyspec: $(VENV) setup.py pyproject.toml
 	@echo "Building eth2spec"
-	@$(PIP_VENV) install --quiet --upgrade .[docs,lint,test,generator]
+	@$(PYTHON_VENV) -m uv pip install .[docs,lint,test,generator]
 	@echo "Building all pyspecs"
 	@$(PYTHON_VENV) setup.py pyspecdev
 
