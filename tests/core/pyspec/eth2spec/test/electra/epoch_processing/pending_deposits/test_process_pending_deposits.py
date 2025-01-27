@@ -307,6 +307,34 @@ def test_process_pending_deposits_multiple_pending_deposits_below_churn(spec, st
 
 @with_electra_and_later
 @spec_state_test
+def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, state):
+    # set third deposit to be over the churn
+    amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
+    for i in [0, 1, 2]:
+        state.pending_deposits.append(
+            prepare_pending_deposit(spec, validator_index=i, amount=amount)
+        )
+    pre_balances = state.balances.copy()
+
+    yield from run_process_pending_deposits(spec, state)
+
+    # First two deposits are processed, third is not because above churn
+    for i in [0, 1]:
+        assert state.balances[i] == pre_balances[i] + amount
+    assert state.balances[2] == pre_balances[2]
+    # Only first two subtract from the deposit balance to consume
+    assert (
+        state.deposit_balance_to_consume
+        == spec.get_activation_exit_churn_limit(state) - 2 * amount
+    )
+    # third deposit is still in the queue
+    assert state.pending_deposits == [
+        prepare_pending_deposit(spec, validator_index=2, amount=amount)
+    ]
+
+
+@with_electra_and_later
+@spec_state_test
 def test_process_pending_deposits_invalid_sig_then_valid_sig(spec, state):
     """
     - There are two pending deposits in the state, both pointing to the same public key.
@@ -347,34 +375,6 @@ def test_process_pending_deposits_invalid_sig_then_valid_sig(spec, state):
     assert state.deposit_balance_to_consume == 0
     # No more pending deposits
     assert state.pending_deposits == []
-
-
-@with_electra_and_later
-@spec_state_test
-def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, state):
-    # set third deposit to be over the churn
-    amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
-    for i in [0, 1, 2]:
-        state.pending_deposits.append(
-            prepare_pending_deposit(spec, validator_index=i, amount=amount)
-        )
-    pre_balances = state.balances.copy()
-
-    yield from run_process_pending_deposits(spec, state)
-
-    # First two deposits are processed, third is not because above churn
-    for i in [0, 1]:
-        assert state.balances[i] == pre_balances[i] + amount
-    assert state.balances[2] == pre_balances[2]
-    # Only first two subtract from the deposit balance to consume
-    assert (
-        state.deposit_balance_to_consume
-        == spec.get_activation_exit_churn_limit(state) - 2 * amount
-    )
-    # third deposit is still in the queue
-    assert state.pending_deposits == [
-        prepare_pending_deposit(spec, validator_index=2, amount=amount)
-    ]
 
 
 @with_electra_and_later
