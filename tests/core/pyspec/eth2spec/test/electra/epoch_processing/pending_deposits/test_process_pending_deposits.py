@@ -335,44 +335,28 @@ def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, st
 
 @with_electra_and_later
 @spec_state_test
-def test_process_pending_deposits_invalid_sig_then_valid_sig(spec, state):
+def test_process_pending_deposits_multiple_for_new_validator(spec, state):
     """
-    - There are two pending deposits in the state, both pointing to the same public key.
+    - There are three pending deposits in the state, all pointing to the same public key.
     - The public key does not exist in the beacon state.
-    - The first pending deposit has an invalid signature, while the second has a valid signature.
+    - The first pending deposit has an invalid signature and should be ignored.
+    - The second pending deposit has a valid signature and the validator should be created.
+    - The third pending deposit has a valid signature and should be applied.
     """
     # A new validator, pubkey doesn't exist in the state
     validator_index = len(state.validators)
-    amount = spec.MIN_ACTIVATION_BALANCE
-
-    # Ensure the 1st deposit signature is incorrect
-    pending_deposit_1 = prepare_pending_deposit(spec, validator_index, amount, signed=False)
-    assert not spec.is_valid_deposit_signature(
-        pending_deposit_1.pubkey,
-        pending_deposit_1.withdrawal_credentials,
-        pending_deposit_1.amount,
-        pending_deposit_1.signature
-    )
-
-    # Ensure the 2nd deposit signature is correct
-    pending_deposit_2 = prepare_pending_deposit(spec, validator_index, amount, signed=True)
-    assert spec.is_valid_deposit_signature(
-        pending_deposit_2.pubkey,
-        pending_deposit_2.withdrawal_credentials,
-        pending_deposit_2.amount,
-        pending_deposit_2.signature
-    )
+    amount = spec.EFFECTIVE_BALANCE_INCREMENT
 
     # Add pending deposits to the state
-    state.pending_deposits.append(pending_deposit_1)
-    state.pending_deposits.append(pending_deposit_2)
+    # Provide different amounts so we can tell which were applied
+    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 1, signed=False))
+    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 2, signed=True))
+    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 4, signed=True))
 
     yield from run_process_pending_deposits(spec, state)
 
-    # The 2nd pending deposit applied and the validator exists now
-    assert state.balances[validator_index] == amount
-    # No leftover deposit balance to consume
-    assert state.deposit_balance_to_consume == 0
+    # The second and third deposits were applied
+    assert state.balances[validator_index] == amount * 6
     # No more pending deposits
     assert state.pending_deposits == []
 
