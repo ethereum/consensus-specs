@@ -307,6 +307,50 @@ def test_process_pending_deposits_multiple_pending_deposits_below_churn(spec, st
 
 @with_electra_and_later
 @spec_state_test
+def test_process_pending_deposits_invalid_sig_then_valid_sig(spec, state):
+    """
+    - There are two pending deposits in the state, both pointing to the same public key.
+    - The public key does not exist in the beacon state.
+    - The first pending deposit has an invalid signature, while the second has a valid signature.
+    """
+    # A new validator, pubkey doesn't exist in the state
+    validator_index = len(state.validators)
+    amount = spec.MIN_ACTIVATION_BALANCE
+
+    # Ensure the 1st deposit signature is incorrect
+    pending_deposit_1 = prepare_pending_deposit(spec, validator_index, amount, signed=False)
+    assert not spec.is_valid_deposit_signature(
+        pending_deposit_1.pubkey,
+        pending_deposit_1.withdrawal_credentials,
+        pending_deposit_1.amount,
+        pending_deposit_1.signature
+    )
+
+    # Ensure the 2nd deposit signature is correct
+    pending_deposit_2 = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+    assert spec.is_valid_deposit_signature(
+        pending_deposit_2.pubkey,
+        pending_deposit_2.withdrawal_credentials,
+        pending_deposit_2.amount,
+        pending_deposit_2.signature
+    )
+
+    # Add pending deposits to the state
+    state.pending_deposits.append(pending_deposit_1)
+    state.pending_deposits.append(pending_deposit_2)
+
+    yield from run_process_pending_deposits(spec, state)
+
+    # The 2nd pending deposit applied and the validator exists now
+    assert state.balances[validator_index] == amount
+    # No leftover deposit balance to consume
+    assert state.deposit_balance_to_consume == 0
+    # No more pending deposits
+    assert state.pending_deposits == []
+
+
+@with_electra_and_later
+@spec_state_test
 def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, state):
     # set third deposit to be over the churn
     amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
