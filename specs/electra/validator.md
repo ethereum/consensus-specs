@@ -153,6 +153,8 @@ def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
         return uint64(0)
 ```
 
+*Note*: Clients will be able to remove the `Eth1Data` polling mechanism in an uncoordinated fashion once transition period is finished. The transition period is considered to be finished when a network reaches the point where `state.eth1_deposit_index == state.deposit_requests_start_index`.
+
 #### Execution payload
 
 `prepare_execution_payload` is updated from the Deneb specs.
