@@ -49,6 +49,22 @@ def test_apply_pending_deposit_over_min_activation(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_apply_pending_deposit_over_min_activation_next_increment(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    # set deposit amount to the next effective balance increment over the limit
+    # the validator's effective balance should be set to pre-electra MAX_EFFECTIVE_BALANCE
+    amount = spec.MAX_EFFECTIVE_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+
+    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+    # check validator's effective balance
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
 def test_apply_pending_deposit_eth1_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
@@ -136,6 +152,33 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max(spec,
     )
 
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max_next_increment(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    withdrawal_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    # set deposit amount to the next effective balance increment over the limit
+    # the validator's effective balance should be set to MAX_EFFECTIVE_BALANCE_ELECTRA
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT
+    pending_deposit = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+
+    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+    # check validator's effective balance
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
 @with_electra_and_later
