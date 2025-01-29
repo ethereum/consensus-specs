@@ -232,6 +232,50 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_pending_withdrawal_amount_zero_ineffective_sweep(spec, state):
+    """
+    Tests processing of a zero-amount pending withdrawal when the validator is not eligible for sweep.
+
+    This test verifies that:
+    1. A pending withdrawal with amount=0 is still processed if validator meets eligibility requirements
+    2. The validator is not partially withdrawable via sweep mechanism
+    3. The pending withdrawal is removed from state after processing
+
+    Note: Withdrawal is processed because balance and effective balance are greater than MIN_ACTIVATION_BALANCE,
+    even though amount is 0 and validator is not eligible for sweep.
+    """
+    validator_index = 0
+
+    pending_withdrawal = prepare_pending_withdrawal(
+        spec, state,
+        validator_index,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
+        amount=0
+    )
+
+    # Check that validator is not partially withdrawable via sweep mechanism
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    # Partial withdrawal should be processed because balance and effective balance are greater than MIN_ACTIVATION_BALANCE
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        num_expected_withdrawals=1,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[],
+        pending_withdrawal_requests=[pending_withdrawal]
+    )
+
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_withdrawals_with_ineffective_sweep_on_top_2(spec, state):
     # Ensure validator will be processed by the sweep
     validator_index = min(len(state.validators), spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP) // 2
