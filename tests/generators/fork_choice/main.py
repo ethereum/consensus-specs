@@ -1,5 +1,5 @@
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
-from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
 
 
 if __name__ == "__main__":
@@ -30,12 +30,19 @@ if __name__ == "__main__":
 
     electra_mods = deneb_mods  # No additional Electra specific fork choice tests
 
+    # Fulu adds new `is_data_available` tests
+    _new_fulu_mods = {key: 'eth2spec.test.fulu.fork_choice.test_' + key for key in [
+        'on_block',
+    ]}
+    fulu_mods = combine_mods(_new_fulu_mods, electra_mods)
+
     all_mods = {
         ALTAIR: altair_mods,
         BELLATRIX: bellatrix_mods,
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
+        FULU: fulu_mods,
     }
     check_mods(all_mods, "fork_choice")
 
