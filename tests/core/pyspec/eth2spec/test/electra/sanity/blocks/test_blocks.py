@@ -251,3 +251,79 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
     assert len(state.pending_partial_withdrawals) == 2
     for validator_index in validator_indices:
         assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+
+@with_electra_and_later
+@spec_state_test
+def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
+    # Give a validator an excess balance
+    validator_index = 0
+    excess_balance = 200000
+    balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    address = b'\x22' * 20
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance, address)
+
+    # Ensure the validator has an upcoming withdrawal
+    # This will happen before the withdrawal request
+    expected_withdrawals, _ = spec.get_expected_withdrawals(state)
+    assert len(expected_withdrawals) == 1
+    assert expected_withdrawals[0].validator_index == validator_index
+
+    yield 'pre', state
+
+    # Create a 1 gwei withdrawal request for the same validator
+    withdrawal_request = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=state.validators[validator_index].pubkey,
+        amount=1,
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.withdrawals = [withdrawal_request]
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    # Ensure the withdrawal request was unsuccessful
+    assert len(state.pending_partial_withdrawals) == 0
+
+
+@with_electra_and_later
+@spec_state_test
+def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state):
+    # Give a validator an excess balance
+    validator_index = 0
+    excess_balance = 200000
+    balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    address = b'\x22' * 20
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance, address)
+
+    # Ensure the validator has an upcoming withdrawal
+    # This will happen before the withdrawal request
+    expected_withdrawals, _ = spec.get_expected_withdrawals(state)
+    assert len(expected_withdrawals) == 1
+    assert expected_withdrawals[0].validator_index == validator_index
+
+    yield 'pre', state
+
+    # Create a switch to compounding validator request for the same validator
+    consolidation_request = spec.ConsolidationRequest(
+        source_address=address,
+        source_pubkey=state.validators[validator_index].pubkey,
+        target_pubkey=state.validators[validator_index].pubkey,
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.consolidations = [consolidation_request]
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    # Ensure the validator has compounding credentials now
+    assert spec.is_compounding_withdrawal_credential(state.validators[validator_index].withdrawal_credentials)
+    # Ensure there was no excess balance pending deposit
+    assert len(state.pending_deposits) == 0
