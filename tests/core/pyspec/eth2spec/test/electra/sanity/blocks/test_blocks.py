@@ -1,5 +1,7 @@
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot
+    build_empty_block_for_next_slot,
+    apply_empty_block,
+    sign_block,
 )
 from eth2spec.test.context import (
     spec_state_test,
@@ -16,13 +18,18 @@ from eth2spec.test.helpers.voluntary_exits import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
+    next_epoch_with_full_participation,
+    next_epoch_via_signed_block,
+    set_full_participation,
+    next_epoch,
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential_with_balance,
 )
 from eth2spec.test.helpers.deposits import (
-    prepare_deposit_request
+    prepare_deposit_request,
+    prepare_pending_deposit,
 )
 
 
@@ -335,7 +342,7 @@ def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state
 @with_electra_and_later
 @spec_state_test
 def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec, state):
-    # signify the transition
+    # signify the eth1 bridge deprecation
     state.deposit_requests_start_index = state.eth1_deposit_index
 
     # prepare three deposit requests, where
@@ -353,9 +360,11 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_requests.deposits = [deposit_request_0, deposit_request_1, deposit_request_2]
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
-    signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield 'pre', state
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
     yield 'blocks', [signed_block]
     yield 'post', state
 
@@ -368,3 +377,51 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
             signature=deposit_request.signature,
             slot=signed_block.message.slot,
         )
+
+
+@with_electra_and_later
+@spec_state_test
+def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
+    # signify the eth1 bridge deprecation
+    state.deposit_requests_start_index = state.eth1_deposit_index
+
+    # (1) create pending deposit for a new validator and finalize it
+    pending_deposit = prepare_pending_deposit(
+        spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, signed=True, slot=spec.Slot(1))
+    state.pending_deposits.append(pending_deposit)
+
+    # do required state transitions and fill participation to get Slot(1) finalized
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    set_full_participation(spec, state)
+
+    # pending deposit is not yet processed
+    assert state.pending_deposits == [pending_deposit]
+
+    yield 'pre', state
+
+    # (2) create and apply a block for the next epoch so the new validator gets created
+    block_a_state = state.copy()
+    signed_block_a = next_epoch_via_signed_block(spec, block_a_state)
+
+    # check that the validator has been created
+    assert block_a_state.pending_deposits == []
+    new_validator = block_a_state.validators[len(block_a_state.validators) - 1]
+    assert new_validator.pubkey == pending_deposit.pubkey
+    assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
+
+    # (3) create and apply a block conflicting with "block_a"
+    # so the epoch processing will be triggered once again
+    # and the validator will be created on another branch of the block tree
+    next_epoch(spec, state)
+    block_b = apply_empty_block(spec, state, state.slot + 1)
+    signed_block_b = sign_block(spec, state, block_b)
+
+    # check that the validator has been created in the "block_b" fork
+    new_validator = state.validators[len(state.validators) - 1]
+    assert new_validator.pubkey == pending_deposit.pubkey
+    assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
+
+    yield 'blocks', [signed_block_a, signed_block_b]
+    yield 'post', state
