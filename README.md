@@ -6,11 +6,11 @@ To learn more about proof-of-stake and sharding, see the [PoS documentation](htt
 
 This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
-## Specs
+## Specifications
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/consensus-specs)](https://github.com/ethereum/consensus-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec) [![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
 
-Core specifications for Ethereum proof-of-stake clients can be found in [specs](./specs). These are divided into features.
+Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
 
 ### Stable Specifications
@@ -42,7 +42,7 @@ Additional specifications and standards outside of requisite client functionalit
 
 * [Beacon APIs](https://github.com/ethereum/beacon-apis)
 * [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-* [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
+* [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
 
 ## Design goals
 
@@ -73,7 +73,8 @@ Documentation on the different components used during spec writing can be found 
 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
 
-## Installation and Usage
+## Installation and usage
+
 The consensus-specs repo can be used by running the tests locally or inside a docker container.
 
 To run the tests locally:
