@@ -132,3 +132,41 @@ def test_pending_consolidation(spec, state):
     assert state.validators[source_index].effective_balance == 0
     assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE * 2
     assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE * 2
+
+
+@with_electra_and_later
+@spec_state_test
+def test_deposit_then_consolidation_does_not_update_effective_balance(spec, state):
+    # 1) First, assert the initial state of the validator
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+
+    state.validators[source_index].withdrawable_epoch = current_epoch
+    state.validators[target_index].withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+
+    assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
+    assert state.validators[source_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE
+    assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+
+    # 2) Create deposit request
+    deposit = prepare_pending_deposit(spec, validator_index=source_index, amount=spec.MIN_ACTIVATION_BALANCE, signed=True) # So that it should have MIN_ACTIVATION_BALANCE * 2
+    pending_deposits = [deposit]
+    
+    # 3) Create consolidation request
+    pending_consolidations = [spec.PendingConsolidation(
+        source_index=source_index,
+        target_index=target_index
+    )]
+    
+    # 4) Process requests, as seen from the CL
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits, pending_consolidations=pending_consolidations)
+    
+    # 5) Check that balance increased but effective balance remained unchanged
+    assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
+    assert state.validators[source_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+    assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE * 2
+    assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
