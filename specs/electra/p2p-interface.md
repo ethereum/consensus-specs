@@ -76,10 +76,9 @@ The derivation of the `message-id` remains stable.
 ###### `beacon_aggregate_and_proof`
 
 The following convenience variables are re-defined
-- `index = get_committee_indices(aggregate.committee_bits)[0]`
+- `index = aggregate.committee_index`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
 * [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`
