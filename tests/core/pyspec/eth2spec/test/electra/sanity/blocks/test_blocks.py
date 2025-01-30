@@ -348,12 +348,12 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
     # prepare three deposit requests, where
     # 1st and 3rd have the same pubkey but different withdrawal credentials
     deposit_request_0 = prepare_deposit_request(
-            spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index, signed=True)
+        spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index, signed=True)
     deposit_request_1 = prepare_deposit_request(
-            spec, len(state.validators) + 1, spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index + 1, signed=True)
+        spec, len(state.validators) + 1, spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index + 1, signed=True)
     deposit_request_2 = prepare_deposit_request(
-            spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index + 2, signed=True, 
-            withdrawal_credentials=(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + b'\x11' * 20)
+        spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, state.eth1_deposit_index + 2, signed=True,
+        withdrawal_credentials=(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + b'\x11' * 20)
     )
 
     # build a block with deposit requests
