@@ -74,7 +74,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 # Create the pyspec for all phases.
 pyspec: $(VENV) setup.py pyproject.toml
 	@echo "Building eth2spec"
-	@$(PYTHON_VENV) -m uv pip install .[docs,lint,test,generator]
+	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
 	@echo "Building all pyspecs"
 	@$(PYTHON_VENV) setup.py pyspecdev
 
