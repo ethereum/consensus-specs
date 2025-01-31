@@ -1,6 +1,7 @@
 from eth_hash.auto import keccak
 from hashlib import sha256
 from trie import HexaryTrie
+from random import Random
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
 
@@ -263,6 +264,34 @@ def compute_el_block_hash_for_block(spec, block):
         spec, block.body.execution_payload, block.parent_root, requests_hash)
 
 
+def build_randomized_execution_payload_header(spec, state, rng=Random(10000)):
+    execution_payload = build_randomized_execution_payload(spec, state, rng)
+    execution_payload_header = spec.ExecutionPayloadHeader(
+        parent_hash=execution_payload.parent_hash,
+        fee_recipient=execution_payload.fee_recipient,
+        state_root=execution_payload.state_root,
+        receipts_root=execution_payload.receipts_root,
+        logs_bloom=execution_payload.logs_bloom,
+        prev_randao=execution_payload.prev_randao,
+        block_number=execution_payload.block_number,
+        gas_limit=execution_payload.gas_limit,
+        gas_used=execution_payload.gas_used,
+        timestamp=execution_payload.timestamp,
+        extra_data=execution_payload.extra_data,
+        base_fee_per_gas=execution_payload.base_fee_per_gas,
+        block_hash=execution_payload.block_hash,
+        transactions_root=spec.hash_tree_root(execution_payload.transactions),
+    )
+
+    if is_post_capella(spec):
+        execution_payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
+    if is_post_deneb(spec):
+        execution_payload_header.blob_gas_used = execution_payload.blob_gas_used
+        execution_payload_header.excess_blob_gas = execution_payload.excess_blob_gas
+
+    return execution_payload_header
+
+
 def build_empty_post_eip7732_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
@@ -331,6 +360,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
 
 def build_randomized_execution_payload(spec, state, rng):
     execution_payload = build_empty_execution_payload(spec, state)
+    # Note: the payload's parent hash is already populated
     execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
     execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
     execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
@@ -345,12 +375,16 @@ def build_randomized_execution_payload(spec, state, rng):
         get_random_bytes_list(rng, extra_data_length)
     )
     execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
-
-    num_transactions = rng.randint(0, 100)
     execution_payload.transactions = [
         get_random_tx(rng)
-        for _ in range(num_transactions)
+        for _ in range(rng.randint(0, 100))
     ]
+
+    # Note: for Capella, the payload's withdrawals are already populated
+
+    if is_post_deneb(spec):
+        execution_payload.blob_gas_used = rng.randint(0, int(10e10))
+        execution_payload.excess_blob_gas = rng.randint(0, int(10e10))
 
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
