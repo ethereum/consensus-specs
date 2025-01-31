@@ -48,6 +48,7 @@ docs/sync
 docs/ssz
 docs/fork_choice
 docs/README.md
+docs/tests
 site
 
 # docker test results
