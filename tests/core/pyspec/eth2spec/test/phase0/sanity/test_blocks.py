@@ -915,7 +915,7 @@ def test_duplicate_attestation_same_block(spec, state):
         assert spec.hash_tree_root(state.previous_epoch_participation) == pre_current_epoch_participation_root
 
 
-# After SHARDING is enabled, a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
+# After SHARDING is enabled, a committee is computed for MIN_VALIDATOR_ACTIVE_PERIOD slots ago,
 # exceeding the minimal-config randao mixes memory size.
 # Applies to all voluntary-exit sanity block tests.
 # TODO: when integrating SHARDING tests, voluntary-exit tests may need to change.
@@ -925,8 +925,8 @@ def test_duplicate_attestation_same_block(spec, state):
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, [validator_index])
     yield 'pre', state
@@ -953,8 +953,8 @@ def test_voluntary_exit(spec, state):
 def test_invalid_duplicate_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     # Same index tries to exit twice, but should only be able to do so once.
     signed_exits = prepare_signed_exits(spec, state, [validator_index, validator_index])
@@ -976,8 +976,8 @@ def test_multiple_different_validator_exits_same_block(spec, state):
         spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
         for i in range(3)
     ]
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, validator_indices)
     yield 'pre', state
