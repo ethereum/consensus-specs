@@ -1,7 +1,5 @@
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-    apply_empty_block,
-    sign_block,
 )
 from eth2spec.test.context import (
     spec_state_test,
@@ -18,10 +16,6 @@ from eth2spec.test.helpers.voluntary_exits import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
-    next_epoch_with_full_participation,
-    next_epoch_via_signed_block,
-    set_full_participation,
-    next_epoch,
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
@@ -29,7 +23,6 @@ from eth2spec.test.helpers.withdrawals import (
 )
 from eth2spec.test.helpers.deposits import (
     prepare_deposit_request,
-    prepare_pending_deposit,
 )
 
 
