@@ -73,7 +73,11 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
 
     # (3) create a conflicting block that triggers deposit processing on another fork
     prev_epoch_ancestor = store.blocks[latest_block.message.parent_root]
+    # important to skip last block of the epoch to make client do the epoch processing
+    # otherwise, client can read the post-epoch from cache
+    prev_epoch_ancestor = store.blocks[prev_epoch_ancestor.parent_root]
     another_fork_state = store.block_states[prev_epoch_ancestor.hash_tree_root()].copy()
+
     assert another_fork_state.pending_deposits == [pending_deposit]
 
     # skip a slot to create and process a fork block
