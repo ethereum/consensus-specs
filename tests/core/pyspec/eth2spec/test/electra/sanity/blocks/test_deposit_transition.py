@@ -93,8 +93,8 @@ def prepare_state_and_block(spec,
         deposit_data = build_deposit_data(spec,
                                           pubkeys[keypair_index],
                                           privkeys[keypair_index],
-                                          # use max effective balance
-                                          spec.MAX_EFFECTIVE_BALANCE,
+                                          # use min activation balance
+                                          spec.MIN_ACTIVATION_BALANCE,
                                           # insecurely use pubkey as withdrawal key
                                           spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[keypair_index])[1:],
                                           signed=True)
@@ -118,8 +118,8 @@ def prepare_state_and_block(spec,
     for offset in range(deposit_request_cnt):
         deposit_request = prepare_deposit_request(spec,
                                                   keypair_index,
-                                                  # use max effective balance
-                                                  spec.MAX_EFFECTIVE_BALANCE,
+                                                  # use min activation balance
+                                                  spec.MIN_ACTIVATION_BALANCE,
                                                   first_deposit_request_index + offset,
                                                   signed=True)
         deposit_requests.append(deposit_request)

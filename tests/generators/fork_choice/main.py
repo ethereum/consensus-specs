@@ -28,7 +28,10 @@ if __name__ == "__main__":
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
 
-    electra_mods = deneb_mods  # No additional Electra specific fork choice tests
+    _new_electra_mods = {key: 'eth2spec.test.electra.fork_choice.test_' + key for key in [
+        'deposit_with_reorg',
+    ]}
+    electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
     # Fulu adds new `is_data_available` tests
     _new_fulu_mods = {key: 'eth2spec.test.fulu.fork_choice.test_' + key for key in [
