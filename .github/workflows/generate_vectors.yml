@@ -17,6 +17,7 @@ on:
 
 jobs:
   generate-tests:
+    timeout-minutes: 720  # 12 hours
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
@@ -33,7 +34,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j 16 gen_all 2>&1 | tee ../consensustestgen.log
+          make -j$(nproc) gen_all 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
