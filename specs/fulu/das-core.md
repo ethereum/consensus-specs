@@ -240,7 +240,7 @@ A node with validators attached downloads and custodies a higher minimum of cust
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
     total_node_balance = sum(state.balances[index] for index in validator_indices)
-    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_SUBNET
+    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
