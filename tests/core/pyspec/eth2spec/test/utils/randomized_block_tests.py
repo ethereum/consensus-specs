@@ -8,7 +8,7 @@ from random import Random
 from typing import Callable
 
 from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash,
+    compute_el_block_hash_for_block,
     build_randomized_execution_payload,
 )
 from eth2spec.test.helpers.multi_operations import (
@@ -16,6 +16,7 @@ from eth2spec.test.helpers.multi_operations import (
     get_random_bls_to_execution_changes,
     get_random_sync_aggregate,
     prepare_state_and_get_random_deposits,
+    get_random_execution_requests,
 )
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -101,6 +102,17 @@ def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=
 
 def randomize_state_electra(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     scenario_state = randomize_state_deneb(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
+def randomize_state_fulu(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_electra(
         spec,
         state,
         stats,
@@ -250,11 +262,11 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
 def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    # TODO: add MAX_BLOBS_PER_BLOCK_EIP7594 at fulu
+    # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng)
     block.body.execution_payload.transactions.append(opaque_tx)
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     block.body.blob_kzg_commitments = blob_kzg_commitments
 
     return block
@@ -262,6 +274,14 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
 
 def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
+    block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    return block
+
+
+def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+    block = random_block_electra(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block
 

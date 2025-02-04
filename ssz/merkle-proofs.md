@@ -1,8 +1,7 @@
 # Merkle proof formats
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -71,7 +70,7 @@ Note that the generalized index has the convenient property that the two childre
 ```python
 def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
     """
-    Return an array representing the tree nodes by generalized index: 
+    Return an array representing the tree nodes by generalized index:
     [0, 1, 2, 3, 4, 5, 6, 7], where each layer is a power of 2. The 0 index is ignored. The 1 index is the root.
     The result will be twice the size as the padded bottom layer for the input leaves.
     """

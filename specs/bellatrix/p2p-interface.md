@@ -1,17 +1,12 @@
 # Bellatrix -- Networking
 
-This document contains the networking specification for the Bellatrix.
-
-The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite. This document should be viewed as additive to the documents from [Phase 0](../phase0/p2p-interface.md) and from [Altair](../altair/p2p-interface.md)
-and will be referred to as the "Phase 0 document" and "Altair document" respectively, hereafter.
-Readers should understand the Phase 0 and Altair documents and use them as a basis to understand the changes outlined in this document.
-
 ## Table of contents
 
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+  - [Introduction](#introduction)
   - [Modifications in Bellatrix](#modifications-in-bellatrix)
     - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
       - [Topics and messages](#topics-and-messages)
@@ -31,6 +26,14 @@ Readers should understand the Phase 0 and Altair documents and use them as a bas
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Bellatrix.
+
+The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite. This document should be viewed as additive to the documents from [Phase 0](../phase0/p2p-interface.md) and from [Altair](../altair/p2p-interface.md)
+and will be referred to as the "Phase 0 document" and "Altair document" respectively, hereafter.
+Readers should understand the Phase 0 and Altair documents and use them as a basis to understand the changes outlined in this document.
 
 ## Modifications in Bellatrix
 
@@ -145,8 +148,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 #### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
-field -- `transactions` -- which can validly exceed the `GOSSIP_MAX_SIZE` limit (1 MiB) put in
-place at Phase 0, so GOSSIP_MAX_SIZE has increased to 10 Mib on the network. 
+field -- `transactions` -- which can validly exceed the `MAX_PAYLOAD_SIZE` limit (1 MiB) put in
+place at Phase 0, so MAX_PAYLOAD_SIZE has increased to 10 MiB on the network.
 At the `GAS_LIMIT` (~30M) currently seen on mainnet in 2021, a single transaction
 filled entirely with data at a cost of 16 gas per byte can create a valid
 `ExecutionPayload` of ~2 MiB. Thus we need a size limit to at least account for

@@ -44,7 +44,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations, and hints what the best known algorithms for these implementations are included below.
@@ -57,7 +56,6 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 | - | - | - |
 | `BLS_MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
-
 
 ### KZG Trusted setup
 
@@ -203,7 +201,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
         coefs.append( - (r_to_K - 1) * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
     for i in range(d + 1):
         coefs[i] = (coefs[i] + B(r) * bls_modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
-    
+
     assert elliptic_curve_lincomb(commitments, coefs) == bls.inf_G1()
 ```
 
@@ -259,7 +257,6 @@ def multiply_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoeff
     return r
 ```
 
-
 #### `interpolate_polynomial`
 
 ```python
@@ -279,7 +276,7 @@ def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement])
                     summand, [weight_adjustment, ((BLS_MODULUS - weight_adjustment) * xs[i])]
                 )
         r = add_polynomials(r, summand)
-    
+
     return r
 ```
 
@@ -300,7 +297,7 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
         return r
 
     def Aprime(z):
-        return field_elements_per_blob * pow(z, field_elements_per_blob - 1, BLS_MODULUS) 
+        return field_elements_per_blob * pow(z, field_elements_per_blob - 1, BLS_MODULUS)
 
     r = 0
     inverses = [bls_modular_inverse(z - x) for z in roots]
@@ -312,7 +309,7 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
 
 ## KZG Operations
 
-We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).  
+We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).
 
 ### Elliptic curve helper functions
 
@@ -387,7 +384,7 @@ def verify_kzg_multiproof(commitment: KZGCommitment,
 ```python
 def verify_degree_proof(commitment: KZGCommitment, degree_bound: uint64, proof: KZGCommitment):
     """
-    Verifies that the commitment is of polynomial degree < degree_bound. 
+    Verifies that the commitment is of polynomial degree < degree_bound.
     """
 
     assert (

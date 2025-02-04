@@ -24,7 +24,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
@@ -33,7 +32,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `SampleIndex` | `uint64` | A sample index, corresponding to chunk of extended data |
 
-
 ## Configuration
 
 ### Misc
@@ -41,7 +39,6 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value | Notes |
 | - | - | - |
 | `MAX_RESAMPLE_TIME` | `TODO` (= TODO) | Time window to sample a shard blob and put it on vertical subnets |
-
 
 ## New containers
 

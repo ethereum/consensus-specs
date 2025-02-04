@@ -20,7 +20,6 @@ An SSZ-snappy encoded `BeaconState`, the state before running the block transiti
 
 Also available as `pre.ssz_snappy`.
 
-
 ### `blocks_<index>.yaml`
 
 A series of files, with `<index>` in range `[0, blocks_count)`. Blocks need to be processed in order,
@@ -33,7 +32,6 @@ Each block is also available as `blocks_<index>.ssz_snappy`
 ### `post.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the block transitions.
-
 
 ## Condition
 
