@@ -14,6 +14,7 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
+    - [`SignedBeaconBlockAndExecutionPayload`](#signedbeaconblockandexecutionpayload)
     - [Helpers](#helpers)
       - [Modified `verify_blob_sidecar_inclusion_proof`](#modified-verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -25,9 +26,9 @@
         - [`execution_payload_header`](#execution_payload_header)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BeaconBlocksByRange v3](#beaconblocksbyrange-v3)
-      - [BeaconBlocksByRoot v3](#beaconblocksbyroot-v3)
-      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -71,6 +72,16 @@ class BlobSidecar(Container):
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
+```
+
+#### `SignedBeaconBlockAndExecutionPayload`
+
+*[New in EIP-7732]*
+
+```python
+class SignedBeaconBlockAndExecutionPayload(Container):
+    signed_beacon_block: SignedBeaconBlock
+    signed_execution_payload: SignedExecutionPayloadEnvelope
 ```
 
 #### Helpers
@@ -200,9 +211,9 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 #### Messages
 
-##### BeaconBlocksByRange v3
+##### BeaconBlocksByRange v2
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/3/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 [0]: # (eth2spec: skip)
 
@@ -213,11 +224,11 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlockAndExecutionPayload`   |
 
-##### BeaconBlocksByRoot v3
+##### BeaconBlocksByRoot v2
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/3/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -232,9 +243,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
-##### BlobSidecarsByRoot v2
+##### BlobSidecarsByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 [1]: # (eth2spec: skip)
 
