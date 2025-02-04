@@ -65,9 +65,11 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
     # [New in Deneb:EIP4844]
-    if epoch < DENEB_FORK_EPOCH:
-        if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
-            return False
+    if epoch < config.DENEB_FORK_EPOCH:
+        return (
+            header.execution.blob_gas_used == uint64(0)
+            and header.execution.excess_blob_gas == uint64(0)
+        )
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
