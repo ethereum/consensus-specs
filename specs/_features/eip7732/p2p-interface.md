@@ -74,16 +74,6 @@ class BlobSidecar(Container):
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
 ```
 
-#### `SignedBeaconBlockAndExecutionPayload`
-
-*[New in EIP-7732]*
-
-```python
-class SignedBeaconBlockAndExecutionPayload(Container):
-    signed_beacon_block: SignedBeaconBlock
-    signed_execution_payload: SignedExecutionPayloadEnvelope
-```
-
 #### Helpers
 
 ##### Modified `verify_blob_sidecar_inclusion_proof`
@@ -224,7 +214,42 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlockAndExecutionPayload`   |
+| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+
+##### ExecutionPayloadEnvelopesByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
+
+*[New in EIP-7732]*
+
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Specifications of req\response method are equivalent to [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2), with the only difference that response content.
+
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type                           |
+|------------------------|------------------------------------------|
+| `EIP7732_FORK_VERSION` and later | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### BeaconBlocksByRoot v2
 
