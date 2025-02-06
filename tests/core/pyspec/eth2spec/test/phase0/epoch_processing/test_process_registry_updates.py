@@ -31,6 +31,7 @@ def test_add_to_activation_queue(spec, state):
     assert state.validators[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
     assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert spec.get_committee_assignment(state, spec.get_current_epoch(state), index) is None
 
 
 @with_all_phases
