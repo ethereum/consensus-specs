@@ -16,7 +16,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-def create_test_update(spec, test, with_next, with_finality, participation_rate):
+def create_test_update(spec, test, with_next, with_finality, participation_rate, signature_slot=None):
     attested_state, attested_block, finalized_block = test
     return create_update(
         spec,
@@ -26,6 +26,7 @@ def create_test_update(spec, test, with_next, with_finality, participation_rate)
         with_next,
         with_finality,
         participation_rate,
+        signature_slot=signature_slot,
     )
 
 
@@ -132,6 +133,15 @@ def test_update_ranking(spec, state):
         create_test_update(spec, att, with_next=0, with_finality=0, participation_rate=0.2),
         create_test_update(spec, fin, with_next=0, with_finality=0, participation_rate=0.2),
         create_test_update(spec, lat, with_next=0, with_finality=0, participation_rate=0.2),
+        # Test signature_slot tiebreaker: identical update but with later signature_slot
+        create_test_update(
+            spec,
+            lat,
+            with_next=0,
+            with_finality=0,
+            participation_rate=0.2,
+            signature_slot=lat_attested_state.slot + 2,
+        ),
     ]
     yield "updates", updates
 
