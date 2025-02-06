@@ -144,7 +144,7 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
         return parent_root
     else:
-    return head_root
+        return head_root
 ```
 
 #### New `on_inclusion_list`
