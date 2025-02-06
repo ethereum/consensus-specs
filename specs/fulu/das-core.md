@@ -244,7 +244,7 @@ def get_validators_custody_requirement(state: BeaconState, validator_indices: Se
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
-This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the validator custody requirement increases, due to an increase in the total balance of the attached validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.  
+This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the validator custody requirement increases, due to an increase in the total balance of the attached validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
 ### Public, deterministic selection
 
