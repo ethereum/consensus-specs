@@ -227,7 +227,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 ### Custody requirement
 
-Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group. When syncing, a node MUST backfill columns from all of its custody groups. 
+Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group. When syncing, a node MUST backfill columns from all of its custody groups.
 
 A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_group_count` field within its ENR. This value can be increased up to `NUMBER_OF_CUSTODY_GROUPS`, indicating a super-full node.
 
