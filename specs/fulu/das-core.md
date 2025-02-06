@@ -227,7 +227,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 
 ### Custody requirement
 
-Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group.
+Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group. When syncing, a node MUST backfill columns from all of its custody groups. 
 
 A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_group_count` field within its ENR. This value can be increased up to `NUMBER_OF_CUSTODY_GROUPS`, indicating a super-full node.
 
@@ -244,7 +244,7 @@ def get_validators_custody_requirement(state: BeaconState, validator_indices: Se
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
-This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum.
+This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the validator custody requirement increases, due to an increase in the total balance of the attached validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.  
 
 ### Public, deterministic selection
 
