@@ -265,7 +265,7 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
                 List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
                 request_data
             )
-        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+        else:
             consolidations = ssz_deserialize(
                 List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
                 request_data
