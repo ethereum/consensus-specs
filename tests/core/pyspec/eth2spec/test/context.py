@@ -154,7 +154,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
 def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     num_validators = (

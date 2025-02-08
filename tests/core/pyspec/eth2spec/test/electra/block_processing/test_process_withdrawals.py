@@ -442,3 +442,162 @@ def test_pending_withdrawals_at_max_mixed_with_sweep_and_fully_withdrawable(spec
 
     withdrawals_exceeding_max = pending_withdrawal_requests[spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP:]
     assert state.pending_partial_withdrawals == withdrawals_exceeding_max
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_max_plus_one(spec, state):
+    """Test compounding validator with balance just above MAX_EFFECTIVE_BALANCE_ELECTRA"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + 1
+    )
+    assert spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[validator_index]
+    )
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_exact_max(spec, state):
+    """Test compounding validator with balance exactly equal to MAX_EFFECTIVE_BALANCE_ELECTRA"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_max_minus_one(spec, state):
+    """Test compounding validator whose balance is just below MAX_EFFECTIVE_BALANCE_ELECTRA"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA - spec.EFFECTIVE_BALANCE_INCREMENT,
+        balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA - 1
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_min_plus_one(spec, state):
+    """Test compounding validator just above MIN_ACTIVATION_BALANCE"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        effective_balance=spec.MIN_ACTIVATION_BALANCE,
+        balance=spec.MIN_ACTIVATION_BALANCE + 1
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_exact_min(spec, state):
+    """Test compounding validator with balance exactly equal to MIN_ACTIVATION_BALANCE"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        effective_balance=spec.MIN_ACTIVATION_BALANCE,
+        balance=spec.MIN_ACTIVATION_BALANCE
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_compounding_min_minus_one(spec, state):
+    """Test compounding validator below MIN_ACTIVATION_BALANCE"""
+    validator_index = 0
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        effective_balance=spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
+        balance=spec.MIN_ACTIVATION_BALANCE - 1
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+    assert state.pending_partial_withdrawals == []
