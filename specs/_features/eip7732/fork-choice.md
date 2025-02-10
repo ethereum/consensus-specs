@@ -575,7 +575,7 @@ def on_payload_attestation_message(
         store.payload_withhold_boost_full = is_parent_node_full(store, block)
 ```
 
-### Modified `validate_merge_block` 
+### Modified `validate_merge_block`
 
 The function `validate_merge_block` is modified for test purposes
 
