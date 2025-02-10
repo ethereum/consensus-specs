@@ -8,7 +8,7 @@ from eth2spec.utils import bls
 from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
-    EIP7594, EIP7732,
+    FULU, EIP7732,
     WHISK,
     MINIMAL,
     ALL_PHASES,
@@ -154,7 +154,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
 def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     num_validators = (
@@ -437,15 +437,19 @@ def with_all_phases_from_except(earliest_phase, except_phases=None):
     return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
 
 
-def with_all_phases_from_to(earliest_phase, latest_phase, all_phases=ALL_PHASES):
+def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=ALL_PHASES):
     """
-    A decorator factory for running a tests with every phase starting at `earliest_phase`
-    and ending at `latest_phase` excluding the ones listed.
+    A decorator factory for running a tests with every phase
+    from a given start phase up to and excluding a given end phase
     """
     def decorator(fn):
-        return with_phases([phase for phase in all_phases if
-                            is_post_fork(phase, earliest_phase) and not
-                            is_post_fork(phase, latest_phase)])(fn)
+        return with_phases(
+            [phase for phase in all_phases if (
+                phase != to_phase and is_post_fork(to_phase, phase)
+                and is_post_fork(phase, from_phase)
+            )],
+            other_phases=other_phases,
+        )(fn)
     return decorator
 
 
@@ -458,7 +462,6 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
         return with_phases([phase for phase in ALL_PHASES if phase not in except_phases and
                             is_post_fork(phase, earliest_phase) and not
                             is_post_fork(phase, latest_phase)])(fn)
-    return decorator
 
 
 def with_all_phases_except(exclusion_phases):
@@ -583,7 +586,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip7594_and_later = with_all_phases_from(EIP7594, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_altair_until_eip7732 = with_all_phases_from_to(ALTAIR, EIP7732)
 with_bellatrix_until_eip7732 = with_all_phases_from_to(BELLATRIX, EIP7732)

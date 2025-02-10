@@ -1,5 +1,7 @@
 # EIP-6914 -- The Beacon Chain
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -23,7 +25,7 @@
 
 This is the beacon chain specification to assign new deposits to existing validator records. Refers to [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 
-*Note:* This specification is built upon [Capella](../../capella/beacon_chain.md) and is under active development.
+*Note:* This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Preset
 

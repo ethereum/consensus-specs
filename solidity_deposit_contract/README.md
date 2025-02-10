@@ -13,7 +13,8 @@ In August 2020, version `r2` was released with metadata modifications and relice
 
 ## Compiling solidity deposit contract
 
-In the `eth2.0-specs` directory run:
+In this directory run:
+
 ```sh
 make compile_deposit_contract
 ```
@@ -31,8 +32,8 @@ solc --optimize --optimize-runs 5000000 --metadata-literal --bin deposit_contrac
 
 ## Running web3 tests
 
-1. In the `eth2.0-specs` directory run `make install_deposit_contract_web3_tester` to install the tools needed (make sure to have Python 3.7 and pip installed).
-2. In the `eth2.0-specs` directory run `make test_deposit_contract_web3_tests` to execute the tests.
+1. In this directory run `make install_deposit_contract_web3_tester` to install the tools needed (make sure to have Python 3 and pip installed).
+2. In this directory run `make test_deposit_contract_web3_tests` to execute the tests.
 
 ## Running randomized `dapp` tests:
 

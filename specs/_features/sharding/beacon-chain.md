@@ -45,7 +45,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
@@ -56,7 +55,6 @@ using KZG10 commitments to commit to data to remove any need for fraud proofs (a
 
 - **Data**: A list of KZG points, to translate a byte string into
 - **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
-
 
 ## Constants
 
@@ -72,7 +70,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_SAMPLE`     | `DomainType('0x10000000')` |
+| `DOMAIN_SHARD_SAMPLE` | `DomainType('0x10000000')` |
 
 ## Preset
 
@@ -82,7 +80,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - | - |
 | `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
 | `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
-| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16) | TODO: Need to define what happens if there were more blocks without builder blocks | 
+| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16) | TODO: Need to define what happens if there were more blocks without builder blocks |
 
 ### Time parameters
 
@@ -100,7 +98,7 @@ With the introduction of builder blocks the number of slots per epoch is doubled
 
 ## Configuration
 
-Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.  
+Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.
 E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 
 ### Time parameters
@@ -129,12 +127,12 @@ class BuilderBlockBid(Container):
     bid: Gwei # Block builder bid paid to proposer
 
     validator_index: ValidatorIndex # Validator index for this bid
-    
+
     # Block builders use an Eth1 address -- need signature as
     # block bid and data gas base fees will be charged to this address
     signature_y_parity: bool
     signature_r: uint256
-    signature_s: uint256    
+    signature_s: uint256
 ```
 
 #### `BuilderBlockBidWithRecipientAddress`
@@ -156,7 +154,7 @@ class ShardedCommitmentsContainer(Container):
 
     # The sizes of the blocks encoded in the commitments (last builder and all beacon blocks since)
     included_block_sizes: List[uint64, MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS + 1]
-    
+
     # Number of commitments that are for sharded data (no blocks)
     included_sharded_data_commitments: uint64
 
@@ -192,7 +190,7 @@ class BeaconState(bellatrix.BeaconState):
 class BuilderBlockData(Container):
     execution_payload: ExecutionPayload
     sharded_commitments_container: ShardedCommitmentsContainer
-```    
+```
 
 #### `BeaconBlockBody`
 

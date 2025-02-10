@@ -1,5 +1,7 @@
 # Electra Light Client -- Fork Logic
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -33,34 +35,13 @@ def normalize_merkle_branch(branch: Sequence[Bytes32],
 
 ## Upgrading light client data
 
-A Electra `LightClientStore` can still process earlier light client data. In order to do so, that pre-Electra data needs to be locally upgraded to Electra before processing.
+An Electra `LightClientStore` can still process earlier light client data. In order to do so, that pre-Electra data needs to be locally upgraded to Electra before processing.
 
 ```python
 def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
-        execution=ExecutionPayloadHeader(
-            parent_hash=pre.execution.parent_hash,
-            fee_recipient=pre.execution.fee_recipient,
-            state_root=pre.execution.state_root,
-            receipts_root=pre.execution.receipts_root,
-            logs_bloom=pre.execution.logs_bloom,
-            prev_randao=pre.execution.prev_randao,
-            block_number=pre.execution.block_number,
-            gas_limit=pre.execution.gas_limit,
-            gas_used=pre.execution.gas_used,
-            timestamp=pre.execution.timestamp,
-            extra_data=pre.execution.extra_data,
-            base_fee_per_gas=pre.execution.base_fee_per_gas,
-            block_hash=pre.execution.block_hash,
-            transactions_root=pre.execution.transactions_root,
-            withdrawals_root=pre.execution.withdrawals_root,
-            blob_gas_used=pre.execution.blob_gas_used,
-            excess_blob_gas=pre.execution.blob_gas_used,
-            deposit_requests_root=Root(),  # [New in Electra:EIP6110]
-            withdrawal_requests_root=Root(),  # [New in Electra:EIP7002:EIP7251]
-            consolidation_requests_root=Root(),  # [New in Electra:EIP7251]
-        ),
+        execution=pre.execution,
         execution_branch=pre.execution_branch,
     )
 ```

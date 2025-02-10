@@ -28,12 +28,10 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
-
 ## Introduction
 
 For an introduction about DAS itself, see [the DAS participation spec](sampling.md#data-availability-sampling).
-This is not a pre-requisite for the network layer, but will give you valuable context. 
+This is not a pre-requisite for the network layer, but will give you valuable context.
 
 For sampling, all nodes need to query for `k` random samples each slot.
 
@@ -55,13 +53,13 @@ The push model does not aim to serve "historical" queries (anything older than t
 Historical queries are still required for the unhappy case, where messages are not pushed quick enough,
 and missing samples are not reconstructed by other nodes on the horizontal subnet quick enough.
 
-The main challenge in supporting historical queries is to target the right nodes, 
+The main challenge in supporting historical queries is to target the right nodes,
 without concentrating too many requests on a single node, or breaking the network/consensus identity separation.
 
 ## DAS Subnets
 
 On a high level, the push-model roles are divided into:
-- Sources: create blobs of shard block data, and transformed into many tiny samples. 
+- Sources: create blobs of shard block data, and transformed into many tiny samples.
 - Sinks: continuously look for samples
 
 At full operation, the network has one proposer, per shard, per slot.
@@ -93,15 +91,14 @@ Peers on the horizontal subnet are expected to at least perform regular propagat
 Nodes on this same subnet can replicate the sampling efficiently (including a proof for each sample),
 and distribute it to any vertical networks that are available to them.
 
-Since the messages are content-addressed (instead of origin-stamped), 
-multiple publishers of the same samples on a vertical subnet do not hurt performance, 
+Since the messages are content-addressed (instead of origin-stamped),
+multiple publishers of the same samples on a vertical subnet do not hurt performance,
 but actually improve it by shortcutting regular propagation on the vertical subnet, and thus lowering the latency to a sample.
-
 
 ### Vertical subnets
 
 Vertical subnets propagate the samples to every peer that is interested.
-These interests are randomly sampled and rotate quickly: although not perfect, 
+These interests are randomly sampled and rotate quickly: although not perfect,
 sufficient to avoid any significant amount of nodes from being 100% predictable.
 
 As soon as a sample is missing after the expected propagation time window,
@@ -163,10 +160,9 @@ Take `blob = signed_blob.blob`:
 
 The [DAS participation spec](sampling.md#horizontal-subnets) outlines when and where to participate in DAS on horizontal subnets.
 
-
 #### Vertical subnets: `das_sample_{subnet_index}`
 
-Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial), 
+Shard blob samples can be verified with just a 48 byte KZG proof (commitment quotient polynomial),
 against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
@@ -187,12 +183,11 @@ The following validations MUST pass before forwarding the `sample` on the vertic
 Upon receiving a valid sample, it SHOULD be retained for a buffer period if the local node is part of the backbone that covers this sample.
 This is to serve other peers that may have missed it.
 
-
 ## DAS in the Req-Resp domain: Pull
 
 To pull samples from nodes, in case of network instability when samples are unavailable, a new query method is added to the Req-Resp domain.
 
-This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../../phase0/p2p-interface.md). 
+This builds on top of the protocol identification and encoding spec which was introduced in [the Phase0 network spec](../../phase0/p2p-interface.md).
 
 Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 
@@ -203,6 +198,7 @@ Note that DAS networking uses a different protocol prefix: `/eth2/das/req`
 **Protocol ID:** `/eth2/das/req/query/1/`
 
 Request Content:
+
 ```
 (
   sample_index: SampleIndex
@@ -210,6 +206,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   DASSample

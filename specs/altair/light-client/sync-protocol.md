@@ -1,7 +1,5 @@
 # Altair Light Client -- Sync Protocol
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -232,7 +230,7 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
     old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
     if new_has_supermajority != old_has_supermajority:
-        return new_has_supermajority > old_has_supermajority
+        return new_has_supermajority
     if not new_has_supermajority and new_num_active_participants != old_num_active_participants:
         return new_num_active_participants > old_num_active_participants
 

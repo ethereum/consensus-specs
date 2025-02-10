@@ -1,19 +1,12 @@
 # Phase 0 -- Networking
 
-This document contains the networking specification for Phase 0.
-
-It consists of four main sections:
-
-1. A specification of the network fundamentals.
-2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
-3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
-
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [Introduction](#introduction)
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
@@ -24,6 +17,9 @@ It consists of four main sections:
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [MetaData](#metadata)
+  - [Maximum message sizes](#maximum-message-sizes)
+    - [`max_compressed_len`](#max_compressed_len)
+    - [`max_message_size`](#max_message_size)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -36,6 +32,7 @@ It consists of four main sections:
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
       - [Attestations and Aggregation](#attestations-and-aggregation)
     - [Encodings](#encodings)
+    - [Gossipsub size limits](#gossipsub-size-limits)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Protocol identification](#protocol-identification)
     - [Req/Resp interaction](#reqresp-interaction)
@@ -44,12 +41,12 @@ It consists of four main sections:
     - [Encoding strategies](#encoding-strategies)
       - [SSZ-snappy encoding strategy](#ssz-snappy-encoding-strategy)
     - [Messages](#messages)
-      - [Status](#status)
-      - [Goodbye](#goodbye)
-      - [BeaconBlocksByRange](#beaconblocksbyrange)
-      - [BeaconBlocksByRoot](#beaconblocksbyroot)
-      - [Ping](#ping)
-      - [GetMetaData](#getmetadata)
+      - [Status v1](#status-v1)
+      - [Goodbye v1](#goodbye-v1)
+      - [BeaconBlocksByRange v1](#beaconblocksbyrange-v1)
+      - [BeaconBlocksByRoot v1](#beaconblocksbyroot-v1)
+      - [Ping v1](#ping-v1)
+      - [GetMetaData v1](#getmetadata-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
@@ -94,6 +91,7 @@ It consists of four main sections:
     - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
     - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
     - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
+    - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
     - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
@@ -109,10 +107,23 @@ It consists of four main sections:
     - [Why are we using Snappy for compression?](#why-are-we-using-snappy-for-compression)
     - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
     - [What are SSZ type size bounds?](#what-are-ssz-type-size-bounds)
+    - [Why is the message size defined in terms of application payload?](#why-is-the-message-size-defined-in-terms-of-application-payload)
+    - [Why is there a limit on message sizes at all?](#why-is-there-a-limit-on-message-sizes-at-all)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
+
+## Introduction
+
+This document contains the networking specification for Phase 0.
+
+It consists of four main sections:
+
+1. A specification of the network fundamentals.
+2. A specification of the three network interaction *domains* of the proof-of-stake consensus layer: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+3. The rationale and further explanation for the design choices made in the previous two sections.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -123,8 +134,8 @@ This section outlines the specification for the networking stack in Ethereum con
 Even though libp2p is a multi-transport stack (designed to listen on multiple simultaneous transports and endpoints transparently),
 we hereby define a profile for basic interoperability.
 
-All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
-The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
+All implementations MUST support the TCP libp2p transport, MAY support the QUIC (UDP) libp2p transport, and MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
+The libp2p TCP and QUIC (UDP) transports support listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
 Clients must support listening on at least one of IPv4 or IPv6.
 Clients that do _not_ have support for listening on IPv4 SHOULD be cognizant of the potential disadvantages in terms of
@@ -174,8 +185,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `NodeID`   | `uint256` | node identifier   |
-| `SubnetID` | `uint64`  | subnet identifier |
+| `NodeID` | `uint256` | node identifier |
+| `SubnetID` | `uint64` | subnet identifier |
 
 ### Constants
 
@@ -188,22 +199,20 @@ We define the following Python custom types for type hinting and readability:
 This section outlines configurations that are used in this spec.
 
 | Name | Value | Description |
-|---|---|---|
-| `GOSSIP_MAX_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| - | - | - |
+| `MAX_PAYLOAD_SIZE` | `10 * 2**20` (= 10485760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
 | `MAX_REQUEST_BLOCKS` | `2**10` (= 1024) | Maximum number of blocks in a single request |
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | Number of epochs on a subnet subscription (~27 hours) |
 | `MIN_EPOCHS_FOR_BLOCK_REQUESTS` | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks |
-| `MAX_CHUNK_SIZE` | `10 * 2**20` (=10485760, 10 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `TTFB_TIMEOUT` | `5` | The maximum duration in **seconds** to wait for first byte of request response (time-to-first-byte). |
-| `RESP_TIMEOUT` | `10` | The maximum duration in **seconds** for complete response transfer. |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes. |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY` | `500` | The maximum **milliseconds** of clock disparity assumed between honest nodes |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY` | `DomainType('0x00000000')` | 4-byte domain for gossip message-id isolation of *invalid* snappy messages |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`  | `DomainType('0x01000000')` | 4-byte domain for gossip message-id isolation of *valid* snappy messages |
-| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to. |
+| `SUBNETS_PER_NODE` | `2` | The number of long-lived subnets a beacon node should be subscribed to |
 | `ATTESTATION_SUBNET_COUNT` | `2**6` (= 64) | The number of attestation subnets used in the gossipsub protocol. |
 | `ATTESTATION_SUBNET_EXTRA_BITS` | `0` | The number of extra bits of a NodeId to use when mapping to a subscribed subnet |
 | `ATTESTATION_SUBNET_PREFIX_BITS` | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)` | |
+| `MAX_CONCURRENT_REQUESTS` | `2` | Maximum number of concurrent requests per protocol ID that a client may issue |
 
 ### MetaData
 
@@ -225,6 +234,27 @@ Where
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata,
 is entirely independent of the ENR sequence number,
 and will in most cases be out of sync with the ENR sequence number.
+
+### Maximum message sizes
+
+Maximum message sizes are derived from the maximum payload size that the network can carry according to the following functions:
+
+#### `max_compressed_len`
+
+```python
+def max_compressed_len(n: uint64) -> uint64:
+    # Worst-case compressed length for a given payload of size n when using snappy:
+    # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
+    return uint64(32 + n + n / 6)
+```
+
+#### `max_message_size`
+
+```python
+def max_message_size() -> uint64:
+    # Allow 1024 bytes for framing and encoding overhead but at least 1MiB in case MAX_PAYLOAD_SIZE is small.
+    return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024 * 1024)
+```
 
 ### The gossip domain: gossipsub
 
@@ -265,12 +295,10 @@ This defines both the type of data being sent on the topic and how the data fiel
 - `Encoding` - the encoding strategy describes a specific representation of bytes that will be transmitted over the wire.
   See the [Encodings](#Encodings) section for further details.
 
+Clients MUST reject messages with an unknown topic.
+
 *Note*: `ForkDigestValue` is composed of values that are not known until the genesis block/state are available.
 Due to this, clients SHOULD NOT subscribe to gossipsub topics until these genesis values are known.
-
-Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`.
-Clients MUST reject (fail validation) messages that are over this size limit.
-Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The optional `from` (1), `seqno` (3), `signature` (5) and `key` (6) protobuf fields are omitted from the message,
 since messages are identified by content, anonymous, and signed where necessary in the application layer.
@@ -284,6 +312,8 @@ The `message-id` of a gossipsub message MUST be the following 20 byte value comp
 * Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of `MESSAGE_DOMAIN_INVALID_SNAPPY` with the raw message data,
   i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + message.data)[:20]`.
+
+Where relevant, clients MUST reject messages with `message-id` sizes other than 20 bytes.
 
 *Note*: The above logic handles two exceptional cases:
 (1) multiple snappy `data` can decompress to the same value,
@@ -335,7 +365,7 @@ The following validations MUST pass before forwarding the `signed_beacon_block` 
 - _[IGNORE]_ The block is the first block with valid signature received for the proposer for the slot, `signed_beacon_block.message.slot`.
 - _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid with respect to the `proposer_index` pubkey.
 - _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue blocks for processing once the parent block is retrieved).
 - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 - _[REJECT]_ The block is from a higher slot than its parent.
@@ -384,7 +414,7 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`, is valid.
 - _[REJECT]_ The signature of `aggregate` is valid.
 - _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue aggregates for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The aggregate attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
@@ -392,7 +422,6 @@ The following validations MUST pass before forwarding the `signed_aggregate_and_
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `aggregate.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
-
 
 ###### `voluntary_exit`
 
@@ -459,7 +488,7 @@ The following validations MUST pass before forwarding the `attestation` on the s
   that has an identical `attestation.data.target.epoch` and participating validator index.
 - _[REJECT]_ The signature of `attestation` is valid.
 - _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`) has been seen
-  (via both gossip and non-gossip sources)
+  (via gossip or non-gossip sources)
   (a client MAY queue attestations for processing once block is retrieved).
 - _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`) passes validation.
 - _[REJECT]_ The attestation's target block is an ancestor of the block named in the LMD vote -- i.e.
@@ -467,8 +496,6 @@ The following validations MUST pass before forwarding the `attestation` on the s
 - _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block` defined by `attestation.data.beacon_block_root` -- i.e.
   `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch)
   == store.finalized_checkpoint.root`
-
-
 
 ##### Attestations and Aggregation
 
@@ -498,6 +525,16 @@ so [basic snappy block compression](https://github.com/google/snappy/blob/master
 
 Implementations MUST use a single encoding for gossip.
 Changing an encoding will require coordination between participating implementations.
+
+#### Gossipsub size limits
+
+Size limits are placed both on the [`RPCMsg`](https://github.com/libp2p/specs/blob/b5f7fce29b32d4c7d0efe37b019936a11e5db872/pubsub/README.md#the-rpc) frame as well as the encoded payload in each [`Message`](https://github.com/libp2p/specs/blob/b5f7fce29b32d4c7d0efe37b019936a11e5db872/pubsub/README.md#the-message).
+
+Clients MUST reject and MUST NOT emit or propagate messages whose size exceed the following limits:
+
+* The size of the encoded `RPCMsg` (including control messages, framing, topics, etc) must not exceed `max_message_size()`.
+* The size of the compressed payload in the `Message.data` field must not exceed `max_compressed_len(MAX_PAYLOAD_SIZE)`.
+* The size of the uncompressed payload must not exceed `MAX_PAYLOAD_SIZE` or the [type-specific SSZ bound](#what-are-ssz-type-size-bounds), whichever is lower.
 
 ### The Req/Resp domain
 
@@ -548,7 +585,7 @@ All other response types (non-Lists) send a single `response_chunk`.
 For both `request`s and `response`s, the `encoding-dependent-header` MUST be valid,
 and the `encoded-payload` must be valid within the constraints of the `encoding-dependent-header`.
 This includes type-specific bounds on payload size for some encoding strategies.
-Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_CHUNK_SIZE` MUST be applied to all method response chunks.
+Regardless of these type specific bounds, a global maximum uncompressed byte size of `MAX_PAYLOAD_SIZE` MUST be applied to all method response chunks.
 
 Clients MUST ensure that lengths are within these bounds; if not, they SHOULD reset the stream immediately.
 Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
@@ -561,10 +598,9 @@ The request MUST be encoded according to the encoding strategy.
 The requester MUST close the write side of the stream once it finishes writing the request message.
 At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout).
-On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received.
+The requester MUST NOT make more than `MAX_CONCURRENT_REQUESTS` concurrent requests with the same protocol ID.
 
-If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
+If a timeout occurs or the response is no longer relevant, the requester SHOULD reset the stream.
 
 A requester SHOULD read from the stream until either:
 1. An error result is received in one of the chunks (the error payload MAY be read before stopping).
@@ -593,10 +629,10 @@ The responder MUST:
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error.
 Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
 
-The entire request should be read in no more than `RESP_TIMEOUT`.
-Upon a timeout, the responder SHOULD reset the stream.
+The responder MAY rate-limit chunks by withholding each chunk until capacity is available. The responder MUST NOT respond with an error or close the stream when rate limiting.
 
-The responder SHOULD send a `response_chunk` promptly.
+When rate limiting, the responder MUST send each `response_chunk` in full promptly but may introduce delays between each chunk.
+
 Chunks start with a **single-byte** response code which determines the contents of the `response_chunk` (`result` particle in the BNF grammar above).
 For multiple chunks, only the last chunk is allowed to have a non-zero error code (i.e. The chunk stream is terminated once an error occurs).
 
@@ -625,6 +661,8 @@ The `ErrorMessage` schema is:
 
 *Note*: By convention, the `error_message` is a sequence of bytes that MAY be interpreted as a UTF-8 string (for debugging purposes).
 Clients MUST treat as valid any byte sequences.
+
+The responder MAY penalise peers that concurrently open more than `MAX_CONCURRENT_REQUESTS` streams for the same request type, for the protocol IDs defined in this specification.
 
 #### Encoding strategies
 
@@ -661,15 +699,13 @@ When snappy is applied, it can be passed through a buffered Snappy reader to dec
 
 Before reading the payload, the header MUST be validated:
 - The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
-- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds).
+- The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds) or `MAX_PAYLOAD_SIZE`, whichever is smaller.
 
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
 
-A reader SHOULD NOT read more than `max_encoded_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
-- For `ssz_snappy` this is: `32 + n + n // 6`.
-  This is considered the [worst-case compression result](https://github.com/google/snappy/blob/537f4ad6240e586970fe554614542e9717df7902/snappy.cc#L98) by Snappy.
+A reader MUST NOT read more than `max_compressed_len(n)` bytes after reading the SSZ length-prefix `n` from the header.
 
-A reader SHOULD consider the following cases as invalid input:
+A reader MUST consider the following cases as invalid input:
 - Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected if more bytes are read than required.
 - An early EOF, before fully reading the declared length-prefix worth of SSZ bytes.
 
@@ -686,11 +722,12 @@ Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload
 
 #### Messages
 
-##### Status
+##### Status v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/status/1/``
 
 Request, Response Content:
+
 ```
 (
   fork_digest: ForkDigest
@@ -700,6 +737,7 @@ Request, Response Content:
   head_slot: Slot
 )
 ```
+
 The fields are, as seen by the client at the time of sending the message:
 
 - `fork_digest`: The node's `ForkDigest` (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
@@ -732,16 +770,18 @@ SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange`
 the client might need to send `Status` request again to learn if the peer has a higher head.
 Implementers are free to implement such behavior in their own way.
 
-##### Goodbye
+##### Goodbye v1
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
 
 Request, Response Content:
+
 ```
 (
   uint64
 )
 ```
+
 Client MAY send goodbye messages upon disconnection. The reason field MAY be one of the following values:
 
 - 1: Client shut down.
@@ -756,11 +796,12 @@ The request/response MUST be encoded as a single SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### BeaconBlocksByRange
+##### BeaconBlocksByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
 
 Request Content:
+
 ```
 (
   start_slot: Slot
@@ -770,6 +811,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
@@ -833,7 +875,7 @@ In particular when `step == 1`, each `parent_root` MUST match the `hash_tree_roo
 After the initial block, clients MAY stop in the process of responding
 if their fork choice changes the view of the chain in the context of the request.
 
-##### BeaconBlocksByRoot
+##### BeaconBlocksByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/1/`
 
@@ -876,7 +918,7 @@ Clients SHOULD NOT respond with blocks that fail the beacon chain state transiti
 
 `/eth2/beacon_chain/req/beacon_blocks_by_root/1/` is deprecated. Clients MAY respond with an empty list during the deprecation transition period.
 
-##### Ping
+##### Ping v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/ping/1/`
 
@@ -908,7 +950,7 @@ The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of a single `response_chunk`.
 
-##### GetMetaData
+##### GetMetaData v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/1/`
 
@@ -959,8 +1001,9 @@ The Ethereum Node Record (ENR) for an Ethereum consensus client MUST contain the
 The ENR MAY contain the following entries:
 
 -  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p listening port.
--  A UDP port (`udp` field) representing the local discv5 listening port.
+-  An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening port and/or the corresponding IPv6 port (`tcp6` field).
+-  An IPv4 QUIC port (`quic` field) representing the local libp2p QUIC (UDP) listening port and/or the corresponding IPv6 port (`quic6` field).
+-  An IPv4 UDP port (`udp` field) representing the local discv5 listening port and/or the corresponding IPv6 port (`udp6` field).
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
@@ -969,9 +1012,9 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 The ENR `attnets` entry signifies the attestation subnet bitfield with the following form
 to more easily discover peers participating in particular attestation gossip subnets.
 
-| Key          | Value                                            |
-|:-------------|:-------------------------------------------------|
-| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+| Key       | Value                                     |
+|:----------|:------------------------------------------|
+| `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the `attnets` entry with the same value as `MetaData.attnets`.
 
@@ -982,17 +1025,17 @@ If a node's `MetaData.attnets` is composed of all zeros, the ENR MAY optionally 
 ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current fork digest, next fork version,
 and next fork epoch to ensure connections are made with peers on the intended Ethereum network.
 
-| Key          | Value               |
-|:-------------|:--------------------|
-| `eth2`       | SSZ `ENRForkID`        |
+| Key    | Value           |
+|:-------|:----------------|
+| `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded object (`ENRForkID`)
 
 ```
 (
-    fork_digest: ForkDigest
-    next_fork_version: Version
-    next_fork_epoch: Epoch
+  fork_digest: ForkDigest
+  next_fork_version: Version
+  next_fork_epoch: Epoch
 )
 ```
 
@@ -1301,7 +1344,6 @@ Some examples of where messages could be duplicated:
 - `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
   Attestation gossip validity is bounded by an epoch, so this is the safe max bound.
 
-
 #### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 
 For some gossip channels (e.g. those for Attestations and BeaconBlocks),
@@ -1425,7 +1467,7 @@ Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed wi
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length
 * Sanity checking of message length, and enabling much stricter message length limiting based on SSZ type information,
   to provide even more DOS protection than the global message length already does.
-  E.g. a small `Status` message does not nearly require `MAX_CHUNK_SIZE` bytes.
+  E.g. a small `Status` message does not nearly require `MAX_PAYLOAD_SIZE` bytes.
 
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length (unsigned here) ints.
 Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
@@ -1454,6 +1496,20 @@ For this reason, we remove and replace semver with ordinals that require explici
 #### Why is it called Req/Resp and not RPC?
 
 Req/Resp is used to avoid confusion with JSON-RPC and similar user-client interaction mechanisms.
+
+#### What is a typical rate limiting strategy?
+
+The responder typically will want to rate limit requests to protect against spam and to manage resource consumption, while the requester will want to maximise performance based on its own resource allocation strategy. For the network, it is beneficial if available resources are used optimally.
+
+Broadly, the requester does not know the capacity / limit of each server but can derive it from the rate of responses for the purpose of selecting the next peer for a request.
+
+Because the server withholds the response until capacity is available, a client can optimistically send requests without risking running into negative scoring situations or sub-optimal rate polling.
+
+A typical approach for the requester is to implement a timeout on the request that depends on the nature of the request and on connectivity parameters in general - for example when requesting blocks, a peer might choose to send a request to a second peer if the first peer does not respond within a reasonable time, and to reset the request to the first peer if the second peer responds faster. Clients may use past response performance to reward fast peers when implementing peer scoring.
+
+A typical approach for the responder is to implement a two-level token/leaky bucket with a per-peer limit and a global limit. The granularity of rate limiting may be based either on full requests or individual chunks with the latter being preferable. A token cost may be assigned to the request itself and separately each chunk in the response so as to remain protected both against large and frequent requests.
+
+For requesters, rate limiting is not distinguishable from other conditions causing slow responses (slow peers, congestion etc) and since the latter conditions must be handled anyway, including rate limiting in this strategy keeps the implementation simple.
 
 #### Why do we allow empty responses in block requests?
 
@@ -1486,10 +1542,10 @@ If a request for the parent fails, it's indicative of poor peer quality since pe
 
 When connecting, the `Status` message gives an idea about the sync status of a particular peer, but this changes over time.
 By the time a subsequent `BeaconBlockByRange` request is processed, the information may be stale,
-and the responding side might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
+and the responder might have moved on to a new finalization point and pruned blocks around the previous head and finalized blocks.
 
-To avoid this race condition, we allow the responding side to choose which branch to send to the requesting client.
-The requesting client then goes on to validate the blocks and incorporate them in their own database
+To avoid this race condition, we allow the responder to choose which branch to send to the requester.
+The requester then goes on to validate the blocks and incorporate them in their own database
 -- because they follow the same rules, they should at this point arrive at the same canonical chain.
 
 #### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
@@ -1659,6 +1715,22 @@ Other types are static, they have a fixed size: no dynamic-length content is inv
 
 For reference, the type bounds can be computed ahead of time, [as per this example](https://gist.github.com/protolambda/db75c7faa1e94f2464787a480e5d613e).
 It is advisable to derive these lengths from the SSZ type definitions in use, to ensure that version changes do not cause out-of-sync type bounds.
+
+#### Why is the message size defined in terms of application payload?
+
+When transmitting messages over gossipsub and/or the req/resp domain, we want to ensure that the same payload sizes are supported regardless of the underlying transport, decoupling the consensus layer from libp2p-induced overhead and the particular transmission strategy.
+
+To derive "encoded size limits" from desired application sizes, we take into account snappy compression and framing overhead.
+
+In the case of gossipsub, the protocol supports sending multiple application payloads as well as mixing application data with control messages in each gossipsub frame. The limit is set such that at least one max-sized application-level message together with a small amount (1 KiB) of gossipsub overhead is allowed. Implementations are free to pack multiple smaller application messages into a single gossipsub frame, and/or combine it with control messages as they see fit.
+
+The limit is set on the uncompressed payload size in particular to protect against decompression bombs.
+
+#### Why is there a limit on message sizes at all?
+
+The message size limit protects against several forms of DoS and network-based amplification attacks and provides upper bounds for resource (network, memory) usage in the client based on protocol requirements to decode, buffer, cache, store and re-transmit messages which in turn translate into performance and protection tradeoffs, ensuring capacity to handle worst cases during recovery from network instability.
+
+In particular, blocks—-currently the only message type without a practical SSZ-derived upper bound on size—-cannot be fully verified synchronously as part of gossipsub validity checks. This means that there exist cases where invalid messages signed by a validator may be amplified by the network.
 
 ## libp2p implementations matrix
 

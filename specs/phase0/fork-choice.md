@@ -1,6 +1,7 @@
 # Phase 0 -- Beacon Chain Fork Choice
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -78,7 +79,6 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](./validator.md) should ensure that `state.latest_eth1_data` of the canonical beacon chain remains consistent with the canonical Ethereum proof-of-work chain. If not, emergency manual intervention will be required.
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
-
 
 ### Constant
 
@@ -559,7 +559,6 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
 
 #### `on_attestation` helpers
 
-
 ##### `validate_target_epoch_against_current_time`
 
 ```python
@@ -626,7 +625,6 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 ```
-
 
 ### Handlers
 

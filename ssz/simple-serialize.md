@@ -1,6 +1,7 @@
 # SimpleSerialize (SSZ)
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -34,7 +35,7 @@
 ## Constants
 
 | Name | Value | Description |
-|-|-|-|
+| - | - | - |
 | `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
 | `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length offset. |
 | `BITS_PER_BYTE` | `8` | Number of bits per byte. |
@@ -263,7 +264,7 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 
 ## Implementations
 
-See https://github.com/ethereum/eth2.0-specs/issues/2138 for a list of current known implementations.
+See https://github.com/ethereum/consensus-specs/issues/2138 for a list of current known implementations.
 
 ## JSON mapping
 

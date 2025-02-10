@@ -7,13 +7,12 @@ Any issues with the generators and/or generated tests should be filed in the rep
 
 On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
 
-An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
+An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
 ## Table of contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
 
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
@@ -24,8 +23,6 @@ An automated nightly tests release system, with a config filter applied, is bein
 - [How to remove a test generator](#how-to-remove-a-test-generator)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-
 
 ## How to run generators
 
@@ -39,7 +36,7 @@ Prerequisites:
 This removes the existing virtual environments (`/tests/generators/<generator>/venv`) and generated tests (`../consensus-spec-tests/tests`).
 
 ```bash
-make clean 
+make clean && rm -rf ../consensus-spec-tests/tests
 ```
 
 ### Running all test generators
@@ -47,11 +44,10 @@ make clean
 This runs all of the generators.
 
 ```bash
-make -j 4 generate_tests
+make -j 4 gen_all
 ```
 
 The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
-
 
 ### Running a single generator
 
@@ -63,39 +59,12 @@ make gen_ssz_static
 
 ## Developing a generator
 
-Simply open up the generator (not all at once) of choice in your favorite IDE/editor and run:
-
-```bash
-# From the root of the generator directory:
-# Create a virtual environment (any venv/.venv/.venvs is git-ignored)
-python3 -m venv venv
-# Activate the venv, this is where dependencies are installed for the generator
-. venv/bin/activate
-```
-
-Now that you have a virtual environment, write your generator.
-It's recommended to extend the base-generator.
-
-Create a `requirements.txt` in the root of your generator directory:
-```
-pytest>=4.4
-../../../[generator]
-```
-
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.
 Applying configurations to the spec is simple and enables you to create test suites with different contexts.
 
 *Note*: Make sure to run `make pyspec` from the root of the specs repository in order to build the pyspec requirement.
 
-Install all the necessary requirements (re-run when you add more):
-```bash
-pip3 install -r requirements.txt
-```
-
-Note that you may need `PYTHONPATH` to include the pyspec directory, as with running normal tests,
- to run test generators manually. The makefile handles this for you already.
-
-And write your initial test generator, extending the base generator:
+Write your initial test generator, extending the base generator:
 
 Write a `main.py` file. The shuffling test generator is a good minimal starting point:
 
@@ -185,6 +154,7 @@ if __name__ == "__main__":
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
     }
+    check_mods(all_mods, "sanity")
 
     run_state_test_generators(runner_name="sanity", all_mods=all_mods)
 ```
@@ -195,9 +165,9 @@ Recommendations:
 - You can have more than just one test provider.
 - Your test provider is free to output any configuration and combination of runner/handler/fork/case name.
 - You can split your test case generators into different Python files/packages; this is good for code organization.
-- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
+- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary.
 - You may be able to write your test case provider in a way where it does not make assumptions on constants.
-  If so, you can generate test cases with different configurations for the same scenario (see example). 
+  If so, you can generate test cases with different configurations for the same scenario (see example).
 - See [`tests/core/gen_helpers/README.md`](../core/pyspec/eth2spec/gen_helpers/README.md) for command line options for generators.
 
 ## How to add a new test generator
@@ -219,7 +189,6 @@ To add a new test generator that builds `New Tests`:
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
-
 
 ## How to remove a test generator
 

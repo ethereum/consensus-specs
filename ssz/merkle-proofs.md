@@ -1,8 +1,7 @@
 # Merkle proof formats
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -71,7 +70,7 @@ Note that the generalized index has the convenient property that the two childre
 ```python
 def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
     """
-    Return an array representing the tree nodes by generalized index: 
+    Return an array representing the tree nodes by generalized index:
     [0, 1, 2, 3, 4, 5, 6, 7], where each layer is a power of 2. The 0 index is ignored. The 1 index is the root.
     The result will be twice the size as the padded bottom layer for the input leaves.
     """
@@ -257,7 +256,7 @@ We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree need
 x x . . . . x *
 ```
 
-. are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, only one node more than would be required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
+. are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, the same amount required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
 
 First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 

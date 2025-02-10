@@ -38,13 +38,14 @@ def run_fork_test(post_spec, pre_state):
         'next_withdrawal_index', 'next_withdrawal_validator_index',
         # Deep history valid from Capella onwards
         'historical_summaries',
+        'latest_execution_payload_header'
 
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Modified fields
-    modified_fields = ['fork', 'latest_execution_payload_header']
+    modified_fields = ['fork']
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 
@@ -53,7 +54,7 @@ def run_fork_test(post_spec, pre_state):
         stable_validator_fields = [
             'pubkey', 'withdrawal_credentials',
             'slashed',
-            'exit_epoch', 'withdrawable_epoch',
+            'activation_epoch', 'exit_epoch', 'withdrawable_epoch',
         ]
         for field in stable_validator_fields:
             assert getattr(pre_validator, field) == getattr(post_validator, field)

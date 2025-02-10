@@ -7,8 +7,8 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.sharding import (
-    get_sample_opaque_tx,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -21,8 +21,8 @@ def _get_sample_sidecars(spec, state, rng):
 
     # 2 txs, each has 2 blobs
     blob_count = 2
-    opaque_tx_1, blobs_1, blob_kzg_commitments_1, proofs_1 = get_sample_opaque_tx(spec, blob_count=blob_count, rng=rng)
-    opaque_tx_2, blobs_2, blob_kzg_commitments_2, proofs_2 = get_sample_opaque_tx(spec, blob_count=blob_count, rng=rng)
+    opaque_tx_1, blobs_1, blob_kzg_commitments_1, proofs_1 = get_sample_blob_tx(spec, blob_count=blob_count, rng=rng)
+    opaque_tx_2, blobs_2, blob_kzg_commitments_2, proofs_2 = get_sample_blob_tx(spec, blob_count=blob_count, rng=rng)
     assert opaque_tx_1 != opaque_tx_2
 
     if is_post_eip7732(spec):

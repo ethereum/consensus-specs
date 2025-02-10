@@ -5,6 +5,7 @@ There is no "change" factor, the rewards/penalties outputs are pure functions wi
 (See test condition documentation on how to run the tests.)
 
 `Deltas` is defined as:
+
 ```python
 class Deltas(Container):
     rewards: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
@@ -49,7 +50,7 @@ An SSZ-snappy encoded `Deltas` representing the rewards and penalties returned b
 
 ## Condition
 
-A handler of the `rewards` test-runner should process these cases, 
+A handler of the `rewards` test-runner should process these cases,
  calling the corresponding rewards deltas function for each set of deltas.
 
 The provided pre-state is ready to be input into each rewards deltas function.

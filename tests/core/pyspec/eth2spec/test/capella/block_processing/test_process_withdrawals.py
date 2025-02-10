@@ -2,7 +2,6 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    expect_assertion_error,
     with_presets,
     with_capella_and_later,
     with_capella_until_eip7732,
@@ -12,7 +11,6 @@ from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.random import (
     randomize_state,
 )
@@ -26,87 +24,11 @@ from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
+    run_withdrawals_processing,
 )
 
 
-def verify_post_state(state, spec, expected_withdrawals,
-                      fully_withdrawable_indices, partial_withdrawals_indices):
-    # Consider verifying also the condition when no withdrawals are expected.
-    if len(expected_withdrawals) == 0:
-        return
-
-    expected_withdrawals_validator_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
-    assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-
-    if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        # NOTE: ideally we would also check in the case with
-        # fewer than maximum withdrawals but that requires the pre-state info
-        next_withdrawal_validator_index = (expected_withdrawals_validator_indices[-1] + 1) % len(state.validators)
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index
-
-    for index in fully_withdrawable_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == 0
-        else:
-            assert state.balances[index] > 0
-    for index in partial_withdrawals_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == spec.MAX_EFFECTIVE_BALANCE
-        else:
-            assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
-
-
-def run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=None,
-                               fully_withdrawable_indices=None, partial_withdrawals_indices=None, valid=True):
-    """
-    Run ``process_withdrawals``, yielding:
-      - pre-state ('pre')
-      - execution payload ('execution_payload')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    expected_withdrawals = get_expected_withdrawals(spec, state)
-    assert len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    if num_expected_withdrawals is not None:
-        assert len(expected_withdrawals) == num_expected_withdrawals
-
-    pre_state = state.copy()
-    yield 'pre', state
-    yield 'execution_payload', execution_payload
-
-    if not valid:
-        if is_post_eip7732(spec):
-            expect_assertion_error(lambda: spec.process_withdrawals(state))
-        else:
-            expect_assertion_error(lambda: spec.process_withdrawals(state, execution_payload))
-        yield 'post', None
-        return
-
-    if is_post_eip7732(spec):
-        spec.process_withdrawals(state)
-    else:
-        spec.process_withdrawals(state, execution_payload)
-
-    yield 'post', state
-
-    if len(expected_withdrawals) == 0:
-        next_withdrawal_validator_index = (
-            pre_state.next_withdrawal_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        )
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(state.validators)
-    elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        assert len(get_expected_withdrawals(spec, state)) <= bound
-    elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise ValueError('len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD')
-
-    if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
-        verify_post_state(state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices)
-
-    return expected_withdrawals
-
-
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_success_zero_expected_withdrawals(spec, state):
     assert len(get_expected_withdrawals(spec, state)) == 0
@@ -117,7 +39,7 @@ def test_success_zero_expected_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_success_one_full_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -134,7 +56,7 @@ def test_success_one_full_withdrawal(spec, state):
         partial_withdrawals_indices=partial_withdrawals_indices)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_success_one_partial_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -154,7 +76,7 @@ def test_success_one_partial_withdrawal(spec, state):
     )
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_success_mixed_fully_and_partial_withdrawable(spec, state):
     num_full_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
@@ -175,7 +97,7 @@ def test_success_mixed_fully_and_partial_withdrawable(spec, state):
         partial_withdrawals_indices=partial_withdrawals_indices)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @with_presets([MAINNET], reason="too few validators with minimal config")
 @spec_state_test
 def test_success_all_fully_withdrawable_in_one_sweep(spec, state):
@@ -194,7 +116,7 @@ def test_success_all_fully_withdrawable_in_one_sweep(spec, state):
         partial_withdrawals_indices=partial_withdrawals_indices)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
 @spec_state_test
 def test_success_all_fully_withdrawable(spec, state):
@@ -213,7 +135,7 @@ def test_success_all_fully_withdrawable(spec, state):
         partial_withdrawals_indices=partial_withdrawals_indices)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @with_presets([MAINNET], reason="too few validators with minimal config")
 @spec_state_test
 def test_success_all_partially_withdrawable_in_one_sweep(spec, state):
@@ -232,7 +154,7 @@ def test_success_all_partially_withdrawable_in_one_sweep(spec, state):
         partial_withdrawals_indices=partial_withdrawals_indices)
 
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
 @spec_state_test
 def test_success_all_partially_withdrawable(spec, state):
@@ -891,3 +813,77 @@ def test_random_partial_withdrawals_4(spec, state):
 @spec_state_test
 def test_random_partial_withdrawals_5(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(5))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
+    """Test legacy validator with balance just above MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        balance=spec.MAX_EFFECTIVE_BALANCE + 1
+    )
+    assert spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[validator_index]
+    )
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_exact_max(spec, state):
+    """Test legacy validator whose balance is exactly MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
+    """Test legacy validator whose balance is below MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        balance=spec.MAX_EFFECTIVE_BALANCE - 1
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )

@@ -1,8 +1,6 @@
 # Custody Game -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
-This is an accompanying document to the [Custody Game](./), which describes the expected actions of a "validator"
-participating in the shard data Custody Game.
 
 ## Table of contents
 
@@ -24,8 +22,10 @@ participating in the shard data Custody Game.
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
+
+This is an accompanying document to [Custody Game -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator"
+participating in the shard data Custody Game.
 
 ## Prerequisites
 
@@ -57,7 +57,6 @@ Up to `MAX_EARLY_DERIVED_SECRET_REVEALS`, [`EarlyDerivedSecretReveal`](./beacon-
 #### Construct attestation
 
 `attestation.data`, `attestation.aggregation_bits`, and `attestation.signature` are unchanged from Phase 0. But safety/validity in signing the message is premised upon calculation of the "custody bit" [TODO].
-
 
 ## How to avoid slashing
 

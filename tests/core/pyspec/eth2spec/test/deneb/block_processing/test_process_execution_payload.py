@@ -8,12 +8,14 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.context import (
     spec_state_test,
     expect_assertion_error,
-    with_deneb_and_later
+    with_deneb_and_later,
+    with_deneb_until_eip7732,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.sharding import (
-    get_sample_opaque_tx,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
+    get_max_blob_count,
 )
 
 
@@ -116,7 +118,7 @@ def test_incorrect_blob_tx_type(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = b'\x04' + opaque_tx[1:]  # incorrect tx type
 
     execution_payload.transactions = [opaque_tx]
@@ -137,7 +139,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx + b'\x12'  # incorrect tx length, longer
 
     execution_payload.transactions = [opaque_tx]
@@ -157,7 +159,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[:-1]  # incorrect tx length, shorter
 
     execution_payload.transactions = [opaque_tx]
@@ -177,7 +179,7 @@ def test_incorrect_transaction_length_empty(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[0:0]  # incorrect tx length, empty
 
     execution_payload.transactions = [opaque_tx]
@@ -197,7 +199,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx + b'\x12' * 32  # incorrect tx length
 
     execution_payload.transactions = [opaque_tx]
@@ -217,7 +219,7 @@ def test_no_transactions_with_commitments(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    _, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
@@ -236,7 +238,7 @@ def test_incorrect_commitment(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     blob_kzg_commitments[0] = b'\x12' * 48  # incorrect commitment
 
     execution_payload.transactions = [opaque_tx]
@@ -248,6 +250,24 @@ def test_incorrect_commitment(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
+# TODO(jtraglia): Determine why this doesn't work in eip7732
+@with_deneb_until_eip7732
+@spec_state_test
+def test_no_commitments_for_transactions(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
+    blob_kzg_commitments = []  # incorrect count
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_commitments_order(spec, state):
@@ -256,7 +276,7 @@ def test_incorrect_commitments_order(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=2, rng=Random(1111))
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
     blob_kzg_commitments = [blob_kzg_commitments[1], blob_kzg_commitments[0]]  # incorrect order
 
     execution_payload.transactions = [opaque_tx]
@@ -268,12 +288,33 @@ def test_incorrect_commitments_order(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
+# TODO(jtraglia): Determine why this doesn't work in eip7732
+@with_deneb_until_eip7732
+@spec_state_test
+def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    # the blob transaction is invalid, because the EL verifies that the tx contains at least one blob
+    # therefore the EL should reject it, but the CL should not reject the block regardless
+    opaque_tx, _, _, _ = get_sample_blob_tx(spec, blob_count=0, rng=Random(1111))
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1112))
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    # the transaction doesn't contain any blob, but commitments are provided
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_block_hash(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = b'\x12' * 32  # incorrect block hash
@@ -293,7 +334,7 @@ def test_zeroed_commitment(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1, is_valid_blob=False)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=1, is_valid_blob=False)
     assert all(commitment == b'\x00' * 48 for commitment in blob_kzg_commitments)
 
     execution_payload.transactions = [opaque_tx]
@@ -313,7 +354,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
@@ -330,7 +371,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=spec.config.MAX_BLOBS_PER_BLOCK + 1)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=get_max_blob_count(spec) + 1)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)

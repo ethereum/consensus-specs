@@ -4,6 +4,7 @@
 
 ## Table of contents
 
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -17,6 +18,7 @@
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
@@ -72,33 +74,13 @@ an irregular state change is made to upgrade to Electra.
 ```python
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     epoch = deneb.get_current_epoch(pre)
-    latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=pre.latest_execution_payload_header.parent_hash,
-        fee_recipient=pre.latest_execution_payload_header.fee_recipient,
-        state_root=pre.latest_execution_payload_header.state_root,
-        receipts_root=pre.latest_execution_payload_header.receipts_root,
-        logs_bloom=pre.latest_execution_payload_header.logs_bloom,
-        prev_randao=pre.latest_execution_payload_header.prev_randao,
-        block_number=pre.latest_execution_payload_header.block_number,
-        gas_limit=pre.latest_execution_payload_header.gas_limit,
-        gas_used=pre.latest_execution_payload_header.gas_used,
-        timestamp=pre.latest_execution_payload_header.timestamp,
-        extra_data=pre.latest_execution_payload_header.extra_data,
-        base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
-        block_hash=pre.latest_execution_payload_header.block_hash,
-        transactions_root=pre.latest_execution_payload_header.transactions_root,
-        withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
-        excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
-        deposit_requests_root=Root(),  # [New in Electra:EIP6110]
-        withdrawal_requests_root=Root(),  # [New in Electra:EIP7002]
-        consolidation_requests_root=Root(),  # [New in Electra:EIP7251]
-    )
 
-    exit_epochs = [v.exit_epoch for v in pre.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    if not exit_epochs:
-        exit_epochs = [get_current_epoch(pre)]
-    earliest_exit_epoch = max(exit_epochs) + 1
+    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(pre))
+    for validator in pre.validators:
+        if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            if validator.exit_epoch > earliest_exit_epoch:
+                earliest_exit_epoch = validator.exit_epoch
+    earliest_exit_epoch += Epoch(1)
 
     post = BeaconState(
         # Versioning
@@ -140,7 +122,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=latest_execution_payload_header,  # [Modified in Electra:EIP6110:EIP7002]
+        latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
@@ -154,7 +136,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         earliest_exit_epoch=earliest_exit_epoch,
         consolidation_balance_to_consume=0,
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
-        pending_balance_deposits=[],
+        pending_deposits=[],
         pending_partial_withdrawals=[],
         pending_consolidations=[],
     )
@@ -173,7 +155,20 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     ))
 
     for index in pre_activation:
-        queue_entire_balance_and_reset_validator(post, ValidatorIndex(index))
+        balance = post.balances[index]
+        post.balances[index] = 0
+        validator = post.validators[index]
+        validator.effective_balance = 0
+        validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
+        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
+        # and GENESIS_SLOT to distinguish from a pending deposit request
+        post.pending_deposits.append(PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=balance,
+            signature=bls.G2_POINT_AT_INFINITY,
+            slot=GENESIS_SLOT,
+        ))
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):

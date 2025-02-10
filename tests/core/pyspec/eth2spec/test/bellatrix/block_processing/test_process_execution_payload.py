@@ -377,7 +377,7 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     )
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
     rng = Random(1111)
@@ -385,7 +385,7 @@ def test_randomized_non_validated_execution_fields_first_payload__execution_vali
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
     rng = Random(2222)
@@ -393,7 +393,7 @@ def test_randomized_non_validated_execution_fields_regular_payload__execution_va
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(spec, state):
     rng = Random(3333)
@@ -401,7 +401,7 @@ def test_invalid_randomized_non_validated_execution_fields_first_payload__execut
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_until_eip7732
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(spec, state):
     rng = Random(4444)

@@ -1,5 +1,7 @@
 # EIP-7732 -- The Beacon Chain
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -50,12 +52,12 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Payload Attestations](#payload-attestations)
         - [`process_payload_attestation`](#process_payload_attestation)
-    - [Modified `process_execution_payload`](#modified-process_execution_payload)
-      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
+  - [Execution payload processing](#execution-payload-processing)
+    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+    - [New `process_execution_payload`](#new-process_execution_payload)
 - [Testing](#testing)
-  - [Modified `initialize_beacon_state_from_eth1`](#modified-initialize_beacon_state_from_eth1)
   - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -63,34 +65,34 @@
 
 ## Introduction
 
-This is the beacon chain specification of the enshrined proposer builder separation feature. 
+This is the beacon chain specification of the enshrined proposer builder separation feature.
 
 *Note:* This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
 
 This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the  start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
 
-At any given slot, the status of the blockchain's head may be either 
-- A block from a previous slot (e.g. the current slot's proposer did not submit its block). 
-- An *empty* block from the current slot (e.g. the proposer submitted a timely block, but the builder did not reveal the payload on time). 
-- A full block for the current slot (both the proposer and the builder revealed on time). 
+At any given slot, the status of the blockchain's head may be either
+- A block from a previous slot (e.g. the current slot's proposer did not submit its block).
+- An *empty* block from the current slot (e.g. the proposer submitted a timely block, but the builder did not reveal the payload on time).
+- A full block for the current slot (both the proposer and the builder revealed on time).
 
 ## Constants
 
 ### Payload status
 
-| Name | Value | 
-| - | - | 
+| Name | Value |
+| - | - |
 | `PAYLOAD_ABSENT` | `uint8(0)` |
-| `PAYLOAD_PRESENT` | `uint8(1)` | 
-| `PAYLOAD_WITHHELD` | `uint8(2)` | 
+| `PAYLOAD_PRESENT` | `uint8(1)` |
+| `PAYLOAD_WITHHELD` | `uint8(2)` |
 | `PAYLOAD_INVALID_STATUS` | `uint8(3)` |
 
 ## Preset
 
 ### Misc
 
-| Name | Value | 
-| - | - | 
+| Name | Value |
+| - | - |
 | `PTC_SIZE` | `uint64(2**9)` (=512)  # (New in EIP-7732) |
 
 ### Domain types
@@ -153,12 +155,13 @@ class SignedExecutionPayloadHeader(Container):
     message: ExecutionPayloadHeader
     signature: BLSSignature
 ```
-    
+
 #### `ExecutionPayloadEnvelope`
 
 ```python
 class ExecutionPayloadEnvelope(Container):
     payload: ExecutionPayload
+    execution_requests: ExecutionRequests
     builder_index: ValidatorIndex
     beacon_block_root: Root
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -178,7 +181,7 @@ class SignedExecutionPayloadEnvelope(Container):
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly.
+**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope.
 
 ```python
 class BeaconBlockBody(Container):
@@ -187,15 +190,16 @@ class BeaconBlockBody(Container):
     graffiti: Bytes32  # Arbitrary data
     # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
     # Removed execution_payload [Removed in EIP-7732]
-    # Removed blob_kzg_commitments [Removed in EIP-7732]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    # Removed blob_kzg_commitments [Removed in EIP-7732]
+    # Removed execution_requests [Removed in EIP-7732]
     # PBS
     signed_execution_payload_header: SignedExecutionPayloadHeader   # [New in EIP-7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-7732]
@@ -203,7 +207,7 @@ class BeaconBlockBody(Container):
 
 #### `ExecutionPayloadHeader`
 
-**Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs. 
+**Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs.
 
 ```python
 class ExecutionPayloadHeader(Container):
@@ -219,7 +223,7 @@ class ExecutionPayloadHeader(Container):
 
 #### `BeaconState`
 
-*Note*: The `BeaconState` is modified to track the last withdrawals honored in the CL. The `latest_execution_payload_header` is modified semantically to refer not to a past committed `ExecutionPayload` but instead it corresponds to the state's slot builder's bid. Another addition is to track the last committed block hash and the last slot that was full, that is in which there were both consensus and execution blocks included. 
+*Note*: The `BeaconState` is modified to track the last withdrawals honored in the CL. The `latest_execution_payload_header` is modified semantically to refer not to a past committed `ExecutionPayload` but instead it corresponds to the state's slot builder's bid. Another addition is to track the last committed block hash and the last slot that was full, that is in which there were both consensus and execution blocks included.
 
 ```python
 class BeaconState(Container):
@@ -270,7 +274,7 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
-    pending_balance_deposits: List[PendingBalanceDeposit, PENDING_BALANCE_DEPOSITS_LIMIT]
+    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     # PBS
@@ -311,7 +315,7 @@ def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlag
 
 ```python
 def is_valid_indexed_payload_attestation(
-        state: BeaconState, 
+        state: BeaconState,
         indexed_payload_attestation: IndexedPayloadAttestation) -> bool:
     """
     Check if ``indexed_payload_attestation`` is not empty, has sorted and unique indices and has
@@ -335,7 +339,7 @@ def is_valid_indexed_payload_attestation(
 
 #### `is_parent_block_full`
 
-This function returns true if the last committed payload header was fulfilled with a payload, this can only happen when both beacon block and payload were present. This function must be called on a beacon state before processing the execution payload header in the block. 
+This function returns true if the last committed payload header was fulfilled with a payload, this can only happen when both beacon block and payload were present. This function must be called on a beacon state before processing the execution payload header in the block.
 
 ```python
 def is_parent_block_full(state: BeaconState) -> bool:
@@ -354,8 +358,8 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     epoch = compute_epoch_at_slot(slot)
     committees_per_slot = bit_floor(min(get_committee_count_per_slot(state, epoch), PTC_SIZE))
     members_per_committee = PTC_SIZE // committees_per_slot
-    
-    validator_indices: List[ValidatorIndex] = [] 
+
+    validator_indices: List[ValidatorIndex] = []
     for idx in range(committees_per_slot):
         beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
         validator_indices += beacon_committee[:members_per_committee]
@@ -390,7 +394,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 #### `get_payload_attesting_indices`
 
 ```python
-def get_payload_attesting_indices(state: BeaconState, slot: Slot, 
+def get_payload_attesting_indices(state: BeaconState, slot: Slot,
                                   payload_attestation: PayloadAttestation) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``payload_attestation``.
@@ -402,7 +406,7 @@ def get_payload_attesting_indices(state: BeaconState, slot: Slot,
 #### `get_indexed_payload_attestation`
 
 ```python
-def get_indexed_payload_attestation(state: BeaconState, slot: Slot, 
+def get_indexed_payload_attestation(state: BeaconState, slot: Slot,
                                     payload_attestation: PayloadAttestation) -> IndexedPayloadAttestation:
     """
     Return the indexed payload attestation corresponding to ``payload_attestation``.
@@ -430,7 +434,8 @@ The post-state corresponding to a pre-state `state` and a signed execution paylo
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state)  # [Modified in EIP-7732]
-    process_execution_payload_header(state, block)  # [Modified in EIP-7732, removed process_execution_payload]
+    # Removed `process_execution_payload` in EIP-7732
+    process_execution_payload_header(state, block)  # [New in EIP-7732]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)  # [Modified in EIP-7732]
@@ -441,7 +446,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### Modified `process_withdrawals`
 
-**Note:** This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances. 
+**Note:** This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances.
 
 ```python
 def process_withdrawals(state: BeaconState) -> None:
@@ -480,7 +485,7 @@ def process_withdrawals(state: BeaconState) -> None:
 ##### New `verify_execution_payload_header_signature`
 
 ```python
-def verify_execution_payload_header_signature(state: BeaconState, 
+def verify_execution_payload_header_signature(state: BeaconState,
                                               signed_header: SignedExecutionPayloadHeader) -> bool:
     # Check the signature
     builder = state.validators[signed_header.message.builder_index]
@@ -496,9 +501,12 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     signed_header = block.body.signed_execution_payload_header
     assert verify_execution_payload_header_signature(state, signed_header)
 
-    # Check that the builder has funds to cover the bid
+    # Check that the builder is active non-slashed has funds to cover the bid
     header = signed_header.message
     builder_index = header.builder_index
+    builder = state.validators[builder_index]
+    assert is_active_validator(builder, get_current_epoch(state))
+    assert not builder.slashed
     amount = header.value
     assert state.balances[builder_index] >= amount
 
@@ -512,7 +520,7 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     decrease_balance(state, builder_index, amount)
     increase_balance(state, block.proposer_index, amount)
 
-    # Cache the signed execution payload header 
+    # Cache the signed execution payload header
     state.latest_execution_payload_header = header
 ```
 
@@ -553,7 +561,7 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     data = payload_attestation.data
     assert data.beacon_block_root == state.latest_block_header.parent_root
     # Check that the attestation is for the previous slot
-    assert data.slot + 1 == state.slot 
+    assert data.slot + 1 == state.slot
 
     # Verify signature
     indexed_payload_attestation = get_indexed_payload_attestation(state, data.slot, payload_attestation)
@@ -593,87 +601,6 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     # Reward proposer
     proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, proposer_index, proposer_reward)
-```
-
-#### Modified `process_execution_payload`
-
-##### New `verify_execution_payload_envelope_signature`
-
-```python
-def verify_execution_payload_envelope_signature(
-        state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope) -> bool:
-    builder = state.validators[signed_envelope.message.builder_index]
-    signing_root = compute_signing_root(signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER))
-    return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
-```
-
-*Note*: `process_execution_payload` is now an independent check in state transition. It is called when importing a signed execution payload proposed by the builder of the current slot.
-
-```python
-def process_execution_payload(state: BeaconState, 
-                              signed_envelope: SignedExecutionPayloadEnvelope, 
-                              execution_engine: ExecutionEngine, verify: bool = True) -> None:
-    # Verify signature
-    if verify: 
-        assert verify_execution_payload_envelope_signature(state, signed_envelope)
-    envelope = signed_envelope.message
-    payload = envelope.payload
-    # Cache latest block header state root
-    previous_state_root = hash_tree_root(state)
-    if state.latest_block_header.state_root == Root():
-        state.latest_block_header.state_root = previous_state_root
-    
-    # Verify consistency with the beacon block
-    assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
-
-    # Verify consistency with the committed header
-    committed_header = state.latest_execution_payload_header
-    assert envelope.builder_index == committed_header.builder_index
-    assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
-
-    if not envelope.payload_withheld: 
-        # Verify the withdrawals root
-        assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
-
-        # Verify the gas_limit
-        assert committed_header.gas_limit == payload.gas_limit
-
-        assert committed_header.block_hash == payload.block_hash 
-        # Verify consistency of the parent hash with respect to the previous execution payload
-        assert payload.parent_hash == state.latest_block_hash
-        # Verify prev_randao
-        assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
-        # Verify timestamp
-        assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-        # Verify commitments are under limit
-        assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
-        # Verify the execution payload is valid
-        versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) 
-                            for commitment in envelope.blob_kzg_commitments]
-        assert execution_engine.verify_and_notify_new_payload(
-            NewPayloadRequest(
-                execution_payload=payload,
-                versioned_hashes=versioned_hashes,
-                parent_beacon_block_root=state.latest_block_header.parent_root,
-            )
-        )
-
-        # Process Electra operations
-        def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-            for operation in operations:
-                fn(state, operation)
-
-        for_ops(payload.deposit_requests, process_deposit_request)
-        for_ops(payload.withdrawal_requests, process_withdrawal_request)
-        for_ops(payload, process_consolidation_request)
-
-        # Cache the execution payload header and proposer
-        state.latest_block_hash = payload.block_hash
-        state.latest_full_slot = state.slot
-
-    # Verify the state root
-    if verify: 
-        assert envelope.state_root == hash_tree_root(state)
 ```
 
 #### Modified `is_merge_transition_complete`
@@ -718,71 +645,94 @@ def validate_merge_block(block: BeaconBlock) -> None:
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
 
-## Testing
+### Execution payload processing
 
-### Modified `initialize_beacon_state_from_eth1`
-
-*Note*: The function `initialize_beacon_state_from_eth1` is modified for pure EIP-7732 testing only.
-Modifications include:
-1. Use `EIP7732_FORK_VERSION` as the previous and current fork version.
+#### New `verify_execution_payload_envelope_signature`
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
-                                      eth1_timestamp: uint64,
-                                      deposits: Sequence[Deposit],
-                                      execution_payload_header: ExecutionPayloadHeader=ExecutionPayloadHeader()
-                                      ) -> BeaconState:
-    fork = Fork(
-        previous_version=EIP7732_FORK_VERSION,  # [Modified in EIP-7732]
-        current_version=EIP7732_FORK_VERSION,  # [Modified in EIP-7732]
-        epoch=GENESIS_EPOCH,
-    )
-    state = BeaconState(
-        genesis_time=eth1_timestamp + GENESIS_DELAY,
-        fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
-        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
-        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
-        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,  # [New in Electra:EIP6110]
-    )
-
-    # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
-        process_deposit(state, deposit)
-
-    # Process deposit balance updates
-    for deposit in state.pending_balance_deposits:
-        increase_balance(state, deposit.index, deposit.amount)
-    state.pending_balance_deposits = []
-
-    # Process activations
-    for index, validator in enumerate(state.validators):
-        balance = state.balances[index]
-        # [Modified in Electra:EIP7251]
-        validator.effective_balance = min(
-            balance - balance % EFFECTIVE_BALANCE_INCREMENT, get_validator_max_effective_balance(validator))
-        if validator.effective_balance >= MIN_ACTIVATION_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = hash_tree_root(state.validators)
-
-    # Fill in sync committees
-    # Note: A duplicate committee is assigned for the current and next committee at genesis
-    state.current_sync_committee = get_next_sync_committee(state)
-    state.next_sync_committee = get_next_sync_committee(state)
-
-    # Initialize the execution payload header
-    state.latest_execution_payload_header = execution_payload_header
-
-    return state
+def verify_execution_payload_envelope_signature(
+        state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope) -> bool:
+    builder = state.validators[signed_envelope.message.builder_index]
+    signing_root = compute_signing_root(signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER))
+    return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
 ```
 
-### Modified `is_merge_transition_complete` 
+#### New `process_execution_payload`
+
+*Note*: `process_execution_payload` is now an independent check in state transition. It is called when importing a signed execution payload proposed by the builder of the current slot.
+
+```python
+def process_execution_payload(state: BeaconState,
+                              signed_envelope: SignedExecutionPayloadEnvelope,
+                              execution_engine: ExecutionEngine, verify: bool = True) -> None:
+    # Verify signature
+    if verify:
+        assert verify_execution_payload_envelope_signature(state, signed_envelope)
+    envelope = signed_envelope.message
+    payload = envelope.payload
+    # Cache latest block header state root
+    previous_state_root = hash_tree_root(state)
+    if state.latest_block_header.state_root == Root():
+        state.latest_block_header.state_root = previous_state_root
+
+    # Verify consistency with the beacon block
+    assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
+
+    # Verify consistency with the committed header
+    committed_header = state.latest_execution_payload_header
+    assert envelope.builder_index == committed_header.builder_index
+    assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
+
+    if not envelope.payload_withheld:
+        # Verify the withdrawals root
+        assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+
+        # Verify the gas_limit
+        assert committed_header.gas_limit == payload.gas_limit
+
+        assert committed_header.block_hash == payload.block_hash
+        # Verify consistency of the parent hash with respect to the previous execution payload
+        assert payload.parent_hash == state.latest_block_hash
+        # Verify prev_randao
+        assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+        # Verify timestamp
+        assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+        # Verify commitments are under limit
+        assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+        # Verify the execution payload is valid
+        versioned_hashes = [kzg_commitment_to_versioned_hash(commitment)
+                            for commitment in envelope.blob_kzg_commitments]
+        requests = envelope.execution_requests
+        assert execution_engine.verify_and_notify_new_payload(
+            NewPayloadRequest(
+                execution_payload=payload,
+                versioned_hashes=versioned_hashes,
+                parent_beacon_block_root=state.latest_block_header.parent_root,
+                execution_requests=requests,
+            )
+        )
+
+        # Process Electra operations
+        def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+            for operation in operations:
+                fn(state, operation)
+
+        for_ops(requests.deposits, process_deposit_request)
+        for_ops(requests.withdrawals, process_withdrawal_request)
+        for_ops(requests.consolidations, process_consolidation_request)
+
+        # Cache the execution payload header and proposer
+        state.latest_block_hash = payload.block_hash
+        state.latest_full_slot = state.slot
+
+    # Verify the state root
+    if verify:
+        assert envelope.state_root == hash_tree_root(state)
+```
+
+## Testing
+
+### Modified `is_merge_transition_complete`
 
 The function `is_merge_transition_complete` is modified for test purposes only to include the hash tree root of the empty KZG commitment list
 
@@ -793,4 +743,3 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
     header.blob_kzg_commitments_root = kzgs.hash_tree_root()
 
     return state.latest_execution_payload_header != header
-```

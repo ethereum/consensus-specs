@@ -1,5 +1,7 @@
 # Electra -- Honest Validator
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -8,16 +10,24 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
   - [Modified Containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
     - [Execution payload](#execution-payload)
+    - [Execution Requests](#execution-requests)
+  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+    - [Sidecar](#sidecar)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
@@ -32,11 +42,24 @@ This document represents the changes to be made in the code of an "honest valida
 
 ## Prerequisites
 
-This document is an extension of the [Deneb -- Honest Validator](../../deneb/validator.md) guide.
+This document is an extension of the [Deneb -- Honest Validator](../deneb/validator.md) guide.
 All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this document and used throughout.
 Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]  # [New in Electra]
+```
 
 ## Containers
 
@@ -57,6 +80,24 @@ class AggregateAndProof(Container):
 class SignedAggregateAndProof(Container):
     message: AggregateAndProof   # [Modified in Electra:EIP7549]
     signature: BLSSignature
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+Given the `payload_id`, `get_payload` returns the most recent version of the execution payload that
+has been built since the corresponding call to `notify_forkchoice_updated` method.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    """
+    # pylint: disable=unused-argument
+    ...
 ```
 
 ## Block proposal
@@ -112,6 +153,40 @@ def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
         return uint64(0)
 ```
 
+*Note*: Clients will be able to remove the `Eth1Data` polling mechanism in an uncoordinated fashion once the transition period is finished. The transition period is considered finished when a network reaches the point where `state.eth1_deposit_index == state.deposit_requests_start_index`.
+
+```python
+def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
+    # [New in Electra:EIP6110]
+    if state.eth1_deposit_index == state.deposit_requests_start_index:
+        return state.eth1_data
+
+    period_start = voting_period_start_time(state)
+    # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
+    votes_to_consider = [
+        get_eth1_data(block) for block in eth1_chain
+        if (
+            is_candidate_block(block, period_start)
+            # Ensure cannot move back to earlier deposit contract states
+            and get_eth1_data(block).deposit_count >= state.eth1_data.deposit_count
+        )
+    ]
+
+    # Valid votes already cast during this period
+    valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
+
+    # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
+    # Non-substantive casting for linter
+    state_eth1_data: Eth1Data = state.eth1_data
+    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
+
+    return max(
+        valid_votes,
+        key=lambda v: (valid_votes.count(v), -valid_votes.index(v)),  # Tiebreak by smallest distance
+        default=default_vote
+    )
+```
+
 #### Execution payload
 
 `prepare_execution_payload` is updated from the Deneb specs.
@@ -148,15 +223,82 @@ def prepare_execution_payload(state: BeaconState,
     )
 ```
 
+#### Execution Requests
+
+*[New in Electra]*
+
+1. The execution payload is obtained from the execution engine as defined above using `payload_id`. The response also includes a `execution_requests` entry containing a list of bytes. Each element on the list corresponds to one SSZ list of requests as defined in [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The first byte of each request is used to determine the request type. Requests must be ordered by request type in ascending order. As a result, there can only be at most one instance of each request type.
+2. Set `block.body.execution_requests = get_execution_requests(execution_requests)`, where:
+
+```python
+def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+    deposits = []
+    withdrawals = []
+    consolidations = []
+
+    request_types = [
+        DEPOSIT_REQUEST_TYPE,
+        WITHDRAWAL_REQUEST_TYPE,
+        CONSOLIDATION_REQUEST_TYPE,
+    ]
+
+    prev_request_type = None
+    for request in execution_requests_list:
+        request_type, request_data = request[0:1], request[1:]
+
+        # Check that the request type is valid
+        assert request_type in request_types
+        # Check that the request data is not empty
+        assert len(request_data) != 0
+        # Check that requests are in strictly ascending order
+        # Each successive type must be greater than the last with no duplicates
+        assert prev_request_type is None or prev_request_type < request_type
+        prev_request_type = request_type
+
+        if request_type == DEPOSIT_REQUEST_TYPE:
+            deposits = ssz_deserialize(
+                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == WITHDRAWAL_REQUEST_TYPE:
+            withdrawals = ssz_deserialize(
+                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+            consolidations = ssz_deserialize(
+                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD],
+                request_data
+            )
+
+    return ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations,
+    )
+```
+
+### Constructing the `BlobSidecar`s
+
+#### Sidecar
+
+*[Modified in Electra:EIP7691]*
+
+```python
+def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> SubnetID:
+    return SubnetID(blob_index % BLOB_SIDECAR_SUBNET_COUNT_ELECTRA)
+```
+
 ## Attesting
 
 ### Construct attestation
 
-- Set `attestation_data.index = 0`.
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
-- Let `attestation.committee_bits` be a `Bitvector[MAX_COMMITTEES_PER_SLOT]`, where the bit at the index associated with the validator's committee is set to `0b1`.
+The validator creates `attestation` as a `SingleAttestation` container
+with updated field assignments:
 
-*Note*: Calling `get_attesting_indices(state, attestation)` should return a list of length equal to 1, containing `validator_index`.
+- Set `attestation_data.index = 0`.
+- Set `attestation.committee_index` to the index associated with the validator's committee.
+- Set `attestation.attester_index` to the index of the validator.
 
 ## Attestation aggregation
 
@@ -164,4 +306,4 @@ def prepare_execution_payload(state: BeaconState,
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the same value as in each individual attestation.
+- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the bit set corresponding to `committee_index` in each individual attestation.

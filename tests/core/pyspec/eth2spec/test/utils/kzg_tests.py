@@ -6,7 +6,7 @@ from eth_utils import (
 )
 
 from eth2spec.utils import bls
-from eth2spec.eip7594 import spec
+from eth2spec.fulu import spec
 
 
 ###############################################################################
@@ -41,11 +41,12 @@ def make_id(*args):
     return hash(bytes(values_str, "utf-8"))[:8].hex()
 
 
-def field_element_bytes(x):
-    return int.to_bytes(x % spec.BLS_MODULUS, 32, spec.KZG_ENDIANNESS)
+def field_element_bytes(x: int):
+    assert x < spec.BLS_MODULUS
+    return int.to_bytes(x, 32, spec.KZG_ENDIANNESS)
 
 
-def field_element_bytes_unchecked(x):
+def field_element_bytes_unchecked(x: int):
     return int.to_bytes(x, 32, spec.KZG_ENDIANNESS)
 
 
@@ -62,7 +63,7 @@ def int_to_hex(n: int, byte_length: int = None) -> str:
 
 def evaluate_blob_at(blob, z):
     return field_element_bytes(
-        spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z))
+        int(spec.evaluate_polynomial_in_evaluation_form(spec.blob_to_polynomial(blob), spec.bytes_to_bls_field(z)))
     )
 
 
@@ -79,7 +80,7 @@ FE_VALID2 = field_element_bytes(1)
 FE_VALID3 = field_element_bytes(2)
 FE_VALID4 = field_element_bytes(pow(5, 1235, spec.BLS_MODULUS))
 FE_VALID5 = field_element_bytes(spec.BLS_MODULUS - 1)
-FE_VALID6 = field_element_bytes(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)[1])
+FE_VALID6 = field_element_bytes(int(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)[1]))
 VALID_FIELD_ELEMENTS = [FE_VALID1, FE_VALID2, FE_VALID3, FE_VALID4, FE_VALID5, FE_VALID6]
 
 FE_INVALID_EQUAL_TO_MODULUS = field_element_bytes_unchecked(spec.BLS_MODULUS)
