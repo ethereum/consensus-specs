@@ -28,6 +28,34 @@ from eth2spec.utils import bls
 
 
 ###############################################################################
+# Test cases for compute_cells
+###############################################################################
+
+def case_compute_cells():
+    # Valid cases
+    for blob in VALID_BLOBS:
+        cells = spec.compute_cells(blob)
+        identifier = make_id(blob)
+        yield f'compute_cells_case_valid_{identifier}', {
+            'input': {
+                'blob': encode_hex(blob),
+            },
+            'output': encode_hex_list(cells)
+        }
+
+    # Edge case: Invalid blobs
+    for blob in INVALID_BLOBS:
+        expect_exception(spec.compute_cells, blob)
+        identifier = make_id(blob)
+        yield f'compute_cells_invalid_blob_{identifier}', {
+            'input': {
+                'blob': encode_hex(blob)
+            },
+            'output': None
+        }
+
+
+###############################################################################
 # Test cases for compute_cells_and_kzg_proofs
 ###############################################################################
 
@@ -565,6 +593,7 @@ def create_provider(fork_name: SpecForkName,
 if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_7594", [
+        create_provider(FULU, 'compute_cells', case_compute_cells),
         create_provider(FULU, 'compute_cells_and_kzg_proofs', case_compute_cells_and_kzg_proofs),
         create_provider(FULU, 'verify_cell_kzg_proof_batch', case_verify_cell_kzg_proof_batch),
         create_provider(FULU, 'recover_cells_and_kzg_proofs', case_recover_cells_and_kzg_proofs),
