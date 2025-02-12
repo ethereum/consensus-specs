@@ -4,6 +4,7 @@
 
 ## Table of contents
 
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -17,6 +18,7 @@
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
@@ -128,7 +130,7 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         earliest_exit_epoch=pre.earliest_exit_epoch,
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
-        pending_balance_deposits=pre.pending_balance_deposits,
+        pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
     )

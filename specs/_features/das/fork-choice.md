@@ -14,7 +14,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document is the beacon chain fork choice spec for Data Availability Sampling. The only change that we add from phase 0 is that we add a concept of "data dependencies";

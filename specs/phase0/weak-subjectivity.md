@@ -41,19 +41,19 @@ This document uses data structures, constants, functions, and terminology from
 ## Custom Types
 
 | Name | SSZ Equivalent | Description |
-|---|---|---|
+| - | - | - |
 | `Ether` | `uint64` | an amount in Ether |
 
 ## Constants
 
 | Name | Value |
-|---|---|
+| - | - |
 | `ETH_TO_GWEI` | `uint64(10**9)` |
 
 ## Configuration
 
 | Name | Value |
-|---|---|
+| - | - |
 | `SAFETY_DECAY` | `uint64(10)` |
 
 ## Weak Subjectivity Checkpoint

@@ -1,7 +1,5 @@
 # Altair Light Client -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -158,6 +156,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 **Protocol ID:** `/eth2/beacon_chain/req/light_client_updates_by_range/1/`
 
 Request Content:
+
 ```
 (
   start_period: uint64
@@ -166,6 +165,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]

@@ -45,7 +45,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
@@ -56,7 +55,6 @@ using KZG10 commitments to commit to data to remove any need for fraud proofs (a
 
 - **Data**: A list of KZG points, to translate a byte string into
 - **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
-
 
 ## Constants
 
@@ -72,7 +70,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_SAMPLE`     | `DomainType('0x10000000')` |
+| `DOMAIN_SHARD_SAMPLE` | `DomainType('0x10000000')` |
 
 ## Preset
 

@@ -187,6 +187,23 @@ def test_incorrect_commitment(spec, state):
 
 @with_deneb_and_later
 @spec_state_test
+def test_no_commitments_for_transactions(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
+    blob_kzg_commitments = []  # incorrect count
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
 def test_incorrect_commitments_order(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
@@ -199,6 +216,26 @@ def test_incorrect_commitments_order(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
+    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
+    """
+    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    # the blob transaction is invalid, because the EL verifies that the tx contains at least one blob
+    # therefore the EL should reject it, but the CL should not reject the block regardless
+    opaque_tx, _, _, _ = get_sample_blob_tx(spec, blob_count=0, rng=Random(1111))
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1112))
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    # the transaction doesn't contain any blob, but commitments are provided
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 

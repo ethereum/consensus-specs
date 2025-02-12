@@ -34,7 +34,6 @@ The SSZ-snappy encoded bytes.
 
 The same value as `serialized.ssz_snappy`, represented as YAML.
 
-
 ## Condition
 
 A test-runner can implement the following assertions:
@@ -45,7 +44,6 @@ A test-runner can implement the following assertions:
     - Serialization in 2 steps: deserialize `serialized`, then serialize the result,
        and verify if the bytes match the original `serialized`.
 - Hash-tree-root: After parsing the `value` (or deserializing `serialized`), Hash-tree-root it: the output should match `root`
-
 
 ## References
 

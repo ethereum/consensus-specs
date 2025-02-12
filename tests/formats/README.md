@@ -3,6 +3,7 @@
 This document defines the YAML format and structure used for consensus spec testing.
 
 ## Table of contents
+
 <!-- TOC -->
 
 * [About](#about)
@@ -45,7 +46,6 @@ Test formats:
 - [`ssz_generic`](./ssz_generic/README.md)
 - [`ssz_static`](./ssz_static/README.md)
 - More formats are planned, see tracking issues for CI/testing
-
 
 ## Glossary
 
@@ -92,7 +92,6 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 - Clients that are complete are expected to contribute to testing, seeking for better resources to get conformance with the spec, and other clients.
 - Clients that are not complete in functionality can choose to ignore suites that use certain test-runners, or specific handlers of these test-runners.
 - Clients that are on older versions can test their work based on older releases of the generated tests, and catch up with newer releases when possible.
-
 
 ## Test structure
 
@@ -152,7 +151,6 @@ Between all types of tests, a few formats are common:
 - **`.ssz_snappy`**: Like `.ssz`, but compressed with Snappy block compression.
   Snappy block compression is already applied to SSZ in consensus-layer gossip, available in client implementations, and thus chosen as compression method.
 
-
 #### Special output parts
 
 ##### `meta.yaml`
@@ -181,7 +179,6 @@ The format matches that of the `mainnet_config.yaml` and `minimal_config.yaml`,
 see the [`/configs`](../../configs/README.md#format) documentation.
 Config values that are introduced at a later fork may be omitted from tests of previous forks.
 
-
 ## Config sourcing
 
 The constants configurations are located in:
@@ -197,7 +194,6 @@ And copied by CI for testing purposes to:
 ```
 
 The first `<config name>` is a directory, which contains exactly all tests that make use of the given config.
-
 
 ## Note for implementers
 
