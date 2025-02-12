@@ -830,11 +830,9 @@ def process_registry_updates(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if is_eligible_for_activation_queue(validator):  # [Modified in Electra:EIP7251]
             validator.activation_eligibility_epoch = current_epoch + 1
-
-        if is_active_validator(validator, current_epoch) and validator.effective_balance <= EJECTION_BALANCE:
+        elif is_active_validator(validator, current_epoch) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
-
-        if is_eligible_for_activation(state, validator):
+        elif is_eligible_for_activation(state, validator):
             validator.activation_epoch = activation_epoch
 ```
 
