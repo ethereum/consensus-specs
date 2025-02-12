@@ -239,7 +239,7 @@ Response Content:
 )
 ```
 
-Specifications of req\response method are equivalent to [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2), with the only difference that response content.
+Specifications of req\response methods are equivalent to [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2), with the only difference being the response content.
 
 For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
 
@@ -249,7 +249,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 | `fork_version`         | Chunk SSZ type                           |
 |------------------------|------------------------------------------|
-| `EIP7732_FORK_VERSION` and later | `eip7732.SignedExecutionPayloadEnvelope` |
+| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### BeaconBlocksByRoot v2
 
