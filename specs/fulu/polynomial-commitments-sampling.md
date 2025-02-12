@@ -526,7 +526,7 @@ def coset_for_cell(cell_index: CellIndex) -> Coset:
 ```python
 def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
     """
-    Compute all the cells for an extended blob.
+    Given a blob, extend it and return all the cells of the extended blob.
 
     Public method.
     """
