@@ -812,3 +812,77 @@ def test_random_partial_withdrawals_4(spec, state):
 @spec_state_test
 def test_random_partial_withdrawals_5(spec, state):
     yield from run_random_partial_withdrawals_test(spec, state, random.Random(5))
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
+    """Test legacy validator with balance just above MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        balance=spec.MAX_EFFECTIVE_BALANCE + 1
+    )
+    assert spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[validator_index]
+    )
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_exact_max(spec, state):
+    """Test legacy validator whose balance is exactly MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )
+
+
+@with_capella_and_later
+@spec_state_test
+def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
+    """Test legacy validator whose balance is below MAX_EFFECTIVE_BALANCE"""
+    validator_index = 0
+    set_eth1_withdrawal_credential_with_balance(
+        spec, state,
+        validator_index,
+        balance=spec.MAX_EFFECTIVE_BALANCE - 1
+    )
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index],
+        state.balances[validator_index]
+    )
+
+    next_slot(spec, state)
+    execution_payload = build_empty_execution_payload(spec, state)
+    yield from run_withdrawals_processing(
+        spec, state,
+        execution_payload,
+        fully_withdrawable_indices=[],
+        partial_withdrawals_indices=[]
+    )

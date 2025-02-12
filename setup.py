@@ -1,31 +1,32 @@
-from setuptools import setup, find_packages, Command
-from setuptools.command.build_py import build_py
-from distutils import dir_util
-from distutils.util import convert_path
-from pathlib import Path
+import ast
+import copy
+import json
+import logging
 import os
 import string
-from typing import Dict, List, Sequence, Optional, Tuple
-import ast
-import subprocess
 import sys
-import copy
+import warnings
+
 from collections import OrderedDict
-import json
-from functools import reduce
+from distutils import dir_util
+from distutils.util import convert_path
+from functools import lru_cache
+from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.ext.gfm import gfm
+from marko.ext.gfm.elements import Table
+from marko.inline import CodeSpan
+from pathlib import Path
+from ruamel.yaml import YAML
+from setuptools import setup, find_packages, Command
+from setuptools.command.build_py import build_py
+from typing import Dict, List, Sequence, Optional, Tuple
+
+pysetup_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
-    # code names
     PHASE0,
-    # misc
     ETH2_SPEC_COMMENT_PREFIX,
-)
-from pysetup.spec_builders import spec_builders
-from pysetup.typing import (
-    BuildTarget,
-    ProtocolDefinition,
-    SpecObject,
-    VariableDefinition,
 )
 from pysetup.helpers import (
     combine_spec_objects,
@@ -33,43 +34,31 @@ from pysetup.helpers import (
     objects_to_spec,
     parse_config_vars,
 )
-from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.md_doc_paths import (
+    get_md_doc_paths
+)
+from pysetup.spec_builders import (
+    spec_builders
+)
+from pysetup.typing import (
+    BuildTarget,
+    ProtocolDefinition,
+    SpecObject,
+    VariableDefinition,
+)
+
 
 # Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
-import warnings
 warnings.filterwarnings('ignore', message='Normalizing .* to .*')
 
 # Ignore 'running' and 'creating' messages
-import logging
 class PyspecFilter(logging.Filter):
     def filter(self, record):
         return not record.getMessage().startswith(('running ', 'creating '))
 logging.getLogger().addFilter(PyspecFilter())
 
-# NOTE: have to programmatically include third-party dependencies in `setup.py`.
-def installPackage(package: str):
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
-try:
-    import ruamel.yaml
-except ImportError:
-    installPackage(RUAMEL_YAML_VERSION)
-
-from ruamel.yaml import YAML
-
-MARKO_VERSION = "marko==1.0.2"
-try:
-    import marko
-except ImportError:
-    installPackage(MARKO_VERSION)
-
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
-from marko.inline import CodeSpan
-from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table
-
-
+@lru_cache(maxsize=None)
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
     last_child = heading.children[-1]
     if isinstance(last_child, CodeSpan):
@@ -77,15 +66,18 @@ def _get_name_from_heading(heading: Heading) -> Optional[str]:
     return None
 
 
+@lru_cache(maxsize=None)
 def _get_source_from_code_block(block: FencedCode) -> str:
     return block.children[0].children.strip()
 
 
+@lru_cache(maxsize=None)
 def _get_function_name_from_source(source: str) -> str:
     fn = ast.parse(source).body[0]
     return fn.name
 
 
+@lru_cache(maxsize=None)
 def _get_self_type_from_source(source: str) -> Optional[str]:
     fn = ast.parse(source).body[0]
     args = fn.args.args
@@ -98,6 +90,7 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
     return args[0].annotation.id
 
 
+@lru_cache(maxsize=None)
 def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     class_def = ast.parse(source).body[0]
     base = class_def.bases[0]
@@ -113,12 +106,14 @@ def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     return class_def.name, parent_class
 
 
+@lru_cache(maxsize=None)
 def _is_constant_id(name: str) -> bool:
     if name[0] not in string.ascii_uppercase + '_':
         return False
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
 
 
+@lru_cache(maxsize=None)
 def _load_kzg_trusted_setups(preset_name):
     trusted_setups_file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
 
@@ -130,6 +125,7 @@ def _load_kzg_trusted_setups(preset_name):
 
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
+@lru_cache(maxsize=None)
 def _load_curdleproofs_crs(preset_name):
     """
     NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
@@ -153,6 +149,7 @@ ALL_CURDLEPROOFS_CRS = {
 }
 
 
+@lru_cache(maxsize=None)
 def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     _, _, title = child._parse_info
     if not (title[0] == "(" and title[len(title)-1] == ")"):
@@ -163,6 +160,7 @@ def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
     return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
+@lru_cache(maxsize=None)
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -185,6 +183,11 @@ def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
     constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
 
 
+@lru_cache(maxsize=None)
+def parse_markdown(content: str):
+    return gfm.parse(content)
+
+
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
@@ -198,7 +201,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     custom_types: Dict[str, str] = {}
 
     with open(file_name) as source_file:
-        document = gfm.parse(source_file.read())
+        document = parse_markdown(source_file.read())
 
     current_name = None
     should_skip = False
@@ -326,6 +329,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     )
 
 
+@lru_cache(maxsize=None)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
     Loads the a directory of preset files, merges the result into one preset.
@@ -344,6 +348,7 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     return parse_config_vars(preset)
 
 
+@lru_cache(maxsize=None)
 def load_config(config_path: Path) -> Dict[str, str]:
     """
     Loads the given configuration file.
@@ -358,7 +363,7 @@ def build_spec(fork: str,
                source_files: Sequence[Path],
                preset_files: Sequence[Path],
                config_file: Path) -> str:
-    preset = load_preset(preset_files)
+    preset = load_preset(tuple(preset_files))
     config = load_config(config_file)
     all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
 
@@ -533,12 +538,9 @@ with open(os.path.join('tests', 'core', 'pyspec', 'eth2spec', 'VERSION.txt')) as
     spec_version = f.read().strip()
 
 setup(
-    name='eth2spec',
     version=spec_version,
-    description="Eth2 spec, provided as Python package for tooling and testing",
     long_description=readme,
     long_description_content_type="text/markdown",
-    author="ethereum",
     url="https://github.com/ethereum/consensus-specs",
     include_package_data=False,
     package_data={
@@ -558,25 +560,4 @@ setup(
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'presets', 'specs', 'presets', 'sync'],
     py_modules=["eth2spec"],
     cmdclass=commands,
-    python_requires=">=3.9, <4",
-    extras_require={
-        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==3.3.1", "codespell<3.0.0,>=2.0.0"],
-        "generator": ["setuptools>=72.0.0", "pytest>4.4", "python-snappy==0.7.3", "filelock", "pathos==0.3.0"],
-        "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
-    },
-    install_requires=[
-        "eth-utils>=2.0.0,<3",
-        "eth-typing>=3.2.0,<4.0.0",
-        "pycryptodome>=3.19.1",
-        "py_ecc==6.0.0",
-        "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.28",
-        "trie>=3,<4",
-        RUAMEL_YAML_VERSION,
-        "lru-dict==1.2.0",
-        MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.8",
-        "curdleproofs==0.1.2",
-    ]
 )

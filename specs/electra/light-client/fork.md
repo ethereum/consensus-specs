@@ -1,5 +1,7 @@
 # Electra Light Client -- Fork Logic
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
 ## Table of contents
 
 <!-- TOC -->

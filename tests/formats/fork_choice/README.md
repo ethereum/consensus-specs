@@ -3,6 +3,7 @@
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
 ## Table of contents
+
 <!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -156,10 +157,10 @@ value that Execution Layer client mock returns in responses to the following Eng
 The checks to verify the current status of `store`.
 
 ```yaml
-checks: {<store_attibute>: value}  -- the assertions.
+checks: {<store_attribute>: value}  -- the assertions.
 ```
 
-`<store_attibute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
+`<store_attribute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
 
 ```yaml
 head: {
@@ -190,6 +191,7 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
 ```
 
 For example:
+
 ```yaml
 - checks:
     time: 192

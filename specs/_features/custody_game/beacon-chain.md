@@ -55,7 +55,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
-
 ## Introduction
 
 This document details the beacon chain additions and changes of to support the shard data custody game,
@@ -100,7 +99,6 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `uint64(2**2)` (= 4) |
 | `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16) |
 | `MAX_CUSTODY_SLASHINGS` | `uint64(2**0)` (= 1) |
-
 
 ### Size parameters
 
@@ -354,7 +352,6 @@ def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epo
     '''
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
-
 
 ## Per-block processing
 
@@ -619,7 +616,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         for attester_index in attesters:
             if attester_index != custody_slashing.malefactor_index:
                 increase_balance(state, attester_index, whistleblower_reward)
-        # No special whisteblower reward: it is expected to be an attester. Others are free to slash too however.
+        # No special whistleblower reward: it is expected to be an attester. Others are free to slash too however.
     else:
         # The claim was false, the custody bit was correct. Slash the whistleblower that induced this work.
         slash_validator(state, custody_slashing.whistleblower_index)

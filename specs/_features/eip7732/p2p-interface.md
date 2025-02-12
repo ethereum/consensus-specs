@@ -1,5 +1,10 @@
 # EIP-7732 -- Networking
 
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -26,6 +31,7 @@
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
 
 ## Introduction
 
@@ -39,9 +45,9 @@ The specification of these changes continues in the same format as the network s
 
 *[Modified in EIP-7732]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732`   | `13` # TODO: Compute it when the spec stabilizes | Merkle proof depth for the `blob_kzg_commitments` list item |
+| Name                                           | Value        | Description                                                 |
+|------------------------------------------------|--------------|-------------------------------------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `13` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
@@ -50,7 +56,6 @@ The specification of these changes continues in the same format as the network s
 | Name                   | Value          | Description                                                       |
 |------------------------|----------------|-------------------------------------------------------------------|
 | `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
-
 
 ### Containers
 
@@ -130,7 +135,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 
 There are no new validations for this topic. However, all validations with regards to the `ExecutionPayload` are removed:
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer -- i.e. validate that len(body.signed_beacon_block.message.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer -- i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
        -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
 - If `execution_payload` verification of block's parent by an execution node is *not* complete:
@@ -151,7 +156,7 @@ This topic is used to propagate execution payload messages as `SignedExecutionPa
 
 The following validations MUST pass before forwarding the `signed_execution_payload_envelope` on the network, assuming the alias `envelope = signed_execution_payload_envelope.message`, `payload = payload_envelope.payload`:
 
-- _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via both gossip and non-gossip sources) (a client MAY queue payload for processing once the block is retrieved).
+- _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via gossip or non-gossip sources) (a client MAY queue payload for processing once the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid `SignedExecutionPayloadEnvelope` for this block root from this builder.
 
 Let `block` be the block with `envelope.beacon_block_root`.
@@ -171,7 +176,7 @@ The following validations MUST pass before forwarding the `payload_attestation_m
 - _[IGNORE]_ The message's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
 - _[REJECT]_ The message's payload status is a valid status, i.e. `data.payload_status < PAYLOAD_INVALID_STATUS`.
 - _[IGNORE]_ The `payload_attestation_message` is the first valid message received from the validator with index `payload_attestation_message.validate_index`.
-- _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via both gossip and non-gossip sources) (a client MAY queue attestation for processing once the block is retrieved. Note a client might want to request payload after).
+- _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via gossip or non-gossip sources) (a client MAY queue attestation for processing once the block is retrieved. Note a client might want to request payload after).
 - _[REJECT]_ The message's block `data.beacon_block_root` passes validation.
 - _[REJECT]_ The message's validator index is within the payload committee in `get_ptc(state, data.slot)`. The `state` is the head state corresponding to processing the block up to the current slot as determined by the fork choice.
 - _[REJECT]_ The message's signature of `payload_attestation_message.signature` is valid with respect to the validator index.
@@ -227,7 +232,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
-
 ##### BlobSidecarsByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
@@ -238,7 +242,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 |--------------------------|-------------------------------|
 | `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 | `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
-
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
@@ -267,6 +270,7 @@ Response Content:
   List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
+
 Requests execution payload envelopes by `signed_execution_payload_envelope.message.block_root`. The response is a list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the number of requested execution payload envelopes. It may be less in the case that the responding peer is missing payload envelopes.
 
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.

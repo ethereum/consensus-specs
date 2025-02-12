@@ -1,11 +1,14 @@
 # EIP-7732 -- Honest Validator
 
-This document represents the changes and additions to the Honest validator guide included in the EIP-7732 fork.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
+## Table of contents
+
+<!-- TOC -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
 
+- [Introduction](#introduction)
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -19,6 +22,11 @@ This document represents the changes and additions to the Honest validator guide
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- /TOC -->
+
+## Introduction
+
+This document represents the changes and additions to the Honest validator guide included in the EIP-7732 fork.
 
 ## Validator assignment
 
@@ -65,7 +73,6 @@ Attestation duties are not changed for validators, however the attestation deadl
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
-
 
 ### Block proposal
 
@@ -130,5 +137,3 @@ def get_payload_attestation_message_signature(
 ```
 
 **Remark** Validators do not need to check the full validity of the `ExecutionPayload` contained in within the envelope, but the checks in the [P2P guide](./p2p-interface.md) should pass for the `SignedExecutionPayloadEnvelope`.
-
-

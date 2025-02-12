@@ -5,6 +5,7 @@ There is no "change" factor, the rewards/penalties outputs are pure functions wi
 (See test condition documentation on how to run the tests.)
 
 `Deltas` is defined as:
+
 ```python
 class Deltas(Container):
     rewards: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
