@@ -16,7 +16,7 @@ from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 def test_apply_pending_deposit_under_min_activation(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
+    # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement
     amount = spec.MIN_ACTIVATION_BALANCE - 1
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
 
@@ -45,6 +45,22 @@ def test_apply_pending_deposit_over_min_activation(spec, state):
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
 
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_apply_pending_deposit_over_min_activation_next_increment(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    # set deposit amount to the next effective balance increment over the limit
+    # the validator's effective balance should be set to pre-electra MAX_EFFECTIVE_BALANCE
+    amount = spec.MAX_EFFECTIVE_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+
+    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+    # check validator's effective balance
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
 
 @with_electra_and_later
@@ -79,7 +95,7 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_under_max(spec
         + b'\x00' * 11  # specified 0s
         + b'\x59' * 20  # a 20-byte eth1 address
     )
-    # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
+    # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA - 1
     pending_deposit = prepare_pending_deposit(
         spec,
@@ -102,7 +118,7 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_max(spec, stat
         + b'\x00' * 11  # specified 0s
         + b'\x59' * 20  # a 20-byte eth1 address
     )
-    # effective balance will be exactly the same as balance.
+    # effective balance will be exactly the same as balance
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     pending_deposit = prepare_pending_deposit(
         spec,
@@ -136,6 +152,33 @@ def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max(spec,
     )
 
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+
+@with_electra_and_later
+@spec_state_test
+def test_apply_pending_deposit_compounding_withdrawal_credentials_over_max_next_increment(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    withdrawal_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    # set deposit amount to the next effective balance increment over the limit
+    # the validator's effective balance should be set to MAX_EFFECTIVE_BALANCE_ELECTRA
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT
+    pending_deposit = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+
+    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
+
+    # check validator's effective balance
+    assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
 @with_electra_and_later
@@ -347,7 +390,7 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
 
-    # All-zero pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception.
+    # All-zero pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
     pubkey = b'\x00' * 48
 
     pending_deposit = prepare_pending_deposit(spec, validator_index, amount, pubkey=pubkey, signed=True)
@@ -362,8 +405,8 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
 
-    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
-    # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception.
+    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case
+    # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
     pubkey_hex = 'c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
     pubkey = bytes.fromhex(pubkey_hex)
 
@@ -393,9 +436,9 @@ def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, s
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_with_previous_fork_version(spec, state):
-    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
-    # It's an ineffective deposit because it fails at BLS sig verification.
-    # NOTE: it was effective in Altair.
+    # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`
+    # It's an ineffective deposit because it fails at BLS sig verification
+    # NOTE: it was effective in Altair
     assert state.fork.previous_version != state.fork.current_version
 
     validator_index = len(state.validators)

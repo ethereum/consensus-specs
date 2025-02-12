@@ -30,7 +30,7 @@ install_deposit_contract_web3_tester:
 	@cd $(DEPOSIT_CONTRACT_TESTER_DIR); \
 	python3 -m venv venv; \
 	source venv/bin/activate; \
-	python3 -m pip install -r ../../requirements_preinstallation.txt; \
+	python3 -m pip install -r requirements_preinstallation.txt; \
 	python3 -m pip install -r requirements.txt
 
 test_deposit_contract_web3_tests:

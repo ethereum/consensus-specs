@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
+from eth2spec.test.helpers.constants import PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
 from eth2spec.gen_helpers.gen_from_tests.gen import run_state_test_generators, combine_mods, check_mods
 
 
@@ -40,6 +40,9 @@ if __name__ == "__main__":
     _new_electra_mods = {**_new_electra_mods_1, **_new_electra_mods_2}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
+    # No additional Fulu specific sanity tests
+    fulu_mods = electra_mods
+
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,
@@ -47,6 +50,7 @@ if __name__ == "__main__":
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
+        FULU: fulu_mods,
     }
     check_mods(all_mods, "sanity")
 

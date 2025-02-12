@@ -93,8 +93,8 @@ def prepare_state_and_block(spec,
         deposit_data = build_deposit_data(spec,
                                           pubkeys[keypair_index],
                                           privkeys[keypair_index],
-                                          # use max effective balance
-                                          spec.MAX_EFFECTIVE_BALANCE,
+                                          # use min activation balance
+                                          spec.MIN_ACTIVATION_BALANCE,
                                           # insecurely use pubkey as withdrawal key
                                           spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[keypair_index])[1:],
                                           signed=True)
@@ -118,8 +118,8 @@ def prepare_state_and_block(spec,
     for offset in range(deposit_request_cnt):
         deposit_request = prepare_deposit_request(spec,
                                                   keypair_index,
-                                                  # use max effective balance
-                                                  spec.MAX_EFFECTIVE_BALANCE,
+                                                  # use min activation balance
+                                                  spec.MIN_ACTIVATION_BALANCE,
                                                   first_deposit_request_index + offset,
                                                   signed=True)
         deposit_requests.append(deposit_request)
@@ -262,3 +262,35 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     assert state.pending_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
     amount_from_deposit = block.body.execution_requests.deposits[0].amount
     assert state.pending_deposits[pre_pending_deposits + 1].amount == amount_from_deposit
+
+
+@with_phases([ELECTRA])
+@spec_state_test
+def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_credentials(spec, state):
+    deposit_count = 1
+    deposit_request_count = 4
+
+    state, block = prepare_state_and_block(spec, state,
+                                           deposit_cnt=deposit_count,
+                                           deposit_request_cnt=deposit_request_count)
+
+    # pick 2 indices among deposit requests to have the same pubkey as the deposit
+    indices_with_same_pubkey = [1, 3]
+    for index in indices_with_same_pubkey:
+        block.body.execution_requests.deposits[index].pubkey = block.body.deposits[0].data.pubkey
+        # ensure top-up deposit request withdrawal credentials are different than the deposit
+        assert (block.body.execution_requests.deposits[index].withdrawal_credentials
+                != block.body.deposits[0].data.withdrawal_credentials)
+
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    deposit_requests = block.body.execution_requests.deposits.copy()
+
+    yield from run_deposit_transition_block(spec, state, block)
+
+    assert len(state.pending_deposits) == deposit_request_count + deposit_count
+    for index in indices_with_same_pubkey:
+        assert state.pending_deposits[deposit_count + index].pubkey == deposit_requests[index].pubkey
+        # ensure withdrawal credentials are retained, rather than being made the same
+        assert (state.pending_deposits[deposit_count + index].withdrawal_credentials
+                == deposit_requests[index].withdrawal_credentials)

@@ -154,7 +154,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
 def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     num_validators = (
@@ -434,6 +434,22 @@ def with_all_phases_from_except(earliest_phase, except_phases=None):
     A decorator factory for running a tests with every phase except the ones listed
     """
     return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+
+
+def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=ALL_PHASES):
+    """
+    A decorator factory for running a tests with every phase
+    from a given start phase up to and excluding a given end phase
+    """
+    def decorator(fn):
+        return with_phases(
+            [phase for phase in all_phases if (
+                phase != to_phase and is_post_fork(to_phase, phase)
+                and is_post_fork(phase, from_phase)
+            )],
+            other_phases=other_phases,
+        )(fn)
+    return decorator
 
 
 def with_all_phases_except(exclusion_phases):

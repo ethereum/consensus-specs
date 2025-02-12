@@ -16,21 +16,25 @@ However, most of the tests can be run in generator-mode, to output test vectors 
 ### How to run tests
 
 To run all tests:
+
 ```shell
 make test
 ```
 
 To run all tests under the minimal preset:
+
 ```shell
 make test preset=minimal
 ```
 
 Or, to run a specific test function specify `k=<test-name>`:
+
 ```shell
 make test k=test_verify_kzg_proof
 ```
 
 Or, to run a specific test function under a single fork specify `k=<test-name>`:
+
 ```shell
 make test fork=phase0
 ```
