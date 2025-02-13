@@ -359,28 +359,6 @@ def test_advance_finality_without_sync_committee(spec, state):
     yield from finish_lc_sync_test(test)
 
 
-def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
-    # Start test (Legacy bootstrap with an upgraded store)
-    test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
-
-    # Initial `LightClientUpdate` (check that the upgraded store can process it)
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
-    finalized_state = state.copy()
-    attested_block = state_transition_with_full_block(spec, state, True, True)
-    attested_state = state.copy()
-    sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
-    yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
-    assert test.store.finalized_header.beacon.slot == finalized_state.slot
-    assert test.store.next_sync_committee == finalized_state.next_sync_committee
-    assert test.store.best_valid_update is None
-    assert test.store.optimistic_header.beacon.slot == attested_state.slot
-
-    # Finish test
-    yield from finish_lc_sync_test(test)
-
-
 @with_light_client
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
@@ -447,6 +425,31 @@ def test_light_client_sync_no_force_update(spec, state):
     yield from emit_force_update(test, spec, state)
     # Store should remain unchanged since timeout wasn't reached
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
+
+    # Finish test
+    yield from finish_lc_sync_test(test)
+
+
+def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
+    # Start test (Legacy bootstrap with an upgraded store)
+    test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
+
+    # Initial `LightClientUpdate` (check that the upgraded store can process it)
+    finalized_block = spec.SignedBeaconBlock()
+    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_state = state.copy()
+    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_state = state.copy()
+    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases)
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
+    assert test.store.next_sync_committee == finalized_state.next_sync_committee
+    assert test.store.best_valid_update is None
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
+
+    # Finish test
+    yield from finish_lc_sync_test(test)
 
 
 @with_all_phases_from_to(ALTAIR, CAPELLA, other_phases=[CAPELLA])
