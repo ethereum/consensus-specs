@@ -10,7 +10,10 @@ from eth2spec.test.helpers.forks import (
     is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_eip7441,
 )
 from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.eip7441 import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
+from eth2spec.test.helpers.eip7441 import (
+    compute_whisk_initial_tracker_cached,
+    compute_whisk_initial_k_commitment_cached
+)
 
 
 def build_mock_validator(spec, i: int, balance: int):
