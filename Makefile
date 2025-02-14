@@ -75,8 +75,11 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 pyspec: $(VENV) setup.py pyproject.toml
 	@echo "Building eth2spec"
 	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
-	@echo "Building all pyspecs"
-	@$(PYTHON_VENV) setup.py pyspecdev
+	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
+	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
+	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
+	    cp "./build/lib/eth2spec/$$dir/minimal.py" "./tests/core/pyspec/eth2spec/$$dir/minimal.py"; \
+	done
 
 ###############################################################################
 # Testing
