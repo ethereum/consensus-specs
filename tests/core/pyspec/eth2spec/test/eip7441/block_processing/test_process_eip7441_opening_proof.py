@@ -1,5 +1,5 @@
-from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
-from eth2spec.test.helpers.whisk import (
+from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
+from eth2spec.test.helpers.eip7441 import (
     compute_whisk_k_commitment,
     compute_whisk_tracker,
     set_opening_proof
@@ -31,7 +31,7 @@ R_OK = 2
 R_WRONG = 3
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_valid_proof(spec, state):
     block = empty_block(spec)
@@ -39,7 +39,7 @@ def test_valid_proof(spec, state):
     run_process_whisk_opening_proof(spec, state, block)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_wrong_commitment(spec, state):
     block = empty_block(spec)
@@ -48,7 +48,7 @@ def test_wrong_commitment(spec, state):
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_wrong_tracker_r(spec, state):
     block = empty_block(spec)
@@ -58,7 +58,7 @@ def test_wrong_tracker_r(spec, state):
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_wrong_proof(spec, state):
     block = empty_block(spec)
