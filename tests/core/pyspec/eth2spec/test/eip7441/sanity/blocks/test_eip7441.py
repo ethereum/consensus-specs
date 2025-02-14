@@ -33,7 +33,7 @@ def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
 
 @with_eip7441_and_later
 @spec_state_test
-def test_whisk__process_block_single_initial(spec, state):
+def test_eip7441__process_block_single_initial(spec, state):
     assert state.slot == 0
     proposer_slot_1 = 0
     tracker_slot_1, k_commitment = compute_whisk_tracker_and_commitment(whisk_ks_initial(proposer_slot_1), 1)
