@@ -1,4 +1,4 @@
-# Whisk -- The Beacon Chain
+# EIP-7441 -- The Beacon Chain
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -31,7 +31,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the Whisk SSLE.
+This document details the beacon chain additions and changes of to support the EIP-7441 (Whisk SSLE).
 
 *Note:* This specification is built upon [capella](../../capella/beacon-chain.md) and is under active development.
 
@@ -184,10 +184,10 @@ class BeaconState(Container):
     # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
     # Whisk
-    whisk_candidate_trackers: Vector[WhiskTracker, WHISK_CANDIDATE_TRACKERS_COUNT]  # [New in Whisk]
-    whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in Whisk]
-    whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
-    whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]  # [New in Whisk]
+    whisk_candidate_trackers: Vector[WhiskTracker, WHISK_CANDIDATE_TRACKERS_COUNT]  # [New in EIP7441]
+    whisk_proposer_trackers: Vector[WhiskTracker, WHISK_PROPOSER_TRACKERS_COUNT]  # [New in EIP7441]
+    whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]  # [New in EIP7441]
+    whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]  # [New in EIP7441]
 ```
 
 ```python
@@ -235,7 +235,7 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_whisk_updates(state)  # [New in Whisk]
+    process_whisk_updates(state)  # [New in EIP7441]
 ```
 
 ## Block processing
@@ -275,7 +275,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer is not slashed
     proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
-    process_whisk_opening_proof(state, block)   # [New in Whisk]
+    process_whisk_opening_proof(state, block)   # [New in EIP7441]
 ```
 
 ### Whisk
@@ -298,12 +298,12 @@ class BeaconBlockBody(Container):
     execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     # Whisk
-    whisk_opening_proof: WhiskTrackerProof  # [New in Whisk]
-    whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in Whisk]
-    whisk_shuffle_proof: WhiskShuffleProof  # [New in Whisk]
-    whisk_registration_proof: WhiskTrackerProof  # [New in Whisk]
-    whisk_tracker: WhiskTracker  # [New in Whisk]
-    whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in Whisk]
+    whisk_opening_proof: WhiskTrackerProof  # [New in EIP7441]
+    whisk_post_shuffle_trackers: Vector[WhiskTracker, WHISK_VALIDATORS_PER_SHUFFLE]  # [New in EIP7441]
+    whisk_shuffle_proof: WhiskShuffleProof  # [New in EIP7441]
+    whisk_registration_proof: WhiskTrackerProof  # [New in EIP7441]
+    whisk_tracker: WhiskTracker  # [New in EIP7441]
+    whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in EIP7441]
 ```
 
 ```python
@@ -375,8 +375,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_shuffled_trackers(state, block.body)  # [New in Whisk]
-    process_whisk_registration(state, block.body)  # [New in Whisk]
+    process_shuffled_trackers(state, block.body)  # [New in EIP7441]
+    process_whisk_registration(state, block.body)  # [New in EIP7441]
 ```
 
 ### Deposits
@@ -419,7 +419,7 @@ def add_validator_to_registry(state: BeaconState,
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, uint64(0))
-    # [New in Whisk]
+    # [New in EIP7441]
     k = get_unique_whisk_k(state, ValidatorIndex(len(state.validators) - 1))
     state.whisk_trackers.append(get_initial_tracker(k))
     state.whisk_k_commitments.append(get_k_commitment(k))

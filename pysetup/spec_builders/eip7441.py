@@ -1,10 +1,10 @@
 from typing import Dict
 from .base import BaseSpecBuilder
-from ..constants import WHISK
+from ..constants import EIP7441
 
 
-class WhiskSpecBuilder(BaseSpecBuilder):
-    fork: str = WHISK
+class EIP7441SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP7441
 
     @classmethod
     def imports(cls, preset_name: str):
