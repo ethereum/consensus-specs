@@ -6,6 +6,7 @@ venv
 /.pytest_cache
 *.swp
 .eth2spec
+.idea
 
 build/
 output/

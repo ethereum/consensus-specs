@@ -72,3 +72,36 @@ def test_finality_root_merkle_proof(spec, state):
         index=spec.get_subtree_index(gindex),
         root=state.hash_tree_root(),
     )
+
+@with_test_suite_name("BeaconState")
+@with_light_client
+@spec_state_test
+def test_validator_merkle_proof(spec, state):
+    """
+    Demonstrates the validity of a Merkle proof for state.validators[0] in the BeaconState.
+    Ensures that a client can prove inclusion of a single validator record.
+    (for example, to verify the validator's public key or effective balance).
+    """
+    yield "object", state
+
+    validator_0_gindex = spec.get_generalized_index(
+        state,
+        'validators',
+        0
+    )
+
+    branch = spec.compute_merkle_proof(state, validator_0_gindex)
+
+    yield "proof", {
+        "leaf": "0x" + state.validators[0].hash_tree_root().hex(),
+        "leaf_index": validator_0_gindex,
+        "branch": ['0x' + root.hex() for root in branch]
+    }
+
+    assert spec.is_valid_merkle_branch(
+        leaf=state.validators[0].hash_tree_root(),
+        branch=branch,
+        depth=spec.floorlog2(validator_0_gindex),
+        index=spec.get_subtree_index(validator_0_gindex),
+        root=state.hash_tree_root(),
+    )
