@@ -73,6 +73,7 @@ def test_finality_root_merkle_proof(spec, state):
         root=state.hash_tree_root(),
     )
 
+
 @with_test_suite_name("BeaconState")
 @with_light_client
 @spec_state_test
