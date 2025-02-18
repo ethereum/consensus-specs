@@ -168,7 +168,7 @@ jobs:
           command: make test fork=fulu
       - store_test_results:
           path: tests/core/pyspec/test-reports
-  test-whisk:
+  test-eip7441:
     docker:
       - image: cimg/python:3.12-node
     working_directory: ~/specs-repo
@@ -178,7 +178,7 @@ jobs:
       - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
-          command: make test fork=whisk
+          command: make test fork=eip7441
       - store_test_results:
           path: tests/core/pyspec/test-reports
   lint:
@@ -224,7 +224,7 @@ workflows:
       - test-fulu:
           requires:
             - install_pyspec_test
-      - test-whisk:
+      - test-eip7441:
           requires:
             - install_pyspec_test
       - lint:

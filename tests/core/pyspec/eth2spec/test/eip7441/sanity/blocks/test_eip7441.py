@@ -1,8 +1,8 @@
 from eth2spec.test.helpers.block import build_empty_block
-from eth2spec.test.context import spec_state_test, with_whisk_and_later
+from eth2spec.test.context import spec_state_test, with_eip7441_and_later
 from eth2spec.test.helpers.keys import whisk_ks_initial
 from eth2spec.test.helpers.state import state_transition_and_sign_block
-from eth2spec.test.helpers.whisk import compute_whisk_tracker_and_commitment
+from eth2spec.test.helpers.eip7441 import compute_whisk_tracker_and_commitment
 from curdleproofs import WhiskTracker
 
 known_whisk_trackers = {}
@@ -27,13 +27,13 @@ def initialize_whisk_full(spec, state):
 
 # Fill candidate trackers with the same tracker so shuffling does not break
 def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
-    for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+    for i in range(spec.CANDIDATE_TRACKERS_COUNT):
         state.whisk_candidate_trackers[i] = tracker
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
-def test_whisk__process_block_single_initial(spec, state):
+def test_eip7441__process_block_single_initial(spec, state):
     assert state.slot == 0
     proposer_slot_1 = 0
     tracker_slot_1, k_commitment = compute_whisk_tracker_and_commitment(whisk_ks_initial(proposer_slot_1), 1)
