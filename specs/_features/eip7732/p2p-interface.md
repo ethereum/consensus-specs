@@ -26,9 +26,9 @@
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -216,41 +216,6 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
-##### ExecutionPayloadEnvelopesByRange v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
-
-*[New in EIP-7732]*
-
-Request Content:
-
-```
-(
-  start_slot: Slot
-  count: uint64
-)
-```
-
-Response Content:
-
-```
-(
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
-)
-```
-
-Specifications of req\response methods are equivalent to [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2), with the only difference being the response content.
-
-For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-[0]: # (eth2spec: skip)
-
-| `fork_version`         | Chunk SSZ type                           |
-|------------------------|------------------------------------------|
-| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
-
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
@@ -278,6 +243,41 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 |--------------------------|-------------------------------|
 | `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 | `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
+
+##### ExecutionPayloadEnvelopesByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
+
+*[New in EIP-7732]*
+
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Specifications of req\response methods are equivalent to [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference being the response content type.
+
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type                           |
+|------------------------|------------------------------------------|
+| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
