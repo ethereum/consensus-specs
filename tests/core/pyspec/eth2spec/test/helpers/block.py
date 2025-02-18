@@ -146,7 +146,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         if proposer_k_commitment != k_commitment:
             raise Exception("k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment)
 
-        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
 
@@ -200,10 +200,10 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 
 def find_whisk_proposer(spec, state):
-    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
 
     # Check record of known trackers
-    # During the first shuffling phase (epoch < WHISK_EPOCHS_PER_SHUFFLING_PHASE)
+    # During the first shuffling phase (epoch < EPOCHS_PER_SHUFFLING_PHASE)
     # proposer trackers are those inserted on the genesis state, and have not gone
     # through any shuffling. We cache those initial trackers and use `resolve_known_tracker`
     # to check if the tracker is known, and skip the need to actually find the matching tracker

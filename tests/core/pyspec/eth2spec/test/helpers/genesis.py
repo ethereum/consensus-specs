@@ -162,10 +162,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
             state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
 
-        for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+        for i in range(spec.CANDIDATE_TRACKERS_COUNT):
             state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
-        for i in range(spec.WHISK_PROPOSER_TRACKERS_COUNT):
+        for i in range(spec.PROPOSER_TRACKERS_COUNT):
             state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     if is_post_electra(spec):

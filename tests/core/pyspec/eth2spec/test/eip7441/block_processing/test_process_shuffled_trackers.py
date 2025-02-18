@@ -32,7 +32,7 @@ def set_state_epoch(spec, state, epoch):
 
 
 def set_state_epoch_selection_gap(spec, state):
-    set_state_epoch(spec, state, spec.config.WHISK_EPOCHS_PER_SHUFFLING_PHASE - 1)
+    set_state_epoch(spec, state, spec.config.EPOCHS_PER_SHUFFLING_PHASE - 1)
 
 
 def empty_block_body(spec):
@@ -76,7 +76,7 @@ def test_no_shuffle_minus_one_and_selection_gap(spec, state):
     set_state_epoch(
         spec,
         state,
-        spec.config.WHISK_EPOCHS_PER_SHUFFLING_PHASE - spec.config.WHISK_PROPOSER_SELECTION_GAP - 1
+        spec.config.EPOCHS_PER_SHUFFLING_PHASE - spec.config.PROPOSER_SELECTION_GAP - 1
     )
     yield from run_process_shuffled_trackers(spec, state, body)
 
