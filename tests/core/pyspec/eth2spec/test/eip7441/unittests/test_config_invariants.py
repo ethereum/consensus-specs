@@ -14,4 +14,4 @@ def is_power_of_two(value: int) -> bool:
 @spec_test
 @single_phase
 def test_curdleproof(spec):
-    assert is_power_of_two(spec.CURDLEPROOFS_N_BLINDERS + spec.WHISK_VALIDATORS_PER_SHUFFLE)
+    assert is_power_of_two(spec.CURDLEPROOFS_N_BLINDERS + spec.VALIDATORS_PER_SHUFFLE)

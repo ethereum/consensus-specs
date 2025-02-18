@@ -27,7 +27,7 @@ def initialize_whisk_full(spec, state):
 
 # Fill candidate trackers with the same tracker so shuffling does not break
 def fill_candidate_trackers(spec, state, tracker: WhiskTracker):
-    for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+    for i in range(spec.CANDIDATE_TRACKERS_COUNT):
         state.whisk_candidate_trackers[i] = tracker
 
 

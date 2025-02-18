@@ -93,7 +93,7 @@ def set_registration(body, k: int, r: int):
 
 def set_opening_proof(spec, state, block, proposer_index: int, k: int, r: int):
     tracker, k_commitment = compute_whisk_tracker_and_commitment(k, r)
-    state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT] = tracker
+    state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT] = tracker
     state.whisk_k_commitments[proposer_index] = k_commitment
     block.proposer_index = proposer_index
     block.body.whisk_opening_proof = GenerateWhiskTrackerProof(tracker, Scalar(k))
