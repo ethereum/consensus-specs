@@ -84,13 +84,7 @@ def test_validator_merkle_proof(spec, state):
     (for example, to verify the validator's public key or effective balance).
     """
     yield "object", state
-
-    validator_0_gindex = spec.get_generalized_index(
-        state,
-        'validators',
-        0
-    )
-
+    validator_0_gindex = spec.get_generalized_index(state, 'validators', 0)
     branch = spec.compute_merkle_proof(state, validator_0_gindex)
 
     yield "proof", {
