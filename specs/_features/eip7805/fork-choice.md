@@ -13,6 +13,7 @@
     - [Modified `Store`](#modified-store)
     - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
     - [New `get_attester_head`](#new-get_attester_head)
+      - [Modified `get_proposer_head`](#modified-get_proposer_head)
     - [New `on_inclusion_list`](#new-on_inclusion_list)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -134,10 +135,9 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
-
     reorg_prerequisites = all([shuffling_stable, ffg_competitive, finalization_ok,
-                           proposing_on_time, single_slot_reorg, head_weak, parent_strong])
-    
+                               proposing_on_time, single_slot_reorg, head_weak, parent_strong])
+
     # Check that the head block is in the unsatisfied inclusion list blocks
     inclusion_list_not_satisfied = head_root in store.unsatisfied_inclusion_list_blocks  # [New in EIP-7805]
 
