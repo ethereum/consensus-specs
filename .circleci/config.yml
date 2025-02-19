@@ -15,14 +15,6 @@ commands:
             - << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
             # fallback to using the latest cache if no exact match is found
             - << parameters.venv_name >>-venv-
-  get_python_version:
-    description: "Get the full Python version"
-    steps:
-      - run:
-          name: Save python version as environment variable
-          command: |
-            PYTHON_VERSION=$(python3 -c 'import sys; print("{}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro))')
-            echo "export PYTHON_VERSION=${PYTHON_VERSION}" >> $BASH_ENV
   save_cached_venv:
     description: "Save a venv into a cache"
     parameters:
@@ -43,14 +35,14 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v33-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}-{{ env.PYTHON_VERSION }}
+          venv_name: v34-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
   save_pyspec_cached_venv:
     description: "Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v33-pyspec
-          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}-{{ env.PYTHON_VERSION }}
+          venv_name: v34-pyspec
+          reqs_checksum: cache-{{ checksum "setup.py" }}-{{ checksum "pyproject.toml" }}
           venv_path: ./venv
 jobs:
   checkout_specs:
