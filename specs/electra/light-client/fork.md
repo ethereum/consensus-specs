@@ -41,8 +41,27 @@ An Electra `LightClientStore` can still process earlier light client data. In or
 def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
-        execution=pre.execution,
-        execution_branch=pre.execution_branch,
+        execution=ExecutionPayloadHeader(
+            parent_hash=pre.execution.parent_hash,
+            fee_recipient=pre.execution.fee_recipient,
+            state_root=pre.execution.state_root,
+            receipts_root=pre.execution.receipts_root,
+            logs_bloom=pre.execution.logs_bloom,
+            prev_randao=pre.execution.prev_randao,
+            block_number=pre.execution.block_number,
+            gas_limit=pre.execution.gas_limit,
+            gas_used=pre.execution.gas_used,
+            timestamp=pre.execution.timestamp,
+            extra_data=pre.execution.extra_data,
+            base_fee_per_gas=pre.execution.base_fee_per_gas,
+            block_hash=pre.execution.block_hash,
+            transactions_root=pre.execution.transactions_root,
+            withdrawals_root=pre.execution.withdrawals_root,
+            blob_gas_used=pre.execution.blob_gas_used,
+            excess_blob_gas=pre.execution.excess_blob_gas,
+        ),
+        execution_branch=normalize_merkle_branch(
+            pre.execution_branch, EXECUTION_PAYLOAD_GINDEX_ELECTRA),
     )
 ```
 

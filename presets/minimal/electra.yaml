@@ -48,3 +48,8 @@ MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 2
 # ---------------------------------------------------------------
 # 2**4 ( = 4) pending deposits
 MAX_PENDING_DEPOSITS_PER_EPOCH: 16
+
+# Misc
+# ---------------------------------------------------------------
+# [customized] `floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK)` = 7 + 1 + 5 = 13
+KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA: 13

@@ -32,6 +32,12 @@ def latest_next_sync_committee_gindex(spec):
     return spec.NEXT_SYNC_COMMITTEE_GINDEX
 
 
+def latest_execution_payload_gindex(spec):
+    if hasattr(spec, 'EXECUTION_PAYLOAD_GINDEX_ELECTRA'):
+        return spec.EXECUTION_PAYLOAD_GINDEX_ELECTRA
+    return spec.EXECUTION_PAYLOAD_GINDEX
+
+
 def latest_normalize_merkle_branch(spec, branch, gindex):
     if hasattr(spec, 'normalize_merkle_branch'):
         return spec.normalize_merkle_branch(branch, gindex)

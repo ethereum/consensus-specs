@@ -10,7 +10,9 @@
 
 - [Introduction](#introduction)
 - [Modifications in Electra](#modifications-in-electra)
+  - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Custom types](#custom-types)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -37,6 +39,20 @@ The specification of these changes continues in the same format as the network s
 
 ## Modifications in Electra
 
+### Preset
+
+Existing `PROOF_DEPTH` presets are frozen at their [Deneb](../../deneb/p2p-interface.md#preset) values.
+
+| Name                                     | Value                             |
+|------------------------------------------|-----------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(deneb.BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) |
+
+*[New in Electra:EIP7688]*
+
+| Name                                     | Value                             | Description                                                         |
+|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 20) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+
 ### Configuration
 
 *[New in Electra:EIP7691]*
@@ -45,6 +61,12 @@ The specification of these changes continues in the same format as the network s
 |-------------------------------------|----------------------------------------------------------|-------------------------------------------------------------------|
 | `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
 | `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+
+### Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `KZGCommitmentInclusionProof` | `Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA]` | Merkle branch of a single `blob_kzg_commitments` list item within `BeaconBlockBody` |
 
 ### The gossip domain: gossipsub
 

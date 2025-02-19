@@ -11,6 +11,7 @@
   - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Custom types](#custom-types)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
     - [`BlobIdentifier`](#blobidentifier)
@@ -70,6 +71,12 @@ The specification of these changes continues in the same format as the network s
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
 | `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
 
+### Custom types
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `KZGCommitmentInclusionProof` | `Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]` | Merkle branch of a single `blob_kzg_commitments` list item within `BeaconBlockBody` |
+
 ### Containers
 
 #### `BlobSidecar`
@@ -83,7 +90,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: KZGCommitmentInclusionProof
 ```
 
 #### `BlobIdentifier`
@@ -102,12 +109,12 @@ class BlobIdentifier(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index))
+    gindex = get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index)
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.kzg_commitment_inclusion_proof,
-        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
-        index=gindex,
+        depth=floorlog2(gindex),
+        index=get_subtree_index(gindex),
         root=blob_sidecar.signed_block_header.message.body_root,
     )
 ```
