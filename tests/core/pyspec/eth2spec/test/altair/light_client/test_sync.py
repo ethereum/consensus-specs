@@ -359,6 +359,77 @@ def test_advance_finality_without_sync_committee(spec, state):
     yield from finish_lc_sync_test(test)
 
 
+@with_light_client
+@spec_state_test_with_matching_config
+@with_presets([MINIMAL], reason="too slow")
+def test_light_client_sync_no_force_update(spec, state):
+    """Test that force update does not occur before timeout threshold is reached.
+
+    This test verifies that even with a best_valid_update present, the light client
+    will not perform a force update until sufficient time (UPDATE_TIMEOUT slots) has passed
+    since the last finalized header.
+
+    Test progression:
+    ```
+
+
+    +-----------+                   +----------+     +-----------+                  +---------+
+    | finalized | <-- (2 epochs) -- | attested | <-- | signature | <-- (N slots) -- | current |
+    +-----------+                   +----------+     +-----------+                  +---------+
+         ^                                                |                              ^
+         |                                                |                              |
+         |                                                V                              |
+         |                                           best_valid_update                   |
+         |                                                                               |
+         +------------------- (UPDATE_TIMEOUT) ------------------------------------------+
+
+    Delays:
+    * finalized to attested: 2 epochs
+    * attested to signature: 1 slot
+    * signature to current slot (N): UPDATE_TIMEOUT - (2 * SLOTS_PER_EPOCH + 1) slots
+    ```
+
+    Key points:
+    * best_valid_update created at signature block
+    * advance to just before timeout threshold
+    * verify force update does not occur
+    """
+    test = yield from setup_lc_sync_test(spec, state)
+
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
+    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_state = state.copy()
+    _, _, state = next_slots_with_attestations(spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True)
+    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_state = state.copy()
+    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+
+    # Create initial update to set up store state
+    yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block)
+    assert test.store.best_valid_update is None
+
+    # Create a best_valid_update by emitting an update without a finalized_header
+    update = yield from emit_update(test, spec, state, block, attested_state, attested_block, finalized_block=None)
+    assert test.store.best_valid_update == update
+
+    # Advance just short of timeout
+    next_slots(spec, state, spec.UPDATE_TIMEOUT - (2 * spec.SLOTS_PER_EPOCH + 1))
+
+    # Verify force update conditions
+    current_slot = state.slot
+    assert test.store.best_valid_update is not None
+    assert not (current_slot > test.store.finalized_header.beacon.slot + spec.UPDATE_TIMEOUT)
+
+    # Try force update
+    yield from emit_force_update(test, spec, state)
+    # Store should remain unchanged since timeout wasn't reached
+    assert test.store.finalized_header.beacon.slot == finalized_state.slot
+
+    # Finish test
+    yield from finish_lc_sync_test(test)
+
+
 def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Start test (Legacy bootstrap with an upgraded store)
     test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
