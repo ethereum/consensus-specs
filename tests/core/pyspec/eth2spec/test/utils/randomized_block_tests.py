@@ -111,6 +111,17 @@ def randomize_state_electra(spec, state, stats, exit_fraction=0.1, slash_fractio
     return scenario_state
 
 
+def randomize_state_fulu(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_electra(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
 # epochs
 
 def epochs_until_leak(spec):
@@ -265,6 +276,12 @@ def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    return block
+
+
+def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+    block = random_block_electra(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block
 

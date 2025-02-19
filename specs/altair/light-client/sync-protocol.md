@@ -1,7 +1,5 @@
 # Altair Light Client -- Sync Protocol
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
 ## Table of contents
 
 <!-- TOC -->
@@ -274,6 +272,8 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
     # Tiebreaker 2: Prefer older data (fewer changes to best)
     if new_update.attested_header.beacon.slot != old_update.attested_header.beacon.slot:
         return new_update.attested_header.beacon.slot < old_update.attested_header.beacon.slot
+
+    # Tiebreaker 3: Prefer updates with earlier signature slots
     return new_update.signature_slot < old_update.signature_slot
 ```
 

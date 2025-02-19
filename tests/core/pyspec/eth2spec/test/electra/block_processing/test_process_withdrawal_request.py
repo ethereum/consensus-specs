@@ -271,7 +271,7 @@ def test_incorrect_withdrawal_credential_prefix(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_on_withdrawal_request_initiated_validator(spec, state):
+def test_on_withdrawal_request_initiated_exit_validator(spec, state):
     rng = random.Random(1342)
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -766,9 +766,7 @@ def test_insufficient_effective_balance(spec, state):
     address = b"\x22" * 20
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     # Make effective balance insufficient
-    state.validators[
-        validator_index
-    ].effective_balance -= spec.EFFECTIVE_BALANCE_INCREMENT
+    state.validators[validator_index].effective_balance -= spec.EFFECTIVE_BALANCE_INCREMENT
     # Make sure validator has enough balance to withdraw
     state.balances[validator_index] += spec.EFFECTIVE_BALANCE_INCREMENT
 

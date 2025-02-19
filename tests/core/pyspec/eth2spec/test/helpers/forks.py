@@ -1,6 +1,6 @@
 from .constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    ELECTRA, FULU, WHISK, EIP7732,
+    ELECTRA, FULU, EIP7441, EIP7732,
     PREVIOUS_FORK_OF,
 )
 
@@ -45,8 +45,8 @@ def is_post_fulu(spec):
     return is_post_fork(spec.fork, FULU)
 
 
-def is_post_whisk(spec):
-    return is_post_fork(spec.fork, WHISK)
+def is_post_eip7441(spec):
+    return is_post_fork(spec.fork, EIP7441)
 
 
 def is_post_eip7732(spec):

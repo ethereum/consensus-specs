@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
 from eth2spec.gen_helpers.gen_from_tests.gen import combine_mods, run_state_test_generators, check_mods
 
 
@@ -27,7 +27,12 @@ if __name__ == "__main__":
         'sync',
     ]}
     deneb_mods = combine_mods(_new_deneb_mods, capella_mods)
+
+    # No additional Electra specific light client tests
     electra_mods = deneb_mods
+
+    # No additional Electra specific light client tests
+    fulu_mods = electra_mods
 
     all_mods = {
         ALTAIR: altair_mods,
@@ -35,6 +40,7 @@ if __name__ == "__main__":
         CAPELLA: capella_mods,
         DENEB: deneb_mods,
         ELECTRA: electra_mods,
+        FULU: fulu_mods,
     }
     check_mods(all_mods, "light_client")
 

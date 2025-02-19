@@ -9,7 +9,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     FULU,
-    WHISK,
+    EIP7441,
     MINIMAL,
     ALL_PHASES,
     POST_FORK_OF,
@@ -154,7 +154,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
 def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
-    (The number of validators is double the amount need for the max activation/exit  churn limit)
+    (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     num_validators = (
@@ -573,8 +573,8 @@ with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
-with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

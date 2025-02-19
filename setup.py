@@ -1,31 +1,32 @@
-from setuptools import setup, find_packages, Command
-from setuptools.command.build_py import build_py
-from distutils import dir_util
-from distutils.util import convert_path
-from pathlib import Path
+import ast
+import copy
+import json
+import logging
 import os
 import string
-from typing import Dict, List, Sequence, Optional, Tuple
-import ast
-import subprocess
 import sys
-import copy
+import warnings
+
 from collections import OrderedDict
-import json
+from distutils import dir_util
+from distutils.util import convert_path
 from functools import lru_cache
+from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.ext.gfm import gfm
+from marko.ext.gfm.elements import Table
+from marko.inline import CodeSpan
+from pathlib import Path
+from ruamel.yaml import YAML
+from setuptools import setup, find_packages, Command
+from setuptools.command.build_py import build_py
+from typing import Dict, List, Sequence, Optional, Tuple
+
+pysetup_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
-    # code names
     PHASE0,
-    # misc
     ETH2_SPEC_COMMENT_PREFIX,
-)
-from pysetup.spec_builders import spec_builders
-from pysetup.typing import (
-    BuildTarget,
-    ProtocolDefinition,
-    SpecObject,
-    VariableDefinition,
 )
 from pysetup.helpers import (
     combine_spec_objects,
@@ -33,41 +34,28 @@ from pysetup.helpers import (
     objects_to_spec,
     parse_config_vars,
 )
-from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.md_doc_paths import (
+    get_md_doc_paths
+)
+from pysetup.spec_builders import (
+    spec_builders
+)
+from pysetup.typing import (
+    BuildTarget,
+    ProtocolDefinition,
+    SpecObject,
+    VariableDefinition,
+)
+
 
 # Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
-import warnings
 warnings.filterwarnings('ignore', message='Normalizing .* to .*')
 
 # Ignore 'running' and 'creating' messages
-import logging
 class PyspecFilter(logging.Filter):
     def filter(self, record):
         return not record.getMessage().startswith(('running ', 'creating '))
 logging.getLogger().addFilter(PyspecFilter())
-
-# NOTE: have to programmatically include third-party dependencies in `setup.py`.
-def installPackage(package: str):
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-
-RUAMEL_YAML_VERSION = "ruamel.yaml==0.17.21"
-try:
-    import ruamel.yaml
-except ImportError:
-    installPackage(RUAMEL_YAML_VERSION)
-
-from ruamel.yaml import YAML
-
-MARKO_VERSION = "marko==1.0.2"
-try:
-    import marko
-except ImportError:
-    installPackage(MARKO_VERSION)
-
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
-from marko.inline import CodeSpan
-from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table
 
 
 @lru_cache(maxsize=None)
@@ -550,12 +538,9 @@ with open(os.path.join('tests', 'core', 'pyspec', 'eth2spec', 'VERSION.txt')) as
     spec_version = f.read().strip()
 
 setup(
-    name='eth2spec',
     version=spec_version,
-    description="Eth2 spec, provided as Python package for tooling and testing",
     long_description=readme,
     long_description_content_type="text/markdown",
-    author="ethereum",
     url="https://github.com/ethereum/consensus-specs",
     include_package_data=False,
     package_data={
@@ -575,25 +560,4 @@ setup(
     packages=find_packages(where='tests/core/pyspec') + ['configs', 'presets', 'specs', 'presets', 'sync'],
     py_modules=["eth2spec"],
     cmdclass=commands,
-    python_requires=">=3.9, <4",
-    extras_require={
-        "test": ["pytest>=4.4", "pytest-cov", "pytest-xdist"],
-        "lint": ["flake8==5.0.4", "mypy==0.981", "pylint==3.3.1", "codespell<3.0.0,>=2.0.0"],
-        "generator": ["setuptools>=72.0.0", "pytest>4.4", "python-snappy==0.7.3", "filelock", "pathos==0.3.0"],
-        "docs": ["mkdocs==1.4.2", "mkdocs-material==9.1.5", "mdx-truly-sane-lists==1.3",  "mkdocs-awesome-pages-plugin==2.8.0"]
-    },
-    install_requires=[
-        "eth-utils>=2.0.0,<3",
-        "eth-typing>=3.2.0,<4.0.0",
-        "pycryptodome>=3.19.1",
-        "py_ecc==6.0.0",
-        "milagro_bls_binding==1.9.0",
-        "remerkleable==0.1.28",
-        "trie>=3,<4",
-        RUAMEL_YAML_VERSION,
-        "lru-dict==1.2.0",
-        MARKO_VERSION,
-        "py_arkworks_bls12381==0.3.8",
-        "curdleproofs==0.1.2",
-    ]
 )
