@@ -28,7 +28,7 @@ This document contains the consensus-layer networking specification for EIP-7805
 | Name | Value | Description |
 | - | - | - |
 | `MAX_REQUEST_INCLUSION_LIST` | `2**4` (= 16) | Maximum number of inclusion list in a single request |
-| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of inclusion list in bytes |
+| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
 
 ### The gossip domain: gossipsub
 
