@@ -29,8 +29,8 @@ from eth2spec.test.helpers.deposits import (
 @with_electra_and_later
 @spec_state_test
 def test_basic_el_withdrawal_request(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     address = b'\x22' * 20
@@ -58,8 +58,8 @@ def test_basic_el_withdrawal_request(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
@@ -101,8 +101,8 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_basic_btec_before_el_withdrawal_request(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
@@ -148,8 +148,8 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     address = b'\x22' * 20
