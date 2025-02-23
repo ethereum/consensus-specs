@@ -32,6 +32,7 @@
   - [Construct attestation](#construct-attestation)
 - [Attestation aggregation](#attestation-aggregation)
   - [Construct aggregate](#construct-aggregate)
+  - [Broadcast aggregate](#broadcast-aggregate)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -70,7 +71,7 @@ class GetPayloadResponse(object):
 ```python
 class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
-    aggregate: Attestation  # [Modified in Electra:EIP7549]
+    aggregate: CommitteeAttestation  # [Modified in Electra:EIP7549]
     selection_proof: BLSSignature
 ```
 
@@ -113,14 +114,14 @@ Changed the max attester slashings size to `MAX_ATTESTER_SLASHINGS_ELECTRA`.
 Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
 The network attestation aggregates contain only the assigned committee attestations.
-Attestation aggregates received by the block proposer from the committee aggregators with disjoint `committee_bits` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
-The proposer should run the following function to construct an on chain final aggregate form a list of network aggregates with equal `AttestationData`:
+Committee attestations received by the block proposer from the committee aggregators with different `committee_index` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
+The proposer should run the following function to construct an on-chain final aggregate from a list of committee attestations with equal `AttestationData`:
 
 ```python
-def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Attestation:
-    aggregates = sorted(network_aggregates, key=lambda a: get_committee_indices(a.committee_bits)[0])
+def compute_on_chain_aggregate(committee_attestations: Sequence[CommitteeAttestation]) -> Attestation:
+    attestations = sorted(committee_attestations, key=lambda a: a.committee_index)
 
-    data = aggregates[0].data
+    data = attestations[0].data
     aggregation_bits = Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]()
     for a in aggregates:
         for b in a.aggregation_bits:
@@ -128,7 +129,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
     signature = bls.Aggregate([a.signature for a in aggregates])
 
-    committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
+    committee_indices = [a.committee_index for a in aggregates]
     committee_flags = [(index in committee_indices) for index in range(0, MAX_COMMITTEES_PER_SLOT)]
     committee_bits = Bitvector[MAX_COMMITTEES_PER_SLOT](committee_flags)
 
@@ -306,4 +307,4 @@ with updated field assignments:
 
 - Set `attestation_data.index = 0`.
 - Let `aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has the bit set corresponding to `committee_index` in each individual attestation.
+- Set `attestation.committee_index` to the index associated with the validator's committee.
