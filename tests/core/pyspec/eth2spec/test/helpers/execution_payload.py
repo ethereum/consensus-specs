@@ -268,7 +268,11 @@ def build_empty_post_eip7732_execution_payload_header(spec, state):
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     epoch = spec.get_current_epoch(state)
     # TODO(jtraglia): placeholder until we figure out how to compute the builder index
-    builder_index = spec.get_active_validator_indices(state, epoch)[0]
+    builder_index = None
+    for index in spec.get_active_validator_indices(state, epoch):
+        if not state.validators[index].slashed:
+            builder_index = index
+    assert builder_index is not None
     return spec.ExecutionPayloadHeader(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
