@@ -698,7 +698,7 @@ When Snappy is applied, it can be passed through a buffered Snappy writer to com
 When snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
 Before reading the payload, the header MUST be validated:
-- The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
+- The length-prefix MUST be encoded as an unsigned protobuf varint. It SHOULD be minimally encoded (i.e., without any redundant bytes) and MUST not exceed 10 bytes in length, which is sufficient to represent any `uint64` value. The length-prefix MUST be decoded into a type which supports the full range of `uint64` values.
 - The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds) or `MAX_PAYLOAD_SIZE`, whichever is smaller.
 
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.

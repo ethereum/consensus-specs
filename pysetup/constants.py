@@ -7,7 +7,7 @@ DENEB = 'deneb'
 ELECTRA = 'electra'
 FULU = 'fulu'
 EIP6800 = 'eip6800'
-WHISK = 'whisk'
+EIP7441 = 'eip7441'
 EIP7732 = 'eip7732'
 
 

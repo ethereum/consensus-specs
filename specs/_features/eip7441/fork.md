@@ -1,4 +1,4 @@
-# Whisk -- Fork Logic
+# EIP-7441 -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -10,18 +10,18 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to Whisk](#fork-to-whisk)
+- [Fork to EIP-7441](#fork-to-eip-7441)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This document describes the process of Whisk upgrade.
+This document describes the process of the EIP-7441 upgrade.
 
 ```
 """
-    WHISK_FORK_EPOCH
+EIP7441_FORK_EPOCH
         |                     cooldown
         |                     | ||
         v                     vsvv
@@ -38,21 +38,21 @@ This document describes the process of Whisk upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name                 | Value                   |
-| -------------------- | ----------------------- |
-| `WHISK_FORK_VERSION` | `Version('0x08000000')` |
-| `WHISK_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP7441_FORK_VERSION` | `Version('0x08000000')`               |
+| `EIP7441_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to Whisk
+## Fork to EIP-7441
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == WHISK_FORK_EPOCH`, an irregular state change is made to upgrade to Whisk. `WHISK_FORK_EPOCH` must be a multiple of `WHISK_RUN_DURATION_IN_EPOCHS`.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7441_FORK_EPOCH`, an irregular state change is made to upgrade to Whisk. `EIP7441_FORK_EPOCH` must be a multiple of `RUN_DURATION_IN_EPOCHS`.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `WHISK_FORK_EPOCH * SLOTS_PER_EPOCH`.
+The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP7441_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 This ensures that we drop right into the beginning of the shuffling phase but without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle all the setup ourselves in `upgrade_to_whisk()` below.
 
 ```python
-def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
+def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:
     # Compute initial unsafe trackers for all validators
     ks = [get_initial_whisk_k(ValidatorIndex(validator_index), 0) for validator_index in range(len(pre.validators))]
     whisk_k_commitments = [get_k_commitment(k) for k in ks]
@@ -66,7 +66,7 @@ def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=WHISK_FORK_VERSION,
+            current_version=EIP7441_FORK_VERSION,
             epoch=epoch,
         ),
         # History
@@ -106,15 +106,15 @@ def upgrade_to_whisk(pre: capella.BeaconState) -> BeaconState:
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # Whisk
-        whisk_proposer_trackers=[WhiskTracker() for _ in range(WHISK_PROPOSER_TRACKERS_COUNT)],  # [New in Whisk]
-        whisk_candidate_trackers=[WhiskTracker() for _ in range(WHISK_CANDIDATE_TRACKERS_COUNT)],  # [New in Whisk]
-        whisk_trackers=whisk_trackers,  # [New in Whisk]
-        whisk_k_commitments=whisk_k_commitments,  # [New in Whisk]
+        whisk_proposer_trackers=[WhiskTracker() for _ in range(PROPOSER_TRACKERS_COUNT)],  # [New in EIP7441]
+        whisk_candidate_trackers=[WhiskTracker() for _ in range(CANDIDATE_TRACKERS_COUNT)],  # [New in EIP7441]
+        whisk_trackers=whisk_trackers,  # [New in EIP7441]
+        whisk_k_commitments=whisk_k_commitments,  # [New in EIP7441]
     )
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day
     # Use an old epoch when selecting candidates so that we don't get the same seed as in the next candidate selection
-    select_whisk_candidate_trackers(post, Epoch(saturating_sub(epoch, WHISK_PROPOSER_SELECTION_GAP + 1)))
+    select_whisk_candidate_trackers(post, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP + 1)))
     select_whisk_proposer_trackers(post, epoch)
 
     # Do a final round of candidate selection.

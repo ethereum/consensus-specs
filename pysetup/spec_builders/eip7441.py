@@ -1,10 +1,10 @@
 from typing import Dict
 from .base import BaseSpecBuilder
-from ..constants import WHISK
+from ..constants import EIP7441
 
 
-class WhiskSpecBuilder(BaseSpecBuilder):
-    fork: str = WHISK
+class EIP7441SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP7441
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -18,9 +18,9 @@ import json
     def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
         # Necessary for custom types `WhiskShuffleProof` and `WhiskTrackerProof`
         return {
-            'WHISK_MAX_SHUFFLE_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_SHUFFLE_PROOF_SIZE'].value,
-            'WHISK_MAX_OPENING_PROOF_SIZE': spec_object.preset_vars['WHISK_MAX_OPENING_PROOF_SIZE'].value,
-            'WHISK_VALIDATORS_PER_SHUFFLE': spec_object.preset_vars['WHISK_VALIDATORS_PER_SHUFFLE'].value,
+            'MAX_SHUFFLE_PROOF_SIZE': spec_object.preset_vars['MAX_SHUFFLE_PROOF_SIZE'].value,
+            'MAX_OPENING_PROOF_SIZE': spec_object.preset_vars['MAX_OPENING_PROOF_SIZE'].value,
+            'VALIDATORS_PER_SHUFFLE': spec_object.preset_vars['VALIDATORS_PER_SHUFFLE'].value,
             'CURDLEPROOFS_N_BLINDERS': spec_object.preset_vars['CURDLEPROOFS_N_BLINDERS'].value,
         }
 
