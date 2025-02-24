@@ -23,6 +23,7 @@ from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_empty_signed_execution_payload_header,
+    compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
@@ -210,7 +211,11 @@ def test_invalid_parent_from_same_slot(spec, state):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     child_block.parent_root = state.latest_block_header.hash_tree_root()
-    if is_post_bellatrix(spec):
+    if is_post_eip7732(spec):
+        payload = build_empty_execution_payload(spec, state)
+        child_block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+            spec, payload, state)
+    elif is_post_bellatrix(spec):
         child_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, child_block)
 
     # Show that normal path through transition fails
