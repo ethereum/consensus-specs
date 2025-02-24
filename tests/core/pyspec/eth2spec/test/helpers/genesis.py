@@ -8,7 +8,7 @@ from eth2spec.test.helpers.execution_payload import (
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb,
-    is_post_electra, is_post_whisk, is_post_eip7441, is_post_eip7732,
+    is_post_electra, is_post_eip7441, is_post_eip7732,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.eip7441 import (
