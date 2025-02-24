@@ -172,7 +172,7 @@ def test_on_block_bad_parent_root(spec, state):
     if is_post_eip7732(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
-        spec, payload, state)
+            spec, payload, state)
     elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
