@@ -66,6 +66,7 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
+# TODO(jtraglia): Pretty sure this doesn't play well with eip7732. Needs some work.
 def _set_operations_by_dict(spec, block, operation_dict, state):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
@@ -73,7 +74,6 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         for attr in key.split('.')[:-1]:
             obj = getattr(obj, attr)
         setattr(obj, key.split('.')[-1], value)
-    # TODO(jtraglia): Ensure this is correct. It
     if is_post_eip7732(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
