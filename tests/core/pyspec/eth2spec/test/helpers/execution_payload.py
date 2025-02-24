@@ -266,12 +266,15 @@ def build_empty_post_eip7732_execution_payload_header(spec, state):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    epoch = spec.get_current_epoch(state)
+    # TODO(jtraglia): placeholder until we figure out how to compute the builder index
+    builder_index = spec.get_active_validator_indices(state, epoch)[0]
     return spec.ExecutionPayloadHeader(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
         block_hash=spec.Hash32(),
         gas_limit=spec.uint64(0),
-        builder_index=spec.ValidatorIndex(0),
+        builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
         blob_kzg_commitments_root=kzg_list.hash_tree_root(),
@@ -282,7 +285,7 @@ def build_empty_signed_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
     message = build_empty_post_eip7732_execution_payload_header(spec, state)
-    privkey = privkeys[0]
+    privkey = privkeys[message.builder_index]
     signature = spec.get_execution_payload_header_signature(state, message, privkey)
     return spec.SignedExecutionPayloadHeader(
         message=message,

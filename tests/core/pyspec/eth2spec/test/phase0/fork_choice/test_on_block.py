@@ -19,6 +19,8 @@ from eth2spec.test.helpers.block import (
     sign_block,
 )
 from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.fork_choice import (
@@ -167,7 +169,11 @@ def test_on_block_bad_parent_root(spec, state):
     block.state_root = state.hash_tree_root()
 
     block.parent_root = b'\x45' * 32
-    if is_post_bellatrix(spec):
+    if is_post_eip7732(spec):
+        payload = build_empty_execution_payload(spec, state)
+        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        spec, payload, state)
+    elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     signed_block = sign_block(spec, state, block)
