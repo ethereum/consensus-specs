@@ -42,7 +42,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
         post_state.latest_block_hash = execution_payload.block_hash
         post_state.latest_full_slot = state.slot
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[0]
+        privkey = privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
             state,
             envelope,

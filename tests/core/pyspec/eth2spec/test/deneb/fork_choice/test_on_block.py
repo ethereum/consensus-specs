@@ -40,7 +40,7 @@ def get_block_with_blob(spec, state, rng=None):
     return block, blobs, blob_kzg_proofs
 
 
-# TODO(jtraglia): use with_all_phases_from_to_except after EIP7732 is based on Fulu.
+# TODO(jtraglia): Use with_all_phases_from_to_except after EIP7732 is based on Fulu.
 # This applies to every other test in this file too.
 @with_all_phases_from_except(DENEB, [FULU, EIP7732])
 @spec_state_test

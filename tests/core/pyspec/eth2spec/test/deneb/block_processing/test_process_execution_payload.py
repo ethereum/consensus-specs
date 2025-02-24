@@ -9,7 +9,6 @@ from eth2spec.test.context import (
     spec_state_test,
     expect_assertion_error,
     with_deneb_and_later,
-    with_deneb_until_eip7732,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.forks import is_post_eip7732
@@ -48,7 +47,7 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
         post_state.latest_block_hash = execution_payload.block_hash
         post_state.latest_full_slot = state.slot
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[0]
+        privkey = privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
             state,
             envelope,
@@ -250,8 +249,7 @@ def test_incorrect_commitment(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
-# TODO(jtraglia): Determine why this doesn't work in eip7732
-@with_deneb_until_eip7732
+@with_deneb_and_later
 @spec_state_test
 def test_no_commitments_for_transactions(spec, state):
     """
@@ -264,6 +262,9 @@ def test_no_commitments_for_transactions(spec, state):
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    if is_post_eip7732(spec):
+        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
@@ -288,8 +289,7 @@ def test_incorrect_commitments_order(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
 
 
-# TODO(jtraglia): Determine why this doesn't work in eip7732
-@with_deneb_until_eip7732
+@with_deneb_and_later
 @spec_state_test
 def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     """
@@ -304,6 +304,9 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    if is_post_eip7732(spec):
+        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
     # the transaction doesn't contain any blob, but commitments are provided
     yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
