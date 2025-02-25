@@ -50,7 +50,7 @@ def test_first_proposal_ok(spec, state):
 
 @with_eip7441_and_later
 @spec_state_test
-def test_first_proposal_indentity_tracker(spec, state):
+def test_first_proposal_identity_tracker(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
     set_registration(body, OTHER_K, IDENTITY_R)
