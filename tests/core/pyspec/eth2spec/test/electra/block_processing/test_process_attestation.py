@@ -8,7 +8,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
     get_valid_attestation,
-    sign_attestation,
     build_attestation_data,
     get_valid_attestation_at_slot,
     get_empty_eip7549_aggregation_bits,
@@ -31,8 +30,6 @@ def test_invalid_attestation_data_index_not_zero(spec, state):
     # flip the attestations index to make it non-zero and invalid
     assert committee_index == spec.get_committee_indices(attestation.committee_bits)[0]
     attestation.data.index = committee_index
-
-    sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -160,7 +157,7 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     """
     # Attestation with full committee participating
     committee_0 = spec.get_beacon_committee(state, state.slot, 0)
-    attestation_1 = get_valid_attestation(spec, state, index=1, signed=True)
+    attestation_1 = get_valid_attestation(spec, state, index=0, signed=True)
 
     # Create an on chain aggregate
     aggregate = spec.Attestation(data=attestation_1.data, signature=attestation_1.signature)
@@ -169,12 +166,14 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     aggregate.aggregation_bits = get_empty_eip7549_aggregation_bits(
         spec, state, aggregate.committee_bits, aggregate.data.slot
     )
+
     committee_offset = len(committee_0)
     for i in range(len(attestation_1.aggregation_bits)):
         aggregate.aggregation_bits[committee_offset + i] = attestation_1.aggregation_bits[i]
 
-    # Check that only one committee is presented
-    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(state, attestation_1)
+    # Check that only one committee is presented, the first committee is empty
+    for i in range(len(attestation_1.aggregation_bits)):
+        assert not aggregate.aggregation_bits[i]
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
