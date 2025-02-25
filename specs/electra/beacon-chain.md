@@ -1312,7 +1312,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 *Note*: The function is modified to support EIP7549.
 
 ```python
-
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
