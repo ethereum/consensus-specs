@@ -395,7 +395,7 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
     # Set some balances to be very low (including 0)
     assert len(state.validators) >= 5
     for i, index in enumerate(range(5)):
-        state.validators[index].effective_balance = i
+        state.validators[index].effective_balance = i * spec.EFFECTIVE_BALANCE_INCREMENT
 
     yield from run_deltas(spec, state)
 
@@ -410,7 +410,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
         # Set removed indices effective balance to very low amount
         indices = spec.get_unslashed_attesting_indices(state, [attestation])
         for i, index in enumerate(indices):
-            state.validators[index].effective_balance = i
+            state.validators[index].effective_balance = i * spec.EFFECTIVE_BALANCE_INCREMENT
     else:
         index = 0
         state.validators[index].effective_balance = 1
