@@ -1176,7 +1176,7 @@ def test_switch_to_compounding_source_bls_withdrawal_credential(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_switch_to_compounding_source_coumpounding_withdrawal_credential(spec, state):
+def test_switch_to_compounding_source_compounding_withdrawal_credential(spec, state):
     # Set up a correct request, but source does have
     # a compounding withdrawal credential and excess balance
     current_epoch = spec.get_current_epoch(state)
