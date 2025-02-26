@@ -154,7 +154,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     yield 'steps', test_steps
 
 
-def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previous_epoch):
+def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previous_epoch):
     """
     """
     test_steps = []
@@ -224,7 +224,7 @@ def _run_delayed_justification(spec, state, attemped_reorg, is_justifying_previo
     yield from add_attestations(spec, store, attestations_for_y, test_steps)
     assert spec.get_head(store) == signed_block_y.message.hash_tree_root()
 
-    if attemped_reorg:
+    if attempted_reorg:
         # add chain z
         state = state_b.copy()
         slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
@@ -266,7 +266,7 @@ def test_simple_attempted_reorg_delayed_justification_current_epoch(spec, state)
     z: the child of block of x at the first slot of epoch 5.
     block z can reorg the chain from block y.
     """
-    yield from _run_delayed_justification(spec, state, attemped_reorg=True, is_justifying_previous_epoch=False)
+    yield from _run_delayed_justification(spec, state, attempted_reorg=True, is_justifying_previous_epoch=False)
 
 
 def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justifying_previous_epoch):
@@ -316,7 +316,7 @@ def _run_include_votes_of_another_empty_chain(spec, state, enough_ffg, is_justif
         assert state.current_justified_checkpoint.epoch == 3
 
     if is_justifying_previous_epoch:
-        # try to find the block that can justify epoch 3 by including only previous epoch attesations
+        # try to find the block that can justify epoch 3 by including only previous epoch attestations
         _, justifying_slot = find_next_justifying_slot(spec, state, False, True)
         assert spec.compute_epoch_at_slot(justifying_slot) == 4
     else:
@@ -496,7 +496,7 @@ def test_delayed_justification_current_epoch(spec, state):
 
     block_b: the block that can justify c4.
     """
-    yield from _run_delayed_justification(spec, state, attemped_reorg=False, is_justifying_previous_epoch=False)
+    yield from _run_delayed_justification(spec, state, attempted_reorg=False, is_justifying_previous_epoch=False)
 
 
 @with_altair_and_later
@@ -513,7 +513,7 @@ def test_delayed_justification_previous_epoch(spec, state):
     [c3]<---------------[c4]---[b]<---------------------------------[y]
 
     """
-    yield from _run_delayed_justification(spec, state, attemped_reorg=False, is_justifying_previous_epoch=True)
+    yield from _run_delayed_justification(spec, state, attempted_reorg=False, is_justifying_previous_epoch=True)
 
 
 @with_altair_and_later
@@ -536,7 +536,7 @@ def test_simple_attempted_reorg_delayed_justification_previous_epoch(spec, state
     z: the child of block of x at the first slot of epoch 5.
     block z can reorg the chain from block y.
     """
-    yield from _run_delayed_justification(spec, state, attemped_reorg=True, is_justifying_previous_epoch=True)
+    yield from _run_delayed_justification(spec, state, attempted_reorg=True, is_justifying_previous_epoch=True)
 
 
 @with_altair_and_later

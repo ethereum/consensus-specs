@@ -112,7 +112,7 @@ def test_basic_surround(spec, state):
     att_1_data = get_attestation_1_data(spec, attester_slashing)
     att_2_data = get_attestation_2_data(spec, attester_slashing)
 
-    # set attestion1 to surround attestation 2
+    # set attestation1 to surround attestation 2
     att_1_data.source.epoch = att_2_data.source.epoch - 1
     att_1_data.target.epoch = att_2_data.target.epoch + 1
 

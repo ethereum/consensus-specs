@@ -1409,7 +1409,7 @@ They are best suited to store identity, location, and capability information, ra
 #### How should fork version be used in practice?
 
 Fork versions are to be manually updated (likely via incrementing) at each hard fork.
-This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs)
+This is to provide native domain separation for signatures as well as to aid in usefulness for identifying peers (via ENRs)
 and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains (`ForkDigest`) to aid in the ease of domain separation between chains.
