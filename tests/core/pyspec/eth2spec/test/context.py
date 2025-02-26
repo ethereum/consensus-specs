@@ -169,13 +169,14 @@ with_state = with_custom_state(default_balances, default_activation_threshold)
 
 def low_balances(spec: Spec):
     """
-    Helper method to create a series of low balances.
+    Helper method to create a series of low balances, including zero.
     Usage: `@with_custom_state(balances_fn=low_balances, ...)`
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
-    # Technically the balances cannot be this low starting from genesis, but it is useful for testing
-    low_balance = 18 * 10 ** 9
-    return [low_balance] * num_validators
+    return [
+        (spec.EFFECTIVE_BALANCE_INCREMENT * i) % spec.MAX_EFFECTIVE_BALANCE
+        for i in range(num_validators)
+    ]
 
 
 def misc_balances(spec: Spec):
