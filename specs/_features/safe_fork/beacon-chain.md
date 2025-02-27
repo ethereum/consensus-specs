@@ -54,7 +54,7 @@ def weigh_justification_and_finalization(state: BeaconState,
     state.justification_bits[0] = 0b0
 
     # Modified in [Safe Fork]
-    epochs_after_fork = current_epoch - state.fork.epoch
+    epochs_after_fork = current_epoch - state.fork.epoch + 1
     if epochs_after_fork > HIGH_JUSTIFICATION_RATE_EPOCHS:
         if previous_epoch_target_balance * 3 >= total_active_balance * 2:
             state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
