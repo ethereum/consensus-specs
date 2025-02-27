@@ -10,6 +10,7 @@ from eth2spec.test.helpers.deposits import (
 )
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
+
 @with_capella_and_later
 @spec_state_test
 def test_success_top_up_to_withdrawn_validator(spec, state):
@@ -55,6 +56,7 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         assert has_execution_withdrawal and is_withdrawable and has_non_zero_balance
     else:
         assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
+
 
 @with_capella_and_later
 @spec_state_test
