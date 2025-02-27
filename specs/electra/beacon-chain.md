@@ -1318,14 +1318,14 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
-    # [Modified in Electra:EIP7549]
-    attestation_indices = get_attesting_indices(state, attestation)
-
     # Participation flag indices
     participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
 
+    # [Modified in Electra:EIP7549]
+    indexed_attestation = get_indexed_attestation(state, attestation)  
+    
     # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(state, indexed_attestation)
 
     # Update epoch participation flags
     if data.target.epoch == get_current_epoch(state):
@@ -1334,7 +1334,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         epoch_participation = state.previous_epoch_participation
 
     proposer_reward_numerator = 0
-    for index in attestation_indices:
+    for index in indexed_attestation.attesting_indices:  # [Modified in Electra:EIP7549]
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
