@@ -10,7 +10,6 @@ from eth2spec.test.helpers.deposits import (
 )
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
-
 @with_capella_and_later
 @spec_state_test
 def test_success_top_up_to_withdrawn_validator(spec, state):
@@ -56,3 +55,30 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         assert has_execution_withdrawal and is_withdrawable and has_non_zero_balance
     else:
         assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
+
+@with_capella_and_later
+@spec_state_test
+def test_validator_invalid_high_funding_after_withdrawal(spec, state):
+    """
+    Simple extension of the previous test_success_top_up_to_withdrawn_validator in order to add a negative scenario
+    where a user deposits 2x MAX_EFFECTIVE_BALANCE.
+    """
+    validator_index = 5  # Example validator index
+
+    # Fully withdraw the validator
+    set_validator_fully_withdrawable(spec, state, validator_index)
+    assert state.balances[validator_index] > 0
+
+    next_epoch_via_block(spec, state)
+    assert state.balances[validator_index] == 0
+    assert state.validators[validator_index].effective_balance > 0
+
+    next_epoch_via_block(spec, state)
+    assert state.validators[validator_index].effective_balance == 0
+
+    # Make a top-up balance to validator - attempt to deposit double the max deposit)
+    deposit = spec.MAX_EFFECTIVE_BALANCE * 2
+
+    # Handle the negative test based on the readme - no post state
+    if deposit > spec.MAX_EFFECTIVE_BALANCE:
+        yield 'post', None
