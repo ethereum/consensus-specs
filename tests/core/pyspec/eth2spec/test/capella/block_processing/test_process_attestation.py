@@ -3,6 +3,7 @@ from eth2spec.test.context import (
     with_capella_and_later,
 )
 
+
 @with_capella_and_later
 @spec_state_test
 def test_validator_appears_only_once_in_attestation(spec, state):
