@@ -109,6 +109,26 @@ def test_empty_block_transition(spec, state):
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
+@with_all_phases
+@spec_state_test
+def test_random_data_empty_block_transition(spec, state):
+    pre_slot = state.slot
+    pre_eth1_votes = len(state.eth1_data_votes)
+    pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block]
+    yield 'post', state
+
+    assert len(state.eth1_data_votes) == pre_eth1_votes + 1
+    assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
+    # test for negative condition - random data in new block cannot be same as previous block
+    assert not spec.get_randao_mix(state, spec.get_current_epoch(state)) == pre_mix
 
 @with_all_phases
 @with_presets([MINIMAL],
