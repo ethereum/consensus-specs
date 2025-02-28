@@ -614,6 +614,3 @@ def test_validator_appears_only_once_in_attestation(spec, state):
 
     # Confirm that the same amount of unique validators appear in the list
     assert len(validators) == len(set(validators))
-
-    # yield validators to show the list in the case where there are duplicates
-    yield "committee_assignments", set(validators)
