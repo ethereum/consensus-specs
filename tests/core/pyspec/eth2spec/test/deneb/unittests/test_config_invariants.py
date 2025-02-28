@@ -3,6 +3,7 @@ from eth2spec.test.context import (
     spec_test,
     with_deneb_and_later,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 @with_deneb_and_later
@@ -24,5 +25,19 @@ def test_networking(spec):
     # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
     assert spec.config.BLOB_SIDECAR_SUBNET_COUNT == spec.config.MAX_BLOBS_PER_BLOCK
     for i in range(spec.MAX_BLOB_COMMITMENTS_PER_BLOCK):
-        gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', i)
-        assert spec.floorlog2(gindex) == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH
+        if is_post_eip7732(spec):
+            inner_gindex = spec.get_generalized_index(
+                spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK],
+                i
+            )
+            outer_gindex = spec.get_generalized_index(
+                spec.BeaconBlockBody,
+                "signed_execution_payload_header",
+                "message",
+                "blob_kzg_commitments_root",
+            )
+            gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
+            assert spec.floorlog2(gindex) == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732
+        else:
+            gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', i)
+            assert spec.floorlog2(gindex) == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH

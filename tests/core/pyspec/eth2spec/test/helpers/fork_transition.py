@@ -33,6 +33,7 @@ from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
     is_post_bellatrix,
     is_post_electra,
+    is_post_eip7732,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -48,6 +49,10 @@ from eth2spec.test.helpers.withdrawals import (
 from eth2spec.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash,
+)
 
 
 class OperationType(Enum):
@@ -61,14 +66,19 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-def _set_operations_by_dict(spec, block, operation_dict):
+# TODO(jtraglia): Pretty sure this doesn't play well with eip7732. Needs some work.
+def _set_operations_by_dict(spec, block, operation_dict, state):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
         obj = block.body
         for attr in key.split('.')[:-1]:
             obj = getattr(obj, attr)
         setattr(obj, key.split('.')[-1], value)
-    if is_post_bellatrix(spec):
+    if is_post_eip7732(spec):
+        payload = build_empty_execution_payload(spec, state)
+        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+            spec, payload, state)
+    elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
 
@@ -93,7 +103,7 @@ def _state_transition_and_sign_block_at_slot(spec,
         block.body.sync_aggregate = sync_aggregate
 
     if operation_dict:
-        _set_operations_by_dict(spec, block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict, state)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -409,7 +419,7 @@ def run_transition_with_operation(state,
     if is_right_before_fork:
         # add a block with operation.
         block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(spec, block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(pre_tag(signed_block))
 

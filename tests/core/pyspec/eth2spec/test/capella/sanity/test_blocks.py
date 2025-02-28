@@ -1,8 +1,9 @@
 import random
 from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_eip7732
 from eth2spec.test.context import (
     with_capella_and_later,
+    with_capella_until_eip7732,
     spec_state_test,
     with_presets,
 )
@@ -38,7 +39,7 @@ from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 # `is_execution_enabled` has been removed from Capella
 #
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_invalid_is_execution_enabled_false(spec, state):
     # Set `latest_execution_payload_header` to empty
@@ -199,7 +200,7 @@ def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_bloc
 # Withdrawals
 #
 
-@with_capella_and_later
+@with_capella_until_eip7732
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
@@ -308,7 +309,12 @@ def test_withdrawal_success_two_blocks(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block)
 
-    assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
+    # after EIP-7732 the second block does not perform any withdrawals because
+    # there was no payload processed
+    if is_post_eip7732(spec):
+        assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    else:
+        assert state.next_withdrawal_index == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
 
     yield 'blocks', [signed_block_1, signed_block_2]
     yield 'post', state

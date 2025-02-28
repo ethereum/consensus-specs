@@ -4,7 +4,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.context import (
     with_presets,
     spec_state_test,
-    with_electra_and_later,
+    with_electra_until_eip7732,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash_for_block,
@@ -26,7 +26,8 @@ from eth2spec.test.helpers.constants import (
 )
 
 
-@with_electra_and_later
+# TODO(jtraglia): In eip7732, how do we set execution requests in the payload envelope?
+@with_electra_until_eip7732
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):

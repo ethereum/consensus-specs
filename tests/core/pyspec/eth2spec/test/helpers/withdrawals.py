@@ -1,4 +1,5 @@
 from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 def get_expected_withdrawals(spec, state):
@@ -202,7 +203,10 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
 
     if not valid:
         try:
-            spec.process_withdrawals(state, execution_payload)
+            if is_post_eip7732(spec):
+                spec.process_withdrawals(state)
+            else:
+                spec.process_withdrawals(state, execution_payload)
             raise AssertionError('expected an assertion error, but got none.')
         except AssertionError:
             pass
@@ -210,7 +214,10 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
         yield 'post', None
         return
 
-    spec.process_withdrawals(state, execution_payload)
+    if is_post_eip7732(spec):
+        spec.process_withdrawals(state)
+    else:
+        spec.process_withdrawals(state, execution_payload)
 
     yield 'post', state
 

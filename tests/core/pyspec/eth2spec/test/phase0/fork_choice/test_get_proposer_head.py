@@ -1,7 +1,7 @@
 from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
-    with_altair_and_later,
+    with_altair_until_eip7732,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_at_slot,
@@ -25,7 +25,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_altair_and_later
+@with_altair_until_eip7732
 @spec_state_test
 def test_basic_is_head_root(spec, state):
     test_steps = []
@@ -65,7 +65,7 @@ def test_basic_is_head_root(spec, state):
     yield 'steps', test_steps
 
 
-@with_altair_and_later
+@with_altair_until_eip7732
 @spec_state_test
 def test_basic_is_parent_root(spec, state):
     test_steps = []

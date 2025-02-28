@@ -181,6 +181,19 @@ jobs:
           command: make test fork=eip7441
       - store_test_results:
           path: tests/core/pyspec/test-reports
+  test-eip7732:
+    docker:
+      - image: cimg/python:3.12-node
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v3-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_pyspec_cached_venv
+      - run:
+          name: Run py-tests
+          command: make test fork=eip7732
+      - store_test_results:
+          path: tests/core/pyspec/test-reports
   lint:
     docker:
       - image: cimg/python:3.12-node
@@ -225,6 +238,9 @@ workflows:
           requires:
             - install_pyspec_test
       - test-eip7441:
+          requires:
+            - install_pyspec_test
+      - test-eip7732:
           requires:
             - install_pyspec_test
       - lint:
