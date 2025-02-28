@@ -341,7 +341,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
 ### Modified `get_head`
 
-**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponidng to the head block.
+**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ChildNode:

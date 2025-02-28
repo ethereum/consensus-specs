@@ -179,7 +179,7 @@ def test_random_inactivity_scores_random_participation(spec, state):
 @spec_state_test
 @leaking()
 def test_random_inactivity_scores_random_participation_leaking(spec, state):
-    # Only randompize participation in previous epoch to remain in leak
+    # Only randomize participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
         spec, state,
         randomize_previous_epoch_participation, randomize_inactivity_scores, Random(22222),
