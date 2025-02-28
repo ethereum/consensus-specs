@@ -52,7 +52,7 @@ def get_anchor_root(spec, state):
 
 def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
                        merge_block=False, block_not_found=False, is_optimistic=False,
-                       blob_data=None):
+                       blob_data=None, store_checks=True):
     pre_state = store.block_states[signed_block.message.parent_root]
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
@@ -60,7 +60,7 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     while store.time < block_time:
         time = pre_state.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
-        on_tick_and_append_step(spec, store, time, test_steps)
+        on_tick_and_append_step(spec, store, time, test_steps, store_checks)
 
     post_state = yield from add_block(
         spec, store, signed_block, test_steps,
@@ -143,11 +143,12 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
         return f"blobs_{encode_hex(blobs_root)}"
 
 
-def on_tick_and_append_step(spec, store, time, test_steps):
+def on_tick_and_append_step(spec, store, time, test_steps, store_checks=True):
     assert time >= store.time
     spec.on_tick(store, time)
     test_steps.append({'tick': int(time)})
-    output_store_checks(spec, store, test_steps)
+    if store_checks:
+        output_store_checks(spec, store, test_steps)
 
 
 def run_on_block(spec, store, signed_block, valid=True):
@@ -306,7 +307,9 @@ def apply_next_epoch_with_attestations(spec,
                                        fill_cur_epoch,
                                        fill_prev_epoch,
                                        participation_fn=None,
-                                       test_steps=None):
+                                       test_steps=None,
+                                       is_optimistic=False,
+                                       store_checks=True):
     if test_steps is None:
         test_steps = []
 
@@ -314,7 +317,8 @@ def apply_next_epoch_with_attestations(spec,
         spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        yield from tick_and_add_block(spec, store, signed_block, test_steps,
+                                      is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
@@ -331,12 +335,15 @@ def apply_next_slots_with_attestations(spec,
                                        fill_cur_epoch,
                                        fill_prev_epoch,
                                        test_steps,
-                                       participation_fn=None):
+                                       participation_fn=None,
+                                       is_optimistic=False,
+                                       store_checks=True):
     _, new_signed_blocks, post_state = next_slots_with_attestations(
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
     for signed_block in new_signed_blocks:
         block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        yield from tick_and_add_block(spec, store, signed_block, test_steps,
+                                      is_optimistic=is_optimistic, store_checks=store_checks)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block

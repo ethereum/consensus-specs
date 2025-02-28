@@ -107,6 +107,9 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
+    highest_confirmed_block_current_epoch: Root
+    highest_confirmed_block_previous_epoch: Root
+    leaves_last_slot_previous_epoch: Set[Root]
     payload_withhold_boost_root: Root  # [New in EIP-7732]
     payload_withhold_boost_full: boolean  # [New in EIP-7732]
     payload_reveal_boost_root: Root  # [New in EIP-7732]
@@ -147,6 +150,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
+        highest_confirmed_block_current_epoch=justified_checkpoint.root,
+        highest_confirmed_block_previous_epoch=justified_checkpoint.root,
+        leaves_last_slot_previous_epoch=set(),
         execution_payload_states={anchor_root: copy(anchor_state)},  # [New in EIP-7732]
         ptc_vote={anchor_root: Vector[uint8, PTC_SIZE]()},
     )
