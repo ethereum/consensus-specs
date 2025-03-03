@@ -513,3 +513,38 @@ def test_compute_subscribed_subnets_random_2(spec):
 def test_compute_subscribed_subnets_random_3(spec):
     rng = random.Random(3333)
     run_compute_subscribed_subnets_arguments(spec, rng)
+
+
+
+@with_all_phases
+@spec_state_test
+def test_validator_appears_only_once_in_attestation(spec, state):
+    """
+    A test to confirm that the validator_index of the validators in an attestation committee are unique and there
+    are no duplicate validators
+    """
+    slot = state.slot
+    epoch = slot // spec.SLOTS_PER_EPOCH
+
+    # Get the number of committees assigned per slot in the current epoch
+    slot_committee_count = spec.get_committee_count_per_slot(state, epoch)
+
+    # Get the list of validators for each committee in the slot
+    validators = []
+    for committee in range(slot_committee_count):
+        validator_index = spec.get_committee_assignment(state, epoch, committee)
+
+        # There are tuples and individual validators in the list, so they need to be extracted
+        if isinstance(validator_index, tuple):
+            validators.extend(validator_index[0])
+        elif isinstance(validator_index, list):
+            validators.extend(validator_index)
+        else:
+            validators.append(validator_index)
+
+    # Check that the list of validators is not empty
+    assert len(validators) > 0
+
+    # Confirm that the same amount of unique validators appear in the list
+    assert len(validators) == len(set(validators))
+
