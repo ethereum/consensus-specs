@@ -515,7 +515,6 @@ def test_compute_subscribed_subnets_random_3(spec):
     run_compute_subscribed_subnets_arguments(spec, rng)
 
 
-
 @with_all_phases
 @spec_state_test
 def test_validator_appears_only_once_in_attestation(spec, state):
@@ -547,4 +546,3 @@ def test_validator_appears_only_once_in_attestation(spec, state):
 
     # Confirm that the same amount of unique validators appear in the list
     assert len(validators) == len(set(validators))
-
