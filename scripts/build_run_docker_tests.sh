@@ -13,7 +13,7 @@
 ALL_EXECUTABLE_SPECS=("phase0" "altair" "bellatrix" "capella" "deneb" "electra" "fulu" "eip7441")
 TEST_PRESET_TYPE=minimal
 FORK_TO_TEST=phase0
-WORKDIR="//consensus-specs//tests//core//pyspec"
+WORKDIR="/consensus-specs/tests/core/pyspec"
 ETH2SPEC_FOLDER_NAME="eth2spec"
 CONTAINER_NAME="consensus-specs-tests"
 DATE=$(date +"%Y%m%d-%H-%M")
