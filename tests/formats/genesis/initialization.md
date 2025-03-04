@@ -7,7 +7,7 @@ Tests the initialization of a genesis state based on Eth1 data.
 ### `eth1.yaml`
 
 ```yaml
-eth1_block_hash: Bytes32  -- A `Bytes32` hex encoded, with prefix 0x. The root of the Eth1 block. E.g. "0x4242424242424242424242424242424242424242424242424242424242424242"
+eth1_block_hash: Hash32  -- A `Hash32` hex encoded, with prefix 0x. The root of the Eth1 block. E.g. "0x4242424242424242424242424242424242424242424242424242424242424242"
 eth1_timestamp: int       -- An integer. The timestamp of the block, in seconds.
 ```
 
