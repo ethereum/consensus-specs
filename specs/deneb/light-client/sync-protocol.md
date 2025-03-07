@@ -75,11 +75,10 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
             and header.execution_branch == ExecutionBranch()
         )
 
-    return is_valid_merkle_branch(
+    return is_valid_normalized_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
+        gindex=execution_payload_gindex_at_slot(header.beacon.slot),
         root=header.beacon.body_root,
     )
 ```

@@ -240,7 +240,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     raise
 
                 if parent_class:
-                    assert parent_class == "Container"
+                    assert parent_class in ["Container", "StableContainer", "Profile"]
                 # NOTE: trim whitespace from spec
                 ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
             else:
