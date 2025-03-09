@@ -24,15 +24,6 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
 
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
-        return {
-            'PTC_SIZE': spec_object.preset_vars['PTC_SIZE'].value,
-            'MAX_PAYLOAD_ATTESTATIONS': spec_object.preset_vars['MAX_PAYLOAD_ATTESTATIONS'].value,
-            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732':
-                spec_object.preset_vars['KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732'].value,
-        }
-
-    @classmethod
     def deprecate_constants(cls) -> Set[str]:
         return set([
             'EXECUTION_PAYLOAD_GINDEX',
