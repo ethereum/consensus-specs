@@ -91,7 +91,7 @@ validation (including execution node verification of the `block.body.execution_p
 The following gossip validation from prior specifications MUST NOT be applied if the execution is
 enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
 
-  - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
+- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes validation.
 
 #### Transitioning the gossip
 
