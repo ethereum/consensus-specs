@@ -245,7 +245,7 @@ def get_stake_custody_requirement(supported_validator_stake: uint64) -> uint64:
 
 This higher custody is now advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the validator custody requirement increases, due to an increase in the total balance of the attached validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
-The node keeps a registry of attached validators, determines the validators it can support and rejects duties of the validators whose stake go above the supported_validator_stake cumulative cutoff, which can be determined in the following way:
+Additionally now the node keeps a registry of attached validators, determines the validators it can support and rejects duties of the validators whose stake go above the supported_validator_stake cumulative cutoff, which can be determined in the following way:
 
 ```python
 def get_custody_supported_validators(state: BeaconState, supported_validator_stake: uint64, validator_indices: Sequence[ValidatorIndex]) -> Sequence[ValidatorIndex]:
