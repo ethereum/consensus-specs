@@ -75,6 +75,7 @@ validity of the execution payload. This prevents network segregation between
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block` on the network.
 Alias `block = signed_beacon_block.message`, `execution_payload = block.body.execution_payload`.
+
 - If the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`
   then validate the following:
     - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
@@ -87,6 +88,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
     	  validation (including execution node verification of the `block.body.execution_payload`).
 
 The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
+
   - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 #### Transitioning the gossip

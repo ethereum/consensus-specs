@@ -176,6 +176,7 @@ For this reason, *always* get committee assignments via the fields of the `Beaco
 
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
 Specifically, a validator should:
+
 * Upon (re)syncing the chain and upon sync committee period boundaries, check for assignments in the current and next sync committee periods.
 * If the validator is in the current sync committee period, then they perform the responsibilities below for sync committee rewards.
 * If the validator is in the next sync committee period, they should wait until the next `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` boundary and then perform the responsibilities throughout that period.
