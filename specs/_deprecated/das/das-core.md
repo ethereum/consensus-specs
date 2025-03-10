@@ -103,7 +103,7 @@ Implementations:
 
 ```python
 def recover_data(data: Sequence[Optional[Sequence[Point]]]) -> Sequence[Point]:
-    """Given an a subset of half or more of subgroup-aligned ranges of values, recover the None values."""
+    """Given a subset of half or more of subgroup-aligned ranges of values, recover the None values."""
     ...
 ```
 
