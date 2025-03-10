@@ -253,7 +253,7 @@ def get_custody_supported_validators(state: BeaconState, supported_validator_sta
     supported_validator_stake = 0
 
     for index in validator_indices:
-      if (supported_validator_stake + state.balances[index] < supported_validator_stake):
+      if (supported_validator_stake + state.balances[index] <= supported_validator_stake):
         supported_validator_stake += state.balances[index]
       elif
         break
