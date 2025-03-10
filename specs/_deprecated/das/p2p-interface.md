@@ -59,12 +59,14 @@ without concentrating too many requests on a single node, or breaking the networ
 ## DAS Subnets
 
 On a high level, the push-model roles are divided into:
+
 - Sources: create blobs of shard block data, and transformed into many tiny samples.
 - Sinks: continuously look for samples
 
 At full operation, the network has one proposer, per shard, per slot.
 
 In the push-model, there are:
+
 - *Vertical subnets*: Sinks can subscribe to indices of samples: there is a sample to subnet mapping.
 - *Horizontal subnets*: Sources need to distribute samples to all vertical networks: they participate in a fan-out layer.
 
@@ -115,6 +117,7 @@ TODO: define `(shard, slot, sample_index) -> subnet_index` hash function.
 To allow for subscriptions to rotate quickly and randomly, a backbone is formed to help onboard peers into other topics.
 
 This backbone is based on a pure function of the *node* identity and time:
+
 - Nodes can be found *without additional discovery overhead*:
   peers on a vertical topic can be found by searching the local peerstore for identities that hash to the desired topic(s),
   assuming the peerstore already has a large enough variety of peers.
@@ -166,6 +169,7 @@ Shard blob samples can be verified with just a 48 byte KZG proof (commitment quo
 against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
+
 - _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
    If not known, the client MAY queue the sample if it passes formatting conditions.
 - _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
@@ -214,6 +218,7 @@ Response Content:
 ```
 
 When the sample is:
+
 - Available: respond with a `Success` result code, and the encoded sample.
 - Expected to be available, but not: respond with a `ResourceUnavailable` result code.
 - Not available, but never of interest to the node: respond with an `InvalidRequest` result code.
