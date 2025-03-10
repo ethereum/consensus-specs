@@ -14,6 +14,8 @@
       - [`safe_block_hash`](#safe_block_hash)
       - [`should_override_forkchoice_update`](#should_override_forkchoice_update)
 - [Helpers](#helpers)
+  - [Modified `Store`](#modified-store)
+    - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [`PayloadAttributes`](#payloadattributes)
   - [`PowBlock`](#powblock)
   - [`get_pow_block`](#get_pow_block)
@@ -159,6 +161,61 @@ to construct a payload with less notice. The result of `get_proposer_head` MUST 
 the result of `should_override_forkchoice_update` (when proposer reorgs are enabled).
 
 ## Helpers
+
+### Modified `Store` 
+
+*Note*: It's not a hard fork change. `highest_confirmed_block_current_epoch`, `highest_confirmed_block_previous_epoch`, and `leaves_last_slot_previous_epoch` are added for [confirmation rule](confirmation-rule.md).
+
+```python
+@dataclass
+class Store(object):
+    time: uint64
+    genesis_time: uint64
+    justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    unrealized_justified_checkpoint: Checkpoint
+    unrealized_finalized_checkpoint: Checkpoint
+    proposer_boost_root: Root
+    highest_confirmed_block_current_epoch: Root  # New for confirmation rule
+    highest_confirmed_block_previous_epoch: Root  # New for confirmation rule
+    leaves_last_slot_previous_epoch: Set[Root]  # New for confirmation rule
+    equivocating_indices: Set[ValidatorIndex]
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
+    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
+    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+```
+
+#### Modified `get_forkchoice_store`
+
+```python
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_epoch = get_current_epoch(anchor_state)
+    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
+    return Store(
+        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
+        genesis_time=anchor_state.genesis_time,
+        justified_checkpoint=justified_checkpoint,
+        finalized_checkpoint=finalized_checkpoint,
+        unrealized_justified_checkpoint=justified_checkpoint,
+        unrealized_finalized_checkpoint=finalized_checkpoint,
+        proposer_boost_root=proposer_boost_root,
+        equivocating_indices=set(),
+        blocks={anchor_root: copy(anchor_block)},
+        block_states={anchor_root: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        unrealized_justifications={anchor_root: justified_checkpoint},
+        highest_confirmed_block_current_epoch=justified_checkpoint.root,  # New for confirmation rule
+        highest_confirmed_block_previous_epoch=justified_checkpoint.root,  # New for confirmation rule
+        leaves_last_slot_previous_epoch=set(),  # New for confirmation rule
+    )
+```
 
 ### `PayloadAttributes`
 
