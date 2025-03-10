@@ -89,7 +89,7 @@ Alias `block = signed_beacon_block.message`, `execution_payload = block.body.exe
 
 The following gossip validation from prior specifications MUST NOT be applied if the execution is enabled for the block -- i.e. `is_execution_enabled(state, block.body)`:
   
-  - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
+- [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 #### Transitioning the gossip
 
