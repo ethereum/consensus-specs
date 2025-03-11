@@ -36,6 +36,7 @@ test = [
   "pytest==8.3.4",
 ]
 lint = [
+  "blacken-docs==1.19.1 ",
   "codespell==2.4.0",
   "flake8==5.0.4",
   "mypy==0.981",
