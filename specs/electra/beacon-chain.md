@@ -1668,12 +1668,8 @@ def process_consolidation_request(
     source_validator = state.validators[source_index]
     target_validator = state.validators[target_index]
 
-    # Verify source withdrawal credentials
-    has_correct_credential = has_execution_withdrawal_credential(source_validator)
-    is_correct_source_address = (
-        source_validator.withdrawal_credentials[12:] == consolidation_request.source_address
-    )
-    if not (has_correct_credential and is_correct_source_address):
+    # Verify withdrawal credential's address matches source address
+    if source_validator.withdrawal_credentials[12:] != consolidation_request.source_address:
         return
 
     # Verify that target has compounding withdrawal credentials
