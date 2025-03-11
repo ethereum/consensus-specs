@@ -70,6 +70,7 @@ This is the beacon chain specification of the enshrined proposer builder separat
 This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the  start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
 
 At any given slot, the status of the blockchain's head may be either
+
 - A block from a previous slot (e.g. the current slot's proposer did not submit its block).
 - An *empty* block from the current slot (e.g. the proposer submitted a timely block, but the builder did not reveal the payload on time).
 - A full block for the current slot (both the proposer and the builder revealed on time).
