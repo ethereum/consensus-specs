@@ -73,17 +73,17 @@ def run_process_slots_up_to_epoch_boundary(spec, state):
 
 def run_epoch_processing_from(spec, state, process_name: str):
     """
-    Processes to the next epoch transition, fom, but not including, the sub-transition named ``process_name``
+    Processes to the next epoch transition, from, but not including, the sub-transition named ``process_name``
     """
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
-    procesing = False
+    processing = False
     for name in get_process_calls(spec):
         if name == process_name:
-            procesing = True
+            processing = True
             continue
         # only run when present. Later phases introduce more to the epoch-processing.
-        if procesing and hasattr(spec, name):
+        if processing and hasattr(spec, name):
             getattr(spec, name)(state)
 
 
