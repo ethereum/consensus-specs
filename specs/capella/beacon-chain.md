@@ -130,6 +130,7 @@ class HistoricalSummary(Container):
     `HistoricalSummary` matches the components of the phase0 `HistoricalBatch`
     making the two hash_tree_root-compatible.
     """
+
     block_summary_root: Root
     state_summary_root: Root
 ```
@@ -270,11 +271,7 @@ def is_fully_withdrawable_validator(validator: Validator, balance: Gwei, epoch: 
     """
     Check if ``validator`` is fully withdrawable.
     """
-    return (
-        has_eth1_withdrawal_credential(validator)
-        and validator.withdrawable_epoch <= epoch
-        and balance > 0
-    )
+    return has_eth1_withdrawal_credential(validator) and validator.withdrawable_epoch <= epoch and balance > 0
 ```
 
 #### `is_partially_withdrawable_validator`
@@ -352,20 +349,24 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
         validator = state.validators[validator_index]
         balance = state.balances[validator_index]
         if is_fully_withdrawable_validator(validator, balance, epoch):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
-                validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance,
-            ))
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=validator_index,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=balance,
+                )
+            )
             withdrawal_index += WithdrawalIndex(1)
         elif is_partially_withdrawable_validator(validator, balance):
-            withdrawals.append(Withdrawal(
-                index=withdrawal_index,
-                validator_index=validator_index,
-                address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                amount=balance - MAX_EFFECTIVE_BALANCE,
-            ))
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=validator_index,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=balance - MAX_EFFECTIVE_BALANCE,
+                )
+            )
             withdrawal_index += WithdrawalIndex(1)
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
@@ -461,8 +462,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 #### New `process_bls_to_execution_change`
 
 ```python
-def process_bls_to_execution_change(state: BeaconState,
-                                    signed_address_change: SignedBLSToExecutionChange) -> None:
+def process_bls_to_execution_change(state: BeaconState, signed_address_change: SignedBLSToExecutionChange) -> None:
     address_change = signed_address_change.message
 
     assert address_change.validator_index < len(state.validators)
@@ -478,8 +478,6 @@ def process_bls_to_execution_change(state: BeaconState,
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 
     validator.withdrawal_credentials = (
-        ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        + b'\x00' * 11
-        + address_change.to_execution_address
+        ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + address_change.to_execution_address
     )
 ```

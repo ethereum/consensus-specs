@@ -35,10 +35,7 @@ A validator may be a member of the new Payload Timeliness Committee (PTC) for a 
 PTC committee selection is only stable within the context of the current and next epoch.
 
 ```python
-def get_ptc_assignment(
-        state: BeaconState,
-        epoch: Epoch,
-        validator_index: ValidatorIndex) -> Optional[Slot]:
+def get_ptc_assignment(state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with index `validator_index`
     is a member of the PTC. Returns None if no assignment is found.
@@ -130,7 +127,8 @@ Notice that the attester only signs the `PayloadAttestationData` and not the `va
 
 ```python
 def get_payload_attestation_message_signature(
-        state: BeaconState, attestation: PayloadAttestationMessage, privkey: int) -> BLSSignature:
+    state: BeaconState, attestation: PayloadAttestationMessage, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.Sign(privkey, signing_root)

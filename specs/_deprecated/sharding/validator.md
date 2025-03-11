@@ -73,7 +73,6 @@ def reconstruct_polynomial(samples: List[SignedShardSample]) -> List[SignedShard
     """
     Reconstructs one full row/column from at least 1/2 of the samples
     """
-
 ```
 
 ## Sample verification
@@ -95,10 +94,12 @@ def verify_sample(state: BeaconState, block: BeaconBlock, sample: SignedShardSam
     roots_in_rbo = list_to_reverse_bit_order(roots_of_unity(SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE))
 
     # Verify KZG proof
-    verify_kzg_multiproof(block.body.payload_data.value.sharded_commitments_container.sharded_commitments[sample.row],
-                          roots_in_rbo[sample.column * FIELD_ELEMENTS_PER_SAMPLE:(sample.column + 1) * FIELD_ELEMENTS_PER_SAMPLE],
-                          sample.data,
-                          sample.proof)
+    verify_kzg_multiproof(
+        block.body.payload_data.value.sharded_commitments_container.sharded_commitments[sample.row],
+        roots_in_rbo[sample.column * FIELD_ELEMENTS_PER_SAMPLE : (sample.column + 1) * FIELD_ELEMENTS_PER_SAMPLE],
+        sample.data,
+        sample.proof,
+    )
 ```
 
 # Beacon chain responsibilities

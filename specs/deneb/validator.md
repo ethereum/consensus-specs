@@ -111,11 +111,13 @@ That is, `state` is the `previous_state` processed through any empty slots up to
 parameter to the `PayloadAttributes`.
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
@@ -155,9 +157,9 @@ Blobs associated with a block are packaged into sidecar objects for distribution
 Each `sidecar` is obtained from:
 
 ```python
-def get_blob_sidecars(signed_block: SignedBeaconBlock,
-                      blobs: Sequence[Blob],
-                      blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+def get_blob_sidecars(
+    signed_block: SignedBeaconBlock, blobs: Sequence[Blob], blob_kzg_proofs: Sequence[KZGProof]
+) -> Sequence[BlobSidecar]:
     block = signed_block.message
     signed_block_header = compute_signed_block_header(signed_block)
     return [
@@ -169,7 +171,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
             signed_block_header=signed_block_header,
             kzg_commitment_inclusion_proof=compute_merkle_proof(
                 block.body,
-                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),
+                get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
             ),
         )
         for index, blob in enumerate(blobs)

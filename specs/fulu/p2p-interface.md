@@ -123,7 +123,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     """
     Verify if the given KZG commitments included in the given beacon block.
     """
-    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'))
+    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"))
     return is_valid_merkle_branch(
         leaf=hash_tree_root(sidecar.kzg_commitments),
         branch=sidecar.kzg_commitments_inclusion_proof,

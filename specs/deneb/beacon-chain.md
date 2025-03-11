@@ -237,9 +237,9 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
 *Note:* The function `get_attestation_participation_flag_indices` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
 
 ```python
-def get_attestation_participation_flag_indices(state: BeaconState,
-                                               data: AttestationData,
-                                               inclusion_delay: uint64) -> Sequence[int]:
+def get_attestation_participation_flag_indices(
+    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """
@@ -298,9 +298,9 @@ class NewPayloadRequest(object):
 *Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
-def is_valid_block_hash(self: ExecutionEngine,
-                        execution_payload: ExecutionPayload,
-                        parent_beacon_block_root: Root) -> bool:
+def is_valid_block_hash(
+    self: ExecutionEngine, execution_payload: ExecutionPayload, parent_beacon_block_root: Root
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -323,9 +323,9 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
 *Note*: The function `notify_new_payload` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       parent_beacon_block_root: Root) -> bool:
+def notify_new_payload(
+    self: ExecutionEngine, execution_payload: ExecutionPayload, parent_beacon_block_root: Root
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
@@ -335,15 +335,14 @@ def notify_new_payload(self: ExecutionEngine,
 ##### Modified `verify_and_notify_new_payload`
 
 ```python
-def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
+def verify_and_notify_new_payload(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root  # [New in Deneb:EIP4788]
 
-    if b'' in execution_payload.transactions:
+    if b"" in execution_payload.transactions:
         return False
 
     # [Modified in Deneb:EIP4788]
@@ -495,21 +494,22 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_eligible_for_activation_queue(validator):
             validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
-        if (
-            is_active_validator(validator, get_current_epoch(state))
-            and validator.effective_balance <= EJECTION_BALANCE
-        ):
+        if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
     # Queue validators eligible for activation and not yet dequeued for activation
-    activation_queue = sorted([
-        index for index, validator in enumerate(state.validators)
-        if is_eligible_for_activation(state, validator)
-        # Order by the sequence of activation_eligibility_epoch setting and then index
-    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    activation_queue = sorted(
+        [
+            index
+            for index, validator in enumerate(state.validators)
+            if is_eligible_for_activation(state, validator)
+            # Order by the sequence of activation_eligibility_epoch setting and then index
+        ],
+        key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
+    )
     # Dequeued validators for activation up to activation churn limit
     # [Modified in Deneb:EIP7514]
-    for index in activation_queue[:get_validator_activation_churn_limit(state)]:
+    for index in activation_queue[: get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```

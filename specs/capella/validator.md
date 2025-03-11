@@ -76,11 +76,13 @@ That is, `state` is the `previous_state` processed through any empty slots up to
 `get_expected_withdrawals()` to set the new `withdrawals` field of `PayloadAttributes`.
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
     # [Modified in Capella] Removed `is_merge_transition_complete` check in Capella
     parent_hash = state.latest_execution_payload_header.block_hash
 

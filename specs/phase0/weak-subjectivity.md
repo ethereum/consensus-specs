@@ -102,17 +102,11 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     D = SAFETY_DECAY
 
     if T * (200 + 3 * D) < t * (200 + 12 * D):
-        epochs_for_validator_set_churn = (
-            N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
-        )
-        epochs_for_balance_top_ups = (
-            N * (200 + 3 * D) // (600 * Delta)
-        )
+        epochs_for_validator_set_churn = N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
+        epochs_for_balance_top_ups = N * (200 + 3 * D) // (600 * Delta)
         ws_period += max(epochs_for_validator_set_churn, epochs_for_balance_top_ups)
     else:
-        ws_period += (
-            3 * N * D * t // (200 * Delta * (T - t))
-        )
+        ws_period += 3 * N * D * t // (200 * Delta * (T - t))
 
     return ws_period
 ```

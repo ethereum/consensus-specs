@@ -168,11 +168,8 @@ def notify_ptc_messages(store: Store, state: BeaconState, payload_attestations: 
             on_payload_attestation_message(
                 store,
                 PayloadAttestationMessage(
-                    validator_index=idx,
-                    data=payload_attestation.data,
-                    signature=BLSSignature(),
-                    is_from_block=True
-                )
+                    validator_index=idx, data=payload_attestation.data, signature=BLSSignature(), is_from_block=True
+                ),
             )
 ```
 
@@ -320,15 +317,19 @@ def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> G
 def get_weight(store: Store, node: ChildNode) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     unslashed_and_active_indices = [
-        i for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
+        i for i in get_active_validator_indices(state, get_current_epoch(state)) if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(sum(
-        state.validators[i].effective_balance for i in unslashed_and_active_indices
-        if (i in store.latest_messages
-            and i not in store.equivocating_indices
-            and is_supporting_vote(store, node, store.latest_messages[i]))
-    ))
+    attestation_score = Gwei(
+        sum(
+            state.validators[i].effective_balance
+            for i in unslashed_and_active_indices
+            if (
+                i in store.latest_messages
+                and i not in store.equivocating_indices
+                and is_supporting_vote(store, node, store.latest_messages[i])
+            )
+        )
+    )
 
     # Compute boosts
     proposer_score = compute_proposer_boost(store, state, node)
@@ -354,10 +355,15 @@ def get_head(store: Store) -> ChildNode:
     best_child = ChildNode(root=justified_root, slot=justified_slot, is_payload_present=justified_full)
     while True:
         children = [
-            ChildNode(root=root, slot=block.slot, is_payload_present=present) for (root, block) in blocks.items()
-            if block.parent_root == best_child.root and block.slot > best_child.slot and
-            (best_child.root == justified_root or is_parent_node_full(store, block) == best_child.is_payload_present)
-            for present in (True, False) if root in store.execution_payload_states or not present
+            ChildNode(root=root, slot=block.slot, is_payload_present=present)
+            for (root, block) in blocks.items()
+            if block.parent_root == best_child.root
+            and block.slot > best_child.slot
+            and (
+                best_child.root == justified_root or is_parent_node_full(store, block) == best_child.is_payload_present
+            )
+            for present in (True, False)
+            if root in store.execution_payload_states or not present
         ]
         if len(children) == 0:
             return best_child
@@ -371,13 +377,15 @@ def get_head(store: Store) -> ChildNode:
         # Ties are broken by the PTC vote
         # Ties are then broken by favoring full blocks
         # Ties then broken by favoring block with lexicographically higher root
-        new_best_child = max(children, key=lambda child: (
-            get_weight(store, child),
-            blocks[child.root].slot,
-            is_payload_present(store, child.root),
-            child.is_payload_present,
-            child.root
-        )
+        new_best_child = max(
+            children,
+            key=lambda child: (
+                get_weight(store, child),
+                blocks[child.root].slot,
+                is_payload_present(store, child.root),
+                child.is_payload_present,
+                child.root,
+            ),
         )
         if new_best_child.root == best_child.root and new_best_child.slot >= highest_child_slot:
             return new_best_child
@@ -525,7 +533,8 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
 
 ```python
 def on_payload_attestation_message(
-        store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool=False) -> None:
+    store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
+) -> None:
     """
     Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` directly on the wire.
     """
@@ -548,10 +557,8 @@ def on_payload_attestation_message(
         assert is_valid_indexed_payload_attestation(
             state,
             IndexedPayloadAttestation(
-                attesting_indices=[ptc_message.validator_index],
-                data=data,
-                signature=ptc_message.signature
-            )
+                attesting_indices=[ptc_message.validator_index], data=data, signature=ptc_message.signature
+            ),
         )
     # Update the ptc vote for the block
     ptc_index = ptc.index(ptc_message.validator_index)

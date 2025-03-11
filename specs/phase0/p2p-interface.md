@@ -1566,9 +1566,8 @@ the epoch range that a new node syncing from a checkpoint must backfill.
 [0]: # (eth2spec: skip)
 
 ```python
-MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
+MIN_EPOCHS_FOR_BLOCK_REQUESTS = MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (
+    2 * 100
 )
 ```
 

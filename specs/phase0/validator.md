@@ -208,10 +208,9 @@ Once a validator is activated, the validator is assigned [responsibilities](#bea
 A validator can get committee assignments for a given epoch using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
 
 ```python
-def get_committee_assignment(state: BeaconState,
-                             epoch: Epoch,
-                             validator_index: ValidatorIndex
-                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
+def get_committee_assignment(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -370,7 +369,8 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     period_start = voting_period_start_time(state)
     # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
     votes_to_consider = [
-        get_eth1_data(block) for block in eth1_chain
+        get_eth1_data(block)
+        for block in eth1_chain
         if (
             is_candidate_block(block, period_start)
             # Ensure cannot move back to earlier deposit contract states
@@ -389,7 +389,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     return max(
         valid_votes,
         key=lambda v: (valid_votes.count(v), -valid_votes.index(v)),  # Tiebreak by smallest distance
-        default=default_vote
+        default=default_vote,
     )
 ```
 
@@ -516,9 +516,9 @@ The `subnet_id` for the `attestation` is calculated with:
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
-def compute_subnet_for_attestation(committees_per_slot: uint64,
-                                   slot: Slot,
-                                   committee_index: CommitteeIndex) -> SubnetID:
+def compute_subnet_for_attestation(
+    committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex
+) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
@@ -586,10 +586,9 @@ Selection proofs are provided in `AggregateAndProof` to prove to the gossip chan
 First, `aggregate_and_proof = get_aggregate_and_proof(state, validator_index, aggregate_attestation, privkey)` is constructed.
 
 ```python
-def get_aggregate_and_proof(state: BeaconState,
-                            aggregator_index: ValidatorIndex,
-                            aggregate: Attestation,
-                            privkey: int) -> AggregateAndProof:
+def get_aggregate_and_proof(
+    state: BeaconState, aggregator_index: ValidatorIndex, aggregate: Attestation, privkey: int
+) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
@@ -600,9 +599,9 @@ def get_aggregate_and_proof(state: BeaconState,
 Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
-def get_aggregate_and_proof_signature(state: BeaconState,
-                                      aggregate_and_proof: AggregateAndProof,
-                                      privkey: int) -> BLSSignature:
+def get_aggregate_and_proof_signature(
+    state: BeaconState, aggregate_and_proof: AggregateAndProof, privkey: int
+) -> BLSSignature:
     aggregate = aggregate_and_proof.aggregate
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
     signing_root = compute_signing_root(aggregate_and_proof, domain)
