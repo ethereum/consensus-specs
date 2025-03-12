@@ -57,13 +57,16 @@ New global topics are added to provide light clients with the latest updates.
 This topic is used to propagate the latest `LightClientFinalityUpdate` to light clients, allowing them to keep track of the latest `finalized_header`.
 
 The following validations MUST pass before forwarding the `finality_update` on the network.
+
 - _[IGNORE]_ The `finalized_header.beacon.slot` is greater than that of all previously forwarded `finality_update`s, or it matches the highest previously forwarded slot and also has a `sync_aggregate` indicating supermajority (> 2/3) sync committee participation while the previously forwarded `finality_update` for that slot did not indicate supermajority
 - _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `finality_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
+
 - _[IGNORE]_ The received `finality_update` matches the locally computed one exactly (as defined in [`create_light_client_finality_update`](./full-node.md#create_light_client_finality_update))
 
 For light clients, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
+
 - _[REJECT]_ The `finality_update` is valid -- i.e. validate that `process_light_client_finality_update` does not indicate errors
 - _[IGNORE]_ The `finality_update` advances the `finalized_header` of the local `LightClientStore` -- i.e. validate that processing `finality_update` increases `store.finalized_header.beacon.slot`
 
@@ -85,13 +88,16 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 This topic is used to propagate the latest `LightClientOptimisticUpdate` to light clients, allowing them to keep track of the latest `optimistic_header`.
 
 The following validations MUST pass before forwarding the `optimistic_update` on the network.
+
 - _[IGNORE]_ The `attested_header.beacon.slot` is greater than that of all previously forwarded `optimistic_update`s
 - _[IGNORE]_ The `optimistic_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `optimistic_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
+
 - _[IGNORE]_ The received `optimistic_update` matches the locally computed one exactly (as defined in [`create_light_client_optimistic_update`](./full-node.md#create_light_client_optimistic_update))
 
 For light clients, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
+
 - _[REJECT]_ The `optimistic_update` is valid -- i.e. validate that `process_light_client_optimistic_update` does not indicate errors
 - _[IGNORE]_ The `optimistic_update` either matches corresponding fields of the most recently forwarded `LightClientFinalityUpdate` (if any), or it advances the `optimistic_header` of the local `LightClientStore` -- i.e. validate that processing `optimistic_update` increases `store.optimistic_header.beacon.slot`
 

@@ -176,6 +176,7 @@ For this reason, *always* get committee assignments via the fields of the `Beaco
 
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
 Specifically, a validator should:
+
 * Upon (re)syncing the chain and upon sync committee period boundaries, check for assignments in the current and next sync committee periods.
 * If the validator is in the current sync committee period, then they perform the responsibilities below for sync committee rewards.
 * If the validator is in the next sync committee period, they should wait until the next `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` boundary and then perform the responsibilities throughout that period.
@@ -366,7 +367,7 @@ Set `contribution.subcommittee_index` to the index for the subcommittee index co
 ###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a `Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the `index`th bit is set in the `Bitvector` for each corresponding validator included in this aggregate from the corresponding subcommittee.
-An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_message.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggegration_bits`.
+An aggregator finds the index in the sync committee (as determined by a reverse pubkey lookup on `state.current_sync_committee.pubkeys`) for a given validator referenced by `sync_committee_message.validator_index` and maps the sync committee index to an index in the subcommittee (along with the prior `subcommittee_index`). This index within the subcommittee is set in `contribution.aggregation_bits`.
 
 For example, if a validator with index `2044` is pseudo-randomly sampled to sync committee index `135`. This sync committee index maps to `subcommittee_index` `1` with position `7` in the `Bitvector` for the contribution.
 

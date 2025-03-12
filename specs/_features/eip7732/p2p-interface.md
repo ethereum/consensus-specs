@@ -112,8 +112,9 @@ Some gossip meshes are upgraded in the fork of EIP-7732 to support upgraded type
 Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is updated to support the modified type
-| Name | Message Type |
-| --- | --- |
+
+| Name           | Message Type                               |
+|----------------|--------------------------------------------|
 | `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
@@ -162,6 +163,7 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 
 Let `block` be the block with `envelope.beacon_block_root`.
 Let `header` alias `block.body.signed_execution_payload_header.message` (notice that this can be obtained from the `state.signed_execution_payload_header`)
+
 - _[REJECT]_ `block` passes validation.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - if `envelope.payload_withheld == False` then
