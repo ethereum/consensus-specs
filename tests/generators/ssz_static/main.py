@@ -7,7 +7,7 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.debug import random_value, encode
 from eth2spec.test.helpers.constants import TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.test.context import spec_targets
-from eth2spec.utils.ssz.ssz_typing import Container
+from eth2spec.utils.ssz.ssz_typing import Container, Profile, StableContainer
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
@@ -32,7 +32,12 @@ def create_test_case(rng: Random, typ,
 def get_spec_ssz_types(spec):
     return [
         (name, value) for (name, value) in getmembers(spec, isclass)
-        if issubclass(value, Container) and value != Container  # only the subclasses, not the imported base class
+        if (
+            # only the subclasses, not the imported base class
+            issubclass(value, Container) and value != Container
+            or issubclass(value, StableContainer) and value != StableContainer
+            or issubclass(value, Profile) and value != Profile
+        )
     ]
 
 
