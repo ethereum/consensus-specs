@@ -103,6 +103,12 @@ REORG_PARENT_WEIGHT_THRESHOLD: 160
 # `2` epochs
 REORG_MAX_EPOCHS_SINCE_FINALIZATION: 2
 
+# Confirmation rule
+# ---------------------------------------------------------------
+# 20%
+CONFIRMATION_BYZANTINE_THRESHOLD: 20
+# 0 Gwei
+CONFIRMATION_SLASHING_THRESHOLD: 0
 
 # Deposit contract
 # ---------------------------------------------------------------
