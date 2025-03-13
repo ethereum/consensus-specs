@@ -75,6 +75,7 @@ The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork
 | `EIP7805_FORK_VERSION` | `EIP-7805.SignedInclusionList` |
 
 Request Content:
+
 ```
 (
   slot: Slot
@@ -83,6 +84,7 @@ Request Content:
 ```
 
 Response Content:
+
 ```
 (
   List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
