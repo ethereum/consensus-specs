@@ -57,7 +57,7 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in EIP-7805]
-    inclusion_lists: Dict[Tuple[Slot, Root], Sequence[InclusionList]] = field(default_factory=dict)
+    inclusion_lists: Dict[Tuple[Slot, Root], Set[InclusionList]] = field(default_factory=dict)
     inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
     unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)
 ```
@@ -200,5 +200,5 @@ def on_inclusion_list(
                 store.inclusion_list_equivocators[(message.slot, root)].add(validator_index)
         # This inclusion list is not an equivocation. Store it if prior to the view freeze deadline
         elif is_before_freeze_deadline:
-            store.inclusion_lists[(message.slot, root)].append(message)
+            store.inclusion_lists[(message.slot, root)].add(message)
 ```
