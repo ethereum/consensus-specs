@@ -202,5 +202,3 @@ def on_inclusion_list(
         elif is_before_freeze_deadline:
             store.inclusion_lists[(message.slot, root)].append(message)
 ```
-
-
