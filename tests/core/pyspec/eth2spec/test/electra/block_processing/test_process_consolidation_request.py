@@ -895,6 +895,42 @@ def test_incorrect_target_with_bls_credential(spec, state):
 )
 @spec_test
 @single_phase
+def test_incorrect_source_with_bls_credential(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+    # Ensure that the source validator has BLS-type withdrawal credentials
+    assert state.validators[source_index].withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
+
+    # An attacker could create a new validator with BLS withdrawal credentials where the last twenty
+    # bytes of the BLS pubkey are hardcoded to an address that they control. To be clear, the source
+    # address field in consolidation requests cannot be set to an arbitrary value.
+    source_address = state.validators[source_index].withdrawal_credentials[-20:]
+
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    yield from run_consolidation_processing(
+        spec, state, consolidation, success=False
+    )
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_incorrect_target_with_eth1_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -928,7 +964,7 @@ def test_incorrect_target_with_eth1_credential(spec, state):
 )
 @spec_test
 @single_phase
-def test_incorrect_incorrect_source_address(spec, state):
+def test_incorrect_source_address(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
@@ -1017,7 +1053,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert not state.validators[target_index].pubkey == consolidation.target_pubkey
 
     yield from run_consolidation_processing(
