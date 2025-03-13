@@ -896,7 +896,7 @@ def test_incorrect_target_with_bls_credential(spec, state):
 @spec_test
 @single_phase
 def test_incorrect_source_with_bls_credential(spec, state):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
@@ -904,8 +904,12 @@ def test_incorrect_source_with_bls_credential(spec, state):
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # It's not possible to control this field, but if you were somehow able to control
-    # the address which shared the same bytes as the validator's BLS pubkey.
+    # Ensure that the source validator has BLS-type withdrawal credentials
+    assert state.validators[source_index].withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
+
+    # An attacker could create a new validator with BLS withdrawal credentials where the last twenty
+    # bytes of the BLS pubkey are hardcoded to an address that they control. To be clear, the source
+    # address field in consolidation requests cannot be set to an arbitrary value.
     source_address = state.validators[source_index].withdrawal_credentials[-20:]
 
     consolidation = spec.ConsolidationRequest(
