@@ -21,8 +21,8 @@ from eth2spec.debug.random_value import (
 )
 
 
-def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None):
-    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=1)
+def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_count=1):
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_count)
     if rng is None:
         block = build_empty_block_for_next_slot(spec, state)
     else:
@@ -74,3 +74,21 @@ def test_blob_kzg_commitments_merkle_proof__basic(spec, state):
 def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
     rng = random.Random(1111)
     yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=rng)
+
+
+@with_test_suite_name("BeaconBlockBody")
+@with_fulu_and_later
+@spec_state_test
+def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
+    blob_count = spec.config.MAX_BLOBS_PER_BLOCK_FULU // 2
+    rng = random.Random(2222)
+    yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=rng, blob_count=blob_count)
+
+
+@with_test_suite_name("BeaconBlockBody")
+@with_fulu_and_later
+@spec_state_test
+def test_blob_kzg_commitments_merkle_proof__max_blobs(spec, state):
+    max_blobs = spec.config.MAX_BLOBS_PER_BLOCK_FULU
+    rng = random.Random(3333)
+    yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=rng, blob_count=max_blobs)
