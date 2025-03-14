@@ -71,7 +71,7 @@ SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 # [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
-SHARD_COMMITTEE_PERIOD: 64
+MIN_VALIDATOR_ACTIVE_PERIOD: 64
 # [customized] process deposits more quickly, but insecure
 ETH1_FOLLOW_DISTANCE: 16
 
