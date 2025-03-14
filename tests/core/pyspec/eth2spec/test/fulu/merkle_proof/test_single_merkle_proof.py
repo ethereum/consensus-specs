@@ -79,23 +79,6 @@ def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
 @with_test_suite_name("BeaconBlockBody")
 @with_fulu_and_later
 @spec_state_test
-def test_get_custody_groups__multiple_seeds(spec, state):
-    def make_test(seed, index):
-        def inner_test():
-            rng = random.Random(seed)
-            try:
-                yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=rng)
-            except Exception as e:
-                raise AssertionError(f"Failed on: {seed} index: {index}, {e}")
-        return inner_test
-
-    for index, seed in enumerate([1111, 2222, 3333], start=1):
-        yield make_test(seed, index)
-
-
-@with_test_suite_name("BeaconBlockBody")
-@with_fulu_and_later
-@spec_state_test
 def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
     max_blobs = spec.MAX_BLOBS_PER_BLOCK_FULU / 2
     rng = random.Random(2222)

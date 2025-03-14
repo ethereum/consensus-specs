@@ -104,33 +104,3 @@ def test_get_custody_groups__2(spec):
 def test_get_custody_groups__3(spec):
     rng = random.Random(3333)
     yield from _run_get_custody_groups(spec, rng)
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_custody_groups__deterministic_heck(spec):
-    node_id = 4
-    custody_group_count = 4
-    rng = random.Random(3333)
-    first_run = list(_run_get_custody_groups(spec, rng, node_id, custody_group_count))
-    second_run = list(_run_get_custody_groups(spec, rng, node_id, custody_group_count))
-
-    assert first_run == second_run
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_custody_groups__multiple_group(spec):
-    def make_test(seed, index):
-        def inner_test():
-            rng = random.Random(seed)
-            try:
-                yield from _run_get_custody_groups(spec, rng)
-            except Exception as e:
-                raise AssertionError(f"Failed on: {seed} index: {index}, {e}")
-        return inner_test
-
-    for index, seed in enumerate([1111, 2222, 3333], start=1):
-        yield make_test(seed, index)
