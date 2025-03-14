@@ -61,7 +61,7 @@ jobs:
     needs: [lint]
     strategy:
       matrix:
-        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu", "whisk"]
+        version: ["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu", "eip7441"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

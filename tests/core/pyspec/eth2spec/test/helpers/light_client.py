@@ -86,7 +86,8 @@ def create_update(spec,
                   finalized_block,
                   with_next,
                   with_finality,
-                  participation_rate):
+                  participation_rate,
+                  signature_slot=None):
     num_participants = floor(spec.SYNC_COMMITTEE_SIZE * participation_rate)
 
     update = spec.LightClientUpdate()
@@ -104,7 +105,7 @@ def create_update(spec,
             attested_state, latest_finalized_root_gindex(spec))
 
     update.sync_aggregate, update.signature_slot = get_sync_aggregate(
-        spec, attested_state, num_participants)
+        spec, attested_state, num_participants, signature_slot=signature_slot)
 
     return update
 

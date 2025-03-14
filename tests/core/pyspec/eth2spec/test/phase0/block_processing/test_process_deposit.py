@@ -75,7 +75,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     validator_index = len(state.validators)
     withdrawal_credentials = (
         b'\xFF'  # Non specified withdrawal credentials version
-        + b'\x02' * 31  # Garabage bytes
+        + b'\x02' * 31  # Garbage bytes
     )
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(

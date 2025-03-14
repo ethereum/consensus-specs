@@ -48,13 +48,6 @@ class BaseSpecBuilder(ABC):
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
-        """
-        The constants that are required for custom types.
-        """
-        return {}
-
-    @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
         return {}
 

@@ -94,7 +94,7 @@ def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, ou
     setup_g1_lagrange = get_lagrange(setup_g1)
     roots_of_unity = compute_roots_of_unity(g1_length)
 
-    serailized_setup_g1 = [encode_hex(bls.G1_to_bytes48(p)) for p in setup_g1]
+    serialized_setup_g1 = [encode_hex(bls.G1_to_bytes48(p)) for p in setup_g1]
     serialized_setup_g2 = [encode_hex(bls.G2_to_bytes96(p)) for p in setup_g2]
     serialized_setup_g1_lagrange = [encode_hex(x) for x in setup_g1_lagrange]
 
@@ -109,7 +109,7 @@ def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, ou
     with open(file_path, 'w+') as f:
         json.dump(
             {
-                "setup_G1": serailized_setup_g1,
+                "setup_G1": serialized_setup_g1,
                 "setup_G2": serialized_setup_g2,
                 "setup_G1_lagrange": serialized_setup_g1_lagrange,
                 "roots_of_unity": roots_of_unity,

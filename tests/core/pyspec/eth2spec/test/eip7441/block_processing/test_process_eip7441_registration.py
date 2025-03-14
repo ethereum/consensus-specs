@@ -1,5 +1,5 @@
-from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
-from eth2spec.test.helpers.whisk import (
+from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
+from eth2spec.test.helpers.eip7441 import (
     set_as_first_proposal,
     compute_whisk_k_commitment,
     set_registration,
@@ -39,7 +39,7 @@ OTHER_INDEX = 1
 # First proposal
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_first_proposal_ok(spec, state):
     body = empty_block_body(spec)
@@ -48,16 +48,16 @@ def test_first_proposal_ok(spec, state):
     yield from run_process_whisk_registration(spec, state, body)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
-def test_first_proposal_indentity_tracker(spec, state):
+def test_first_proposal_identity_tracker(spec, state):
     body = empty_block_body(spec)
     set_as_first_proposal_and_proposer(spec, state, PROPOSER_INDEX)
     set_registration(body, OTHER_K, IDENTITY_R)
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_first_proposal_non_unique_k_other(spec, state):
     body = empty_block_body(spec)
@@ -67,7 +67,7 @@ def test_first_proposal_non_unique_k_other(spec, state):
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_first_proposal_non_unique_k_self(spec, state):
     body = empty_block_body(spec)
@@ -77,7 +77,7 @@ def test_first_proposal_non_unique_k_self(spec, state):
     yield from run_process_whisk_registration(spec, state, body, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_first_proposal_invalid_proof(spec, state):
     body = empty_block_body(spec)
@@ -89,7 +89,7 @@ def test_first_proposal_invalid_proof(spec, state):
 # Second proposal
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_second_proposal_ok(spec, state):
     body = empty_block_body(spec)
@@ -99,7 +99,7 @@ def test_second_proposal_ok(spec, state):
     yield from run_process_whisk_registration(spec, state, body)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_second_proposal_not_zero(spec, state):
     body = empty_block_body(spec)

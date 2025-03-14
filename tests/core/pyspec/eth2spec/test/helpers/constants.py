@@ -17,10 +17,10 @@ ELECTRA = SpecForkName('electra')
 SHARDING = SpecForkName('sharding')
 CUSTODY_GAME = SpecForkName('custody_game')
 DAS = SpecForkName('das')
-ELECTRA = SpecForkName('electra')
 FULU = SpecForkName('fulu')
-WHISK = SpecForkName('whisk')
+EIP7441 = SpecForkName('eip7441')
 EIP7732 = SpecForkName('eip7732')
+EIP7805 = SpecForkName('eip7805')
 
 #
 # SpecFork settings
@@ -42,9 +42,9 @@ ALL_PHASES = (
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, WHISK)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, EIP7441)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
-ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, WHISK, EIP7732)
+ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441, EIP7732)
 
 # NOTE: the same definition as in `pysetup/md_doc_paths.py`
 PREVIOUS_FORK_OF = {
@@ -56,9 +56,10 @@ PREVIOUS_FORK_OF = {
     DENEB: CAPELLA,
     ELECTRA: DENEB,
     # Experimental patches
-    WHISK: CAPELLA,
     FULU: ELECTRA,
+    EIP7441: CAPELLA,
     EIP7732: ELECTRA,
+    EIP7805: ELECTRA,
 }
 
 # For fork transition tests

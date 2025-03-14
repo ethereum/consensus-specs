@@ -39,6 +39,7 @@
     - [`coset_for_cell`](#coset_for_cell)
 - [Cells](#cells-1)
   - [Cell computation](#cell-computation)
+    - [`compute_cells`](#compute_cells)
     - [`compute_cells_and_kzg_proofs_polynomialcoeff`](#compute_cells_and_kzg_proofs_polynomialcoeff)
     - [`compute_cells_and_kzg_proofs`](#compute_cells_and_kzg_proofs)
   - [Cell verification](#cell-verification)
@@ -53,7 +54,7 @@
 
 ## Introduction
 
-This document extends [polynomial-commitments.md](../../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
+This document extends [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
 
 ## Public Methods
 
@@ -520,6 +521,28 @@ def coset_for_cell(cell_index: CellIndex) -> Coset:
 
 ### Cell computation
 
+#### `compute_cells`
+
+```python
+def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
+    """
+    Given a blob, extend it and return all the cells of the extended blob.
+
+    Public method.
+    """
+    assert len(blob) == BYTES_PER_BLOB
+
+    polynomial = blob_to_polynomial(blob)
+    polynomial_coeff = polynomial_eval_to_coeff(polynomial)
+
+    cells = []
+    for i in range(CELLS_PER_EXT_BLOB):
+        coset = coset_for_cell(CellIndex(i))
+        ys = CosetEvals([evaluate_polynomialcoeff(polynomial_coeff, z) for z in coset])
+        cells.append(coset_evals_to_cell(CosetEvals(ys)))
+    return cells
+```
+
 #### `compute_cells_and_kzg_proofs_polynomialcoeff`
 
 ```python
@@ -723,7 +746,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Check we have the same number of cells and indices
     assert len(cell_indices) == len(cells)
     # Check we have enough cells to be able to perform the reconstruction
-    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
+    assert CELLS_PER_EXT_BLOB // 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_indices) == len(set(cell_indices))
     # Check that the cell indices are within bounds
