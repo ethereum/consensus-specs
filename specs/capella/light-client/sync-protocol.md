@@ -72,10 +72,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
     if epoch < CAPELLA_FORK_EPOCH:
-        return (
-            header.execution == ExecutionPayloadHeader()
-            and header.execution_branch == ExecutionBranch()
-        )
+        return header.execution == ExecutionPayloadHeader() and header.execution_branch == ExecutionBranch()
 
     return is_valid_merkle_branch(
         leaf=get_lc_execution_root(header),

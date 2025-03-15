@@ -102,9 +102,11 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev) repository.
 
 ```python
-def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
-                             post_shuffle_trackers: Sequence[WhiskTracker],
-                             shuffle_proof: WhiskShuffleProof) -> bool:
+def IsValidWhiskShuffleProof(
+    pre_shuffle_trackers: Sequence[WhiskTracker],
+    post_shuffle_trackers: Sequence[WhiskTracker],
+    shuffle_proof: WhiskShuffleProof,
+) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -118,9 +120,7 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
 ```
 
 ```python
-def IsValidWhiskOpeningProof(tracker: WhiskTracker,
-                             k_commitment: BLSG1Point,
-                             tracker_proof: WhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -193,11 +193,7 @@ class BeaconState(Container):
 ```python
 def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
-    proposer_seed = get_seed(
-        state,
-        Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)),
-        DOMAIN_PROPOSER_SELECTION
-    )
+    proposer_seed = get_seed(state, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)), DOMAIN_PROPOSER_SELECTION)
     for i in range(PROPOSER_TRACKERS_COUNT):
         index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
@@ -275,7 +271,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer is not slashed
     proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
-    process_whisk_opening_proof(state, block)   # [New in EIP7441]
+    process_whisk_opening_proof(state, block)  # [New in EIP7441]
 ```
 
 ### Whisk
@@ -408,10 +404,9 @@ def get_initial_tracker(k: BLSFieldElement) -> WhiskTracker:
 ```
 
 ```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
+def add_validator_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)

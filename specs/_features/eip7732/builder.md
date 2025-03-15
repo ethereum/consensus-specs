@@ -48,7 +48,8 @@ After building the `header`, the builder obtains a `signature` of the header by 
 
 ```python
 def get_execution_payload_header_signature(
-        state: BeaconState, header: ExecutionPayloadHeader, privkey: int) -> BLSSignature:
+    state: BeaconState, header: ExecutionPayloadHeader, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(header.slot))
     signing_root = compute_signing_root(header, domain)
     return bls.Sign(privkey, signing_root)
@@ -63,10 +64,12 @@ The builder assembles then `signed_execution_payload_header = SignedExecutionPay
 The `BlobSidecar` container is modified indirectly because the constant `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. The function `get_blob_sidecars` is modified because the KZG commitments are no longer included in the beacon block but rather in the `ExecutionPayloadEnvelope`, the builder has to send the commitments as parameters to this function.
 
 ```python
-def get_blob_sidecars(signed_block: SignedBeaconBlock,
-                      blobs: Sequence[Blob],
-                      blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-                      blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+def get_blob_sidecars(
+    signed_block: SignedBeaconBlock,
+    blobs: Sequence[Blob],
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    blob_kzg_proofs: Sequence[KZGProof],
+) -> Sequence[BlobSidecar]:
     block = signed_block.message
     block_header = BeaconBlockHeader(
         slot=block.slot,
@@ -98,7 +101,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
                 kzg_commitment=blob_kzg_commitments[index],
                 kzg_proof=blob_kzg_proofs[index],
                 signed_block_header=signed_block_header,
-                kzg_commitment_inclusion_proof=proof
+                kzg_commitment_inclusion_proof=proof,
             )
         )
     return sidecars
@@ -124,7 +127,8 @@ After preparing the `envelope` the builder should sign the envelope using:
 
 ```python
 def get_execution_payload_envelope_signature(
-        state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int) -> BLSSignature:
+    state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(envelope, domain)
     return bls.Sign(privkey, signing_root)

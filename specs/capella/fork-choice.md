@@ -39,12 +39,13 @@ The only change made is to the `PayloadAttributes` container through the additio
 Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
 
 ```python
-def notify_forkchoice_updated(self: ExecutionEngine,
-                              head_block_hash: Hash32,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
-    ...
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]: ...
 ```
 
 ## Helpers

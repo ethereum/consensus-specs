@@ -125,12 +125,14 @@ To obtain an execution payload, a block proposer building a block on top of a `s
     * `suggested_fee_recipient` is the value suggested to be used for the `fee_recipient` field of the execution payload
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine,
-                              pow_chain: Optional[Dict[Hash32, PowBlock]]=None) -> Optional[PayloadId]:
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+    pow_chain: Optional[Dict[Hash32, PowBlock]] = None,
+) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
         assert pow_chain is not None
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
