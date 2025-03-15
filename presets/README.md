@@ -8,7 +8,7 @@ An implementation may choose to only support 1 preset per build-target and shoul
 the `PRESET_BASE` variable in the config matches the running build.
 
 Standard presets:
-- [`mainnet/`](./mainnet): Used in mainnet, mainnet-like testnets (e.g. Prater), and spec-testing
+- [`mainnet/`](./mainnet): Used in mainnet, mainnet-like testnets (e.g. Hoodi), and spec-testing
 - [`minimal/`](./minimal): Used in low-resource local dev testnets, and spec-testing
 
 Client implementers may opt to support additional presets, e.g. for extra large beacon states for benchmarking.
