@@ -344,7 +344,6 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
     assert effective_balance_after_deposit == initial_effective_balance
 
 
-
 @with_electra_and_later
 @spec_state_test
 def test_apply_pending_deposit_top_up__zero_balance(spec, state):
@@ -566,15 +565,27 @@ def test_duplicate_deposit_max_eff_balance_electra(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
-            spec.COMPOUNDING_WITHDRAWAL_PREFIX
-            + b'\x00' * 11  # specified 0s
-            + b'\x59' * 20  # a 20-byte eth1 address
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
     )
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     pre_validator_count = len(state.validators)
 
-    pending_deposit1 = prepare_pending_deposit(spec, validator_index, amount, withdrawal_credentials=withdrawal_credentials, signed=True)
-    pending_deposit2 = prepare_pending_deposit(spec, validator_index, amount, withdrawal_credentials=withdrawal_credentials, signed=True)
+    pending_deposit1 = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True
+    )
+    pending_deposit2 = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True
+    )
 
     yield from run_pending_deposit_applying(spec, state, pending_deposit1, validator_index)
     yield from run_pending_deposit_applying(spec, state, pending_deposit2, validator_index)
