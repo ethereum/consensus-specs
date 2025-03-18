@@ -18,6 +18,7 @@
       - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
       - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
       - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
+      - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -130,6 +131,13 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
         index=gindex,
         root=sidecar.signed_block_header.message.body_root,
     )
+```
+
+##### `compute_subnet_for_data_column_sidecar`
+
+```python
+def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
+    return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
 
 ### MetaData

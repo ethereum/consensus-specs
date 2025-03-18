@@ -13,9 +13,10 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
-    - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
+    - [Constructing the sidecars](#constructing-the-sidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
-      - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+    - [Sidecar publishing](#sidecar-publishing)
+    - [Sidecar retention](#sidecar-retention)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -74,7 +75,7 @@ node *may* wait to advertise a higher custody in its Metadata and ENR until back
 
 ### Block and sidecar proposal
 
-#### Constructing the `DataColumnSidecar`s
+#### Constructing the sidecars
 
 *[New in Fulu:EIP7594]*
 
@@ -123,20 +124,17 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
     return sidecars
 ```
 
-##### `compute_subnet_for_data_column_sidecar`
+#### Sidecar publishing
 
 The `subnet_id` for the `data_column_sidecar` is calculated with:
 
 - Let `column_index = data_column_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_data_column_sidecar(column_index)`.
 
-```python
-def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
-    return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
-```
+After publishing all columns to their respective subnets, peers on the network may request the
+sidecar through sync-requests, or a local user may be interested.
 
-After publishing, the peers on the network may request the sidecar through sync-requests, or a local
-user may be interested.
+#### Sidecar retention
 
 The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs and
 serve when capable, to ensure the data-availability of these blobs throughout the network.
