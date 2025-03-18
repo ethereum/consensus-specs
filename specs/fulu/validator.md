@@ -126,6 +126,7 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
 ##### `compute_subnet_for_data_column_sidecar`
 
 The `subnet_id` for the `data_column_sidecar` is calculated with:
+
 - Let `column_index = data_column_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_data_column_sidecar(column_index)`.
 
