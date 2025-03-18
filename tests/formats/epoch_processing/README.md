@@ -63,7 +63,7 @@ The resulting state should match the expected `post` state.
 
 Instead of having a different handler for each sub-transition, a single handler for all cases should load `pre_full` state, call `process_epoch` and then assert that the result state should match `post_full` state.
 
-This has the advanges:
+This has the advantages:
 
 - Less code to maintain for the epoch processing handler.
 - Works with single pass epoch processing.
