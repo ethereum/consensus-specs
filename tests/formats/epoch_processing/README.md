@@ -61,7 +61,7 @@ The resulting state should match the expected `post` state.
 
 ## Condition (alternative)
 
-Instead of having a different handler for each sub-transition, a single handler for all cases, should load `pre_full` state, call `process_epoch` and then assert that the result state should match `post_full` state.
+Instead of having a different handler for each sub-transition, a single handler for all cases should load `pre_full` state, call `process_epoch` and then assert that the result state should match `post_full` state.
 
 This has the advanges:
 
