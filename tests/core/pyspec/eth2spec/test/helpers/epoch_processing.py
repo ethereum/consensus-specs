@@ -1,4 +1,3 @@
-
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_capella,
@@ -92,12 +91,12 @@ def run_epoch_processing_with(spec, state, process_name: str):
     Processes to the next epoch transition, up to and including the sub-transition named ``process_name``
       - pre-state ('pre'), state before calling ``process_name``
       - post-state ('post'), state after calling ``process_name``
-      - pre-full-state ('pre_full'), state before epoch transition
-      - post-full-state ('post_full'), state after epoch transition
+      - pre-epoch-state ('pre_epoch'), state before epoch transition
+      - post-epoch-state ('post_epoch'), state after epoch transition
     The state passed by reference will be modified to be the ``process_name``post state.
     """
     run_process_slots_up_to_epoch_boundary(spec, state)
-    yield "pre_full", state
+    yield "pre_epoch", state
     run_epoch_processing_to(spec, state, process_name,
                             disable_slots_processing=True)
     yield 'pre', state
@@ -105,4 +104,4 @@ def run_epoch_processing_with(spec, state, process_name: str):
     yield 'post', state
     continue_state = state.copy()
     run_epoch_processing_from(spec, continue_state, process_name)
-    yield 'post_full', continue_state
+    yield 'post_epoch', continue_state

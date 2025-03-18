@@ -23,11 +23,11 @@ An SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-tran
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition. No value if the sub-transition processing is aborted.
 
-### `pre_full.ssz_snappy`
+### `pre_epoch.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state before running the epoch transition.
 
-### `post_full.ssz_snappy`
+### `post_epoch.ssz_snappy`
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the epoch transition. No value if the transition processing is aborted.
 
