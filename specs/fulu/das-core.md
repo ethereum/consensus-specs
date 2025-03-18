@@ -71,8 +71,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody |
 | `CUSTODY_REQUIREMENT` | `4` | Minimum number of custody groups an honest node custodies and serves samples from |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
 
 ### Containers
 
