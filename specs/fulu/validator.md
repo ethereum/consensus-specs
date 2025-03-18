@@ -8,6 +8,10 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+  - [Custody setting](#custody-setting)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
@@ -26,9 +30,45 @@ This document is an extension of the [Electra -- Honest Validator](../electra/va
 All behaviors and definitions defined in this document, and documents it extends, carry over unless
 explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated [Beacon Chain
-doc of Fulu](./beacon-chain.md) are requisite for this document and used throughout. Please see
-related Beacon Chain doc before continuing and use them as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in [Fulu -- Beacon
+Chain](./beacon-chain.md) and [Fulu -- Data Availability Sampling Core] are requisite for this
+document and used throughout.
+
+## Configuration
+
+### Custody setting
+
+| Name | Value | Description |
+| - | - | - |
+| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
+
+## Beacon chain responsibilities
+
+### Validator custody
+
+A node with validators attached downloads and custodies a higher minimum of custody groups per slot,
+determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the
+current `BeaconState` and `validator_indices` is the list of indices corresponding to validators
+attached to the node. Any node with at least one validator attached, and with the sum of the
+balances of all attached validators being `total_node_balance`, downloads and custodies
+`total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum
+of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`.
+
+```python
+def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
+    total_node_balance = sum(state.balances[index] for index in validator_indices)
+    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
+```
+
+This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count`
+and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node
+with validators *may* still choose to custody, advertise and serve more than this minimum. As with
+the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the
+validator custody requirement increases, due to an increase in the total balance of the attached
+validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to
+advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
 ### Block and sidecar proposal
 
