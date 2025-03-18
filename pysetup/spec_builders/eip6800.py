@@ -13,9 +13,3 @@ class EIP6800SpecBuilder(BaseSpecBuilder):
 from eth2spec.deneb import {preset_name} as deneb
 from eth2spec.utils.ssz.ssz_typing import Bytes31
 '''
-
-    @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
-        return {
-            'MAX_STEMS': spec_object.preset_vars['MAX_STEMS'].value,
-        }

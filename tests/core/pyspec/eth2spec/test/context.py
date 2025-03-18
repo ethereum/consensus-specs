@@ -9,7 +9,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     FULU,
-    EIP7441,
+    EIP7441, EIP7732,
     MINIMAL,
     ALL_PHASES,
     POST_FORK_OF,
@@ -284,7 +284,7 @@ def spec_test(fn):
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
     # A test may apply BLS overrides such as @always_bls,
     #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
-    #  This is why @alway_bls has its own bls switch, since the override is beyond the reach of the outer switch.
+    #  This is why @always_bls has its own bls switch, since the override is beyond the reach of the outer switch.
     return vector_test()(bls_switch(fn))
 
 
@@ -422,7 +422,8 @@ def with_all_phases(fn):
 
 def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
-    A decorator factory for running a tests with every phase except the ones listed
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    excluding the ones listed.
     """
     def decorator(fn):
         return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
@@ -450,6 +451,17 @@ def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=
             other_phases=other_phases,
         )(fn)
     return decorator
+
+
+def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    and ending at `latest_phase` excluding the ones listed.
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in ALL_PHASES if phase not in except_phases and
+                            is_post_fork(phase, earliest_phase) and not
+                            is_post_fork(phase, latest_phase)])(fn)
 
 
 def with_all_phases_except(exclusion_phases):
@@ -575,6 +587,12 @@ with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+with_altair_until_eip7732 = with_all_phases_from_to(ALTAIR, EIP7732)
+with_bellatrix_until_eip7732 = with_all_phases_from_to(BELLATRIX, EIP7732)
+with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
+with_deneb_until_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
+with_electra_until_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
 
 
 class quoted_str(str):

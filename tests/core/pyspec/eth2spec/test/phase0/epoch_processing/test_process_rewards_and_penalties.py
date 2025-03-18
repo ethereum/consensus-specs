@@ -155,7 +155,7 @@ def test_full_attestations_misc_balances(spec, state):
 @spec_test
 @with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
 @single_phase
-def test_full_attestations_one_validaor_one_gwei(spec, state):
+def test_full_attestations_one_validator_one_gwei(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
 
     yield from run_process_rewards_and_penalties(spec, state)

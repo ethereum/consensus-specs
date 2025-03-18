@@ -54,7 +54,7 @@
 
 ## Introduction
 
-This document extends [polynomial-commitments.md](../../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
+This document extends [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
 
 ## Public Methods
 
@@ -746,7 +746,7 @@ def recover_cells_and_kzg_proofs(cell_indices: Sequence[CellIndex],
     # Check we have the same number of cells and indices
     assert len(cell_indices) == len(cells)
     # Check we have enough cells to be able to perform the reconstruction
-    assert CELLS_PER_EXT_BLOB / 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
+    assert CELLS_PER_EXT_BLOB // 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_indices) == len(set(cell_indices))
     # Check that the cell indices are within bounds

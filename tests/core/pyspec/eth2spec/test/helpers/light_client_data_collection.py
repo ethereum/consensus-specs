@@ -510,7 +510,7 @@ def _process_finalization_for_light_client(test, spec, finalized_bid, old_finali
             break
         boundary_slot = boundary_slot - spec.SLOTS_PER_EPOCH
 
-    # Prune light client data that is no longer referrable by future updates
+    # Prune light client data that is no longer referable by future updates
     bids_to_delete = []
     for bid in test.lc_data_store.cache.data:
         if bid.slot >= finalized_bid.slot:

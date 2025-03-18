@@ -114,7 +114,7 @@ To construct the `execution_payload_envelope` the builder must perform the follo
 2. Set the `builder_index` field to be the validator index of the builder performing these steps. This field **MUST** be `header.builder_index`.
 3. Set `beacon_block_root` to be the `hash_tree_root` of the corresponding beacon block.
 4. Set `blob_kzg_commitments` to be the `commitments` field of the blobs bundle constructed when constructing the bid. This field **MUST** have a `hash_tree_root` equal to `header.blob_kzg_commitments_root`.
-5. Set `payload_witheld` to `False`.
+5. Set `payload_withheld` to `False`.
 
 After setting these parameters, the builder should run `process_execution_payload(state, signed_envelope, verify=False)` and this function should not trigger an exception.
 

@@ -282,7 +282,7 @@ def test_success(spec, state):
 
 [This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120)
 creates a valid attestation (which can then be modified to make it invalid if needed).
-To see an attestion "from the inside" we need to follow it.
+To see an attestation "from the inside" we need to follow it.
 
 > ```python
 >  def get_valid_attestation(spec,

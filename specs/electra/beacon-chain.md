@@ -116,6 +116,7 @@
 ## Introduction
 
 Electra is a consensus-layer upgrade containing a number of features. Including:
+
 * [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
 * [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
 * [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
