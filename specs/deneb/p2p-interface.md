@@ -154,11 +154,13 @@ New validation:
 *[Modified in Deneb:EIP7045]*
 
 The following validation is removed:
+
 * _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
 
 The following validations are added in its place:
+
 * _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot <= current_slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
@@ -208,11 +210,13 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 *[Modified in Deneb:EIP7045]*
 
 The following validation is removed:
+
 * _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
   (a client MAY queue future attestations for processing at the appropriate slot).
 
 The following validations are added in its place:
+
 * _[IGNORE]_ `attestation.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot <= current_slot`
   (a client MAY queue future attestation for processing at the appropriate slot).
@@ -415,6 +419,7 @@ In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by q
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
 
 When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+
 * publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
 * update gossip rule related data structures (i.e. update the anti-equivocation cache).
 

@@ -331,7 +331,7 @@ def state_transition_with_full_block(spec,
 
 def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, fill_prev_epoch):
     """
-    Build and apply a block with attestions at all valid slots of current epoch and/or previous epoch.
+    Build and apply a block with attestations at all valid slots of current epoch and/or previous epoch.
     """
     # Build a block with previous attestations
     block = build_empty_block_for_next_slot(spec, state)

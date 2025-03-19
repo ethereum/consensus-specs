@@ -10,9 +10,10 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	deneb     \
 	electra   \
 	fulu      \
-	whisk     \
 	eip6800   \
-	eip7732
+	eip7441   \
+	eip7732   \
+  eip7805
 
 # A list of fake targets.
 .PHONY: \
@@ -73,10 +74,12 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
 pyspec: $(VENV) setup.py pyproject.toml
-	@echo "Building eth2spec"
 	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
-	@echo "Building all pyspecs"
-	@$(PYTHON_VENV) setup.py pyspecdev
+	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
+	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
+	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
+	    cp "./build/lib/eth2spec/$$dir/minimal.py" "./tests/core/pyspec/eth2spec/$$dir/minimal.py"; \
+	done
 
 ###############################################################################
 # Testing
@@ -240,12 +243,16 @@ gen_all: $(GENERATOR_TARGETS)
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
-	@find $(TEST_VECTOR_DIR) -name "INCOMPLETE"
+	@incomplete_files=$$(find $(TEST_VECTOR_DIR) -name "INCOMPLETE"); \
+	if [ -n "$$incomplete_files" ]; then \
+		echo "[ERROR] incomplete detected"; \
+		exit 1; \
+	fi
 	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
 		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
-	else \
-		echo "[PASSED] error log file does not exist"; \
+		exit 1; \
 	fi
+	@echo "[PASSED] no errors detected"
 
 # Generate KZG trusted setups for testing.
 kzg_setups: pyspec

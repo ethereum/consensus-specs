@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 from eth2spec.test.helpers.execution_payload import build_empty_signed_execution_payload_header
-from eth2spec.test.helpers.forks import is_post_whisk, is_post_altair, is_post_bellatrix, is_post_eip7732, \
+from eth2spec.test.helpers.forks import is_post_eip7441, is_post_altair, is_post_bellatrix, is_post_eip7732, \
     is_post_electra
 from eth2spec.test.helpers.keys import privkeys, whisk_ks_initial, whisk_ks_final
 from eth2spec.utils import bls
@@ -17,7 +17,7 @@ from py_ecc.bls.g2_primitives import (
     G1_to_pubkey as py_ecc_G1_to_bytes48,
     pubkey_to_G1 as py_ecc_bytes48_to_G1,
 )
-from eth2spec.test.helpers.whisk import (
+from eth2spec.test.helpers.eip7441 import (
     compute_whisk_tracker_and_commitment,
     is_first_proposal,
     resolve_known_tracker
@@ -132,7 +132,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_requests.withdrawals = []
         empty_block.body.execution_requests.consolidations = []
 
-    if is_post_whisk(spec):
+    if is_post_eip7441(spec):
         # Whisk opening proof
         #######
 
@@ -146,7 +146,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         if proposer_k_commitment != k_commitment:
             raise Exception("k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment)
 
-        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
 
@@ -190,7 +190,7 @@ def is_whisk_proposer(tracker: WhiskTracker, k: int) -> bool:
 
 
 def get_beacon_proposer_to_build(spec, state, proposer_index=None):
-    if is_post_whisk(spec):
+    if is_post_eip7441(spec):
         if proposer_index is None:
             return find_whisk_proposer(spec, state)
         else:
@@ -200,10 +200,10 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 
 def find_whisk_proposer(spec, state):
-    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
 
     # Check record of known trackers
-    # During the first shuffling phase (epoch < WHISK_EPOCHS_PER_SHUFFLING_PHASE)
+    # During the first shuffling phase (epoch < EPOCHS_PER_SHUFFLING_PHASE)
     # proposer trackers are those inserted on the genesis state, and have not gone
     # through any shuffling. We cache those initial trackers and use `resolve_known_tracker`
     # to check if the tracker is known, and skip the need to actually find the matching tracker

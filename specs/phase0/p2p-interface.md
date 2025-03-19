@@ -306,6 +306,7 @@ Starting from Gossipsub v1.1, clients MUST enforce this by applying the `StrictN
 [signature policy](https://github.com/libp2p/specs/blob/master/pubsub/README.md#signature-policy-options).
 
 The `message-id` of a gossipsub message MUST be the following 20 byte value computed from the message data:
+
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of `MESSAGE_DOMAIN_VALID_SNAPPY` with the snappy decompressed message data,
   i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + snappy_decompress(message.data))[:20]`.
@@ -356,6 +357,7 @@ The `beacon_block` topic is used solely for propagating new signed beacon blocks
 Signed blocks are sent in their entirety.
 
 The following validations MUST pass before forwarding the `signed_beacon_block` on the network.
+
 - _[IGNORE]_ The block is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `signed_beacon_block.message.slot <= current_slot`
   (a client MAY queue future blocks for processing at the appropriate slot).
@@ -384,12 +386,14 @@ The `beacon_aggregate_and_proof` topic is used to propagate aggregated attestati
 to subscribing nodes (typically validators) to be included in future blocks.
 
 We define the following variables for convenience:
+
 - `aggregate_and_proof = signed_aggregate_and_proof.message`
 - `aggregate = aggregate_and_proof.aggregate`
 - `index = aggregate.data.index`
 - `aggregation_bits = attestation.aggregation_bits`
 
 The following validations MUST pass before forwarding the `signed_aggregate_and_proof` on the network.
+
 - _[REJECT]_ The committee index is within the expected range -- i.e. `index < get_committee_count_per_slot(state, aggregate.data.target.epoch)`.
 - _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
@@ -429,6 +433,7 @@ The `voluntary_exit` topic is used solely for propagating signed voluntary valid
 Signed voluntary exits are sent in their entirety.
 
 The following validations MUST pass before forwarding the `signed_voluntary_exit` on to the network.
+
 - _[IGNORE]_ The voluntary exit is the first valid voluntary exit received
   for the validator with index `signed_voluntary_exit.message.validator_index`.
 - _[REJECT]_ All of the conditions within `process_voluntary_exit` pass validation.
@@ -439,6 +444,7 @@ The `proposer_slashing` topic is used solely for propagating proposer slashings 
 Proposer slashings are sent in their entirety.
 
 The following validations MUST pass before forwarding the `proposer_slashing` on to the network.
+
 - _[IGNORE]_ The proposer slashing is the first valid proposer slashing received
   for the proposer with index `proposer_slashing.signed_header_1.message.proposer_index`.
 - _[REJECT]_ All of the conditions within `process_proposer_slashing` pass validation.
@@ -449,6 +455,7 @@ The `attester_slashing` topic is used solely for propagating attester slashings 
 Attester slashings are sent in their entirety.
 
 Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
+
 - _[IGNORE]_ At least one index in the intersection of the attesting indices of each attestation
   has not yet been seen in any prior `attester_slashing`
   (i.e. `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`,
@@ -465,10 +472,12 @@ The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated a
 to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`.
 
 We define the following variables for convenience:
+
 - `index = attestation.data.index`
 - `aggregation_bits = attestation.aggregation_bits`
 
 The following validations MUST pass before forwarding the `attestation` on the subnet.
+
 - _[REJECT]_ The committee index is within the expected range -- i.e. `index < get_committee_count_per_slot(state, attestation.data.target.epoch)`.
 - _[REJECT]_ The attestation is for the correct subnet --
   i.e. `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, index) == subnet_id`,
@@ -698,7 +707,7 @@ When Snappy is applied, it can be passed through a buffered Snappy writer to com
 When snappy is applied, it can be passed through a buffered Snappy reader to decompress frame by frame.
 
 Before reading the payload, the header MUST be validated:
-- The unsigned protobuf varint used for the length-prefix MUST not be longer than 10 bytes, which is sufficient for any `uint64`.
+- The length-prefix MUST be encoded as an unsigned protobuf varint. It SHOULD be minimally encoded (i.e., without any redundant bytes) and MUST not exceed 10 bytes in length, which is sufficient to represent any `uint64` value. The length-prefix MUST be decoded into a type which supports the full range of `uint64` values.
 - The length-prefix is within the expected [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds) or `MAX_PAYLOAD_SIZE`, whichever is smaller.
 
 After reading a valid header, the payload MAY be read, while maintaining the size constraints from the header.
@@ -1409,7 +1418,7 @@ They are best suited to store identity, location, and capability information, ra
 #### How should fork version be used in practice?
 
 Fork versions are to be manually updated (likely via incrementing) at each hard fork.
-This is to provide native domain separation for signatures as well as to aid in usefulness for identitying peers (via ENRs)
+This is to provide native domain separation for signatures as well as to aid in usefulness for identifying peers (via ENRs)
 and versioning network protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork domains (`ForkDigest`) to aid in the ease of domain separation between chains.
@@ -1462,6 +1471,7 @@ libp2p streams are full-duplex, and each party is responsible for closing their 
 We can therefore use stream closure to mark the end of the request and response independently.
 
 Nevertheless, in the case of `ssz_snappy`, messages are still length-prefixed with the length of the underlying data:
+
 * A basic reader can prepare a correctly sized buffer before reading the message
 * A more advanced reader can stream-decode SSZ given the length of the SSZ data.
 * Alignment with protocols like gRPC over HTTP/2 that prefix with length
