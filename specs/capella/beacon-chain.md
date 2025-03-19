@@ -46,6 +46,7 @@
 
 Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
+
 * Automatic withdrawals of `withdrawable` validators.
 * Partial withdrawals sweep for validators with 0x01 withdrawal
   credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.

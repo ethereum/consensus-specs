@@ -12,7 +12,8 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	fulu      \
 	eip6800   \
 	eip7441   \
-	eip7732
+	eip7732   \
+  eip7805
 
 # A list of fake targets.
 .PHONY: \
@@ -242,12 +243,16 @@ gen_all: $(GENERATOR_TARGETS)
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
-	@find $(TEST_VECTOR_DIR) -name "INCOMPLETE"
+	@incomplete_files=$$(find $(TEST_VECTOR_DIR) -name "INCOMPLETE"); \
+	if [ -n "$$incomplete_files" ]; then \
+		echo "[ERROR] incomplete detected"; \
+		exit 1; \
+	fi
 	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
 		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
-	else \
-		echo "[PASSED] error log file does not exist"; \
+		exit 1; \
 	fi
+	@echo "[PASSED] no errors detected"
 
 # Generate KZG trusted setups for testing.
 kzg_setups: pyspec

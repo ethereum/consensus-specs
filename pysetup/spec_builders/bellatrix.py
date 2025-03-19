@@ -62,10 +62,3 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
-
-
-    @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
-        return {
-            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
-        }

@@ -114,7 +114,7 @@ Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
 The network attestation aggregates contain only the assigned committee attestations.
 Attestation aggregates received by the block proposer from the committee aggregators with disjoint `committee_bits` sets and equal `AttestationData` SHOULD be consolidated into a single `Attestation` object.
-The proposer should run the following function to construct an on chain final aggregate form a list of network aggregates with equal `AttestationData`:
+The proposer should run the following function to construct an on chain final aggregate from a list of network aggregates with equal `AttestationData`:
 
 ```python
 def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Attestation:

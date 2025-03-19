@@ -57,6 +57,8 @@
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
+- [Testing](#testing)
+  - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -70,6 +72,7 @@ This is the beacon chain specification of the enshrined proposer builder separat
 This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the  start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
 
 At any given slot, the status of the blockchain's head may be either
+
 - A block from a previous slot (e.g. the current slot's proposer did not submit its block).
 - An *empty* block from the current slot (e.g. the proposer submitted a timely block, but the builder did not reveal the payload on time).
 - A full block for the current slot (both the proposer and the builder revealed on time).
@@ -715,9 +718,9 @@ def process_execution_payload(state: BeaconState,
             for operation in operations:
                 fn(state, operation)
 
-        for_ops(requests.deposit_requests, process_deposit_request)
-        for_ops(requests.withdrawal_requests, process_withdrawal_request)
-        for_ops(requests.consolidation_requests, process_consolidation_request)
+        for_ops(requests.deposits, process_deposit_request)
+        for_ops(requests.withdrawals, process_withdrawal_request)
+        for_ops(requests.consolidations, process_consolidation_request)
 
         # Cache the execution payload header and proposer
         state.latest_block_hash = payload.block_hash
@@ -727,3 +730,17 @@ def process_execution_payload(state: BeaconState,
     if verify:
         assert envelope.state_root == hash_tree_root(state)
 ```
+
+## Testing
+
+### Modified `is_merge_transition_complete`
+
+The function `is_merge_transition_complete` is modified for test purposes only to include the hash tree root of the empty KZG commitment list
+
+```python
+def is_merge_transition_complete(state: BeaconState) -> bool:
+    header = ExecutionPayloadHeader()
+    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    return state.latest_execution_payload_header != header

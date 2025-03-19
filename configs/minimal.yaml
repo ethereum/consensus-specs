@@ -5,8 +5,7 @@ PRESET_BASE: 'minimal'
 
 # Free-form short name of the network that this configuration applies to - known
 # canonical network names include:
-# * 'mainnet' - there can be only one
-# * 'prater' - testnet
+# * 'minimal' - spec-testing
 # Must match the regex: [a-z0-9\-]
 CONFIG_NAME: 'minimal'
 
@@ -182,3 +181,8 @@ PROPOSER_SELECTION_GAP: 1
 
 # EIP7732
 MAX_REQUEST_PAYLOADS: 128
+
+# EIP7805
+ATTESTATION_DEADLINE: 2
+PROPOSER_INCLUSION_LIST_CUT_OFF: 5
+VIEW_FREEZE_DEADLINE: 3
