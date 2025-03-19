@@ -75,18 +75,20 @@ Conformance tests built from the executable python spec are available in the [Et
 
 ## Installation and usage
 
-The consensus-specs repo can be used by running the tests locally.
+Clone the repository with:
 
-To run the tests locally:
-- Clone the repository with:
-  ```bash
-  git clone https://github.com/ethereum/consensus-specs.git
-  ```
-- Switch to the directory:
-  ```bash
-  cd consensus-specs
-  ```
-- Run the tests with:
-  ```bash
-  make test
-  ```
+```bash
+git clone https://github.com/ethereum/consensus-specs.git
+```
+
+Switch to the directory:
+
+```bash
+cd consensus-specs
+```
+
+Run the tests:
+
+```bash
+make test
+```
