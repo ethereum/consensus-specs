@@ -47,7 +47,7 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 | Name                 | Value       |
 | -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE / 2` (=`uint64(256)`) |
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
 | `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
 | `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
 | `PAYLOAD_WITHHOLD_BOOST` | `40` |
@@ -340,7 +340,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
 ### Modified `get_head`
 
-**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponidng to the head block.
+**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ChildNode:

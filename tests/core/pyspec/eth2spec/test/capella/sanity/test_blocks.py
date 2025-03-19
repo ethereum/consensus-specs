@@ -456,7 +456,7 @@ def _insert_validator(spec, state, balance):
 def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
     validator_index = _insert_validator(spec, state, balance=initial_balance)
 
-    # To make it eligibile activation
+    # To make it eligible activation
     transition_to(spec, state, spec.compute_start_slot_at_epoch(2) - 1)
     assert not spec.is_active_validator(state.validators[validator_index], spec.get_current_epoch(state))
 

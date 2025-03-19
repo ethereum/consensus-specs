@@ -9,7 +9,7 @@ from .exceptions import SkippedTest
 from .helpers.constants import (
     PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
     FULU,
-    WHISK,
+    EIP7441,
     MINIMAL,
     ALL_PHASES,
     POST_FORK_OF,
@@ -284,7 +284,7 @@ def spec_test(fn):
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
     # A test may apply BLS overrides such as @always_bls,
     #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
-    #  This is why @alway_bls has its own bls switch, since the override is beyond the reach of the outer switch.
+    #  This is why @always_bls has its own bls switch, since the override is beyond the reach of the outer switch.
     return vector_test()(bls_switch(fn))
 
 
@@ -573,8 +573,8 @@ with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
-with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

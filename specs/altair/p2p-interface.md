@@ -74,6 +74,7 @@ The specification around the creation, validation, and dissemination of messages
 
 The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
 The `message-id` MUST be the following 20 byte value computed from the message:
+
 * If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
   the topic byte string, and the snappy decompressed message data:
@@ -196,12 +197,15 @@ Topic-meshes can be grafted quickly as the nodes are already connected and excha
 
 Messages SHOULD NOT be re-broadcast from one fork to the other.
 A node's behavior before the fork and after the fork are as follows:
+
 Pre-fork:
+
 - Peers who propagate messages on the post-fork topics MAY be scored negatively proportionally to time till fork,
   to account for clock discrepancy.
 - Messages can be IGNORED on the post-fork topics, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` margin.
 
 Post-fork:
+
 - Peers who propagate messages on the pre-fork topics MUST NOT be scored negatively. Lagging IWANT may force them to.
 - Messages on pre and post-fork variants of topics share application-level caches.
   E.g. an attestation on the both the old and new topic is ignored like any duplicate.

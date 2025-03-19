@@ -76,9 +76,11 @@ The derivation of the `message-id` remains stable.
 ###### `beacon_aggregate_and_proof`
 
 The following convenience variables are re-defined
+
 - `index = get_committee_indices(aggregate.committee_bits)[0]`
 
 The following validations are added:
+
 * [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
 * [REJECT] `aggregate.data.index == 0`
 
@@ -97,14 +99,17 @@ The existing validations all apply as given from previous forks, with the follow
 The topic is updated to propagate `SingleAttestation` objects.
 
 The following convenience variables are re-defined:
+
 - `index = attestation.committee_index`
 
 The following validations are added:
+
 - _[REJECT]_ `attestation.data.index == 0`
 - _[REJECT]_ The attester is a member of the committee -- i.e.
   `attestation.attester_index in get_beacon_committee(state, attestation.data.slot, index)`.
 
 The following validations are removed:
+
 - _[REJECT]_ The attestation is unaggregated --
   that is, it has exactly one participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.

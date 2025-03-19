@@ -25,9 +25,10 @@
         - [`execution_payload_header`](#execution_payload_header)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
-      - [BeaconBlocksByRange v3](#beaconblocksbyrange-v3)
-      - [BeaconBlocksByRoot v3](#beaconblocksbyroot-v3)
-      - [BlobSidecarsByRoot v2](#blobsidecarsbyroot-v2)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+      - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -111,8 +112,9 @@ Some gossip meshes are upgraded in the fork of EIP-7732 to support upgraded type
 Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is updated to support the modified type
-| Name | Message Type |
-| --- | --- |
+
+| Name           | Message Type                               |
+|----------------|--------------------------------------------|
 | `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
@@ -161,6 +163,7 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 
 Let `block` be the block with `envelope.beacon_block_root`.
 Let `header` alias `block.body.signed_execution_payload_header.message` (notice that this can be obtained from the `state.signed_execution_payload_header`)
+
 - _[REJECT]_ `block` passes validation.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - if `envelope.payload_withheld == False` then
@@ -200,9 +203,9 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 #### Messages
 
-##### BeaconBlocksByRange v3
+##### BeaconBlocksByRange v2
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/3/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 [0]: # (eth2spec: skip)
 
@@ -215,9 +218,9 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
-##### BeaconBlocksByRoot v3
+##### BeaconBlocksByRoot v2
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/3/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -232,9 +235,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
-##### BlobSidecarsByRoot v2
+##### BlobSidecarsByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/2/`
+**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 [1]: # (eth2spec: skip)
 
@@ -242,6 +245,41 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 |--------------------------|-------------------------------|
 | `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
 | `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
+
+##### ExecutionPayloadEnvelopesByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
+
+*[New in EIP-7732]*
+
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Specifications of req\response methods are equivalent to [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference being the response content type.
+
+For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
+
+Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+
+[0]: # (eth2spec: skip)
+
+| `fork_version`         | Chunk SSZ type                           |
+|------------------------|------------------------------------------|
+| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 

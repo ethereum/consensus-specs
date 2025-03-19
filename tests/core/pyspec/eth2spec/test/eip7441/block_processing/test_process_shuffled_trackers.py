@@ -1,6 +1,6 @@
-from eth2spec.test.context import spec_state_test, with_whisk_and_later, expect_assertion_error
+from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
 from eth2spec.test.helpers.keys import whisk_ks_initial
-from eth2spec.test.helpers.whisk import compute_whisk_tracker
+from eth2spec.test.helpers.eip7441 import compute_whisk_tracker
 from curdleproofs import GenerateWhiskShuffleProof
 
 
@@ -32,7 +32,7 @@ def set_state_epoch(spec, state, epoch):
 
 
 def set_state_epoch_selection_gap(spec, state):
-    set_state_epoch(spec, state, spec.config.WHISK_EPOCHS_PER_SHUFFLING_PHASE - 1)
+    set_state_epoch(spec, state, spec.config.EPOCHS_PER_SHUFFLING_PHASE - 1)
 
 
 def empty_block_body(spec):
@@ -53,7 +53,7 @@ def run_process_shuffled_trackers(spec, state, body, valid=True):
     yield 'post', state
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_shuffle_trackers(spec, state):
     body = empty_block_body(spec)
@@ -61,7 +61,7 @@ def test_shuffle_trackers(spec, state):
     yield from run_process_shuffled_trackers(spec, state, body)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_no_shuffle_minus_selection_gap(spec, state):
     body = empty_block_body(spec)
@@ -69,19 +69,19 @@ def test_no_shuffle_minus_selection_gap(spec, state):
     yield from run_process_shuffled_trackers(spec, state, body)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_no_shuffle_minus_one_and_selection_gap(spec, state):
     body = empty_block_body(spec)
     set_state_epoch(
         spec,
         state,
-        spec.config.WHISK_EPOCHS_PER_SHUFFLING_PHASE - spec.config.WHISK_PROPOSER_SELECTION_GAP - 1
+        spec.config.EPOCHS_PER_SHUFFLING_PHASE - spec.config.PROPOSER_SELECTION_GAP - 1
     )
     yield from run_process_shuffled_trackers(spec, state, body)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_shuffle_during_selection_gap(spec, state):
     body = empty_block_body(spec)
@@ -94,7 +94,7 @@ def test_shuffle_during_selection_gap(spec, state):
 # - wrong post shuffle
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_invalid_shuffle_bad_proof(spec, state):
     body = empty_block_body(spec)
@@ -103,7 +103,7 @@ def test_invalid_shuffle_bad_proof(spec, state):
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_invalid_shuffle_bad_trackers_zero(spec, state):
     body = empty_block_body(spec)
@@ -116,7 +116,7 @@ def test_invalid_shuffle_bad_trackers_zero(spec, state):
 # - not empty proof
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_invalid_gap_non_zero_proof(spec, state):
     body = empty_block_body(spec)
@@ -125,7 +125,7 @@ def test_invalid_gap_non_zero_proof(spec, state):
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)
 
 
-@with_whisk_and_later
+@with_eip7441_and_later
 @spec_state_test
 def test_invalid_gap_non_zero_trackers(spec, state):
     body = empty_block_body(spec)
