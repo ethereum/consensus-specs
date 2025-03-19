@@ -17,7 +17,9 @@
   - [Modified `finalized_root_gindex_at_slot`](#modified-finalized_root_gindex_at_slot)
   - [Modified `current_sync_committee_gindex_at_slot`](#modified-current_sync_committee_gindex_at_slot)
   - [Modified `next_sync_committee_gindex_at_slot`](#modified-next_sync_committee_gindex_at_slot)
+  - [Modified `execution_payload_gindex_at_slot`](#modified-execution_payload_gindex_at_slot)
   - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
+  - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -27,6 +29,7 @@
 This upgrade updates light client data to include the Electra changes to the [`ExecutionPayload`](../beacon-chain.md) structure and to the generalized indices of surrounding containers. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to Electra.
 
 Additional documents describes the impact of the upgrade on certain roles:
+- [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
 ## Custom types
@@ -36,26 +39,29 @@ Additional documents describes the impact of the upgrade on certain roles:
 | `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
 | `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
 | `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX_ELECTRA)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
 
 ## Constants
 
 ### Frozen constants
 
-Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol.md#constants) values.
+Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol.md#constants) and [Capella](../../capella/light-client/sync-protocol.md#constants) values.
 
 | Name | Value |
 | - | - |
 | `FINALIZED_ROOT_GINDEX` | `get_generalized_index(altair.BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
 | `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(altair.BeaconState, 'current_sync_committee')` (= 54) |
 | `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(altair.BeaconState, 'next_sync_committee')` (= 55) |
+| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload')` (= 25) |
 
 ### New constants
 
 | Name | Value |
 | - | - |
-| `FINALIZED_ROOT_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86) |
-| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87) |
+| `FINALIZED_ROOT_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 553) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 278) |
+| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 279) |
+| `EXECUTION_PAYLOAD_GINDEX_ELECTRA` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 137) |
 
 ## Helper functions
 
@@ -93,6 +99,19 @@ def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     if epoch >= ELECTRA_FORK_EPOCH:
         return NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
     return NEXT_SYNC_COMMITTEE_GINDEX
+```
+
+### Modified `execution_payload_gindex_at_slot`
+
+```python
+def execution_payload_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    epoch = compute_epoch_at_slot(slot)
+    assert epoch >= CAPELLA_FORK_EPOCH
+
+    # [Modified in Electra]
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return EXECUTION_PAYLOAD_GINDEX_ELECTRA
+    return EXECUTION_PAYLOAD_GINDEX
 ```
 
 ### Modified `get_lc_execution_root`
@@ -149,4 +168,28 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
         return hash_tree_root(execution_header)
 
     return Root()
+```
+
+### Modified `is_valid_light_client_header`
+
+```python
+def is_valid_light_client_header(header: LightClientHeader) -> bool:
+    epoch = compute_epoch_at_slot(header.beacon.slot)
+
+    if epoch < DENEB_FORK_EPOCH:
+        if header.execution.blob_gas_used != uint64(0) or header.execution.excess_blob_gas != uint64(0):
+            return False
+
+    if epoch < CAPELLA_FORK_EPOCH:
+        return (
+            header.execution == ExecutionPayloadHeader()
+            and header.execution_branch == ExecutionBranch()
+        )
+
+    return is_valid_normalized_merkle_branch(
+        leaf=get_lc_execution_root(header),
+        branch=header.execution_branch,
+        gindex=execution_payload_gindex_at_slot(header.beacon.slot),
+        root=header.beacon.body_root,
+    )
 ```

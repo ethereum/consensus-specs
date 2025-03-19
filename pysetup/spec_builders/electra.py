@@ -11,14 +11,22 @@ class ElectraSpecBuilder(BaseSpecBuilder):
         return f'''
 from eth2spec.deneb import {preset_name} as deneb
 from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
+from eth2spec.utils.ssz.ssz_typing import StableContainer, Profile
 '''
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
         return {
-            'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(169)',
-            'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(86)',
-            'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(87)',
+            'FINALIZED_ROOT_GINDEX_ELECTRA': 'GeneralizedIndex(553)',
+            'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(278)',
+            'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA': 'GeneralizedIndex(279)',
+            'EXECUTION_PAYLOAD_GINDEX_ELECTRA': 'GeneralizedIndex(137)',
+        }
+
+    @classmethod
+    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:
+        return {
+            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA': spec_object.preset_vars['KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA'].value,
         }
 
 

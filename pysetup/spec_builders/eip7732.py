@@ -26,11 +26,11 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
     @classmethod
     def deprecate_constants(cls) -> Set[str]:
         return set([
-            'EXECUTION_PAYLOAD_GINDEX',
+            'EXECUTION_PAYLOAD_GINDEX_ELECTRA',
         ])
 
     @classmethod
     def deprecate_presets(cls) -> Set[str]:
         return set([
-            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH',
+            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_ELECTRA',
         ])

@@ -25,8 +25,11 @@
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
+    - [`StableBeaconBlockBody`](#stablebeaconblockbody)
     - [`BeaconBlockBody`](#beaconblockbody)
+    - [`StableExecutionPayloadHeader`](#stableexecutionpayloadheader)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`StableBeaconState`](#stablebeaconstate)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Math](#math)
@@ -178,12 +181,34 @@ class SignedExecutionPayloadEnvelope(Container):
 
 ### Modified containers
 
-#### `BeaconBlockBody`
+#### `StableBeaconBlockBody`
 
 **Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope.
 
 ```python
-class BeaconBlockBody(Container):
+class StableBeaconBlockBody(StableContainer[MAX_BEACON_BLOCK_BODY_FIELDS]):
+    randao_reveal: Optional[BLSSignature]
+    eth1_data: Optional[Eth1Data]  # Eth1 data vote
+    graffiti: Optional[Bytes32]  # Arbitrary data
+    proposer_slashings: Optional[List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]]
+    attester_slashings: Optional[List[StableAttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]]
+    attestations: Optional[List[Attestation, MAX_ATTESTATIONS_ELECTRA]]
+    deposits: Optional[List[Deposit, MAX_DEPOSITS]]
+    voluntary_exits: Optional[List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]]
+    sync_aggregate: Optional[SyncAggregate]
+    execution_payload: Optional[StableExecutionPayload]  # [Removed in EIP-7732]
+    bls_to_execution_changes: Optional[List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]]
+    blob_kzg_commitments: Optional[List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]]  # [Removed in EIP-7732]
+    execution_requests: Optional[StableExecutionRequests]  # [Removed in EIP-7732]
+    # PBS
+    signed_execution_payload_header: Optional[SignedExecutionPayloadHeader]   # [New in EIP-7732]
+    payload_attestations: Optional[List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]]  # [New in EIP-7732]
+```
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Profile[StableBeaconBlockBody]):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
@@ -204,12 +229,26 @@ class BeaconBlockBody(Container):
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]  # [New in EIP-7732]
 ```
 
+#### `StableExecutionPayloadHeader`
+
+```python
+class StableExecutionPayloadHeader(StableContainer[MAX_EXECUTION_PAYLOAD_FIELDS]):
+    parent_block_hash: Optional[Hash32]
+    parent_block_root: Optional[Root]
+    block_hash: Optional[Hash32]
+    gas_limit: Optional[uint64]
+    builder_index: Optional[ValidatorIndex]
+    slot: Optional[Slot]
+    value: Optional[Gwei]
+    blob_kzg_commitments_root: Optional[Root]
+```
+
 #### `ExecutionPayloadHeader`
 
 **Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs.
 
 ```python
-class ExecutionPayloadHeader(Container):
+class ExecutionPayloadHeader(Profile[StableExecutionPayloadHeader]):
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
@@ -220,12 +259,73 @@ class ExecutionPayloadHeader(Container):
     blob_kzg_commitments_root: Root
 ```
 
+#### `StableBeaconState`
+
+```python
+class StableBeaconState(StableContainer[MAX_BEACON_STATE_FIELDS]):
+    # Versioning
+    genesis_time: Optional[uint64]
+    genesis_validators_root: Optional[Root]
+    slot: Optional[Slot]
+    fork: Optional[Fork]
+    # History
+    latest_block_header: Optional[BeaconBlockHeader]
+    block_roots: Optional[Vector[Root, SLOTS_PER_HISTORICAL_ROOT]]
+    state_roots: Optional[Vector[Root, SLOTS_PER_HISTORICAL_ROOT]]
+    # Frozen in Capella, replaced by historical_summaries
+    historical_roots: Optional[List[Root, HISTORICAL_ROOTS_LIMIT]]
+    # Eth1
+    eth1_data: Optional[Eth1Data]
+    eth1_data_votes: Optional[List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]]
+    eth1_deposit_index: Optional[uint64]
+    # Registry
+    validators: Optional[List[Validator, VALIDATOR_REGISTRY_LIMIT]]
+    balances: Optional[List[Gwei, VALIDATOR_REGISTRY_LIMIT]]
+    # Randomness
+    randao_mixes: Optional[Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]]
+    # Slashings
+    slashings: Optional[Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: Optional[List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]]
+    current_epoch_participation: Optional[List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]]
+    # Finality
+    justification_bits: Optional[Bitvector[JUSTIFICATION_BITS_LENGTH]]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Optional[Checkpoint]
+    current_justified_checkpoint: Optional[Checkpoint]
+    finalized_checkpoint: Optional[Checkpoint]
+    # Inactivity
+    inactivity_scores: Optional[List[uint64, VALIDATOR_REGISTRY_LIMIT]]
+    # Sync
+    current_sync_committee: Optional[SyncCommittee]
+    next_sync_committee: Optional[SyncCommittee]
+    # Execution
+    latest_execution_payload_header: Optional[StableExecutionPayloadHeader]
+    # Withdrawals
+    next_withdrawal_index: Optional[WithdrawalIndex]
+    next_withdrawal_validator_index: Optional[ValidatorIndex]
+    # Deep history valid from Capella onwards
+    historical_summaries: Optional[List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]]
+    deposit_requests_start_index: Optional[uint64]
+    deposit_balance_to_consume: Optional[Gwei]
+    exit_balance_to_consume: Optional[Gwei]
+    earliest_exit_epoch: Optional[Epoch]
+    consolidation_balance_to_consume: Optional[Gwei]
+    earliest_consolidation_epoch: Optional[Epoch]
+    pending_deposits: Optional[List[PendingDeposit, PENDING_DEPOSITS_LIMIT]]
+    pending_partial_withdrawals: Optional[List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]]
+    pending_consolidations: Optional[List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]]
+    # PBS
+    latest_block_hash: Optional[Hash32]  # [New in EIP-7732]
+    latest_full_slot: Optional[Slot]  # [New in EIP-7732]
+    latest_withdrawals_root: Optional[Root]  # [New in EIP-7732]
+```
+
 #### `BeaconState`
 
 *Note*: The `BeaconState` is modified to track the last withdrawals honored in the CL. The `latest_execution_payload_header` is modified semantically to refer not to a past committed `ExecutionPayload` but instead it corresponds to the state's slot builder's bid. Another addition is to track the last committed block hash and the last slot that was full, that is in which there were both consensus and execution blocks included.
 
 ```python
-class BeaconState(Container):
+class BeaconState(Profile[StableBeaconState]):
     # Versioning
     genesis_time: uint64
     genesis_validators_root: Root

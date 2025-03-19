@@ -10,6 +10,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
+  - [`StableContainer` capacities](#stablecontainer-capacities)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Execution layer triggered requests](#execution-layer-triggered-requests)
@@ -32,14 +33,25 @@
     - [`DepositRequest`](#depositrequest)
     - [`WithdrawalRequest`](#withdrawalrequest)
     - [`ConsolidationRequest`](#consolidationrequest)
-    - [`ExecutionRequests`](#executionrequests)
     - [`SingleAttestation`](#singleattestation)
+  - [`StableContainer` definitions](#stablecontainer-definitions)
+    - [`StableAttestation`](#stableattestation)
+    - [`StableIndexedAttestation`](#stableindexedattestation)
+    - [`StableAttesterSlashing`](#stableattesterslashing)
+    - [`StableExecutionPayload`](#stableexecutionpayload)
+    - [`StableExecutionPayloadHeader`](#stableexecutionpayloadheader)
+    - [`StableExecutionRequests`](#stableexecutionrequests)
+    - [`StableBeaconBlockBody`](#stablebeaconblockbody)
+    - [`StableBeaconState`](#stablebeaconstate)
   - [Modified Containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
-    - [`BeaconBlockBody`](#beaconblockbody)
-  - [Extended Containers](#extended-containers)
+  - [`Profile` definitions](#profile-definitions)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`ExecutionRequests`](#executionrequests)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
@@ -128,6 +140,17 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 ## Constants
 
 The following values are (non-configurable) constants used throughout the specification.
+
+### `StableContainer` capacities
+
+| Name | Value | Description |
+| - | - | - |
+| `MAX_ATTESTATION_FIELDS` | `uint64(2**3)` (= 8) | Maximum number of fields to which `StableAttestation` can ever grow in the future |
+| `MAX_INDEXED_ATTESTATION_FIELDS` | `uint64(2**3)` (= 8) | Maximum number of fields to which `StableIndexedAttestation` can ever grow in the future |
+| `MAX_EXECUTION_PAYLOAD_FIELDS` | `uint64(2**6)` (= 64) | Maximum number of fields to which `StableExecutionPayload` can ever grow in the future |
+| `MAX_EXECUTION_REQUESTS_FIELDS` | `uint64(2**4)` (= 16) | Maximum number of fields to which `StableExecutionRequests` can ever grow in the future |
+| `MAX_BEACON_BLOCK_BODY_FIELDS` | `uint64(2**6)` (= 64) | Maximum number of fields to which `StableBeaconBlockBody` can ever grow in the future |
+| `MAX_BEACON_STATE_FIELDS` | `uint64(2**7)` (= 128) | Maximum number of fields to which `StableBeaconState` can ever grow in the future |
 
 ### Misc
 
@@ -289,19 +312,6 @@ class ConsolidationRequest(Container):
     target_pubkey: BLSPubkey
 ```
 
-#### `ExecutionRequests`
-
-*Note*: This container holds requests from the execution layer that are received in [
-`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
-the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
-
-```python
-class ExecutionRequests(Container):
-    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
-    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
-    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
-```
-
 #### `SingleAttestation`
 
 ```python
@@ -310,6 +320,194 @@ class SingleAttestation(Container):
     attester_index: ValidatorIndex
     data: AttestationData
     signature: BLSSignature
+```
+
+### `StableContainer` definitions
+
+These definitions provide EIP-7495 forward-compatibility guarantees. `Profile` based on these `StableContainer` definitions retain their Merkleization when rebased to `StableContainer` definitions of future forks.
+
+#### `StableAttestation`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableAttestation(StableContainer[MAX_ATTESTATION_FIELDS]):
+    aggregation_bits: Optional[Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]]
+    data: Optional[AttestationData]
+    signature: Optional[BLSSignature]
+    committee_bits: Optional[Bitvector[MAX_COMMITTEES_PER_SLOT]]
+```
+
+#### `StableIndexedAttestation`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableIndexedAttestation(StableContainer[MAX_INDEXED_ATTESTATION_FIELDS]):
+    attesting_indices: Optional[List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]]
+    data: Optional[AttestationData]
+    signature: Optional[BLSSignature]
+```
+
+#### `StableAttesterSlashing`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableAttesterSlashing(Container):
+    attestation_1: StableIndexedAttestation
+    attestation_2: StableIndexedAttestation
+```
+
+#### `StableExecutionPayload`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableExecutionPayload(StableContainer[MAX_EXECUTION_PAYLOAD_FIELDS]):
+    parent_hash: Optional[Hash32]
+    fee_recipient: Optional[ExecutionAddress]  # 'beneficiary' in the yellow paper
+    state_root: Optional[Bytes32]
+    receipts_root: Optional[Bytes32]
+    logs_bloom: Optional[ByteVector[BYTES_PER_LOGS_BLOOM]]
+    prev_randao: Optional[Bytes32]  # 'difficulty' in the yellow paper
+    block_number: Optional[uint64]  # 'number' in the yellow paper
+    gas_limit: Optional[uint64]
+    gas_used: Optional[uint64]
+    timestamp: Optional[uint64]
+    extra_data: Optional[ByteList[MAX_EXTRA_DATA_BYTES]]
+    base_fee_per_gas: Optional[uint256]
+    block_hash: Optional[Hash32]  # Hash of execution block
+    transactions: Optional[List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]]
+    withdrawals: Optional[List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]]  # [New in Capella]
+    blob_gas_used: Optional[uint64]  # [New in Deneb:EIP4844]
+    excess_blob_gas: Optional[uint64]  # [New in Deneb:EIP4844]
+```
+
+#### `StableExecutionPayloadHeader`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableExecutionPayloadHeader(StableContainer[MAX_EXECUTION_PAYLOAD_FIELDS]):
+    parent_hash: Optional[Hash32]
+    fee_recipient: Optional[ExecutionAddress]
+    state_root: Optional[Bytes32]
+    receipts_root: Optional[Bytes32]
+    logs_bloom: Optional[ByteVector[BYTES_PER_LOGS_BLOOM]]
+    prev_randao: Optional[Bytes32]
+    block_number: Optional[uint64]
+    gas_limit: Optional[uint64]
+    gas_used: Optional[uint64]
+    timestamp: Optional[uint64]
+    extra_data: Optional[ByteList[MAX_EXTRA_DATA_BYTES]]
+    base_fee_per_gas: Optional[uint256]
+    block_hash: Optional[Hash32]  # Hash of execution block
+    transactions_root: Optional[Root]
+    withdrawals_root: Optional[Root]  # [New in Capella]
+    blob_gas_used: Optional[uint64]  # [New in Deneb:EIP4844]
+    excess_blob_gas: Optional[uint64]  # [New in Deneb:EIP4844]
+```
+
+#### `StableExecutionRequests`
+
+*Note*: This `StableContainer` holds requests from the execution layer that are received in [
+`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
+the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
+
+```python
+class StableExecutionRequests(StableContainer[MAX_EXECUTION_REQUESTS_FIELDS]):
+    # [New in Electra:EIP6110]
+    deposits: Optional[List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]]
+    # [New in Electra:EIP7002:EIP7251]
+    withdrawals: Optional[List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]]
+    # [New in Electra:EIP7251]
+    consolidations: Optional[List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]]
+```
+
+#### `StableBeaconBlockBody`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableBeaconBlockBody(StableContainer[MAX_BEACON_BLOCK_BODY_FIELDS]):
+    randao_reveal: Optional[BLSSignature]
+    eth1_data: Optional[Eth1Data]  # Eth1 data vote
+    graffiti: Optional[Bytes32]  # Arbitrary data
+    proposer_slashings: Optional[List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]]
+    # [Modified in Electra:EIP7549]
+    attester_slashings: Optional[List[StableAttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]]
+    attestations: Optional[List[StableAttestation, MAX_ATTESTATIONS_ELECTRA]]  # [Modified in Electra:EIP7549]
+    deposits: Optional[List[Deposit, MAX_DEPOSITS]]
+    voluntary_exits: Optional[List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]]
+    sync_aggregate: Optional[SyncAggregate]  # [New in Altair]
+    execution_payload: Optional[StableExecutionPayload]  # [New in Bellatrix]
+    # [New in Capella]
+    bls_to_execution_changes: Optional[List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]]
+    blob_kzg_commitments: Optional[List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]]  # [New in Deneb:EIP4844]
+    execution_requests: Optional[StableExecutionRequests]  # [New in Electra]
+```
+
+#### `StableBeaconState`
+
+*Note*: The `StableContainer` is new in EIP7688.
+
+```python
+class StableBeaconState(StableContainer[MAX_BEACON_STATE_FIELDS]):
+    # Versioning
+    genesis_time: Optional[uint64]
+    genesis_validators_root: Optional[Root]
+    slot: Optional[Slot]
+    fork: Optional[Fork]
+    # History
+    latest_block_header: Optional[BeaconBlockHeader]
+    block_roots: Optional[Vector[Root, SLOTS_PER_HISTORICAL_ROOT]]
+    state_roots: Optional[Vector[Root, SLOTS_PER_HISTORICAL_ROOT]]
+    # Frozen in Capella, replaced by historical_summaries
+    historical_roots: Optional[List[Root, HISTORICAL_ROOTS_LIMIT]]
+    # Eth1
+    eth1_data: Optional[Eth1Data]
+    eth1_data_votes: Optional[List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]]
+    eth1_deposit_index: Optional[uint64]
+    # Registry
+    validators: Optional[List[Validator, VALIDATOR_REGISTRY_LIMIT]]
+    balances: Optional[List[Gwei, VALIDATOR_REGISTRY_LIMIT]]
+    # Randomness
+    randao_mixes: Optional[Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]]
+    # Slashings
+    slashings: Optional[Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]]  # Per-epoch sums of slashed effective balances
+    # Participation
+    previous_epoch_participation: Optional[List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]]  # [Modified in Altair]
+    current_epoch_participation: Optional[List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]]  # [Modified in Altair]
+    # Finality
+    justification_bits: Optional[Bitvector[JUSTIFICATION_BITS_LENGTH]]  # Bit set for every recent justified epoch
+    previous_justified_checkpoint: Optional[Checkpoint]
+    current_justified_checkpoint: Optional[Checkpoint]
+    finalized_checkpoint: Optional[Checkpoint]
+    # Inactivity
+    inactivity_scores: Optional[List[uint64, VALIDATOR_REGISTRY_LIMIT]]  # [New in Altair]
+    # Sync
+    current_sync_committee: Optional[SyncCommittee]  # [New in Altair]
+    next_sync_committee: Optional[SyncCommittee]  # [New in Altair]
+    # Execution
+    latest_execution_payload_header: Optional[StableExecutionPayloadHeader]  # [New in Bellatrix]
+    # Withdrawals
+    next_withdrawal_index: Optional[WithdrawalIndex]  # [New in Capella]
+    next_withdrawal_validator_index: Optional[ValidatorIndex]  # [New in Capella]
+    # Deep history valid from Capella onwards
+    historical_summaries: Optional[List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]]  # [New in Capella]
+    deposit_requests_start_index: Optional[uint64]  # [New in Electra:EIP6110]
+    deposit_balance_to_consume: Optional[Gwei]  # [New in Electra:EIP7251]
+    exit_balance_to_consume: Optional[Gwei]  # [New in Electra:EIP7251]
+    earliest_exit_epoch: Optional[Epoch]  # [New in Electra:EIP7251]
+    consolidation_balance_to_consume: Optional[Gwei]  # [New in Electra:EIP7251]
+    earliest_consolidation_epoch: Optional[Epoch]  # [New in Electra:EIP7251]
+    # [New in Electra:EIP7251]
+    pending_deposits: Optional[List[PendingDeposit, PENDING_DEPOSITS_LIMIT]]
+    # [New in Electra:EIP7251]
+    pending_partial_withdrawals: Optional[List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]]
+    # [New in Electra:EIP7251]
+    pending_consolidations: Optional[List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]]
 ```
 
 ### Modified Containers
@@ -322,10 +520,32 @@ class AttesterSlashing(Container):
     attestation_2: IndexedAttestation  # [Modified in Electra:EIP7549]
 ```
 
+### `Profile` definitions
+
+#### `Attestation`
+
+```python
+class Attestation(Profile[StableAttestation]):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
+    data: AttestationData
+    signature: BLSSignature
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
+```
+
+#### `IndexedAttestation`
+
+```python
+class IndexedAttestation(Profile[StableIndexedAttestation]):
+    # [Modified in Electra:EIP7549]
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    data: AttestationData
+    signature: BLSSignature
+```
+
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(Container):
+class BeaconBlockBody(Profile[StableBeaconBlockBody]):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
@@ -343,32 +563,69 @@ class BeaconBlockBody(Container):
     execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
-### Extended Containers
-
-#### `Attestation`
+#### `ExecutionPayload`
 
 ```python
-class Attestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]  # [Modified in Electra:EIP7549]
-    data: AttestationData
-    signature: BLSSignature
-    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]  # [New in Electra:EIP7549]
+class ExecutionPayload(Profile[StableExecutionPayload]):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
 ```
 
-#### `IndexedAttestation`
+#### `ExecutionPayloadHeader`
 
 ```python
-class IndexedAttestation(Container):
-    # [Modified in Electra:EIP7549]
-    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
-    data: AttestationData
-    signature: BLSSignature
+class ExecutionPayloadHeader(Profile[StableExecutionPayloadHeader]):
+    # Execution block header fields
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    # Extra payload fields
+    block_hash: Hash32
+    transactions_root: Root
+    withdrawals_root: Root
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+```
+
+#### `ExecutionRequests`
+
+```python
+class ExecutionRequests(Profile[StableExecutionRequests]):
+    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
+    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7002:EIP7251]
+    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP7251]
 ```
 
 #### `BeaconState`
 
 ```python
-class BeaconState(Container):
+class BeaconState(Profile[StableBeaconState]):
     # Versioning
     genesis_time: uint64
     genesis_validators_root: Root

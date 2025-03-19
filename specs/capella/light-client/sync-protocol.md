@@ -12,6 +12,7 @@
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
 - [Helper functions](#helper-functions)
+  - [`execution_payload_gindex_at_slot`](#execution_payload_gindex_at_slot)
   - [`get_lc_execution_root`](#get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -53,6 +54,16 @@ class LightClientHeader(Container):
 
 ## Helper functions
 
+### `execution_payload_gindex_at_slot`
+
+```python
+def execution_payload_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    epoch = compute_epoch_at_slot(slot)
+    assert epoch >= CAPELLA_FORK_EPOCH
+
+    return EXECUTION_PAYLOAD_GINDEX
+```
+
 ### `get_lc_execution_root`
 
 ```python
@@ -77,11 +88,10 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
             and header.execution_branch == ExecutionBranch()
         )
 
-    return is_valid_merkle_branch(
+    return is_valid_normalized_merkle_branch(
         leaf=get_lc_execution_root(header),
         branch=header.execution_branch,
-        depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
-        index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
+        gindex=execution_payload_gindex_at_slot(header.beacon.slot),
         root=header.beacon.body_root,
     )
 ```
