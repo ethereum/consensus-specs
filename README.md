@@ -75,15 +75,20 @@ Conformance tests built from the executable python spec are available in the [Et
 
 ## Installation and usage
 
-The consensus-specs repo can be used by running the tests locally or inside a docker container.
+Clone the repository with:
 
-To run the tests locally:
-- Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
-- Switch to the directory `cd consensus-specs`
-- Run the tests with `make test`
+```bash
+git clone https://github.com/ethereum/consensus-specs.git
+```
 
-To run the tests inside a docker container:
-- Switch to the directory with `cd scripts`
-- Run the script `./build_run_docker_tests.sh`
-- Find the results in a folder called `./testResults`
-- Find more ways to customize the script with `./build_run_docker_tests.sh --h`
+Switch to the directory:
+
+```bash
+cd consensus-specs
+```
+
+Run the tests:
+
+```bash
+make test
+```
