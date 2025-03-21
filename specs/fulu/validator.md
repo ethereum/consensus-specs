@@ -57,13 +57,14 @@ document and used throughout.
 
 *[Modified in Fulu:EIP7594]*
 
-The `BlobsBundle` object is modified to include cell KZG proofs instead of blob KZG proofs.
+The `BlobsBundle` object is modified to include cell KZG proofs.
 
 ```python
 @dataclass
 class BlobsBundle(object):
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    # [Modified in Fulu:EIP7594]
+    proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [New in Fulu:EIP7594]
     cellProofs: List[KZGProof, MAX_CELLS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
     blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
