@@ -56,8 +56,9 @@ current `BeaconState` and `validator_indices` is the list of indices correspondi
 attached to the node. Any node with at least one validator attached, and with the sum of the
 balances of all attached validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum
-of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`.
-The node SHOULD dynamically adjust its custody groups following any changes to the balances of attached validators.
+of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`. The node
+SHOULD dynamically adjust its custody groups following any changes to the balances of attached
+validators.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
@@ -74,8 +75,9 @@ addition, when the validator custody requirement increases, due to an increase i
 of the attached validators, a node MUST backfill columns from the new custody groups. However, a
 node MAY wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
-*Note:* A node SHOULD manage validator custody (and any changes during its lifetime) without any input
-from the user, for example by using existing signals about validator metadata to compute the required custody.
+*Note:* The node SHOULD manage validator custody (and any changes during its lifetime) without any
+input from the user, for example by using existing signals about validator metadata to compute the
+required custody.
 
 ### Block and sidecar proposal
 
