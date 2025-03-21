@@ -210,7 +210,8 @@ class SyncAggregate(Container):
 ```
 
 #### `SyncCommittee`
-*Note:* The `aggregate_pubkey` field is computed but is not currently used in the specifications. Typically, sync committee signatures are verified by summing up the public keys of the subset of committee members that signed to obtain their aggregate public key. Notably, this key is different from `aggregate_pubkey`, as it only represents a subset of the committee. The `aggregate_pubkey` field can be used in the following optimization: If more than half of the sync committee members have signed, their aggregate public key can be derived more efficiently by subtracting the keys of the missing members from aggregate_pubkey.
+
+*Note:* The `aggregate_pubkey` field is computed but is not currently used in the specifications. Typically, sync committee signatures are verified by summing up the public keys of the subset of committee members that signed to obtain their aggregate public key. Notably, this key is different from `aggregate_pubkey`, as it only represents a subset of the committee. The `aggregate_pubkey` field can be used in the following optimization: If more than half of the sync committee members have signed, their aggregate public key can be derived more efficiently by subtracting the keys of the missing members from `aggregate_pubkey`.
 
 ```python
 class SyncCommittee(Container):
