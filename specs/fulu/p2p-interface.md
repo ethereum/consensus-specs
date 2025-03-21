@@ -27,6 +27,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Distributed Blob Publishing using blobs retreived from local execution layer client](#distributed-blob-publishing-using-blobs-retreived-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -203,6 +204,16 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 *Note:* In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
+
+###### Distributed Blob Publishing using blobs retreived from local execution layer client
+
+Similar to the Deneb specification, recent blobs MAY be retrieved by querying the Execution Layer via `engine_getBlobsV2`. Clients will be able to convert the EL blob response into data columns to satisfy block availability requirements.
+
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish data columns on time.
+
+When clients use the local execution layer to retrieve blob and compute data columns, they MUST behave as if the imported `data_column_sidecar` had been received via gossip. Note that this only applies to the data columns gossip topics they are subscribed to - specifically, the node’s assigned custody columns. In particular, clients MUST:
+* publish the corresponding `data_column_sidecar` on the `data_column_sidecar_{subnet_id}` subnet.
+* update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ### The Req/Resp domain
 

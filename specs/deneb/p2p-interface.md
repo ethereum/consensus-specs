@@ -203,6 +203,15 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 |--------------------------------|---------------------|
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
+###### Blob retrieval via local execution layer client
+
+In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+
+When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
+* update gossip rule related data structures (i.e. update the anti-equivocation cache).
+
 ##### Attestation subnets
 
 ###### `beacon_attestation_{subnet_id}`
@@ -412,16 +421,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`                 | Chunk SSZ type      |
 |--------------------------------|---------------------|
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
-
-###### Blob retrieval via local execution layer client
-
-In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
-Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
-
-When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
-
-* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
-* update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ## Design decision rationale
 
