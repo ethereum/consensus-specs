@@ -206,7 +206,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 ###### Blob retrieval via local execution layer client
 
 In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by querying the Execution Layer (i.e. via `engine_getBlobsV1`).
-Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish blobs on time.
+Honest nodes SHOULD query `engine_getBlobsV1` as soon as they receive a valid gossip block that contains data, and import the returned blobs.
 
 When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
 * publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
