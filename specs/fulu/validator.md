@@ -10,6 +10,12 @@
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Custody setting](#custody-setting)
+- [Helpers](#helpers)
+  - [`BlobsBundle`](#blobsbundle)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
+- [Protocol](#protocol)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
@@ -43,6 +49,55 @@ document and used throughout.
 | - | - | - |
 | `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
 | `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
+| `MAX_CELL_PROOFS_PER_EXT_BLOB` | `1024` | Corresponds to a cell with 8 field elements per blob |
+
+## Helpers
+
+### `BlobsBundle`
+
+*[Modified in Fulu:EIP7594]*
+
+The `BlobsBundle` object is modified to include cell KZG proofs instead of blob KZG proofs.
+
+```python
+@dataclass
+class BlobsBundle(object):
+    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Fulu:EIP7594]
+    cellProofs: List[KZGProof, MAX_CELL_PROOFS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
+
+### Modified `GetPayloadResponse`
+
+*[Modified in Fulu:EIP7594]*
+
+The `GetPayloadResponse` object is modified to use the updated `BlobsBundle` object.
+
+```python
+@dataclass
+class GetPayloadResponse(object):
+    execution_payload: ExecutionPayload
+    block_value: uint256
+    blobs_bundle: BlobsBundle  # [Modified in Fulu:EIP7594]
+```
+
+## Protocol
+
+### `ExecutionEngine`
+
+#### Modified `get_payload`
+
+The `get_payload` method is modified to return the updated `GetPayloadResponse` object.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, uint256, BlobsBundle objects.
+    """
+    # pylint: disable=unused-argument
+    ...
+```
 
 ## Beacon chain responsibilities
 
