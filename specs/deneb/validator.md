@@ -177,6 +177,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
 ```
 
 The `subnet_id` for the `blob_sidecar` is calculated with:
+
 - Let `blob_index = blob_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
 
