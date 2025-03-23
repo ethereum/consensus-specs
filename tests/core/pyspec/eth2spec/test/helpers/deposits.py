@@ -4,7 +4,8 @@ from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
-from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_from, run_epoch_processing_to, \
+    run_process_slots_up_to_epoch_boundary
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
@@ -360,7 +361,6 @@ def run_deposit_request_processing(
         deposit_request,
         validator_index,
         effective=True):
-
     """
     Run ``process_deposit_request``, yielding:
       - pre-state ('pre')
@@ -409,6 +409,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     Enqueue ``pending_deposit`` and run epoch processing with ``process_pending_deposits``, yielding:
       - pre-state ('pre')
       - post-state ('post').
+      - pre-epoch-state ('pre_epoch'), state before epoch transition
+      - post-epoch-state ('post_epoch'), state after epoch transition
     """
     assert is_post_electra(spec)
 
@@ -422,10 +424,6 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     # append pending deposit
     state.pending_deposits.append(pending_deposit)
 
-    # run to the very beginning of the epoch processing to avoid
-    # any updates to the validator registry (e.g. ejections)
-    run_epoch_processing_to(spec, state, "process_justification_and_finalization")
-
     pre_validator_count = len(state.validators)
     pre_balance = 0
     pre_effective_balance = 0
@@ -436,11 +434,18 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
         pre_balance = get_balance(state, validator_index)
         pre_effective_balance = state.validators[validator_index].effective_balance
 
+    run_process_slots_up_to_epoch_boundary(spec, state)
+    yield "pre_epoch", state
+    run_epoch_processing_to(
+        spec, state, "process_pending_deposits", disable_slots_processing=True)
+
     yield 'pre', state
-
     spec.process_pending_deposits(state)
-
     yield 'post', state
+
+    continue_state = state.copy()
+    run_epoch_processing_from(spec, continue_state, "process_pending_deposits")
+    yield 'post_epoch', continue_state
 
     if effective:
         if is_top_up:
