@@ -139,6 +139,8 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         pending_deposits=[],
         pending_partial_withdrawals=[],
         pending_consolidations=[],
+        # [New in Electra:EIPXXXX]
+        proposer_lookahead=compute_proposer_lookahead(pre)
     )
 
     post.exit_balance_to_consume = get_activation_exit_churn_limit(post)

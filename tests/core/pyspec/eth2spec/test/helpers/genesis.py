@@ -176,6 +176,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+        # Initialize proposer lookahead list
+        state.proposer_lookahead = spec.compute_proposer_lookahead(state)
 
     if is_post_eip7441(spec):
         vc = len(state.validators)
