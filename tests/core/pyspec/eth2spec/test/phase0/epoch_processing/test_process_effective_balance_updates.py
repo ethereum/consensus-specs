@@ -1,5 +1,5 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to, run_epoch_processing_from, run_process_slots_up_to_epoch_boundary
 from eth2spec.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
 )
@@ -16,7 +16,9 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
     assert is_post_electra(spec) or not with_compounding_credentials
     # Prepare state up to the final-updates.
     # Then overwrite the balances, we only want to focus to be on the hysteresis based changes.
-    run_epoch_processing_to(spec, state, 'process_effective_balance_updates')
+    run_process_slots_up_to_epoch_boundary(spec, state)
+    yield 'pre_epoch', state
+    run_epoch_processing_to(spec, state, 'process_effective_balance_updates', disable_slots_processing=True)
     # Set some edge cases for balances
     max = spec.MAX_EFFECTIVE_BALANCE_ELECTRA if with_compounding_credentials else spec.MAX_EFFECTIVE_BALANCE
     min = spec.config.EJECTION_BALANCE
@@ -69,3 +71,6 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
 
     for i, (_, _, post_eff, name) in enumerate(cases):
         assert state.validators[i].effective_balance == post_eff, name
+
+    run_epoch_processing_from(spec, state, 'process_effective_balance_updates')
+    yield 'post_epoch', state
