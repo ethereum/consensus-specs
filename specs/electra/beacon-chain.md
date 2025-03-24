@@ -1057,7 +1057,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 def process_proposer_lookahead(state: BeaconState) -> None:
     last_epoch_start = len(state.proposer_lookahead) - SLOTS_PER_EPOCH
     # Shift out proposers in the first epoch.
-    state.proposer_lookahead[0:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
+    state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices.
     last_epoch_proposers = compute_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD))
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
