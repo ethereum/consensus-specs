@@ -207,7 +207,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 ###### Distributed Blob Publishing using blobs retreived from local execution layer client
 
-Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid gossip block that contains data, convert the response to data columns, and import the result.
+Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching `kzg_commitments` are retrieved, they should convert the response to data columns, and import the result.
 
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish data columns on time.
 

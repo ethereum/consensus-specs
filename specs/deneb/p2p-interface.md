@@ -209,6 +209,7 @@ In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by q
 Honest nodes SHOULD query `engine_getBlobsV1` as soon as they receive a valid gossip block that contains data, and import the returned blobs.
 
 When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
+
 * publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
 * update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
