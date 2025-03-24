@@ -27,7 +27,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
-        - [Distributed Blob Publishing using blobs retreived from local execution layer client](#distributed-blob-publishing-using-blobs-retreived-from-local-execution-layer-client)
+        - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -205,7 +205,7 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 *Note:* In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed Blob Publishing using blobs retreived from local execution layer client
+###### Distributed Blob Publishing using blobs retrieved from local execution layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching `kzg_commitments` are retrieved, they should convert the response to data columns, and import the result.
 
