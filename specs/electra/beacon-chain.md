@@ -50,9 +50,6 @@
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Modified `is_fully_withdrawable_validator`](#modified-is_fully_withdrawable_validator)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
-    - [Modified `get_beacon_proposer_index`](#modified-get_beacon_proposer_index)
-    - [New `compute_proposer_indices`](#new-compute_proposer_indices)
-    - [New `compute_proposer_lookahead`](#new-compute_proposer_lookahead)
   - [Misc](#misc-1)
     - [New `get_committee_indices`](#new-get_committee_indices)
     - [New `get_max_effective_balance`](#new-get_max_effective_balance)
@@ -79,7 +76,6 @@
     - [New `process_pending_deposits`](#new-process_pending_deposits)
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
-    - [New `process_proposer_lookahead`](#new-process_proposer_lookahead)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
@@ -424,7 +420,6 @@ class BeaconState(Container):
     # [New in Electra:EIP7251]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]  # [New in Electra:EIP7251]
-    proposer_lookahead: List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]  # [New in Electra:EIPXXXX]
 ```
 
 ## Helper functions
@@ -532,49 +527,6 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
         and has_max_effective_balance
         and has_excess_balance
     )
-```
-
-#### Modified `get_beacon_proposer_index`
-
-*Note*: The function `get_beacon_proposer_index` is modified to use the pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
-
-```python
-def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
-    """
-    Return the beacon proposer index at the current slot.
-    """
-    slot_offset = state.slot - compute_start_slot_at_epoch(get_current_epoch(state))
-    return state.proposer_lookahead[slot_offset]
-```
-#### New `compute_proposer_indices`
-
-```python
-def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
-    """
-    Return the proposer indices for the given ``epoch``.
-    """
-    proposer_indices = []
-    indices = get_active_validator_indices(state, epoch)
-    start_slot = compute_start_slot_at_epoch(epoch)
-    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(Slot(slot)))
-        proposer_indices.append(compute_proposer_index(state, indices, seed))
-    return proposer_indices
-```
-
-#### New `compute_proposer_lookahead`
-
-```python
-def compute_proposer_lookahead(state: BeaconState) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
-    """
-    Return the proposer indices for the full available lookahead starting from current epoch.
-    """
-    current_epoch = get_current_epoch(state)
-    lookahead = []
-    for i in range(MIN_SEED_LOOKAHEAD + 1):
-        proposer_indices = compute_proposer_indices(state, Epoch(current_epoch + i))
-        lookahead.extend(proposer_indices)
-    return lookahead        
 ```
 
 ### Misc
@@ -861,7 +813,6 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_proposer_lookahead(state)  # [New in Electra:EIPXXXX]
 ```
 
 #### Modified `process_registry_updates`
@@ -1049,18 +1000,6 @@ def process_effective_balance_updates(state: BeaconState) -> None:
             or validator.effective_balance + UPWARD_THRESHOLD < balance
         ):
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
-```
-
-#### New `process_proposer_lookahead`
-
-```python
-def process_proposer_lookahead(state: BeaconState) -> None:
-    last_epoch_start = len(state.proposer_lookahead) - SLOTS_PER_EPOCH
-    # Shift out proposers in the first epoch.
-    state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
-    # Fill in the last epoch with new proposer indices.
-    last_epoch_proposers = compute_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD))
-    state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```
 
 ### Execution engine
