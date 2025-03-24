@@ -81,6 +81,7 @@ Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 #### Constructing the new `signed_execution_payload_header` field in  `BeaconBlockBody`
 
 To obtain `signed_execution_payload_header`, a block proposer building a block on top of a `state` must take the following actions:
+
 * Listen to the `execution_payload_header` gossip global topic and save an accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain these signed messages by other off-protocol means.
 * The `signed_execution_payload_header` must satisfy the verification conditions found in `process_execution_payload_header`, that is
     - The header signature must be valid
@@ -93,6 +94,7 @@ To obtain `signed_execution_payload_header`, a block proposer building a block o
 #### Constructing the new `payload_attestations` field in  `BeaconBlockBody`
 
 Up to `MAX_PAYLOAD_ATTESTATIONS`, aggregate payload attestations can be included in the block. The validator will have to
+
 * Listen to the `payload_attestation_message` gossip global topic
 * The payload attestations added must satisfy the verification conditions found in payload attestation gossip validation and payload attestation processing. This means
     - The `data.beacon_block_root` corresponds to `block.parent_root`.
@@ -116,6 +118,7 @@ If a validator is in the payload attestation committee for the current slot (as 
 according to the logic in `get_payload_attestation_message` below and broadcast it not after  `SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot, to the global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
+
 * If the validator has not seen any beacon block for the assigned slot, do not submit a payload attestation. It will be ignored anyway.
 * Set `data.beacon_block_root` be the HTR of the beacon block seen for the assigned slot
 * Set `data.slot` to be the assigned slot.

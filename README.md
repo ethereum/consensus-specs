@@ -6,11 +6,11 @@ To learn more about proof-of-stake and sharding, see the [PoS documentation](htt
 
 This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
-## Specs
+## Specifications
 
 [![GitHub release](https://img.shields.io/github/v/release/ethereum/consensus-specs)](https://github.com/ethereum/consensus-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec) [![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
 
-Core specifications for Ethereum proof-of-stake clients can be found in [specs](./specs). These are divided into features.
+Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs). These are divided into features.
 Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
 
 ### Stable Specifications
@@ -18,7 +18,7 @@ Features are researched and developed in parallel, and then consolidated into se
 | Seq. | Code Name | Fork Epoch | Specs |
 | - | - | - | - |
 | 0 | **Phase0** |`0` | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> |
-| 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md) ([full node](specs/altair/light-client/full-node.md), [light client](specs/altair/light-client/light-client.md), [networking](specs/altair/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
+| 1 | **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md) ([full node](specs/altair/light-client/full-node.md), [light client](specs/altair/light-client/light-client.md), [networking](specs/altair/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
 | 2 | **Bellatrix** <br/> (["The Merge"](https://ethereum.org/en/upgrades/merge/)) | `144896` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> |
 | 3 | **Capella** | `194048` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/capella/light-client/sync-protocol.md) ([fork](specs/capella/light-client/fork.md), [full node](specs/capella/light-client/full-node.md), [networking](specs/capella/light-client/p2p-interface.md))</li><li>[Validator additions](specs/capella/validator.md)</li><li>[P2P networking](specs/capella/p2p-interface.md)</li></ul></ul> |
 | 4 | **Deneb** | `269568` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/deneb/beacon-chain.md)</li><li>[Deneb fork](specs/deneb/fork.md)</li><li>[Polynomial commitments](specs/deneb/polynomial-commitments.md)</li><li>[Fork choice changes](specs/deneb/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/deneb/light-client/sync-protocol.md) ([fork](specs/deneb/light-client/fork.md), [full node](specs/deneb/light-client/full-node.md), [networking](specs/deneb/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/deneb/validator.md)</li><li>[P2P networking](specs/deneb/p2p-interface.md)</li></ul></ul> |
@@ -28,15 +28,7 @@ Features are researched and developed in parallel, and then consolidated into se
 | Seq. | Code Name | Fork Epoch | Specs |
 | - | - | - | - |
 | 5 | **Electra** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[Electra fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [networking](specs/electra/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/electra/validator.md)</li><li>[P2P networking](specs/electra/p2p-interface.md)</li></ul></ul> |
-| 6 | **Fulu** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/fulu/beacon-chain.md)</li><li>[Fulu fork](specs/fulu/fork.md)</li><li>[Data availability sampling core](specs/fulu/das-core.md)</li><li>[Polynomial commitments sampling](specs/fulu/polynomial-commitments-sampling.md)</li><li>[Fork choice changes](specs/fulu/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/fulu/p2p-interface.md)</li><li>[Peer sampling](specs/fulu/peer-sampling.md)</li></ul></ul> |
-
-### Outdated Specifications
-
-| Code Name or Topic | Specs | Notes |
-| - | - | - |
-| Sharding | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/_features/sharding/p2p-interface.md)</li></ul></ul> |
-| Custody Game | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
-| Data Availability Sampling | <ul><li>Core</li><ul><li>[Core types and functions](specs/_features/das/das-core.md)</li><li>[Fork choice changes](specs/_features/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/_features/das/p2p-interface.md)</li><li>[Sampling process](specs/_features/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
+| 6 | **Fulu** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/fulu/beacon-chain.md)</li><li>[Fulu fork](specs/fulu/fork.md)</li><li>[Data availability sampling core](specs/fulu/das-core.md)</li><li>[Polynomial commitments sampling](specs/fulu/polynomial-commitments-sampling.md)</li><li>[Fork choice changes](specs/fulu/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/fulu/validator.md)</li><li>[P2P networking](specs/fulu/p2p-interface.md)</li><li>[Peer sampling](specs/fulu/peer-sampling.md)</li></ul></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -50,7 +42,7 @@ Additional specifications and standards outside of requisite client functionalit
 
 * [Beacon APIs](https://github.com/ethereum/beacon-apis)
 * [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-* [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
+* [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
 
 ## Design goals
 
@@ -81,16 +73,22 @@ Documentation on the different components used during spec writing can be found 
 
 Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
 
-## Installation and Usage
-The consensus-specs repo can be used by running the tests locally or inside a docker container.
+## Installation and usage
 
-To run the tests locally:
-- Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
-- Switch to the directory `cd consensus-specs`
-- Run the tests with `make test`
+Clone the repository with:
 
-To run the tests inside a docker container:
-- Switch to the directory with `cd scripts`
-- Run the script `./build_run_docker_tests.sh`
-- Find the results in a folder called `./testResults`
-- Find more ways to customize the script with `./build_run_docker_tests.sh --h`
+```bash
+git clone https://github.com/ethereum/consensus-specs.git
+```
+
+Switch to the directory:
+
+```bash
+cd consensus-specs
+```
+
+Run the tests:
+
+```bash
+make test
+```

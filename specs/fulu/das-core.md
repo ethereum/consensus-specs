@@ -22,7 +22,6 @@
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
-  - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
   - [Public, deterministic selection](#public-deterministic-selection)
@@ -184,47 +183,11 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) ->
     return matrix
 ```
 
-### `get_data_column_sidecars`
-
-```python
-def get_data_column_sidecars(signed_block: SignedBeaconBlock,
-                             cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
-    """
-    Given a signed block and the cells/proofs associated with each blob in the
-    block, assemble the sidecars which can be distributed to peers.
-    """
-    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
-    assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
-    signed_block_header = compute_signed_block_header(signed_block)
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
-    )
-
-    sidecars = []
-    for column_index in range(NUMBER_OF_COLUMNS):
-        column_cells, column_proofs = [], []
-        for cells, proofs in cells_and_kzg_proofs:
-            column_cells.append(cells[column_index])
-            column_proofs.append(proofs[column_index])
-        sidecars.append(DataColumnSidecar(
-            index=column_index,
-            column=column_cells,
-            kzg_commitments=blob_kzg_commitments,
-            kzg_proofs=column_proofs,
-            signed_block_header=signed_block_header,
-            kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
-        ))
-    return sidecars
-```
-
 ## Custody
 
 ### Custody requirement
 
-Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group.
+Columns are grouped into custody groups. Nodes custodying a custody group MUST custody all the columns in that group. When syncing, a node MUST backfill columns from all of its custody groups.
 
 A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_group_count` field within its ENR. This value can be increased up to `NUMBER_OF_CUSTODY_GROUPS`, indicating a super-full node.
 
@@ -247,8 +210,6 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 ## Column gossip
 
 ### Parameters
-
-For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with `cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then `get_data_column_sidecars(signed_block, cells_and_kzg_proofs)`.
 
 Verifiable samples from their respective column are distributed on the assigned subnet. To custody columns in a particular custody group, a node joins the respective gossipsub subnets. If a node fails to get columns on the column subnets, a node can also utilize the Req/Resp protocol to query the missing columns from other peers.
 

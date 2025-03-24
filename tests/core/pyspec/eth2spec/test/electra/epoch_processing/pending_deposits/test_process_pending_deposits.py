@@ -8,6 +8,7 @@ from eth2spec.test.context import (
     with_custom_state,
     scaled_churn_balances_exceed_activation_exit_churn_limit,
     default_activation_threshold,
+    always_bls,
 )
 from eth2spec.test.helpers.deposits import prepare_pending_deposit
 from eth2spec.test.helpers.state import (
@@ -335,6 +336,7 @@ def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, st
 
 @with_electra_and_later
 @spec_state_test
+@always_bls
 def test_process_pending_deposits_multiple_for_new_validator(spec, state):
     """
     - There are three pending deposits in the state, all pointing to the same public key.
@@ -438,12 +440,12 @@ def test_process_pending_deposits_multiple_pending_one_skipped(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_process_pending_deposits_mixture_of_skipped_and_above_churn(spec, state):
-    amount01 = spec.EFFECTIVE_BALANCE_INCREMENT
+    amount1 = spec.EFFECTIVE_BALANCE_INCREMENT
     amount2 = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     # First two validators have small deposit, third validators a large one
     for i in [0, 1]:
         state.pending_deposits.append(
-            prepare_pending_deposit(spec, validator_index=i, amount=amount01)
+            prepare_pending_deposit(spec, validator_index=i, amount=amount1)
         )
     state.pending_deposits.append(
         prepare_pending_deposit(spec, validator_index=2, amount=amount2)
@@ -455,18 +457,18 @@ def test_process_pending_deposits_mixture_of_skipped_and_above_churn(spec, state
     yield from run_process_pending_deposits(spec, state)
 
     # First deposit is processed
-    assert state.balances[0] == pre_balances[0] + amount01
+    assert state.balances[0] == pre_balances[0] + amount1
     # Second deposit is postponed, third is above churn
     for i in [1, 2]:
         assert state.balances[i] == pre_balances[i]
     # First deposit consumes some deposit balance
     # Deposit is not processed
-    wanted_balance = spec.get_activation_exit_churn_limit(state) - amount01
+    wanted_balance = spec.get_activation_exit_churn_limit(state) - amount1
     assert state.deposit_balance_to_consume == wanted_balance
     # second and third deposit still in the queue
     assert state.pending_deposits == [
         prepare_pending_deposit(spec, validator_index=2, amount=amount2),
-        prepare_pending_deposit(spec, validator_index=1, amount=amount01)
+        prepare_pending_deposit(spec, validator_index=1, amount=amount1)
     ]
 
 

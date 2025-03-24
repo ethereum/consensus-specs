@@ -28,6 +28,34 @@ from eth2spec.utils import bls
 
 
 ###############################################################################
+# Test cases for compute_cells
+###############################################################################
+
+def case_compute_cells():
+    # Valid cases
+    for blob in VALID_BLOBS:
+        cells = spec.compute_cells(blob)
+        identifier = make_id(blob)
+        yield f'compute_cells_case_valid_{identifier}', {
+            'input': {
+                'blob': encode_hex(blob),
+            },
+            'output': encode_hex_list(cells)
+        }
+
+    # Edge case: Invalid blobs
+    for blob in INVALID_BLOBS:
+        expect_exception(spec.compute_cells, blob)
+        identifier = make_id(blob)
+        yield f'compute_cells_invalid_blob_{identifier}', {
+            'input': {
+                'blob': encode_hex(blob)
+            },
+            'output': None
+        }
+
+
+###############################################################################
 # Test cases for compute_cells_and_kzg_proofs
 ###############################################################################
 
@@ -211,7 +239,7 @@ def case_verify_cell_kzg_proof_batch():
     commitments = [VALID_COMMITMENTS[1]]
     cell_indices = list(range(len(cells)))
     # Set first cell index to an invalid value
-    cell_indices[0] = spec.CELLS_PER_EXT_BLOB
+    cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
     expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f'verify_cell_kzg_proof_batch_case_invalid_cell_index_{identifier}', {
@@ -452,7 +480,7 @@ def case_recover_cells_and_kzg_proofs():
     cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2))
     partial_cells = [cells[cell_index] for cell_index in cell_indices]
     # Replace first cell_index with an invalid value
-    cell_indices[0] = spec.CELLS_PER_EXT_BLOB
+    cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
     expect_exception(spec.recover_cells_and_kzg_proofs, cell_indices, partial_cells)
     identifier = make_id(cell_indices, partial_cells)
     yield f'recover_cells_and_kzg_proofs_case_invalid_cell_index_{identifier}', {
@@ -485,7 +513,7 @@ def case_recover_cells_and_kzg_proofs():
     cell_indices = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
     partial_cells = [cells[cell_index] for cell_index in cell_indices]
     # Add another cell_index
-    cell_indices.append(spec.CELLS_PER_EXT_BLOB - 1)
+    cell_indices.append(int(spec.CELLS_PER_EXT_BLOB - 1))
     expect_exception(spec.recover_cells_and_kzg_proofs, cell_indices, partial_cells)
     identifier = make_id(cell_indices, partial_cells)
     yield f'recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells_{identifier}', {
@@ -565,6 +593,7 @@ def create_provider(fork_name: SpecForkName,
 if __name__ == "__main__":
     bls.use_arkworks()
     gen_runner.run_generator("kzg_7594", [
+        create_provider(FULU, 'compute_cells', case_compute_cells),
         create_provider(FULU, 'compute_cells_and_kzg_proofs', case_compute_cells_and_kzg_proofs),
         create_provider(FULU, 'verify_cell_kzg_proof_batch', case_verify_cell_kzg_proof_batch),
         create_provider(FULU, 'recover_cells_and_kzg_proofs', case_recover_cells_and_kzg_proofs),

@@ -7,10 +7,14 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb, is_post_electra, is_post_whisk,
+    is_post_altair, is_post_bellatrix, is_post_capella, is_post_deneb,
+    is_post_electra, is_post_eip7441, is_post_eip7732,
 )
 from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.whisk import compute_whisk_initial_tracker_cached, compute_whisk_initial_k_commitment_cached
+from eth2spec.test.helpers.eip7441 import (
+    compute_whisk_initial_tracker_cached,
+    compute_whisk_initial_k_commitment_cached
+)
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -27,11 +31,11 @@ def build_mock_validator(spec, i: int, balance: int):
         else:
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     else:
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        max_effective_balace = spec.MAX_EFFECTIVE_BALANCE
+        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     validator = spec.Validator(
         pubkey=active_pubkey,
@@ -40,16 +44,31 @@ def build_mock_validator(spec, i: int, balance: int):
         activation_epoch=spec.FAR_FUTURE_EPOCH,
         exit_epoch=spec.FAR_FUTURE_EPOCH,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balace)
+        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balance)
     )
 
     return validator
 
 
-def get_sample_genesis_execution_payload_header(spec,
+def get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash):
+    kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header = spec.ExecutionPayloadHeader(
+        parent_block_hash=b'\x30' * 32,
+        parent_block_root=b'\x00' * 32,
+        block_hash=eth1_block_hash,
+        gas_limit=30000000,
+        slot=slot,
+        blob_kzg_commitments_root=kzgs.hash_tree_root(),
+    )
+    return header
+
+
+def get_sample_genesis_execution_payload_header(spec, slot,
                                                 eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b'\x55' * 32
+    if is_post_eip7732(spec):
+        return get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b'\x30' * 32,
         fee_recipient=b'\x42' * 20,
@@ -102,6 +121,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
         current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
+    genesis_block_body = spec.BeaconBlockBody()
+    if is_post_eip7732(spec):
+        genesis_block_body.signed_execution_payload_header.message.block_hash = eth1_block_hash
+
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
@@ -115,7 +138,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             current_version=current_version,
             epoch=spec.GENESIS_EPOCH,
         ),
-        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(genesis_block_body)),
         randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
 
@@ -147,22 +170,23 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,
+            spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH),
             eth1_block_hash=eth1_block_hash,
         )
 
     if is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
-    if is_post_whisk(spec):
+    if is_post_eip7441(spec):
         vc = len(state.validators)
         for i in range(vc):
             state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
             state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
 
-        for i in range(spec.WHISK_CANDIDATE_TRACKERS_COUNT):
+        for i in range(spec.CANDIDATE_TRACKERS_COUNT):
             state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
-        for i in range(spec.WHISK_PROPOSER_TRACKERS_COUNT):
+        for i in range(spec.PROPOSER_TRACKERS_COUNT):
             state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     if is_post_electra(spec):
@@ -174,5 +198,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_deposits = []
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
+
+    if is_post_eip7732(spec):
+        withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
+        state.latest_withdrawals_root = withdrawals.hash_tree_root()
+        state.latest_block_hash = state.latest_execution_payload_header.block_hash  # last block is full
 
     return state

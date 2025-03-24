@@ -35,6 +35,7 @@
   - [`seconds_into_slot`](#seconds_into_slot)
   - [Modified `on_tick_per_slot`](#modified-on_tick_per_slot)
   - [`on_payload_attestation_message`](#on_payload_attestation_message)
+  - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -47,7 +48,7 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 | Name                 | Value       |
 | -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE / 2` (=`uint64(256)`) |
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
 | `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
 | `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
 | `PAYLOAD_WITHHOLD_BOOST` | `40` |
@@ -340,7 +341,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
 ### Modified `get_head`
 
-**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponidng to the head block.
+**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ChildNode:
@@ -573,3 +574,34 @@ def on_payload_attestation_message(
         store.payload_withhold_boost_root = block.parent_root
         store.payload_withhold_boost_full = is_parent_node_full(store, block)
 ```
+
+### Modified `validate_merge_block`
+
+The function `validate_merge_block` is modified for test purposes
+
+```python
+def validate_merge_block(block: BeaconBlock) -> None:
+    """
+    Check the parent PoW block of execution payload is a valid terminal PoW block.
+
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
+    """
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
+        return
+
+    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
+    # Check if `pow_block` is available
+    assert pow_block is not None
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    # Check if `pow_parent` is available
+    assert pow_parent is not None
+    # Check if `pow_block` is a valid terminal PoW block
+    assert is_valid_terminal_pow_block(pow_block, pow_parent)
+
+
+
