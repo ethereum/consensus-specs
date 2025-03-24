@@ -443,7 +443,9 @@ def validate_light_client_update(store: LightClientStore,
     signing_root = compute_signing_root(update.attested_header.beacon, domain)
     assert bls.FastAggregateVerify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
 ```
+
 *Note:* `bls.FastAggregateVerify` internally computes an aggregate public key by summing individual keys from `participant_pubkeys`. There are two potential optimizations:
+
 1. If `len(participant_pubkeys) > sync_committee.pubkeys - len(participant_pubkeys)`, computing the aggregate public key can be more efficient by subtracting the non-participating keys from `sync_committee.aggregate_pubkey` instead of summing the participants.
 2. Assuming the same sync committee members participate across sequential slots, one can optimize further by caching the aggregate public key from the previous slot(s) and incrementally updating it (by adding and subtracting individual keys) for the next slot, where we consider two slots with the same sync committee.
 
