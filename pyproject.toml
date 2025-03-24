@@ -39,7 +39,7 @@ lint = [
   "codespell==2.4.0",
   "flake8==5.0.4",
   "mypy==0.981",
-  "pylint==3.3.1",
+  "pylint==3.3.6",
 ]
 generator = [
   "filelock==3.17.0",
