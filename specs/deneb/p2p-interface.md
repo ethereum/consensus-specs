@@ -23,6 +23,7 @@
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
       - [Blob subnets](#blob-subnets)
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
@@ -32,7 +33,6 @@
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
