@@ -15,7 +15,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9,<4.0"
 dependencies = [
   "curdleproofs==0.1.2",
-  "eth-typing==3.5.2",
+  "eth-typing==5.2.0",
   "eth-utils==2.3.2",
   "lru-dict==1.2.0",
   "marko==1.0.2",
