@@ -14,7 +14,6 @@
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to EIP-7805](#fork-to-eip-7805)
-  - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -28,10 +27,10 @@ This document describes the process of the EIP-7805 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name                | Value |
-|---------------------| - |
+| Name | Value |
+| - | - |
 | `EIP7805_FORK_VERSION` | `Version('0x10000000')` |
-| `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| `EIP7805_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -60,12 +59,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ```
 
 ## Fork to EIP-7805
-
-### Fork trigger
-
-TBD. This fork is defined for testing purposes, the EIP may be combined with other
-consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `EIP7805_FORK_EPOCH`.
 
 ### Upgrading the state
 
