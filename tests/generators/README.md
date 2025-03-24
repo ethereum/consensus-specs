@@ -182,9 +182,7 @@ To add a new test generator that builds `New Tests`:
  By adding the base generator to your requirements, you can make a generator really easily. See docs below.
 4. Your generator is called with `-o some/file/path/for_testing/can/be_anything --preset-list mainnet minimal`.
  The base generator helps you handle this; you only have to define test case providers.
-5. Finally, add any linting or testing commands to the
- [circleci config file](../../.circleci/config.yml) if desired to increase code quality.
- Or add it to the [`Makefile`](../../Makefile), if it can be run locally.
+5. Finally, add any linting or testing commands to the [`Makefile`](../../Makefile), if it can be run locally.
 
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
