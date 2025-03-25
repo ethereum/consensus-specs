@@ -23,7 +23,7 @@ def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
 
 def load_preset(preset_files: Iterable[Union[Path, BinaryIO, TextIO]]) -> Dict[str, Any]:
     """
-    Loads the a directory of preset files, merges the result into one preset.
+    Loads a directory of preset files, merges the result into one preset.
     """
     preset = {}
     for fork_file in preset_files:

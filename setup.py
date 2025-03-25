@@ -363,7 +363,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 @lru_cache(maxsize=None)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
-    Loads the a directory of preset files, merges the result into one preset.
+    Loads a directory of preset files, merges the result into one preset.
     """
     preset = {}
     for fork_file in preset_files:
