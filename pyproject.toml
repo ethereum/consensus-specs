@@ -26,7 +26,7 @@ dependencies = [
   "remerkleable==0.1.28",
   "ruamel.yaml==0.17.21",
   "setuptools==75.8.0",
-  "trie==3.0.1",
+  "trie==3.1.0",
 ]
 
 [project.optional-dependencies]
