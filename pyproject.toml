@@ -15,8 +15,8 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9,<4.0"
 dependencies = [
   "curdleproofs==0.1.2",
-  "eth-typing==3.5.2",
-  "eth-utils==2.3.2",
+  "eth-typing==5.2.0",
+  "eth-utils==5.2.0",
   "lru-dict==1.2.0",
   "marko==1.0.2",
   "milagro_bls_binding==1.9.0",
@@ -39,7 +39,7 @@ lint = [
   "codespell==2.4.0",
   "flake8==5.0.4",
   "mypy==0.981",
-  "pylint==3.3.1",
+  "pylint==3.3.6",
 ]
 generator = [
   "filelock==3.17.0",
