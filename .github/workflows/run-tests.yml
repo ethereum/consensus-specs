@@ -42,7 +42,7 @@ jobs:
       - name: Install doctoc
         run: npm install -g doctoc@2.2.0
       - name: Run linter for pyspec
-        run: make lint
+        run: make lint && git diff --exit-code
 
   whitespace:
     runs-on: [self-hosted-ghr-custom, size-l-x64, profile-consensusSpecs]
