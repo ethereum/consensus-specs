@@ -49,7 +49,6 @@ document and used throughout.
 | - | - | - |
 | `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
 | `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
-| `MAX_CELLS_PER_EXT_BLOB` | `1024` | Corresponds to a cell with 8 field elements per blob |
 
 ## Helpers
 
@@ -64,7 +63,7 @@ The `BlobsBundle` object is modified to include cell KZG proofs instead of blob 
 class BlobsBundle(object):
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Fulu:EIP7594]
-    proofs: List[KZGProof, MAX_CELLS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    proofs: List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
     blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
