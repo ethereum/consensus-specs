@@ -230,7 +230,7 @@ def process_epoch(state: BeaconState) -> None:
 
 #### New `process_proposer_lookahead`
 
-*Note*: This function updates the proposer_lookahead in the beacon state by shifting out proposer indices from the earliest epoch and appending new proposer indices for the latest epoch. With `MIN_SEED_LOOKAHEAD` set to `1`, this means that at the start of epoch `N`, the proposer lookahead for epoch `N+1` will be computed and included in the beacon state's lookahead.
+*Note*: This function updates the `proposer_lookahead` field in the beacon state by shifting out proposer indices from the earliest epoch and appending new proposer indices for the latest epoch. With `MIN_SEED_LOOKAHEAD` set to `1`, this means that at the start of epoch `N`, the proposer lookahead for epoch `N+1` will be computed and included in the beacon state's lookahead.
 
 ```python
 def process_proposer_lookahead(state: BeaconState) -> None:
