@@ -163,48 +163,35 @@ class BeaconBlockBody(Container):
 
 ```python
 class BeaconState(Container):
-    # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
-    # History
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[
-        Gwei, EPOCHS_PER_SLASHINGS_VECTOR
-    ]  # Per-epoch sums of slashed effective balances
-    # Participation
-    previous_epoch_participation: List[
-        ParticipationFlags, VALIDATOR_REGISTRY_LIMIT
-    ]  # [Modified in Altair]
-    current_epoch_participation: List[
-        ParticipationFlags, VALIDATOR_REGISTRY_LIMIT
-    ]  # [Modified in Altair]
-    # Finality
-    justification_bits: Bitvector[
-        JUSTIFICATION_BITS_LENGTH
-    ]  # Bit set for every recent justified epoch
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
+    # [Modified in Altair]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # [Modified in Altair]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # Inactivity
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]  # [New in Altair]
-    # Sync
-    current_sync_committee: SyncCommittee  # [New in Altair]
-    next_sync_committee: SyncCommittee  # [New in Altair]
+    # [New in Altair]
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # [New in Altair]
+    current_sync_committee: SyncCommittee
+    # [New in Altair]
+    next_sync_committee: SyncCommittee
 ```
 
 ### New containers
