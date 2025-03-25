@@ -88,8 +88,7 @@ def get_lagrange(setup: Sequence[Optimized_Point3D]) -> Tuple[bytes]:
     fft_output = fft(setup, BLS_MODULUS, domain)
     inv_length = pow(len(setup), BLS_MODULUS - 2, BLS_MODULUS)
     return tuple(
-        bls.G1_to_bytes48(bls.multiply(fft_output[-i], inv_length))
-        for i in range(len(fft_output))
+        bls.G1_to_bytes48(bls.multiply(fft_output[-i], inv_length)) for i in range(len(fft_output))
     )
 
 

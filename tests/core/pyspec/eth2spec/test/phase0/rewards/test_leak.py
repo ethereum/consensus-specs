@@ -71,9 +71,7 @@ def test_with_slashed_validators_leak(spec, state):
 @spec_state_test
 @leaking()
 def test_some_very_low_effective_balances_that_attested_leak(spec, state):
-    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
-        spec, state
-    )
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(spec, state)
 
 
 @with_all_phases

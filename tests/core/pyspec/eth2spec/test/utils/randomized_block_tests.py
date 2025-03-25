@@ -61,9 +61,7 @@ def _randomize_deposit_state(spec, state, stats):
 
 
 def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    randomize_state_helper(
-        spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction
-    )
+    randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
     scenario_state = _randomize_deposit_state(spec, state, stats)
     return scenario_state
 
@@ -76,9 +74,7 @@ def randomize_state_altair(spec, state, stats, exit_fraction=0.1, slash_fraction
     return scenario_state
 
 
-def randomize_state_bellatrix(
-    spec, state, stats, exit_fraction=0.1, slash_fraction=0.1
-):
+def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     scenario_state = randomize_state_altair(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
@@ -250,18 +246,14 @@ def random_block_altair_with_cycling_sync_committee_participation(
     return block
 
 
-def random_block_bellatrix(
-    spec, state, signed_blocks, scenario_state, rng=Random(3456)
-):
+def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_altair_with_cycling_sync_committee_participation(
         spec, state, signed_blocks, scenario_state
     )
     # build execution_payload at the next slot
     state = state.copy()
     next_slot(spec, state)
-    block.body.execution_payload = build_randomized_execution_payload(
-        spec, state, rng=rng
-    )
+    block.body.execution_payload = build_randomized_execution_payload(spec, state, rng=rng)
     return block
 
 
@@ -283,9 +275,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
     )
     block.body.execution_payload.transactions.append(opaque_tx)
-    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, block
-    )
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
     block.body.blob_kzg_commitments = blob_kzg_commitments
 
     return block
@@ -294,9 +284,7 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
 def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
-    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, block
-    )
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     return block
 
@@ -460,9 +448,7 @@ def _compute_statistics(scenario):
 def run_generated_randomized_test(spec, state, scenario):
     stats = _compute_statistics(scenario)
     if "setup" not in scenario:
-        state_randomizer = _resolve_ref(
-            scenario.get("state_randomizer", randomize_state)
-        )
+        state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))
         scenario["setup"] = _randomized_scenario_setup(state_randomizer)
 
     scenario_state = {}

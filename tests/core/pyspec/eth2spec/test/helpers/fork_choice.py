@@ -81,10 +81,7 @@ def tick_and_add_block(
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
-    block_time = (
-        pre_state.genesis_time
-        + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
-    )
+    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     while store.time < block_time:
         time = (
             pre_state.genesis_time
@@ -106,9 +103,7 @@ def tick_and_add_block(
     return post_state
 
 
-def tick_and_add_block_with_data(
-    spec, store, signed_block, test_steps, blob_data, valid=True
-):
+def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data, valid=True):
     def run_func():
         yield from tick_and_add_block(
             spec, store, signed_block, test_steps, blob_data=blob_data, valid=valid
@@ -130,9 +125,7 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
         )
 
 
-def tick_and_run_on_attestation(
-    spec, store, attestation, test_steps, is_from_block=False
-):
+def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
     min_time_to_include = (attestation.data.slot + 1) * spec.config.SECONDS_PER_SLOT
     if store.time < min_time_to_include:
@@ -235,9 +228,7 @@ def add_block(
 
     # Check blob_data
     if blob_data is not None:
-        blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-            blob_data.blobs
-        )
+        blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
         blobs_root = blobs.hash_tree_root()
         yield get_blobs_file_name(blobs_root=blobs_root), blobs
 
@@ -289,10 +280,7 @@ def add_block(
 
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
-    assert (
-        store.block_states[block_root].hash_tree_root()
-        == signed_block.message.state_root
-    )
+    assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
     if not is_optimistic:
         output_store_checks(spec, store, test_steps)
 
@@ -407,10 +395,7 @@ def apply_next_epoch_with_attestations(
             == post_state.hash_tree_root()
         )
     else:
-        assert (
-            store.block_states[block_root].hash_tree_root()
-            == post_state.hash_tree_root()
-        )
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -447,10 +432,7 @@ def apply_next_slots_with_attestations(
             == post_state.hash_tree_root()
         )
     else:
-        assert (
-            store.block_states[block_root].hash_tree_root()
-            == post_state.hash_tree_root()
-        )
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -461,15 +443,10 @@ def is_ready_to_justify(spec, state):
     """
     temp_state = state.copy()
     spec.process_justification_and_finalization(temp_state)
-    return (
-        temp_state.current_justified_checkpoint.epoch
-        > state.current_justified_checkpoint.epoch
-    )
+    return temp_state.current_justified_checkpoint.epoch > state.current_justified_checkpoint.epoch
 
 
-def find_next_justifying_slot(
-    spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None
-):
+def find_next_justifying_slot(spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None):
     temp_state = state.copy()
 
     signed_blocks = []

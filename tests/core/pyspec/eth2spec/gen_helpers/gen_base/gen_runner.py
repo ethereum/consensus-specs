@@ -235,9 +235,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         presets = []
 
     if len(presets) != 0:
-        print(
-            f"Filtering test-generator runs to only include presets: {', '.join(presets)}"
-        )
+        print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
 
     # fork_list arg
     forks = args.fork_list
@@ -245,9 +243,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         forks = []
 
     if len(presets) != 0:
-        print(
-            f"Filtering test-generator runs to only include forks: {', '.join(forks)}"
-        )
+        print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
@@ -272,9 +268,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             print(f"Collected test at: {case_dir}")
             diagnostics_obj.collected_test_count += 1
 
-            is_skip, diagnostics_obj = should_skip_case_dir(
-                case_dir, args.force, diagnostics_obj
-            )
+            is_skip, diagnostics_obj = should_skip_case_dir(case_dir, args.force, diagnostics_obj)
             if is_skip:
                 continue
 
@@ -431,7 +425,9 @@ def output_part(
     try:
         fn(case_dir)
     except (IOError, ValueError) as e:
-        error_message = f'[Error] error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}'
+        error_message = (
+            f'[Error] error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}'
+        )
         # Write to error log file
         with log_file.open("a+") as f:
             f.write(error_message)
@@ -465,9 +461,7 @@ def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml)
                 dump_yaml_fn(data, name, file_mode, yaml),
             )
         elif out_kind == "ssz":
-            output_part(
-                case_dir, log_file, out_kind, name, dump_ssz_fn(data, name, file_mode)
-            )
+            output_part(case_dir, log_file, out_kind, name, dump_ssz_fn(data, name, file_mode))
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 

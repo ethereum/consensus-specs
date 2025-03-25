@@ -53,9 +53,7 @@ def build_shard_block(
     )
 
     if signed:
-        sign_shard_block(
-            spec, beacon_state, shard, signed_block, proposer_index=proposer_index
-        )
+        sign_shard_block(spec, beacon_state, shard, signed_block, proposer_index=proposer_index)
 
     return signed_block
 
@@ -78,10 +76,7 @@ def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
                 shard_transition.shard_states[len_offset_slots - 1].latest_block_root
                 == shard_block_root
             )
-            assert (
-                shard_transition.shard_states[len_offset_slots - 1].slot
-                == offset_slots[-1]
-            )
+            assert shard_transition.shard_states[len_offset_slots - 1].slot == offset_slots[-1]
         shard_transitions[shard] = shard_transition
 
     return shard_transitions
@@ -89,9 +84,7 @@ def get_shard_transitions(spec, parent_beacon_state, shard_block_dict):
 
 def get_committee_index_of_shard(spec, state, slot, shard):  # Optional[CommitteeIndex]
     active_shard_count = spec.get_active_shard_count(state)
-    committee_count = spec.get_committee_count_per_slot(
-        state, spec.compute_epoch_at_slot(slot)
-    )
+    committee_count = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot))
     start_shard = spec.get_start_shard(state, slot)
     for committee_index in range(committee_count):
         if (start_shard + committee_index) % active_shard_count == shard:

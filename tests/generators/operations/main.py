@@ -29,8 +29,7 @@ if __name__ == "__main__":
     _new_altair_mods = {
         **{
             "sync_aggregate": [
-                "eth2spec.test.altair.block_processing.sync_aggregate.test_process_"
-                + key
+                "eth2spec.test.altair.block_processing.sync_aggregate.test_process_" + key
                 for key in ["sync_aggregate", "sync_aggregate_random"]
             ]
         },

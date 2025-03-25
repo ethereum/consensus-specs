@@ -6,9 +6,7 @@ from eth2spec.test.helpers.deposits import prepare_pending_deposit
 from eth2spec.test.helpers.state import transition_to
 
 
-def run_epoch_processing(
-    spec, state, pending_deposits=None, pending_consolidations=None
-):
+def run_epoch_processing(spec, state, pending_deposits=None, pending_consolidations=None):
     if pending_deposits is None:
         pending_deposits = []
     if pending_consolidations is None:
@@ -54,9 +52,7 @@ def test_multiple_pending_deposits_same_pubkey_compounding(spec, state):
         validator_index=index,
         amount=spec.MIN_ACTIVATION_BALANCE,
         signed=True,
-        withdrawal_credentials=(
-            spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-        ),
+        withdrawal_credentials=(spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20),
     )
     pending_deposits = [deposit, deposit]
 
@@ -110,9 +106,7 @@ def test_multiple_pending_deposits_same_pubkey_above_upward_threshold(spec, stat
         * spec.HYSTERESIS_UPWARD_MULTIPLIER
         + 1
     )
-    deposit_1 = prepare_pending_deposit(
-        spec, validator_index=index, amount=amount, signed=True
-    )
+    deposit_1 = prepare_pending_deposit(spec, validator_index=index, amount=amount, signed=True)
     pending_deposits = [deposit_0, deposit_1]
 
     yield from run_epoch_processing(spec, state, pending_deposits)
@@ -148,23 +142,14 @@ def test_pending_consolidation(spec, state):
     ]
 
     assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
-    assert (
-        state.validators[source_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
-    )
+    assert state.validators[source_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
     assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE
-    assert (
-        state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
-    )
+    assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
 
-    yield from run_epoch_processing(
-        spec, state, pending_consolidations=pending_consolidations
-    )
+    yield from run_epoch_processing(spec, state, pending_consolidations=pending_consolidations)
 
     # Check the consolidation is processed correctly
     assert state.balances[source_index] == 0
     assert state.validators[source_index].effective_balance == 0
     assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE * 2
-    assert (
-        state.validators[target_index].effective_balance
-        == spec.MIN_ACTIVATION_BALANCE * 2
-    )
+    assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE * 2

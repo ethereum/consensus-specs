@@ -21,12 +21,8 @@ class PowChain:
 
 def prepare_random_pow_block(spec, rng=Random(3131)):
     return spec.PowBlock(
-        block_hash=spec.Hash32(
-            spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))
-        ),
-        parent_hash=spec.Hash32(
-            spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))
-        ),
+        block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
+        parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         total_difficulty=uint256(0),
     )
 

@@ -51,7 +51,5 @@ def invalid_cases():
         (512, 513),
     ]:
         yield f"bitlist_{typ_limit}_but_{test_limit}", invalid_test_case(
-            lambda: serialize(
-                bitlist_case_fn(rng, RandomizationMode.mode_max_count, test_limit)
-            )
+            lambda: serialize(bitlist_case_fn(rng, RandomizationMode.mode_max_count, test_limit))
         )

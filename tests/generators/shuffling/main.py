@@ -22,16 +22,12 @@ def shuffling_case_fn(spec, seed, count):
     yield "mapping", "data", {
         "seed": "0x" + seed.hex(),
         "count": count,
-        "mapping": [
-            int(spec.compute_shuffled_index(i, count, seed)) for i in range(count)
-        ],
+        "mapping": [int(spec.compute_shuffled_index(i, count, seed)) for i in range(count)],
     }
 
 
 def shuffling_case(spec, seed, count):
-    return f"shuffle_0x{seed.hex()}_{count}", lambda: shuffling_case_fn(
-        spec, seed, count
-    )
+    return f"shuffle_0x{seed.hex()}_{count}", lambda: shuffling_case_fn(spec, seed, count)
 
 
 def shuffling_test_cases(spec):
@@ -66,6 +62,4 @@ def create_provider(preset_name: PresetBaseName) -> gen_typing.TestProvider:
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator(
-        "shuffling", [create_provider(MINIMAL), create_provider(MAINNET)]
-    )
+    gen_runner.run_generator("shuffling", [create_provider(MINIMAL), create_provider(MAINNET)])

@@ -35,15 +35,11 @@ def build_mock_validator(spec, i: int, balance: int):
             )
         else:
             # insecurely use pubkey as withdrawal key as well
-            withdrawal_credentials = (
-                spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-            )
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     else:
         # insecurely use pubkey as withdrawal key as well
-        withdrawal_credentials = (
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        )
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     validator = spec.Validator(
@@ -78,9 +74,7 @@ def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None
     if eth1_block_hash is None:
         eth1_block_hash = b"\x55" * 32
     if is_post_eip7732(spec):
-        return get_post_eip7732_genesis_execution_payload_header(
-            spec, slot, eth1_block_hash
-        )
+        return get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b"\x30" * 32,
         fee_recipient=b"\x42" * 20,
@@ -136,16 +130,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if previous_fork == PHASE0:
             previous_version = spec.config.GENESIS_FORK_VERSION
         else:
-            previous_version = getattr(
-                spec.config, f"{previous_fork.upper()}_FORK_VERSION"
-            )
+            previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
         current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     genesis_block_body = spec.BeaconBlockBody()
     if is_post_eip7732(spec):
-        genesis_block_body.signed_execution_payload_header.message.block_hash = (
-            eth1_block_hash
-        )
+        genesis_block_body.signed_execution_payload_header.message.block_hash = eth1_block_hash
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -170,8 +160,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     #  as it is much faster than creating and processing genesis deposits for every single test case.
     state.balances = validator_balances
     state.validators = [
-        build_mock_validator(spec, i, state.balances[i])
-        for i in range(len(validator_balances))
+        build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))
     ]
 
     # Process genesis activations
@@ -180,12 +169,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
         if is_post_altair(spec):
-            state.previous_epoch_participation.append(
-                spec.ParticipationFlags(0b0000_0000)
-            )
-            state.current_epoch_participation.append(
-                spec.ParticipationFlags(0b0000_0000)
-            )
+            state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
+            state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.inactivity_scores.append(spec.uint64(0))
 
     # Set genesis validators root for domain separation and chain versioning
@@ -199,12 +184,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_bellatrix(spec):
         # Initialize the execution payload header (with block number and genesis time set to 0)
-        state.latest_execution_payload_header = (
-            get_sample_genesis_execution_payload_header(
-                spec,
-                spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH),
-                eth1_block_hash=eth1_block_hash,
-            )
+        state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
+            spec,
+            spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH),
+            eth1_block_hash=eth1_block_hash,
         )
 
     if is_post_electra(spec):
@@ -213,20 +196,14 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     if is_post_eip7441(spec):
         vc = len(state.validators)
         for i in range(vc):
-            state.whisk_k_commitments.append(
-                compute_whisk_initial_k_commitment_cached(i)
-            )
+            state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
             state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
 
         for i in range(spec.CANDIDATE_TRACKERS_COUNT):
-            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(
-                i % vc
-            )
+            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
         for i in range(spec.PROPOSER_TRACKERS_COUNT):
-            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(
-                i % vc
-            )
+            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     if is_post_electra(spec):
         state.deposit_balance_to_consume = 0

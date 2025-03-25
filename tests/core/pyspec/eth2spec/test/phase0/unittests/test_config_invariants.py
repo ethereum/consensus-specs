@@ -24,9 +24,7 @@ def test_validators(spec, state):
 
     # Note: can be less if you assume stricters bounds on validator set based on total ETH supply
     maximum_validators_per_committee = (
-        spec.VALIDATOR_REGISTRY_LIMIT
-        // spec.SLOTS_PER_EPOCH
-        // spec.MAX_COMMITTEES_PER_SLOT
+        spec.VALIDATOR_REGISTRY_LIMIT // spec.SLOTS_PER_EPOCH // spec.MAX_COMMITTEES_PER_SLOT
     )
     check_bound(spec.MAX_VALIDATORS_PER_COMMITTEE, 1, maximum_validators_per_committee)
     check_bound(spec.config.MIN_PER_EPOCH_CHURN_LIMIT, 1, spec.VALIDATOR_REGISTRY_LIMIT)
@@ -45,9 +43,7 @@ def test_balances(spec, state):
     assert spec.MAX_EFFECTIVE_BALANCE % spec.EFFECTIVE_BALANCE_INCREMENT == 0
     check_bound(spec.MIN_DEPOSIT_AMOUNT, 1, UINT64_MAX)
     check_bound(spec.MAX_EFFECTIVE_BALANCE, spec.MIN_DEPOSIT_AMOUNT, UINT64_MAX)
-    check_bound(
-        spec.MAX_EFFECTIVE_BALANCE, spec.EFFECTIVE_BALANCE_INCREMENT, UINT64_MAX
-    )
+    check_bound(spec.MAX_EFFECTIVE_BALANCE, spec.EFFECTIVE_BALANCE_INCREMENT, UINT64_MAX)
 
 
 @with_all_phases
@@ -63,19 +59,12 @@ def test_hysteresis_quotient(spec, state):
 def test_incentives(spec, state):
     # Ensure no ETH is minted in slash_validator
     if is_post_bellatrix(spec):
-        assert (
-            spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
-            <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
-        )
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     elif is_post_altair(spec):
-        assert (
-            spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR
-            <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
-        )
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     elif is_post_electra(spec):
         assert (
-            spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA
-            <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
+            spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
         )
     else:
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
@@ -95,8 +84,7 @@ def test_time(spec, state):
 @spec_state_test
 def test_networking(spec, state):
     assert spec.config.MIN_EPOCHS_FOR_BLOCK_REQUESTS == (
-        spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        + spec.config.CHURN_LIMIT_QUOTIENT // 2
+        spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + spec.config.CHURN_LIMIT_QUOTIENT // 2
     )
     assert spec.config.ATTESTATION_SUBNET_PREFIX_BITS == (
         spec.ceillog2(spec.config.ATTESTATION_SUBNET_COUNT)

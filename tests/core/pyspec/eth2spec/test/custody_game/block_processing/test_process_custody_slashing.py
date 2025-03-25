@@ -24,9 +24,7 @@ from eth2spec.test.phase0.block_processing.test_process_attestation import (
 )
 
 
-def run_custody_slashing_processing(
-    spec, state, custody_slashing, valid=True, correct=True
-):
+def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, correct=True):
     """
     Run ``process_bit_challenge``, yielding:
       - pre-state ('pre')
@@ -38,36 +36,24 @@ def run_custody_slashing_processing(
     yield "custody_slashing", custody_slashing
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_custody_slashing(state, custody_slashing)
-        )
+        expect_assertion_error(lambda: spec.process_custody_slashing(state, custody_slashing))
         yield "post", None
         return
 
     if correct:
-        pre_slashed_balance = get_balance(
-            state, custody_slashing.message.malefactor_index
-        )
+        pre_slashed_balance = get_balance(state, custody_slashing.message.malefactor_index)
     else:
-        pre_slashed_balance = get_balance(
-            state, custody_slashing.message.whistleblower_index
-        )
+        pre_slashed_balance = get_balance(state, custody_slashing.message.whistleblower_index)
 
     spec.process_custody_slashing(state, custody_slashing)
 
     if correct:
         slashed_validator = state.validators[custody_slashing.message.malefactor_index]
-        assert (
-            get_balance(state, custody_slashing.message.malefactor_index)
-            < pre_slashed_balance
-        )
+        assert get_balance(state, custody_slashing.message.malefactor_index) < pre_slashed_balance
     else:
-        slashed_validator = state.validators[
-            custody_slashing.message.whistleblower_index
-        ]
+        slashed_validator = state.validators[custody_slashing.message.whistleblower_index]
         assert (
-            get_balance(state, custody_slashing.message.whistleblower_index)
-            < pre_slashed_balance
+            get_balance(state, custody_slashing.message.whistleblower_index) < pre_slashed_balance
         )
 
     assert slashed_validator.slashed
@@ -142,9 +128,7 @@ def run_standard_custody_slashing_test(
     if slashing_message_data is not None:
         slashing.message.data = slashing_message_data
 
-    yield from run_custody_slashing_processing(
-        spec, state, slashing, valid=valid, correct=correct
-    )
+    yield from run_custody_slashing_processing(spec, state, slashing, valid=valid, correct=correct)
 
 
 @with_phases([CUSTODY_GAME])

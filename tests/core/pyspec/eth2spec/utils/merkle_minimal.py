@@ -21,9 +21,7 @@ def calc_merkle_tree_from_leaves(values, layer_count=32):
 
 
 def get_merkle_tree(values, pad_to=None):
-    layer_count = (
-        (len(values) - 1).bit_length() if pad_to is None else (pad_to - 1).bit_length()
-    )
+    layer_count = (len(values) - 1).bit_length() if pad_to is None else (pad_to - 1).bit_length()
     if len(values) == 0:
         return zerohashes[layer_count]
     return calc_merkle_tree_from_leaves(values, layer_count)

@@ -36,12 +36,7 @@ def test_networking(spec):
                 "blob_kzg_commitments_root",
             )
             gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
-            assert (
-                spec.floorlog2(gindex)
-                == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732
-            )
+            assert spec.floorlog2(gindex) == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732
         else:
-            gindex = spec.get_generalized_index(
-                spec.BeaconBlockBody, "blob_kzg_commitments", i
-            )
+            gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments", i)
             assert spec.floorlog2(gindex) == spec.KZG_COMMITMENT_INCLUSION_PROOF_DEPTH

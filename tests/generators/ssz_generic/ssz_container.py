@@ -58,9 +58,7 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(
-    rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool = False
-):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool = False):
     return get_random_ssz_object(
         rng, typ, max_bytes_length=2000, max_list_length=2000, mode=mode, chaos=chaos
     )
@@ -101,11 +99,7 @@ def valid_cases():
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
         # are deterministic.
-        modes = (
-            [RandomizationMode.mode_random]
-            if len(offsets) == 0
-            else list(RandomizationMode)
-        )
+        modes = [RandomizationMode.mode_random] if len(offsets) == 0 else list(RandomizationMode)
         for mode in modes:
             for variation in range(10):
                 yield f"{name}_{mode.to_name()}_{variation}", valid_test_case(
@@ -117,9 +111,7 @@ def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
     return (
         b[:offset_index]
         + (
-            change(
-                int.from_bytes(b[offset_index : offset_index + 4], byteorder="little")
-            )
+            change(int.from_bytes(b[offset_index : offset_index + 4], byteorder="little"))
             & 0xFFFFFFFF
         ).to_bytes(length=4, byteorder="little")
         + b[offset_index + 4 :]
@@ -131,9 +123,7 @@ def invalid_cases():
     for name, (typ, offsets) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f"{name}_extra_byte", invalid_test_case(
-            lambda: serialize(
-                container_case_fn(rng, RandomizationMode.mode_max_count, typ)
-            )
+            lambda: serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ))
             + b"\xff"
         )
 

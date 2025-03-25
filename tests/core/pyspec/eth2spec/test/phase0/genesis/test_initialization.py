@@ -50,19 +50,14 @@ def test_initialize_beacon_state_from_eth1(spec):
     yield "deposits", deposits
 
     # initialize beacon_state
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
     assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == deposit_count
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
     assert state.eth1_data.block_hash == eth1_block_hash
-    assert (
-        spec.get_total_active_balance(state)
-        == deposit_count * spec.MAX_EFFECTIVE_BALANCE
-    )
+    assert spec.get_total_active_balance(state) == deposit_count * spec.MAX_EFFECTIVE_BALANCE
 
     # yield state
     yield "state", state
@@ -106,9 +101,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     yield "deposits", deposits
 
     # initialize beacon_state
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
     assert state.genesis_time == eth1_timestamp + spec.config.GENESIS_DELAY
     assert len(state.validators) == small_deposit_count
@@ -118,10 +111,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # only main deposits participate to the active balance
     # NOTE: they are pre-ELECTRA deposits with BLS_WITHDRAWAL_PREFIX,
     # so `MAX_EFFECTIVE_BALANCE` is used
-    assert (
-        spec.get_total_active_balance(state)
-        == main_deposit_count * spec.MAX_EFFECTIVE_BALANCE
-    )
+    assert spec.get_total_active_balance(state) == main_deposit_count * spec.MAX_EFFECTIVE_BALANCE
 
     # yield state
     yield "state", state
@@ -173,9 +163,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     yield "deposits", deposits
 
     # initialize beacon_state
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
     assert spec.is_valid_genesis_state(state)
 
     # yield state
@@ -203,9 +191,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
     yield "deposits", deposits
 
     # initialize beacon_state
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
     assert not spec.is_valid_genesis_state(state)
 
     yield "state", state
@@ -244,9 +230,7 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     yield "deposits", deposits
 
     # initialize beacon_state
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
     assert spec.is_valid_genesis_state(state)
 
     yield "state", state

@@ -34,9 +34,7 @@ def test_light_client_data_collection(spec, state):
         root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root(),
     )
     assert (
-        get_lc_bootstrap_block_id(
-            get_light_client_bootstrap(test, genesis_bid.root).data
-        )
+        get_lc_bootstrap_block_id(get_light_client_bootstrap(test, genesis_bid.root).data)
         == genesis_bid
     )
 
@@ -61,14 +59,11 @@ def test_light_client_data_collection(spec, state):
     yield from select_new_head(test, spec_b, bid_2)
     period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == genesis_bid
     )
     assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == genesis_bid
+        get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == genesis_bid
     )
     assert (
         get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
@@ -88,14 +83,11 @@ def test_light_client_data_collection(spec, state):
     yield from select_new_head(test, spec_b, bid_4)
     period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == genesis_bid
     )
     assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == genesis_bid
+        get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == genesis_bid
     )
     assert (
         get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
@@ -109,19 +101,11 @@ def test_light_client_data_collection(spec, state):
     yield from select_new_head(test, spec_b, bid_5)
     period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == genesis_bid
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_4
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_4
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_4
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_4
 
     # Build on branch B, this time with 3 participants
     spec_b, state_b, bid_6 = yield from add_new_block(
@@ -130,19 +114,11 @@ def test_light_client_data_collection(spec, state):
     yield from select_new_head(test, spec_b, bid_6)
     period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_5
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_5
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_5
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_5
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_5
 
     # Build on branch A, with 2 participants
     spec_a, state_a, bid_7 = yield from add_new_block(
@@ -151,19 +127,11 @@ def test_light_client_data_collection(spec, state):
     yield from select_new_head(test, spec_a, bid_7)
     period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_3
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_3
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_3
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_3
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_3
 
     # Branch A: epoch 1, slot 5
     slot = spec_a.compute_start_slot_at_epoch(1) + 5
@@ -175,19 +143,11 @@ def test_light_client_data_collection(spec, state):
     assert get_light_client_bootstrap(test, bid_1_5.root).spec is None
     period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_7
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_7
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_7
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_7
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_7
 
     # Branch B: epoch 2, slot 4
     slot = spec_b.compute_start_slot_at_epoch(2) + 4
@@ -200,19 +160,11 @@ def test_light_client_data_collection(spec, state):
     assert get_light_client_bootstrap(test, bid_2_4.root).spec is None
     period = spec_b.compute_sync_committee_period_at_slot(state_b.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_6
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_6
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_6
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_6
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_6
 
     # Branch A: epoch 3, slot 0
     slot = spec_a.compute_start_slot_at_epoch(3) + 0
@@ -226,19 +178,11 @@ def test_light_client_data_collection(spec, state):
     assert get_light_client_bootstrap(test, bid_3_0.root).spec is None
     period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_1_5
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_1_5
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_1_5
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_1_5
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_1_5
 
     # Branch A: fill epoch
     for i in range(1, spec_a.SLOTS_PER_EPOCH):
@@ -250,19 +194,14 @@ def test_light_client_data_collection(spec, state):
         assert get_light_client_bootstrap(test, bid_3_0.root).spec is None
         period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
         assert (
-            get_lc_update_attested_block_id(
-                get_light_client_update_for_period(test, period).data
-            )
+            get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
             == bid_1_5
         )
         assert (
-            get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-            == bid_1_5
+            get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_1_5
         )
         assert (
-            get_lc_update_attested_block_id(
-                get_light_client_optimistic_update(test).data
-            )
+            get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
             == bid_1_5
         )
     assert state_a.slot == spec_a.compute_start_slot_at_epoch(4) - 1
@@ -281,19 +220,11 @@ def test_light_client_data_collection(spec, state):
     assert get_light_client_bootstrap(test, bid_4_0.root).spec is None
     period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_1_5
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_3_n
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_3_n
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_3_n
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_3_n
 
     # Branch A: fill epoch
     for i in range(1, spec_a.SLOTS_PER_EPOCH):
@@ -306,19 +237,14 @@ def test_light_client_data_collection(spec, state):
         assert get_light_client_bootstrap(test, bid_4_0.root).spec is None
         period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
         assert (
-            get_lc_update_attested_block_id(
-                get_light_client_update_for_period(test, period).data
-            )
+            get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
             == bid_1_5
         )
         assert (
-            get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-            == bid_3_n
+            get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_3_n
         )
         assert (
-            get_lc_update_attested_block_id(
-                get_light_client_optimistic_update(test).data
-            )
+            get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
             == bid_3_n
         )
     assert state_a.slot == spec_a.compute_start_slot_at_epoch(5) - 1
@@ -330,35 +256,18 @@ def test_light_client_data_collection(spec, state):
         test, spec_a, state_a, slot=slot, num_sync_participants=6
     )
     yield from select_new_head(test, spec_a, bid_6_2)
-    assert (
-        get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_7.root).data)
-        == bid_7
-    )
-    assert (
-        get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_1_5.root).data)
-        == bid_1_5
-    )
+    assert get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_7.root).data) == bid_7
+    assert get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_1_5.root).data) == bid_1_5
     assert get_light_client_bootstrap(test, bid_2_4.root).spec is None
-    assert (
-        get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_3_0.root).data)
-        == bid_3_0
-    )
+    assert get_lc_bootstrap_block_id(get_light_client_bootstrap(test, bid_3_0.root).data) == bid_3_0
     assert get_light_client_bootstrap(test, bid_4_0.root).spec is None
     period = spec_a.compute_sync_committee_period_at_slot(state_a.slot)
     assert (
-        get_lc_update_attested_block_id(
-            get_light_client_update_for_period(test, period).data
-        )
+        get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
         == bid_1_5
     )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
-        == bid_4_n
-    )
-    assert (
-        get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
-        == bid_4_n
-    )
+    assert get_lc_update_attested_block_id(get_light_client_finality_update(test).data) == bid_4_n
+    assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_4_n
 
     # Finish test
     yield from finish_lc_data_collection_test(test)

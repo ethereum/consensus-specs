@@ -20,9 +20,7 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
     yield "custody_key_reveal", custody_key_reveal
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_custody_key_reveal(state, custody_key_reveal)
-        )
+        expect_assertion_error(lambda: spec.process_custody_key_reveal(state, custody_key_reveal))
         yield "post", None
         return
 

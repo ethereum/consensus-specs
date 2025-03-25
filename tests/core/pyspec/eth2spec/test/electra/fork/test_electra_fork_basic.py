@@ -61,9 +61,7 @@ def test_fork_many_next_epoch(spec, phases, state):
 
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_fork_random_low_balances(spec, phases, state):
@@ -193,10 +191,7 @@ def test_fork_inactive_compounding_validator_with_excess_balance(spec, phases, s
     post_state = yield from run_fork_test(post_spec, state)
 
     # the validator cannot be activated again
-    assert (
-        post_state.validators[index].activation_eligibility_epoch
-        == spec.FAR_FUTURE_EPOCH
-    )
+    assert post_state.validators[index].activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
     # the validator should now have a zero balance
     assert post_state.balances[index] == 0
     # there should be a single pending deposit for this validator
@@ -226,9 +221,7 @@ def test_fork_earliest_exit_epoch_no_validator_exits(spec, phases, state):
 
     # the earliest exit epoch should be the compute_activation_exit_epoch + 1
     current_epoch = post_spec.compute_epoch_at_slot(post_state.slot)
-    expected_earliest_exit_epoch = (
-        post_spec.compute_activation_exit_epoch(current_epoch) + 1
-    )
+    expected_earliest_exit_epoch = post_spec.compute_activation_exit_epoch(current_epoch) + 1
     assert post_state.earliest_exit_epoch == expected_earliest_exit_epoch
 
 
@@ -267,7 +260,5 @@ def test_fork_earliest_exit_epoch_less_than_current_epoch(spec, phases, state):
 
     # the earliest exit epoch should be the compute_activation_exit_epoch + 1
     current_epoch = post_spec.compute_epoch_at_slot(post_state.slot)
-    expected_earliest_exit_epoch = (
-        post_spec.compute_activation_exit_epoch(current_epoch) + 1
-    )
+    expected_earliest_exit_epoch = post_spec.compute_activation_exit_epoch(current_epoch) + 1
     assert post_state.earliest_exit_epoch == expected_earliest_exit_epoch

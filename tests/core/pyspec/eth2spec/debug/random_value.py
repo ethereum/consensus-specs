@@ -79,9 +79,7 @@ def get_random_ssz_object(
             return typ(b"\xff" * min(1, typ.limit()))
         else:
             return typ(
-                get_random_bytes_list(
-                    rng, rng.randint(0, min(max_bytes_length, typ.limit()))
-                )
+                get_random_bytes_list(rng, rng.randint(0, min(max_bytes_length, typ.limit())))
             )
     if issubclass(typ, ByteVector):
         # Random byte vectors can be bigger than max bytes size, e.g. custody chunk data.
@@ -103,9 +101,7 @@ def get_random_ssz_object(
     elif issubclass(typ, (Vector, Bitvector)):
         elem_type = typ.element_cls() if issubclass(typ, Vector) else boolean
         return typ(
-            get_random_ssz_object(
-                rng, elem_type, max_bytes_length, max_list_length, mode, chaos
-            )
+            get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.vector_length())
         )
     elif issubclass(typ, List) or issubclass(typ, Bitlist):
@@ -124,9 +120,7 @@ def get_random_ssz_object(
 
         elem_type = typ.element_cls() if issubclass(typ, List) else boolean
         return typ(
-            get_random_ssz_object(
-                rng, elem_type, max_bytes_length, max_list_length, mode, chaos
-            )
+            get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)
         )
     elif issubclass(typ, Container):

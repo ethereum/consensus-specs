@@ -66,9 +66,7 @@ def test_all_valid(spec, state):
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec)
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(
-        1
-    )
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_block = prepare_random_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
@@ -83,9 +81,7 @@ def test_all_valid(spec, state):
             spec, block.body.execution_payload, state
         )
         signed_block = state_transition_and_sign_block(spec, state, block)
-        yield from tick_and_add_block(
-            spec, store, signed_block, test_steps, merge_block=True
-        )
+        yield from tick_and_add_block(spec, store, signed_block, test_steps, merge_block=True)
         # valid
         assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
@@ -147,9 +143,7 @@ def test_too_early_for_merge(spec, state):
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec)
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(
-        2
-    )
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
     pow_block = prepare_random_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)

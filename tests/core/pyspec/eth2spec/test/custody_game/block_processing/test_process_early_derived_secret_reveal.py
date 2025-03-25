@@ -10,9 +10,7 @@ from eth2spec.test.context import (
 )
 
 
-def run_early_derived_secret_reveal_processing(
-    spec, state, randao_key_reveal, valid=True
-):
+def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, valid=True):
     """
     Run ``process_randao_key_reveal``, yielding:
       - pre-state ('pre')
@@ -54,9 +52,7 @@ def run_early_derived_secret_reveal_processing(
 def test_success(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state)
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal)
 
 
 @with_phases([CUSTODY_GAME])
@@ -67,9 +63,7 @@ def test_reveal_from_current_epoch(spec, state):
         spec, state, spec.get_current_epoch(state)
     )
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, False
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
 @with_phases([CUSTODY_GAME])
@@ -81,9 +75,7 @@ def test_reveal_from_past_epoch(spec, state):
         spec, state, spec.get_current_epoch(state) - 1
     )
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, False
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
 @with_phases([CUSTODY_GAME])
@@ -95,9 +87,7 @@ def test_reveal_with_custody_padding(spec, state):
         state,
         spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING,
     )
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, True
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, True)
 
 
 @with_phases([CUSTODY_GAME])
@@ -109,9 +99,7 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
         state,
         spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING - 1,
     )
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, True
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, True)
 
 
 @with_phases([CUSTODY_GAME])
@@ -124,9 +112,7 @@ def test_double_reveal(spec, state):
         state,
         epoch,
     )
-    _, _, _ = dict(
-        run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1)
-    )
+    _, _, _ = dict(run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1))
 
     randao_key_reveal2 = get_valid_early_derived_secret_reveal(
         spec,
@@ -134,9 +120,7 @@ def test_double_reveal(spec, state):
         epoch,
     )
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal2, False
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal2, False)
 
 
 @with_phases([CUSTODY_GAME])
@@ -148,9 +132,7 @@ def test_revealer_is_slashed(spec, state):
     )
     state.validators[randao_key_reveal.revealed_index].slashed = True
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, False
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
 @with_phases([CUSTODY_GAME])
@@ -160,10 +142,7 @@ def test_far_future_epoch(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
         spec,
         state,
-        spec.get_current_epoch(state)
-        + spec.EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
+        spec.get_current_epoch(state) + spec.EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
     )
 
-    yield from run_early_derived_secret_reveal_processing(
-        spec, state, randao_key_reveal, False
-    )
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)

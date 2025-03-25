@@ -15,10 +15,7 @@ def _run_compute_columns_for_custody_group(spec, rng, custody_group=None):
     yield "custody_group", "meta", custody_group
 
     assert len(result) == len(set(result))
-    assert (
-        len(result)
-        == spec.config.NUMBER_OF_COLUMNS // spec.config.NUMBER_OF_CUSTODY_GROUPS
-    )
+    assert len(result) == spec.config.NUMBER_OF_COLUMNS // spec.config.NUMBER_OF_CUSTODY_GROUPS
     assert all(i < spec.config.NUMBER_OF_COLUMNS for i in result)
     python_list_result = [int(i) for i in result]
 

@@ -46,19 +46,14 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
             # Validator is created with 0 balance
             validator = state.validators[pre_validators_len + i]
             assert validator.pubkey == deposit.data.pubkey
-            assert (
-                validator.withdrawal_credentials == deposit.data.withdrawal_credentials
-            )
+            assert validator.withdrawal_credentials == deposit.data.withdrawal_credentials
             assert validator.effective_balance == spec.Gwei(0)
             assert state.balances[pre_validators_len + i] == spec.Gwei(0)
 
             # The corresponding pending deposit is created
             pending_deposit = state.pending_deposits[pre_pending_deposits_len + i]
             assert pending_deposit.pubkey == deposit.data.pubkey
-            assert (
-                pending_deposit.withdrawal_credentials
-                == deposit.data.withdrawal_credentials
-            )
+            assert pending_deposit.withdrawal_credentials == deposit.data.withdrawal_credentials
             assert pending_deposit.amount == deposit.data.amount
             assert pending_deposit.signature == deposit.data.signature
             assert pending_deposit.slot == spec.GENESIS_SLOT
@@ -73,10 +68,7 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
                 pre_pending_deposits_len + len(block.body.deposits) + i
             ]
             assert pending_deposit.pubkey == deposit_request.pubkey
-            assert (
-                pending_deposit.withdrawal_credentials
-                == deposit_request.withdrawal_credentials
-            )
+            assert pending_deposit.withdrawal_credentials == deposit_request.withdrawal_credentials
             assert pending_deposit.amount == deposit_request.amount
             assert pending_deposit.signature == deposit_request.signature
             assert pending_deposit.slot == signed_block.message.slot
@@ -153,9 +145,7 @@ def prepare_state_and_block(
     # Assign deposits and deposit requests
     block.body.deposits = deposits
     block.body.execution_requests.deposits = deposit_requests
-    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, block
-    )
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     return state, block
 
@@ -175,10 +165,7 @@ def test_deposit_transition__start_index_is_set(spec, state):
     yield from run_deposit_transition_block(spec, state, block)
 
     # deposit_requests_start_index must be set to the index of the first request
-    assert (
-        state.deposit_requests_start_index
-        == block.body.execution_requests.deposits[0].index
-    )
+    assert state.deposit_requests_start_index == block.body.execution_requests.deposits[0].index
 
 
 @with_phases([ELECTRA])
@@ -267,9 +254,7 @@ def test_deposit_transition__invalid_too_many_eth1_deposits(spec, state):
 
 @with_phases([ELECTRA])
 @spec_state_test
-def test_deposit_transition__invalid_eth1_deposits_overlap_in_protocol_deposits(
-    spec, state
-):
+def test_deposit_transition__invalid_eth1_deposits_overlap_in_protocol_deposits(spec, state):
     # spec.MAX_DEPOSITS deposits, 1 deposit request, state.eth1_data.deposit_count > state.deposit_requests_start_index
     # state.deposit_requests_start_index == spec.MAX_DEPOSITS - 1
     state, block = prepare_state_and_block(
@@ -301,9 +286,7 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
     # Artificially assign deposit's pubkey to a deposit request of the same block
     top_up_keys = [block.body.deposits[0].data.pubkey]
     block.body.execution_requests.deposits[0].pubkey = top_up_keys[0]
-    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, block
-    )
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     pre_pending_deposits = len(state.pending_deposits)
 
@@ -311,21 +294,14 @@ def test_deposit_transition__deposit_and_top_up_same_block(spec, state):
 
     # Check the top up
     assert len(state.pending_deposits) == pre_pending_deposits + 2
-    assert (
-        state.pending_deposits[pre_pending_deposits].amount
-        == block.body.deposits[0].data.amount
-    )
+    assert state.pending_deposits[pre_pending_deposits].amount == block.body.deposits[0].data.amount
     amount_from_deposit = block.body.execution_requests.deposits[0].amount
-    assert (
-        state.pending_deposits[pre_pending_deposits + 1].amount == amount_from_deposit
-    )
+    assert state.pending_deposits[pre_pending_deposits + 1].amount == amount_from_deposit
 
 
 @with_phases([ELECTRA])
 @spec_state_test
-def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_credentials(
-    spec, state
-):
+def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_credentials(spec, state):
     deposit_count = 1
     deposit_request_count = 4
 
@@ -339,18 +315,14 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
     # pick 2 indices among deposit requests to have the same pubkey as the deposit
     indices_with_same_pubkey = [1, 3]
     for index in indices_with_same_pubkey:
-        block.body.execution_requests.deposits[index].pubkey = block.body.deposits[
-            0
-        ].data.pubkey
+        block.body.execution_requests.deposits[index].pubkey = block.body.deposits[0].data.pubkey
         # ensure top-up deposit request withdrawal credentials are different than the deposit
         assert (
             block.body.execution_requests.deposits[index].withdrawal_credentials
             != block.body.deposits[0].data.withdrawal_credentials
         )
 
-    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, block
-    )
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     deposit_requests = block.body.execution_requests.deposits.copy()
 
@@ -359,8 +331,7 @@ def test_deposit_transition__deposit_with_same_pubkey_different_withdrawal_crede
     assert len(state.pending_deposits) == deposit_request_count + deposit_count
     for index in indices_with_same_pubkey:
         assert (
-            state.pending_deposits[deposit_count + index].pubkey
-            == deposit_requests[index].pubkey
+            state.pending_deposits[deposit_count + index].pubkey == deposit_requests[index].pubkey
         )
         # ensure withdrawal credentials are retained, rather than being made the same
         assert (

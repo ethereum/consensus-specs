@@ -40,9 +40,7 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
         if slot == state.slot:
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
-            if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(
-                slot
-            ):
+            if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(slot):
                 print(
                     "warning: block slot far away, and no proposer index manually given."
                     " Signing block is slow due to transition for proposer index calculation."
@@ -61,12 +59,8 @@ def apply_randao_reveal(spec, state, block, proposer_index):
 
     privkey = privkeys[proposer_index]
 
-    domain = spec.get_domain(
-        state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot)
-    )
-    signing_root = spec.compute_signing_root(
-        spec.compute_epoch_at_slot(block.slot), domain
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
+    signing_root = spec.compute_signing_root(spec.compute_epoch_at_slot(block.slot), domain)
     block.body.randao_reveal = bls.Sign(privkey, signing_root)
 
 
@@ -127,9 +121,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         state = state.copy()
         spec.process_slots(state, slot)
 
-    state, parent_block_root = get_state_and_beacon_parent_root_at_slot(
-        spec, state, slot
-    )
+    state, parent_block_root = get_state_and_beacon_parent_root_at_slot(spec, state, slot)
     proposer_index = get_beacon_proposer_to_build(spec, state, proposer_index)
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
@@ -140,9 +132,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
     apply_randao_reveal(spec, state, empty_block, proposer_index)
 
     if is_post_altair(spec):
-        empty_block.body.sync_aggregate.sync_committee_signature = (
-            spec.G2_POINT_AT_INFINITY
-        )
+        empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
     if is_post_eip7732(spec):
         signed_header = build_empty_signed_execution_payload_header(spec, state)
@@ -175,9 +165,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
                 k_commitment,
             )
 
-        proposer_tracker = state.whisk_proposer_trackers[
-            state.slot % spec.PROPOSER_TRACKERS_COUNT
-        ]
+        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
 
@@ -189,9 +177,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         #######
 
         shuffle_indices = spec.get_shuffle_indices(empty_block.body.randao_reveal)
-        pre_shuffle_trackers = [
-            state.whisk_candidate_trackers[i] for i in shuffle_indices
-        ]
+        pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
 
         post_trackers, shuffle_proof = GenerateWhiskShuffleProof(
             spec.CURDLEPROOFS_CRS, pre_shuffle_trackers
@@ -225,10 +211,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
 
 
 def is_whisk_proposer(tracker: WhiskTracker, k: int) -> bool:
-    return (
-        py_ecc_G1_to_bytes48(multiply(py_ecc_bytes48_to_G1(tracker.r_G), k))
-        == tracker.k_r_G
-    )
+    return py_ecc_G1_to_bytes48(multiply(py_ecc_bytes48_to_G1(tracker.r_G), k)) == tracker.k_r_G
 
 
 def get_beacon_proposer_to_build(spec, state, proposer_index=None):
@@ -242,9 +225,7 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 
 def find_whisk_proposer(spec, state):
-    proposer_tracker = state.whisk_proposer_trackers[
-        state.slot % spec.PROPOSER_TRACKERS_COUNT
-    ]
+    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
 
     # Check record of known trackers
     # During the first shuffling phase (epoch < EPOCHS_PER_SHUFFLING_PHASE)

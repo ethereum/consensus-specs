@@ -73,12 +73,8 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(
 
     # ensure that some of the current sync committee members are exiting
     exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
-    assert any(
-        set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys))
-    )
-    assert any(
-        set(exited_pubkeys).difference(list(state.current_sync_committee.pubkeys))
-    )
+    assert any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+    assert any(set(exited_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(
@@ -89,9 +85,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(
     for index in exited_indices:
         validator = state.validators[index]
         assert not validator.slashed
-        assert post_spec.is_active_validator(
-            validator, post_spec.get_current_epoch(state)
-        )
+        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
     assert not post_spec.is_in_inactivity_leak(state)
 
     yield "blocks", blocks
@@ -143,9 +137,7 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(
     for index in exited_indices:
         validator = state.validators[index]
         assert not validator.slashed
-        assert not post_spec.is_active_validator(
-            validator, post_spec.get_current_epoch(state)
-        )
+        assert not post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
     assert not post_spec.is_in_inactivity_leak(state)
 
     exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
@@ -251,9 +243,7 @@ def test_transition_with_activation_at_fork_epoch(
     # now they are active
     for validator_index in selected_indices:
         validator = state.validators[validator_index]
-        assert post_spec.is_active_validator(
-            validator, post_spec.get_current_epoch(state)
-        )
+        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
 
     yield "blocks", blocks
     yield "post", state

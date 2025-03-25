@@ -103,13 +103,9 @@ if __name__ == "__main__":
     for mode in random_value.RandomizationMode:
         settings.append((seed, MINIMAL, mode, False, 30))
         seed += 1
-    settings.append(
-        (seed, MINIMAL, random_value.RandomizationMode.mode_random, True, 30)
-    )
+    settings.append((seed, MINIMAL, random_value.RandomizationMode.mode_random, True, 30))
     seed += 1
-    settings.append(
-        (seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5)
-    )
+    settings.append((seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
     for fork in TESTGEN_FORKS:
         gen_runner.run_generator(

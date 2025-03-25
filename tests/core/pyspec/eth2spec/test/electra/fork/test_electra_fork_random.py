@@ -61,9 +61,7 @@ def test_electra_fork_random_3(spec, phases, state):
 
 @with_phases(phases=[DENEB], other_phases=[ELECTRA])
 @spec_test
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @with_meta_tags(ELECTRA_FORK_TEST_META_TAGS)
 def test_electra_fork_random_low_balances(spec, phases, state):
     randomize_state(spec, state, rng=Random(5050))

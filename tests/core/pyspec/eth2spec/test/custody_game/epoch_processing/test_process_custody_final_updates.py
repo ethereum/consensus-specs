@@ -70,9 +70,7 @@ def test_validator_withdrawal_reenable_after_custody_reveal(spec, state):
     ].next_custody_secret_to_reveal <= spec.get_custody_period_for_validator(
         0, state.validators[0].exit_epoch - 1
     ):
-        custody_key_reveal = get_valid_custody_key_reveal(
-            spec, state, validator_index=0
-        )
+        custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=0)
         _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
     yield from run_process_custody_final_updates(spec, state)

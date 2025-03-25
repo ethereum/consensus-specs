@@ -6,13 +6,9 @@ def for_ops(state, operations, fn) -> None:
 def get_process_calls(spec):
     return {
         # PHASE0
-        "process_block_header": lambda state, block: spec.process_block_header(
-            state, block
-        ),
+        "process_block_header": lambda state, block: spec.process_block_header(state, block),
         "process_randao": lambda state, block: spec.process_randao(state, block.body),
-        "process_eth1_data": lambda state, block: spec.process_eth1_data(
-            state, block.body
-        ),
+        "process_eth1_data": lambda state, block: spec.process_eth1_data(state, block.body),
         "process_proposer_slashing": lambda state, block: for_ops(
             state, block.body.proposer_slashings, spec.process_proposer_slashing
         ),

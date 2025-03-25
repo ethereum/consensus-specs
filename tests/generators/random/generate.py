@@ -135,9 +135,7 @@ def _generate_randomized_scenarios(block_randomizer):
     )
 
     # build a set of block transitions from combinations of sub-transitions
-    transitions_generator = (
-        itertools.product(prefix, blocks_set) for prefix in randomized_skips
-    )
+    transitions_generator = (itertools.product(prefix, blocks_set) for prefix in randomized_skips)
     block_transitions = zip(*transitions_generator)
 
     # and preface each set of block transitions with the possible leak transitions
@@ -146,8 +144,7 @@ def _generate_randomized_scenarios(block_randomizer):
         transition_to_leaking,
     )
     scenarios = [
-        {"transitions": _flatten(t)}
-        for t in itertools.product(leak_transitions, block_transitions)
+        {"transitions": _flatten(t)} for t in itertools.product(leak_transitions, block_transitions)
     ]
     _normalize_scenarios(scenarios)
     return scenarios

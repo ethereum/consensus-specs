@@ -15,9 +15,7 @@ def assign_proposer_at_slot(state, slot: int):
 def initialize_whisk_full(spec, state):
     # TODO: De-duplicate code from whisk/fork.md
     for index in range(len(state.validators)):
-        whisk_k_commitment, whisk_tracker = spec.get_initial_commitments(
-            whisk_ks_initial(index)
-        )
+        whisk_k_commitment, whisk_tracker = spec.get_initial_commitments(whisk_ks_initial(index))
         state.whisk_k_commitments[index] = whisk_k_commitment
         state.whisk_trackers[index] = whisk_tracker
 

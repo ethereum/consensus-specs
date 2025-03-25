@@ -184,13 +184,11 @@ def test_on_block_bad_parent_root(spec, state):
     block.parent_root = b"\x45" * 32
     if is_post_eip7732(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = (
-            compute_el_block_hash(spec, payload, state)
+        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+            spec, payload, state
         )
     elif is_post_bellatrix(spec):
-        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-            spec, block
-        )
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     signed_block = sign_block(spec, state, block)
 
@@ -273,11 +271,7 @@ def test_on_block_finalized_skip_slots(spec, state):
         == spec.get_block_root(state, 1)
         == spec.get_block_root(state, 2)
     )
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # Now build a block at later slot than finalized *epoch*
@@ -328,11 +322,7 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
         == spec.get_block_root(state, 1)
         == spec.get_block_root(state, 2)
     )
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # Now build a block after the block of the finalized **root**
@@ -477,11 +467,7 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
         )
 
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 4
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.justified_checkpoint == state.current_justified_checkpoint
 
     # Create another chain
@@ -754,11 +740,7 @@ def test_justification_withholding(spec, state):
         )
 
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(state) == 4
 
     # ------------
@@ -790,18 +772,10 @@ def test_justification_withholding(spec, state):
         payload_state_transition(spec, store, signed_block.message)
 
     last_honest_block = honest_signed_blocks[-1].message
-    honest_state = get_store_full_state(
-        spec, store, hash_tree_root(last_honest_block)
-    ).copy()
+    honest_state = get_store_full_state(spec, store, hash_tree_root(last_honest_block)).copy()
 
-    assert (
-        honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    )
-    assert (
-        honest_state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
+    assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(honest_state) == 4
 
     # Create & apply an honest block in epoch 5 that can justify epoch 4
@@ -809,18 +783,12 @@ def test_justification_withholding(spec, state):
     assert spec.get_current_epoch(honest_state) == 5
 
     honest_block = build_empty_block_for_next_slot(spec, honest_state)
-    honest_block.body.attestations = attacker_signed_blocks[
-        -1
-    ].message.body.attestations
+    honest_block.body.attestations = attacker_signed_blocks[-1].message.body.attestations
     signed_block = state_transition_and_sign_block(spec, honest_state, honest_block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     payload_state_transition(spec, store, signed_block.message)
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     check_head_against_root(spec, store, hash_tree_root(honest_block))
     assert is_ready_to_justify(spec, honest_state)
 
@@ -859,11 +827,7 @@ def test_justification_withholding_reverse_order(spec, state):
         )
 
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(state) == 4
 
     # ------------
@@ -894,18 +858,10 @@ def test_justification_withholding_reverse_order(spec, state):
     assert len(honest_signed_blocks) > 0
 
     last_honest_block = honest_signed_blocks[-1].message
-    honest_state = get_store_full_state(
-        spec, store, hash_tree_root(last_honest_block)
-    ).copy()
+    honest_state = get_store_full_state(spec, store, hash_tree_root(last_honest_block)).copy()
 
-    assert (
-        honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    )
-    assert (
-        honest_state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
+    assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(honest_state) == 4
 
     # Create an honest block in epoch 5 that can justify epoch 4
@@ -913,18 +869,10 @@ def test_justification_withholding_reverse_order(spec, state):
     assert spec.get_current_epoch(honest_state) == 5
 
     honest_block = build_empty_block_for_next_slot(spec, honest_state)
-    honest_block.body.attestations = attacker_signed_blocks[
-        -1
-    ].message.body.attestations
+    honest_block.body.attestations = attacker_signed_blocks[-1].message.body.attestations
     signed_block = state_transition_and_sign_block(spec, honest_state, honest_block)
-    assert (
-        honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
-    )
-    assert (
-        honest_state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
+    assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert is_ready_to_justify(spec, honest_state)
 
     # When the honest block is received, the honest block becomes the head
@@ -970,26 +918,16 @@ def test_justification_update_beginning_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # Create a block that has new justification information contained within it, but don't add to store yet
     another_state = state.copy()
-    _, signed_blocks, another_state = next_epoch_with_attestations(
-        spec, another_state, True, False
-    )
+    _, signed_blocks, another_state = next_epoch_with_attestations(spec, another_state, True, False)
     assert spec.compute_epoch_at_slot(another_state.slot) == 5
     assert another_state.current_justified_checkpoint.epoch == 4
 
     # Tick store to the start of the next epoch
-    slot = (
-        spec.get_current_slot(store)
-        + spec.SLOTS_PER_EPOCH
-        - (state.slot % spec.SLOTS_PER_EPOCH)
-    )
+    slot = spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
@@ -1036,26 +974,16 @@ def test_justification_update_end_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # Create a block that has new justification information contained within it, but don't add to store yet
     another_state = state.copy()
-    _, signed_blocks, another_state = next_epoch_with_attestations(
-        spec, another_state, True, False
-    )
+    _, signed_blocks, another_state = next_epoch_with_attestations(spec, another_state, True, False)
     assert spec.compute_epoch_at_slot(another_state.slot) == 5
     assert another_state.current_justified_checkpoint.epoch == 4
 
     # Tick store to the last slot of the next epoch
-    slot = (
-        spec.get_current_slot(store)
-        + spec.SLOTS_PER_EPOCH
-        - (state.slot % spec.SLOTS_PER_EPOCH)
-    )
+    slot = spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     slot = slot + spec.SLOTS_PER_EPOCH - 1
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
@@ -1103,11 +1031,7 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
 
     # Copy the state to create a fork later
@@ -1120,11 +1044,7 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 4
 
     # Create a block that has new justification information contained within it, but don't add to store yet
@@ -1147,9 +1067,7 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
     last_block_root = another_state.latest_block_header.parent_root
 
     # Tick store to the last slot of the next epoch
-    slot = (
-        another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    )
+    slot = another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 8
@@ -1209,11 +1127,7 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
 
     # Copy the state to create a fork later
@@ -1226,11 +1140,7 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 4
 
     # Create a block that has new justification information contained within it, but don't add to store yet
@@ -1253,9 +1163,7 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
     last_block_root = another_state.latest_block_header.parent_root
 
     # Tick store to the last slot of the next epoch
-    slot = (
-        another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    )
+    slot = another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     slot = slot + spec.SLOTS_PER_EPOCH - 1
     current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
@@ -1315,11 +1223,7 @@ def test_justified_update_not_realized_finality(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # We'll make the current head block the finalized block
     if is_post_eip7732(spec):
@@ -1338,17 +1242,9 @@ def test_justified_update_not_realized_finality(spec, state):
             spec, state, store, True, True, test_steps=test_steps
         )
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 4
-    assert (
-        state.finalized_checkpoint.root
-        == store.finalized_checkpoint.root
-        == finalized_root
-    )
+    assert state.finalized_checkpoint.root == store.finalized_checkpoint.root == finalized_root
 
     # Create a fork for a better justification that is a descendant of the finalized block,
     # but does not realize the finality.
@@ -1377,9 +1273,7 @@ def test_justified_update_not_realized_finality(spec, state):
     assert store.finalized_checkpoint.epoch == 4
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
-    ancestor_at_finalized_slot = spec.get_ancestor(
-        store, last_block_root, finalized_block.slot
-    )
+    ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
     if is_post_eip7732(spec):
         ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
 
@@ -1422,11 +1316,7 @@ def test_justified_update_monotonic(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
@@ -1468,9 +1358,7 @@ def test_justified_update_monotonic(spec, state):
     assert store.finalized_checkpoint.epoch == 2
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
-    ancestor_at_finalized_slot = spec.get_ancestor(
-        store, last_block_root, finalized_block.slot
-    )
+    ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
     if is_post_eip7732(spec):
         ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
     assert ancestor_at_finalized_slot == finalized_root
@@ -1524,11 +1412,7 @@ def test_justified_update_always_if_better(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
@@ -1548,11 +1432,7 @@ def test_justified_update_always_if_better(spec, state):
             spec, state, store, True, True, test_steps=test_steps
         )
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 4
 
     # Create a fork with higher justification that is a descendant of the finalized block
@@ -1616,31 +1496,19 @@ def test_pull_up_past_epoch_block(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Create a chain within epoch 4 that contains a justification for epoch 4
     signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, True)
-    assert (
-        spec.compute_epoch_at_slot(justifying_slot)
-        == spec.get_current_epoch(state)
-        == 4
-    )
+    assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state) == 4
 
     # Tick store to the next epoch
     next_epoch(spec, state)
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Add the previously created chain to the store and check for updates
@@ -1686,11 +1554,7 @@ def test_not_pull_up_current_epoch_block(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Skip to the next epoch
@@ -1701,11 +1565,7 @@ def test_not_pull_up_current_epoch_block(spec, state):
 
     # Create a chain within epoch 5 that contains a justification for epoch 5
     signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, True)
-    assert (
-        spec.compute_epoch_at_slot(justifying_slot)
-        == spec.get_current_epoch(state)
-        == 5
-    )
+    assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state) == 5
 
     # Add the previously created chain to the store and check that store does not apply pull-up updates
     for signed_block in signed_blocks:
@@ -1750,11 +1610,7 @@ def test_pull_up_on_tick(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Skip to the next epoch
@@ -1765,11 +1621,7 @@ def test_pull_up_on_tick(spec, state):
 
     # Create a chain within epoch 5 that contains a justification for epoch 5
     signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, True)
-    assert (
-        spec.compute_epoch_at_slot(justifying_slot)
-        == spec.get_current_epoch(state)
-        == 5
-    )
+    assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state) == 5
 
     # Add the previously created chain to the store and check that store does not apply pull-up updates,
     # since the previous epoch was not justified

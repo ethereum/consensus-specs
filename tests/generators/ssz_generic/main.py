@@ -9,9 +9,7 @@ import ssz_container
 from eth2spec.test.helpers.constants import PHASE0
 
 
-def create_provider(
-    handler_name: str, suite_name: str, case_maker
-) -> gen_typing.TestProvider:
+def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:
     def prepare_fn() -> None:
         return
 

@@ -56,9 +56,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield "post", state
 
 
-def build_attestation_data(
-    spec, state, slot, index, beacon_block_root=None, shard=None
-):
+def build_attestation_data(spec, state, slot, index, beacon_block_root=None, shard=None):
     assert state.slot >= slot
 
     if beacon_block_root is not None:
@@ -68,9 +66,7 @@ def build_attestation_data(
     else:
         beacon_block_root = spec.get_block_root_at_slot(state, slot)
 
-    current_epoch_start_slot = spec.compute_start_slot_at_epoch(
-        spec.get_current_epoch(state)
-    )
+    current_epoch_start_slot = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
@@ -90,9 +86,7 @@ def build_attestation_data(
         index=0 if is_post_electra(spec) else index,
         beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
-        target=spec.Checkpoint(
-            epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root
-        ),
+        target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
     )
 
     return data
@@ -155,23 +149,17 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
 def sign_indexed_attestation(spec, state, indexed_attestation):
     participants = indexed_attestation.attesting_indices
     data = indexed_attestation.data
-    indexed_attestation.signature = sign_aggregate_attestation(
-        spec, state, data, participants
-    )
+    indexed_attestation.signature = sign_aggregate_attestation(spec, state, data, participants)
 
 
 def sign_attestation(spec, state, attestation):
     participants = spec.get_attesting_indices(state, attestation)
 
-    attestation.signature = sign_aggregate_attestation(
-        spec, state, attestation.data, participants
-    )
+    attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
 
 
 def get_attestation_signature(spec, state, attestation_data, privkey):
-    domain = spec.get_domain(
-        state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 
@@ -366,9 +354,7 @@ def state_transition_with_full_block(
         block = build_empty_block_for_next_slot(spec, state)
     if fill_cur_epoch and state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
         slot_to_attest = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
-        if slot_to_attest >= spec.compute_start_slot_at_epoch(
-            spec.get_current_epoch(state)
-        ):
+        if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(state)):
             _add_valid_attestations(
                 spec, state, block, slot_to_attest, participation_fn=participation_fn
             )
@@ -384,9 +370,7 @@ def state_transition_with_full_block(
     return signed_block
 
 
-def state_transition_with_full_attestations_block(
-    spec, state, fill_cur_epoch, fill_prev_epoch
-):
+def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, fill_prev_epoch):
     """
     Build and apply a block with attestations at all valid slots of current epoch and/or previous epoch.
     """
@@ -455,16 +439,12 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
                     filter_participant_set=temp_participants_filter,
                     signed=True,
                 )
-                if any(
-                    attestation.aggregation_bits
-                ):  # Only if there is at least 1 participant.
+                if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
                     attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
             inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
-            include_attestations = [
-                att for att in attestations if att.data.slot == inclusion_slot
-            ]
+            include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
             add_attestations_to_state(spec, state, include_attestations, state.slot)
         next_slot(spec, state)
 
@@ -511,15 +491,13 @@ def get_empty_eip7549_aggregation_bits(spec, state, committee_bits, slot):
     for index in committee_indices:
         committee = spec.get_beacon_committee(state, slot, index)
         participants_count += len(committee)
-    aggregation_bits = Bitlist[
-        spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT
-    ]([False] * participants_count)
+    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT](
+        [False] * participants_count
+    )
     return aggregation_bits
 
 
-def get_eip7549_aggregation_bits_offset(
-    spec, state, slot, committee_bits, committee_index
-):
+def get_eip7549_aggregation_bits_offset(spec, state, slot, committee_bits, committee_index):
     """
     Calculate the offset for the aggregation bits based on the committee index.
     """

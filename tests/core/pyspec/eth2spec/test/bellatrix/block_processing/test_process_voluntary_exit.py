@@ -20,9 +20,7 @@ from eth2spec.test.helpers.voluntary_exits import (
 BELLATRIX_AND_CAPELLA = [BELLATRIX, CAPELLA]
 
 
-def run_voluntary_exit_processing_test(
-    spec, state, fork_version, is_before_fork_epoch, valid=True
-):
+def run_voluntary_exit_processing_test(spec, state, fork_version, is_before_fork_epoch, valid=True):
     # create a fork
     next_epoch(spec, state)
     state.fork.epoch = spec.get_current_epoch(state)
@@ -48,17 +46,13 @@ def run_voluntary_exit_processing_test(
         fork_version=fork_version,
     )
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=valid
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=valid)
 
 
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_invalid_voluntary_exit_with_current_fork_version_is_before_fork_epoch(
-    spec, state
-):
+def test_invalid_voluntary_exit_with_current_fork_version_is_before_fork_epoch(spec, state):
     yield from run_voluntary_exit_processing_test(
         spec,
         state,
@@ -97,9 +91,7 @@ def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch(spec, st
 @with_phases(BELLATRIX_AND_CAPELLA)
 @spec_state_test
 @always_bls
-def test_invalid_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(
-    spec, state
-):
+def test_invalid_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec, state):
     assert state.fork.previous_version != state.fork.current_version
 
     yield from run_voluntary_exit_processing_test(
@@ -114,9 +106,7 @@ def test_invalid_voluntary_exit_with_previous_fork_version_not_is_before_fork_ep
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_invalid_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch(
-    spec, state
-):
+def test_invalid_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (
         state.fork.previous_version,
         state.fork.current_version,
@@ -134,9 +124,7 @@ def test_invalid_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch(
 @with_bellatrix_and_later
 @spec_state_test
 @always_bls
-def test_invalid_voluntary_exit_with_genesis_fork_version_not_is_before_fork_epoch(
-    spec, state
-):
+def test_invalid_voluntary_exit_with_genesis_fork_version_not_is_before_fork_epoch(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (
         state.fork.previous_version,
         state.fork.current_version,

@@ -27,9 +27,7 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None)
                 state.genesis_validators_root,
             )
         else:
-            domain = spec.get_domain(
-                state, spec.DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch
-            )
+            domain = spec.get_domain(state, spec.DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     else:
         domain = spec.compute_domain(
             spec.DOMAIN_VOLUNTARY_EXIT, fork_version, state.genesis_validators_root
@@ -55,9 +53,7 @@ def get_exited_validators(spec, state):
 
 def get_unslashed_exited_validators(spec, state):
     return [
-        index
-        for index in get_exited_validators(spec, state)
-        if not state.validators[index].slashed
+        index for index in get_exited_validators(spec, state) if not state.validators[index].slashed
     ]
 
 
@@ -90,9 +86,7 @@ def run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=True
     yield "voluntary_exit", signed_voluntary_exit
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_voluntary_exit(state, signed_voluntary_exit)
-        )
+        expect_assertion_error(lambda: spec.process_voluntary_exit(state, signed_voluntary_exit))
         yield "post", None
         return
 

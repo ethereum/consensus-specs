@@ -158,9 +158,7 @@ def Verify(PK, message, signature):
 def AggregateVerify(pubkeys, messages, signature):
     try:
         if bls == arkworks_bls:  # no signature API in arkworks
-            result = py_ecc_bls.AggregateVerify(
-                list(pubkeys), list(messages), signature
-            )
+            result = py_ecc_bls.AggregateVerify(list(pubkeys), list(messages), signature)
         else:
             result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
     except Exception:

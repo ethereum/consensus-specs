@@ -27,9 +27,7 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
 
     # Make a top-up balance to validator
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    deposit = prepare_state_and_deposit(
-        spec, state, validator_index, amount, signed=True
-    )
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -37,10 +35,7 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         pending_deposits_len = len(state.pending_deposits)
         pending_deposit = state.pending_deposits[pending_deposits_len - 1]
         assert pending_deposit.pubkey == deposit.data.pubkey
-        assert (
-            pending_deposit.withdrawal_credentials
-            == deposit.data.withdrawal_credentials
-        )
+        assert pending_deposit.withdrawal_credentials == deposit.data.withdrawal_credentials
         assert pending_deposit.amount == deposit.data.amount
         assert pending_deposit.signature == deposit.data.signature
         assert pending_deposit.slot == spec.GENESIS_SLOT

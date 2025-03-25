@@ -49,16 +49,12 @@ def test_get_pow_block_at_terminal_total_difficulty(spec, state):
         if block_reached_ttd:
             pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
         else:
-            pow_chain.head().total_difficulty = (
-                spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
-            )
+            pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
 
         if parent_reached_ttd:
             pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
         else:
-            pow_chain.head(-1).total_difficulty = (
-                spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
-            )
+            pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
 
         if block_parent_hash_is_empty:
             pow_chain.head().parent_hash = spec.Hash32()
@@ -131,13 +127,9 @@ def test_prepare_execution_payload(spec, state):
             _mock_terminal_block_hash_activation_epoch
         )
         if is_activation_epoch_reached:
-            state.slot = (
-                _mock_terminal_block_hash_activation_epoch * spec.SLOTS_PER_EPOCH
-            )
+            state.slot = _mock_terminal_block_hash_activation_epoch * spec.SLOTS_PER_EPOCH
         else:
-            state.slot = (
-                _mock_terminal_block_hash_activation_epoch - 1
-            ) * spec.SLOTS_PER_EPOCH
+            state.slot = (_mock_terminal_block_hash_activation_epoch - 1) * spec.SLOTS_PER_EPOCH
 
         # Logic from `with_config_overrides`
         old_config = spec.config
@@ -150,9 +142,7 @@ def test_prepare_execution_payload(spec, state):
         # 3. Handle `terminal_pow_block_is_none`
         pow_chain = prepare_random_pow_chain(spec, 2)
         if terminal_pow_block_is_none:
-            pow_chain.head().total_difficulty = (
-                spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
-            )
+            pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - 1
         else:
             if is_terminal_block_hash_set:
                 pow_chain.head().block_hash = _mock_terminal_block_hash

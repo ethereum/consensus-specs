@@ -60,11 +60,7 @@ if __name__ == "__main__":
             gen_runner.run_generator(
                 "transition",
                 [
-                    create_provider(
-                        transition_test_module, MINIMAL, pre_fork, post_fork
-                    ),
-                    create_provider(
-                        transition_test_module, MAINNET, pre_fork, post_fork
-                    ),
+                    create_provider(transition_test_module, MINIMAL, pre_fork, post_fork),
+                    create_provider(transition_test_module, MAINNET, pre_fork, post_fork),
                 ],
             )

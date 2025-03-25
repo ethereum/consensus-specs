@@ -30,10 +30,7 @@ def get_and_populate_pre_shuffle_trackers(spec, state, body):
 
 
 def get_pre_shuffle_trackers(spec, state, body):
-    return [
-        state.whisk_candidate_trackers[i]
-        for i in spec.get_shuffle_indices(body.randao_reveal)
-    ]
+    return [state.whisk_candidate_trackers[i] for i in spec.get_shuffle_indices(body.randao_reveal)]
 
 
 def set_state_epoch(spec, state, epoch):
@@ -140,8 +137,6 @@ def test_invalid_gap_non_zero_proof(spec, state):
 @spec_state_test
 def test_invalid_gap_non_zero_trackers(spec, state):
     body = empty_block_body(spec)
-    body.whisk_post_shuffle_trackers = get_and_populate_pre_shuffle_trackers(
-        spec, state, body
-    )
+    body.whisk_post_shuffle_trackers = get_and_populate_pre_shuffle_trackers(spec, state, body)
     set_state_epoch_selection_gap(spec, state)
     yield from run_process_shuffled_trackers(spec, state, body, valid=False)

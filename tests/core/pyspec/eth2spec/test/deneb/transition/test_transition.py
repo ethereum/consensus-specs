@@ -45,16 +45,13 @@ def mock_activated_validators(spec, state, mock_activations):
     ]
 )
 @with_presets([MINIMAL], reason="churn limit update needs enough validators")
-def test_higher_churn_limit_to_lower(
-    state, fork_epoch, spec, post_spec, pre_tag, post_tag
-):
+def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Test if churn limit goes from high to low due to EIP-7514.
     """
     # Create high churn limit
     mock_activations = (
-        post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-        * spec.config.CHURN_LIMIT_QUOTIENT
+        post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT * spec.config.CHURN_LIMIT_QUOTIENT
     )
     mock_activated_validators(spec, state, mock_activations)
 

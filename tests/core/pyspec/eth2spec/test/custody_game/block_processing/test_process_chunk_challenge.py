@@ -35,9 +35,7 @@ def run_chunk_challenge_processing(spec, state, custody_chunk_challenge, valid=T
     yield "custody_chunk_challenge", custody_chunk_challenge
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_chunk_challenge(state, custody_chunk_challenge)
-        )
+        expect_assertion_error(lambda: spec.process_chunk_challenge(state, custody_chunk_challenge))
         yield "post", None
         return
 
@@ -50,9 +48,7 @@ def run_chunk_challenge_processing(spec, state, custody_chunk_challenge, valid=T
         == custody_chunk_challenge.responder_index
     )
     assert (
-        state.custody_chunk_challenge_records[
-            state.custody_chunk_challenge_index - 1
-        ].chunk_index
+        state.custody_chunk_challenge_records[state.custody_chunk_challenge_index - 1].chunk_index
         == custody_chunk_challenge.chunk_index
     )
 
@@ -71,9 +67,7 @@ def run_custody_chunk_response_processing(spec, state, custody_response, valid=T
     yield "custody_response", custody_response
 
     if not valid:
-        expect_assertion_error(
-            lambda: spec.process_custody_response(state, custody_response)
-        )
+        expect_assertion_error(lambda: spec.process_custody_response(state, custody_response))
         yield "post", None
         return
 
@@ -107,9 +101,7 @@ def test_challenge_appended(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    transition_to(
-        spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD
-    )
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD)
 
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
 
@@ -136,9 +128,7 @@ def test_challenge_empty_element_replaced(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    transition_to(
-        spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD
-    )
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD)
 
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
 
@@ -167,9 +157,7 @@ def test_duplicate_challenge(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    transition_to(
-        spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD
-    )
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD)
 
     challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition)
 
@@ -198,9 +186,7 @@ def test_second_challenge(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    transition_to(
-        spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD
-    )
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD)
 
     challenge0 = get_valid_chunk_challenge(
         spec, state, attestation, shard_transition, chunk_index=0
@@ -377,9 +363,7 @@ def test_custody_response_chunk_index_2(spec, state):
         state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1),
     )
 
-    challenge = get_valid_chunk_challenge(
-        spec, state, attestation, shard_transition, chunk_index=2
-    )
+    challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transition, chunk_index=2)
 
     _, _, _ = run_chunk_challenge_processing(spec, state, challenge)
 

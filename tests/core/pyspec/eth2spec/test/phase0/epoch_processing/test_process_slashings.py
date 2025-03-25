@@ -28,9 +28,9 @@ def slash_validators(spec, state, indices, out_epochs):
         v.withdrawable_epoch = out_epoch
         total_slashed_balance += v.effective_balance
 
-    state.slashings[
-        spec.get_current_epoch(state) % spec.EPOCHS_PER_SLASHINGS_VECTOR
-    ] = total_slashed_balance
+    state.slashings[spec.get_current_epoch(state) % spec.EPOCHS_PER_SLASHINGS_VECTOR] = (
+        total_slashed_balance
+    )
 
     # verify some slashings happened...
     assert total_slashed_balance != 0
@@ -128,9 +128,7 @@ def test_minimal_penalty(spec, state):
     )
     # All the other validators get the maximum.
     for i in range(1, len(state.validators)):
-        state.validators[i].effective_balance = state.balances[i] = (
-            spec.MAX_EFFECTIVE_BALANCE
-        )
+        state.validators[i].effective_balance = state.balances[i] = spec.MAX_EFFECTIVE_BALANCE
 
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 

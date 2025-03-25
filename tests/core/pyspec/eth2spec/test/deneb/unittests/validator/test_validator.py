@@ -27,17 +27,13 @@ def _get_sample_sidecars(spec, state, rng):
     assert opaque_tx_1 != opaque_tx_2
 
     if is_post_eip7732(spec):
-        blob_kzg_commitments = spec.List[
-            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-        ](blob_kzg_commitments_1 + blob_kzg_commitments_2)
-        kzg_root = blob_kzg_commitments.hash_tree_root()
-        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = (
-            kzg_root
-        )
-    else:
-        block.body.blob_kzg_commitments = (
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments_1 + blob_kzg_commitments_2
         )
+        kzg_root = blob_kzg_commitments.hash_tree_root()
+        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
+    else:
+        block.body.blob_kzg_commitments = blob_kzg_commitments_1 + blob_kzg_commitments_2
         block.body.execution_payload.transactions = [opaque_tx_1, opaque_tx_2]
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state

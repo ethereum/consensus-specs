@@ -51,9 +51,7 @@ def transition_to_valid_shard_slot(spec, state):
     Transition to slot `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH) + 1`
     and fork at `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)`.
     """
-    transition_to(
-        spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)
-    )
+    transition_to(spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH))
     next_slot(spec, state)
 
 
@@ -108,9 +106,7 @@ def payload_state_transition_no_store(spec, state, block):
         if state.latest_block_header.state_root == spec.Root():
             state.latest_block_header.state_root = previous_state_root
         # also perform the state transition as if the payload was revealed
-        state.latest_block_hash = (
-            block.body.signed_execution_payload_header.message.block_hash
-        )
+        state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
         state.latest_full_slot = block.slot
     return state
 
@@ -190,9 +186,7 @@ def ensure_state_has_validators_across_lifecycle(spec, state):
     has_pending = any(filter(spec.is_eligible_for_activation_queue, state.validators))
 
     current_epoch = spec.get_current_epoch(state)
-    has_active = any(
-        filter(lambda v: spec.is_active_validator(v, current_epoch), state.validators)
-    )
+    has_active = any(filter(lambda v: spec.is_active_validator(v, current_epoch), state.validators))
 
     has_exited = any(get_unslashed_exited_validators(spec, state))
 
@@ -216,11 +210,7 @@ def has_active_balance_differential(spec, state):
 
 def get_validator_index_by_pubkey(state, pubkey):
     index = next(
-        (
-            i
-            for i, validator in enumerate(state.validators)
-            if validator.pubkey == pubkey
-        ),
+        (i for i, validator in enumerate(state.validators) if validator.pubkey == pubkey),
         None,
     )
     return index

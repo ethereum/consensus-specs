@@ -59,9 +59,7 @@ def test_full_random_4(spec, state):
 
 
 @with_all_phases
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_full_random_low_balances_0(spec, state):
@@ -69,9 +67,7 @@ def test_full_random_low_balances_0(spec, state):
 
 
 @with_all_phases
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @single_phase
 def test_full_random_low_balances_1(spec, state):

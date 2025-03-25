@@ -4,9 +4,7 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_participation_record_updates(spec, state):
-    yield from run_epoch_processing_with(
-        spec, state, "process_participation_record_updates"
-    )
+    yield from run_epoch_processing_with(spec, state, "process_participation_record_updates")
 
 
 @with_phases([PHASE0])

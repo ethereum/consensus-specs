@@ -78,9 +78,7 @@ POST_FORK_OF = {
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()
 DENEB_TRANSITION_UPGRADES_AND_AFTER = {
-    key: value
-    for key, value in POST_FORK_OF.items()
-    if key not in [PHASE0, ALTAIR, BELLATRIX]
+    key: value for key, value in POST_FORK_OF.items() if key not in [PHASE0, ALTAIR, BELLATRIX]
 }
 ELECTRA_TRANSITION_UPGRADES_AND_AFTER = {
     key: value

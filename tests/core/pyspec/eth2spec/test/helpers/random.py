@@ -35,17 +35,13 @@ def set_some_new_deposits(spec, state, rng):
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
         # If not already active, skip
-        if not spec.is_active_validator(
-            state.validators[index], spec.get_current_epoch(state)
-        ):
+        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
             continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
             if rng.choice([True, False]):
                 # Set ~half of selected to eligible for activation
-                state.validators[index].activation_eligibility_epoch = (
-                    spec.get_current_epoch(state)
-                )
+                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
             else:
                 # The validators that just made a deposit
                 deposited_indices.append(index)
@@ -96,8 +92,7 @@ def exit_random_validators(
             validator.exit_epoch = exit_epoch
             if withdrawable_epoch is None:
                 validator.withdrawable_epoch = (
-                    validator.exit_epoch
-                    + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+                    validator.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
                 )
             else:
                 validator.withdrawable_epoch = withdrawable_epoch
@@ -185,9 +180,7 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(
-    spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5
-):
+def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)

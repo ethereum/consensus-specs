@@ -34,9 +34,7 @@ def test_one_basic_attestation(spec, state):
 
 @with_all_phases
 @spec_test
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @single_phase
 def test_multi_proposer_index_iterations(spec, state):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
@@ -107,9 +105,7 @@ def test_at_max_inclusion_slot(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     # increment past latest inclusion slot
-    transition_to_slot_via_block(
-        spec, state, compute_max_inclusion_slot(spec, attestation)
-    )
+    transition_to_slot_via_block(spec, state, compute_max_inclusion_slot(spec, attestation))
 
     yield from run_attestation_processing(spec, state, attestation)
 
@@ -120,9 +116,7 @@ def test_invalid_after_max_inclusion_slot(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     # increment past latest inclusion slot
-    transition_to_slot_via_block(
-        spec, state, compute_max_inclusion_slot(spec, attestation) + 1
-    )
+    transition_to_slot_via_block(spec, state, compute_max_inclusion_slot(spec, attestation) + 1)
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -134,9 +128,7 @@ def test_invalid_old_source_epoch(spec, state):
     state.finalized_checkpoint.epoch = 2
     state.previous_justified_checkpoint.epoch = 3
     state.current_justified_checkpoint.epoch = 4
-    attestation = get_valid_attestation(
-        spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1
-    )
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
 
     # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
     assert attestation.data.source.epoch == state.previous_justified_checkpoint.epoch
@@ -240,9 +232,7 @@ def test_invalid_old_target_epoch(spec, state):
 
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    next_slots(
-        spec, state, spec.SLOTS_PER_EPOCH * 2
-    )  # target epoch will be too old to handle
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)  # target epoch will be too old to handle
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -260,9 +250,7 @@ def test_invalid_future_target_epoch(spec, state):
     )  # target epoch will be too new to handle
 
     # manually add signature for correct participants
-    attestation.signature = sign_aggregate_attestation(
-        spec, state, attestation.data, participants
-    )
+    attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
@@ -311,10 +299,7 @@ def test_invalid_current_source_root(spec, state):
 
     # Test logic sanity checks:
     assert attestation.data.target.epoch == spec.get_current_epoch(state)
-    assert (
-        state.current_justified_checkpoint.root
-        != state.previous_justified_checkpoint.root
-    )
+    assert state.current_justified_checkpoint.root != state.previous_justified_checkpoint.root
     assert attestation.data.source.root == state.current_justified_checkpoint.root
 
     # Make attestation source root invalid: should be current justified, not previous one
@@ -335,17 +320,12 @@ def test_invalid_previous_source_root(spec, state):
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b"\x01" * 32)
     state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b"\x32" * 32)
 
-    attestation = get_valid_attestation(
-        spec, state, slot=(spec.SLOTS_PER_EPOCH * 4) + 1
-    )
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 4) + 1)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Test logic sanity checks:
     assert attestation.data.target.epoch == spec.get_previous_epoch(state)
-    assert (
-        state.current_justified_checkpoint.root
-        != state.previous_justified_checkpoint.root
-    )
+    assert state.current_justified_checkpoint.root != state.previous_justified_checkpoint.root
     assert attestation.data.source.root == state.previous_justified_checkpoint.root
 
     # Make attestation source root invalid: should be previous justified, not current one
@@ -552,9 +532,7 @@ def test_incorrect_head_and_target_included_at_epoch_delay(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_invalid_incorrect_head_and_target_included_after_max_inclusion_slot(
-    spec, state
-):
+def test_invalid_incorrect_head_and_target_included_after_max_inclusion_slot(spec, state):
     attestation = get_valid_attestation(spec, state, signed=False)
     # increment past latest inclusion slot
     next_slots(spec, state, compute_max_inclusion_slot(spec, attestation) + 1)

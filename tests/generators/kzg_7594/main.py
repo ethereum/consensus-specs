@@ -94,9 +94,7 @@ def case_verify_cell_kzg_proof_batch():
         cells, proofs = VALID_CELLS_AND_PROOFS[i]
         commitments = [VALID_COMMITMENTS[i] for _ in cells]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-        assert spec.verify_cell_kzg_proof_batch(
-            commitments, cell_indices, cells, proofs
-        )
+        assert spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
         identifier = make_id(commitments, cell_indices, cells, proofs)
         yield f"verify_cell_kzg_proof_batch_case_valid_{identifier}", {
             "input": {
@@ -165,9 +163,7 @@ def case_verify_cell_kzg_proof_batch():
     # Use the wrong commitment
     commitments = [bls_add_one(VALID_COMMITMENTS[5])]
     cell_indices = list(range(len(cells)))
-    assert not spec.verify_cell_kzg_proof_batch(
-        commitments, cell_indices, cells, proofs
-    )
+    assert not spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_incorrect_commitment_{identifier}", {
         "input": {
@@ -186,9 +182,7 @@ def case_verify_cell_kzg_proof_batch():
     cell_indices = list(range(len(cells)))
     # Change last cell so it's wrong
     cells[-1] = CELL_RANDOM_VALID2
-    assert not spec.verify_cell_kzg_proof_batch(
-        commitments, cell_indices, cells, proofs
-    )
+    assert not spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_incorrect_cell_{identifier}", {
         "input": {
@@ -207,9 +201,7 @@ def case_verify_cell_kzg_proof_batch():
     cell_indices = list(range(len(cells)))
     # Change last proof so it's wrong
     proofs[-1] = bls_add_one(proofs[-1])
-    assert not spec.verify_cell_kzg_proof_batch(
-        commitments, cell_indices, cells, proofs
-    )
+    assert not spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_incorrect_proof_{identifier}", {
         "input": {
@@ -228,9 +220,7 @@ def case_verify_cell_kzg_proof_batch():
         # Set commitments to the invalid commitment
         commitments = [commitment]
         cell_indices = list(range(len(cells)))
-        expect_exception(
-            spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-        )
+        expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
         identifier = make_id(commitments, cell_indices, cells, proofs)
         yield f"verify_cell_kzg_proof_batch_case_invalid_commitment_{identifier}", {
             "input": {
@@ -249,9 +239,7 @@ def case_verify_cell_kzg_proof_batch():
     cell_indices = list(range(len(cells)))
     # Set first cell index to an invalid value
     cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
-    expect_exception(
-        spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-    )
+    expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_invalid_cell_index_{identifier}", {
         "input": {
@@ -271,9 +259,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Set first cell to the invalid cell
         cells[0] = cell
-        expect_exception(
-            spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-        )
+        expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
         identifier = make_id(commitments, cell_indices, cells, proofs)
         yield f"verify_cell_kzg_proof_batch_case_invalid_cell_{identifier}", {
             "input": {
@@ -293,9 +279,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Set first proof to the invalid proof
         proofs[0] = proof
-        expect_exception(
-            spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-        )
+        expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
         identifier = make_id(commitments, cell_indices, cells, proofs)
         yield f"verify_cell_kzg_proof_batch_case_invalid_proof_{identifier}", {
             "input": {
@@ -313,9 +297,7 @@ def case_verify_cell_kzg_proof_batch():
     # Do not include the second commitment
     commitments = [VALID_COMMITMENTS[0]]
     cell_indices = list(range(len(cells)))
-    expect_exception(
-        spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-    )
+    expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_invalid_missing_commitment_{identifier}", {
         "input": {
@@ -333,9 +315,7 @@ def case_verify_cell_kzg_proof_batch():
     commitments = [VALID_COMMITMENTS[2], VALID_COMMITMENTS[2]]
     # Leave off one of the cell indices
     cell_indices = list(range(len(cells) - 1))
-    expect_exception(
-        spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-    )
+    expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell_index_{identifier}", {
         "input": {
@@ -354,9 +334,7 @@ def case_verify_cell_kzg_proof_batch():
     cell_indices = list(range(len(cells)))
     # Remove the last proof
     cells = cells[:-1]
-    expect_exception(
-        spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-    )
+    expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell_{identifier}", {
         "input": {
@@ -375,9 +353,7 @@ def case_verify_cell_kzg_proof_batch():
     cell_indices = list(range(len(cells)))
     # Remove the last proof
     proofs = proofs[:-1]
-    expect_exception(
-        spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs
-    )
+    expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
     identifier = make_id(commitments, cell_indices, cells, proofs)
     yield f"verify_cell_kzg_proof_batch_case_invalid_missing_proof_{identifier}", {
         "input": {
@@ -399,9 +375,7 @@ def case_recover_cells_and_kzg_proofs():
     # Valid: No missing cells
     cells, proofs = VALID_CELLS_AND_PROOFS[0]
     cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(
-        cell_indices, cells
-    )
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, cells)
     assert recovered_cells == cells
     assert recovered_proofs == proofs
     identifier = make_id(cell_indices, cells)
@@ -634,9 +608,7 @@ if __name__ == "__main__":
             create_provider(
                 FULU, "compute_cells_and_kzg_proofs", case_compute_cells_and_kzg_proofs
             ),
-            create_provider(
-                FULU, "verify_cell_kzg_proof_batch", case_verify_cell_kzg_proof_batch
-            ),
+            create_provider(FULU, "verify_cell_kzg_proof_batch", case_verify_cell_kzg_proof_batch),
             create_provider(
                 FULU, "recover_cells_and_kzg_proofs", case_recover_cells_and_kzg_proofs
             ),

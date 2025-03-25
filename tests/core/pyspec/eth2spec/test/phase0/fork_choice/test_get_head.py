@@ -156,9 +156,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     long_state = genesis_state.copy()
     for _ in range(3):
         long_block = build_empty_block_for_next_slot(spec, long_state)
-        signed_long_block = state_transition_and_sign_block(
-            spec, long_state, long_block
-        )
+        signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
         yield from tick_and_add_block(spec, store, signed_long_block, test_steps)
         payload_state_transition(spec, store, signed_long_block.message)
 
@@ -173,9 +171,7 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
     check_head_against_root(spec, store, spec.hash_tree_root(long_block))
 
-    short_attestation = get_valid_attestation(
-        spec, short_state, short_block.slot, signed=True
-    )
+    short_attestation = get_valid_attestation(spec, short_state, short_block.slot, signed=True)
     yield from tick_and_run_on_attestation(spec, store, short_attestation, test_steps)
 
     check_head_against_root(spec, store, spec.hash_tree_root(short_block))
@@ -201,13 +197,8 @@ def test_filtered_block_tree(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
     # fill in attestations for entire epoch, justifying the recent epoch
-    prev_state, signed_blocks, state = next_epoch_with_attestations(
-        spec, state, True, False
-    )
-    assert (
-        state.current_justified_checkpoint.epoch
-        > prev_state.current_justified_checkpoint.epoch
-    )
+    prev_state, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
@@ -230,9 +221,7 @@ def test_filtered_block_tree(spec, state):
 
     # build a chain without attestations off of previous justified block
     if is_post_eip7732(spec):
-        non_viable_state = store.execution_payload_states[
-            store.justified_checkpoint.root
-        ].copy()
+        non_viable_state = store.execution_payload_states[store.justified_checkpoint.root].copy()
     else:
         non_viable_state = store.block_states[store.justified_checkpoint.root].copy()
 
@@ -244,9 +233,7 @@ def test_filtered_block_tree(spec, state):
 
     # create rogue block that will be attested to in this non-viable branch
     rogue_block = build_empty_block_for_next_slot(spec, non_viable_state)
-    signed_rogue_block = state_transition_and_sign_block(
-        spec, non_viable_state, rogue_block
-    )
+    signed_rogue_block = state_transition_and_sign_block(spec, non_viable_state, rogue_block)
 
     # create an epoch's worth of attestations for the rogue block
     next_epoch(spec, non_viable_state)
@@ -254,13 +241,9 @@ def test_filtered_block_tree(spec, state):
     for i in range(spec.SLOTS_PER_EPOCH):
         slot = rogue_block.slot + i
         for index in range(
-            spec.get_committee_count_per_slot(
-                non_viable_state, spec.compute_epoch_at_slot(slot)
-            )
+            spec.get_committee_count_per_slot(non_viable_state, spec.compute_epoch_at_slot(slot))
         ):
-            attestation = get_valid_attestation(
-                spec, non_viable_state, slot, index, signed=True
-            )
+            attestation = get_valid_attestation(spec, non_viable_state, slot, index, signed=True)
             attestations.append(attestation)
 
     # tick time forward to be able to include up to the latest attestation
@@ -363,9 +346,7 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     # Build equivocating attestations to feed to store
     state_eqv = state_1.copy()
     block_eqv = apply_empty_block(spec, state_eqv, state_eqv.slot + 1)
-    attestation_eqv = get_valid_attestation(
-        spec, state_eqv, slot=block_eqv.slot, signed=True
-    )
+    attestation_eqv = get_valid_attestation(spec, state_eqv, slot=block_eqv.slot, signed=True)
 
     next_slots(spec, state_1, 1)
     attestation = get_valid_attestation(spec, state_1, slot=block_eqv.slot, signed=True)
@@ -428,11 +409,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 0
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 0
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 0
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 0
 
     # We will slash all validators voting at the 2nd slot of epoch 0
@@ -506,9 +483,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     assert block_low_root < block_high_root
 
     # Tick to next slot so proposer boost does not apply
-    current_time = (
-        store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT
-    )
+    current_time = store.genesis_time + (block_1.slot + 1) * spec.config.SECONDS_PER_SLOT
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # Check that block with higher root wins
@@ -566,11 +541,7 @@ def test_voting_source_within_two_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Copy the state to use later
@@ -582,19 +553,13 @@ def test_voting_source_within_two_epoch(spec, state):
     )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 4
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.finalized_checkpoint.epoch == 3
 
     # Create a fork from the earlier saved state
     next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 5
-    _, signed_blocks, fork_state = next_epoch_with_attestations(
-        spec, fork_state, True, True
-    )
+    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
     # Only keep the blocks from epoch 5, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message
@@ -605,11 +570,7 @@ def test_voting_source_within_two_epoch(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 4
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 4
     assert store.finalized_checkpoint.epoch == 3
 
     # Check that the last block from the fork is the head
@@ -665,11 +626,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
 
     # Copy the state to use later
@@ -682,11 +639,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert store.finalized_checkpoint.epoch == 4
 
     # Create a fork from the earlier saved state
@@ -694,9 +647,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
         next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 6
     assert fork_state.current_justified_checkpoint.epoch == 3
-    _, signed_blocks, fork_state = next_epoch_with_attestations(
-        spec, fork_state, True, True
-    )
+    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
     # Only keep the blocks from epoch 6, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message
@@ -712,11 +663,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         payload_state_transition(spec, store, signed_block.message)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 5
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 5
     assert store.finalized_checkpoint.epoch == 4
 
     last_fork_block_root = last_fork_block.hash_tree_root()

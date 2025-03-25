@@ -65,9 +65,7 @@ def test_simple_blob_data(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
     blob_data = BlobData(blobs, blob_kzg_proofs)
 
-    yield from tick_and_add_block_with_data(
-        spec, store, signed_block, test_steps, blob_data
-    )
+    yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
@@ -76,9 +74,7 @@ def test_simple_blob_data(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
     blob_data = BlobData(blobs, blob_kzg_proofs)
 
-    yield from tick_and_add_block_with_data(
-        spec, store, signed_block, test_steps, blob_data
-    )
+    yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 

@@ -74,9 +74,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     assert post_state.pending_deposits == []
     new_validator = post_state.validators[len(post_state.validators) - 1]
     assert new_validator.pubkey == pending_deposit.pubkey
-    assert (
-        new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
-    )
+    assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
 
     # (3) create a conflicting block that triggers deposit processing on another fork
     prev_epoch_ancestor = store.blocks[latest_block.message.parent_root]
@@ -97,8 +95,6 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     assert post_state.pending_deposits == []
     new_validator = post_state.validators[len(post_state.validators) - 1]
     assert new_validator.pubkey == pending_deposit.pubkey
-    assert (
-        new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
-    )
+    assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
 
     yield "steps", test_steps

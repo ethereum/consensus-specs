@@ -60,9 +60,7 @@ def test_with_slashed_validators(spec, state):
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested(spec, state):
-    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
-        spec, state
-    )
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(spec, state)
 
 
 @with_all_phases
@@ -155,9 +153,7 @@ def test_proposer_not_in_attestations(spec, state):
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_attestations_at_later_slots(spec, state):
-    yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(
-        spec, state
-    )
+    yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(spec, state)
 
 
 @with_all_phases

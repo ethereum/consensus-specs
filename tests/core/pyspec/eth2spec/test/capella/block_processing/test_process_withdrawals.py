@@ -45,9 +45,7 @@ def test_success_one_full_withdrawal(spec, state):
     (
         fully_withdrawable_indices,
         partial_withdrawals_indices,
-    ) = prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    ) = prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
     assert len(fully_withdrawable_indices) == 1
     assert len(partial_withdrawals_indices) == 0
 
@@ -69,9 +67,7 @@ def test_success_one_partial_withdrawal(spec, state):
     (
         fully_withdrawable_indices,
         partial_withdrawals_indices,
-    ) = prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_partial_withdrawals=1
-    )
+    ) = prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=1)
     assert len(fully_withdrawable_indices) == 0
     assert len(partial_withdrawals_indices) == 1
     for index in partial_withdrawals_indices:
@@ -246,9 +242,7 @@ def test_invalid_non_withdrawable_non_empty_withdrawals(spec, state):
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -261,9 +255,7 @@ def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, stat
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_partial_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -276,9 +268,7 @@ def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, s
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=2
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=2)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -290,12 +280,8 @@ def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec,
 
 @with_capella_until_eip7732
 @spec_state_test
-def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(
-    spec, state
-):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_partial_withdrawals=2
-    )
+def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(spec, state):
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=2)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -325,9 +311,7 @@ def test_invalid_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec,
 
 @with_capella_until_eip7732
 @spec_state_test
-def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(
-    spec, state
-):
+def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
         spec,
         state,
@@ -406,9 +390,7 @@ def test_invalid_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, 
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_incorrect_withdrawal_index(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -421,9 +403,7 @@ def test_invalid_incorrect_withdrawal_index(spec, state):
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_incorrect_address_full(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -436,9 +416,7 @@ def test_invalid_incorrect_address_full(spec, state):
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_incorrect_address_partial(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_partial_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -451,9 +429,7 @@ def test_invalid_incorrect_address_partial(spec, state):
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_incorrect_amount_full(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -466,9 +442,7 @@ def test_invalid_incorrect_amount_full(spec, state):
 @with_capella_until_eip7732
 @spec_state_test
 def test_invalid_incorrect_amount_partial(spec, state):
-    prepare_expected_withdrawals(
-        spec, state, rng=random.Random(42), num_full_withdrawals=1
-    )
+    prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -724,9 +698,7 @@ def test_success_no_max_effective_balance(spec, state):
     validator = state.validators[validator_index]
 
     assert validator.effective_balance < spec.MAX_EFFECTIVE_BALANCE
-    assert not spec.is_partially_withdrawable_validator(
-        validator, state.balances[validator_index]
-    )
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -746,9 +718,7 @@ def test_success_no_excess_balance(spec, state):
     validator = state.validators[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
-    assert not spec.is_partially_withdrawable_validator(
-        validator, state.balances[validator_index]
-    )
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -767,9 +737,7 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     # To be partially withdrawable, the validator needs both a maxed out effective balance and an excess balance
     validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
 
-    assert not spec.is_partially_withdrawable_validator(
-        validator, state.balances[validator_index]
-    )
+    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -781,9 +749,7 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawable_not_yet_active(spec, state):
-    validator_index = min(
-        len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1
-    )
+    validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
     state.validators[validator_index].activation_epoch += 4
     set_validator_partially_withdrawable(spec, state, validator_index)
 
@@ -801,9 +767,7 @@ def test_success_one_partial_withdrawable_not_yet_active(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
-    validator_index = min(
-        len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1
-    )
+    validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
     state.validators[validator_index].exit_epoch = spec.get_current_epoch(state) + 1
     set_validator_partially_withdrawable(spec, state, validator_index)
 
@@ -824,9 +788,7 @@ def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawable_exited(spec, state):
-    validator_index = min(
-        len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1
-    )
+    validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
     state.validators[validator_index].exit_epoch = spec.get_current_epoch(state)
     set_validator_partially_withdrawable(spec, state, validator_index)
 
@@ -844,9 +806,7 @@ def test_success_one_partial_withdrawable_exited(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
-    validator_index = min(
-        len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1
-    )
+    validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
     state.validators[validator_index].slashed = True
     set_validator_partially_withdrawable(spec, state, validator_index)
 
@@ -864,9 +824,7 @@ def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
 @with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawable_exited_and_slashed(spec, state):
-    validator_index = min(
-        len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1
-    )
+    validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
     state.validators[validator_index].slashed = True
     state.validators[validator_index].exit_epoch = spec.get_current_epoch(state)
     set_validator_partially_withdrawable(spec, state, validator_index)
@@ -945,9 +903,7 @@ def run_random_partial_withdrawals_test(spec, state, rng):
     state.next_withdrawal_validator_index = rng.randint(0, num_validators - 1)
 
     num_partially_withdrawable = rng.randint(0, num_validators - 1)
-    partially_withdrawable_indices = rng.sample(
-        range(num_validators), num_partially_withdrawable
-    )
+    partially_withdrawable_indices = rng.sample(range(num_validators), num_partially_withdrawable)
     for index in partially_withdrawable_indices:
         set_validator_partially_withdrawable(
             spec, state, index, excess_balance=rng.randint(1, 1000000000)

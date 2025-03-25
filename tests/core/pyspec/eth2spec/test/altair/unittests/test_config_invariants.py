@@ -19,6 +19,4 @@ def test_weight_denominator(spec, state):
 @with_altair_and_later
 @spec_state_test
 def test_inactivity_score(spec, state):
-    assert (
-        spec.config.INACTIVITY_SCORE_BIAS <= spec.config.INACTIVITY_SCORE_RECOVERY_RATE
-    )
+    assert spec.config.INACTIVITY_SCORE_BIAS <= spec.config.INACTIVITY_SCORE_RECOVERY_RATE

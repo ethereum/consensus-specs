@@ -11,9 +11,7 @@ from eth2spec.test.context import (
 def test_requests_serialization_round_trip__empty(spec):
     execution_requests = spec.ExecutionRequests()
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
-    deserialized_execution_requests = spec.get_execution_requests(
-        serialized_execution_requests
-    )
+    deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
     assert deserialized_execution_requests == execution_requests
 
 
@@ -25,9 +23,7 @@ def test_requests_serialization_round_trip__one_request(spec):
         deposits=[spec.DepositRequest()],
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
-    deserialized_execution_requests = spec.get_execution_requests(
-        serialized_execution_requests
-    )
+    deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
     assert deserialized_execution_requests == execution_requests
 
 
@@ -41,9 +37,7 @@ def test_requests_serialization_round_trip__multiple_requests(spec):
         consolidations=[spec.ConsolidationRequest()],
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
-    deserialized_execution_requests = spec.get_execution_requests(
-        serialized_execution_requests
-    )
+    deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
     assert deserialized_execution_requests == execution_requests
 
 
@@ -63,9 +57,7 @@ def test_requests_serialization_round_trip__one_request_with_real_data(spec):
         ]
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
-    deserialized_execution_requests = spec.get_execution_requests(
-        serialized_execution_requests
-    )
+    deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
     assert deserialized_execution_requests == execution_requests
 
 
@@ -93,9 +85,7 @@ def test_requests_deserialize__reject_out_of_order_requests(spec):
         spec.WITHDRAWAL_REQUEST_TYPE + 76 * b"\x0a",
         spec.DEPOSIT_REQUEST_TYPE + 192 * b"\x0b",
     ]
-    assert int(serialized_execution_requests[0][0]) > int(
-        serialized_execution_requests[1][0]
-    )
+    assert int(serialized_execution_requests[0][0]) > int(serialized_execution_requests[1][0])
     try:
         spec.get_execution_requests(serialized_execution_requests)
         assert False, "expected exception"

@@ -97,9 +97,7 @@ def test_invalid_nonset_multiple_committee_bits(spec, state):
     attestation = spec.Attestation(data=attestation_data)
 
     # a single attestation with all committees of a slot, but with unset aggregation_bits
-    committees_per_slot = spec.get_committee_count_per_slot(
-        state, spec.get_current_epoch(state)
-    )
+    committees_per_slot = spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
     for index in range(committees_per_slot):
         attestation.committee_bits[index] = True
 
@@ -128,9 +126,7 @@ def test_multiple_committees(spec, state):
 
     # check that all committees are presented in a single attestation
     attesting_indices = set()
-    committees_per_slot = spec.get_committee_count_per_slot(
-        state, spec.get_current_epoch(state)
-    )
+    committees_per_slot = spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
     for index in range(committees_per_slot):
         attesting_indices.update(spec.get_beacon_committee(state, state.slot, index))
     assert spec.get_attesting_indices(state, attestation) == attesting_indices
@@ -167,9 +163,7 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     attestation_1 = get_valid_attestation(spec, state, index=1, signed=True)
 
     # Create an on chain aggregate
-    aggregate = spec.Attestation(
-        data=attestation_1.data, signature=attestation_1.signature
-    )
+    aggregate = spec.Attestation(data=attestation_1.data, signature=attestation_1.signature)
     aggregate.committee_bits[0] = True
     aggregate.committee_bits[1] = True
     aggregate.aggregation_bits = get_empty_eip7549_aggregation_bits(
@@ -177,9 +171,7 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     )
     committee_offset = len(committee_0)
     for i in range(len(attestation_1.aggregation_bits)):
-        aggregate.aggregation_bits[committee_offset + i] = (
-            attestation_1.aggregation_bits[i]
-        )
+        aggregate.aggregation_bits[committee_offset + i] = attestation_1.aggregation_bits[i]
 
     # Check that only one committee is presented
     assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(

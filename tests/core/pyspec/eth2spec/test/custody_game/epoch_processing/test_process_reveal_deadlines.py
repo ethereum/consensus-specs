@@ -36,9 +36,7 @@ def test_validator_slashed_after_reveal_deadline(spec, state):
     custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=1)
     _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
-    transition_to(
-        spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
-    )
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     state.validators[0].slashed = 0
 
@@ -58,9 +56,7 @@ def test_validator_not_slashed_after_reveal(spec, state):
 
     assert state.validators[0].slashed == 0
 
-    transition_to(
-        spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
-    )
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     yield from run_process_challenge_deadlines(spec, state)
 

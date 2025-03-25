@@ -58,9 +58,7 @@ def test_wrong_tracker_r(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
     wrong_tracker = compute_whisk_tracker(K_OK, R_WRONG)
-    state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT] = (
-        wrong_tracker
-    )
+    state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT] = wrong_tracker
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 

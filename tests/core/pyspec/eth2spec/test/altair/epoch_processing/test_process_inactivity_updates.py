@@ -377,9 +377,7 @@ def test_some_exited_full_random_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
 
-def _run_randomized_state_test_for_inactivity_updates(
-    spec, state, rng=Random(13377331)
-):
+def _run_randomized_state_test_for_inactivity_updates(spec, state, rng=Random(13377331)):
     randomize_inactivity_scores(spec, state, rng=rng)
     randomize_state(spec, state, rng=rng)
 

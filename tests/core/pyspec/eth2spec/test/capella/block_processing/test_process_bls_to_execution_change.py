@@ -11,9 +11,7 @@ from eth2spec.test.context import (
 )
 
 
-def run_bls_to_execution_change_processing(
-    spec, state, signed_address_change, valid=True
-):
+def run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=True):
     """
     Run ``process_bls_to_execution_change``, yielding:
       - pre-state ('pre')
@@ -43,8 +41,7 @@ def run_bls_to_execution_change_processing(
     assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     assert validator.withdrawal_credentials[1:12] == b"\x00" * 11
     assert (
-        validator.withdrawal_credentials[12:]
-        == signed_address_change.message.to_execution_address
+        validator.withdrawal_credentials[12:] == signed_address_change.message.to_execution_address
     )
 
     # yield post-state
@@ -55,9 +52,7 @@ def run_bls_to_execution_change_processing(
 @spec_state_test
 def test_success(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
 
 @with_capella_and_later
@@ -71,9 +66,7 @@ def test_success_not_activated(spec, state):
     assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
 
     signed_address_change = get_signed_address_change(spec, state)
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
@@ -93,9 +86,7 @@ def test_success_in_activation_queue(spec, state):
     assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
 
     signed_address_change = get_signed_address_change(spec, state)
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
@@ -115,12 +106,8 @@ def test_success_in_exit_queue(spec, state):
     )
     assert spec.get_current_epoch(state) < state.validators[validator_index].exit_epoch
 
-    signed_address_change = get_signed_address_change(
-        spec, state, validator_index=validator_index
-    )
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
 
 @with_capella_and_later
@@ -132,12 +119,8 @@ def test_success_exited(spec, state):
 
     assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
 
-    signed_address_change = get_signed_address_change(
-        spec, state, validator_index=validator_index
-    )
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
@@ -156,18 +139,12 @@ def test_success_withdrawable(spec, state):
 
     assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
 
-    signed_address_change = get_signed_address_change(
-        spec, state, validator_index=validator_index
-    )
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
-    assert spec.is_fully_withdrawable_validator(
-        validator, balance, spec.get_current_epoch(state)
-    )
+    assert spec.is_fully_withdrawable_validator(validator, balance, spec.get_current_epoch(state))
 
 
 @with_capella_and_later
@@ -190,9 +167,7 @@ def test_invalid_already_0x01(spec, state):
     validator_index = len(state.validators) // 2
     validator = state.validators[validator_index]
     validator.withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x23" * 20
-    signed_address_change = get_signed_address_change(
-        spec, state, validator_index=validator_index
-    )
+    signed_address_change = get_signed_address_change(spec, state, validator_index=validator_index)
 
     yield from run_bls_to_execution_change_processing(
         spec, state, signed_address_change, valid=False
@@ -237,9 +212,7 @@ def test_genesis_fork_version(spec, state):
         spec, state, fork_version=spec.config.GENESIS_FORK_VERSION
     )
 
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)
 
 
 @with_capella_and_later
@@ -300,9 +273,7 @@ def test_valid_signature_from_staking_deposit_cli(spec, state):
         "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
     )
     validator = state.validators[validator_index]
-    validator.withdrawal_credentials = (
-        spec.BLS_WITHDRAWAL_PREFIX + spec.hash(from_bls_pubkey)[1:]
-    )
+    validator.withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(from_bls_pubkey)[1:]
 
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,
@@ -314,6 +285,4 @@ def test_valid_signature_from_staking_deposit_cli(spec, state):
         signature=signature,
     )
 
-    yield from run_bls_to_execution_change_processing(
-        spec, state, signed_address_change
-    )
+    yield from run_bls_to_execution_change_processing(spec, state, signed_address_change)

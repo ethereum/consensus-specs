@@ -73,9 +73,7 @@ def invalid_cases():
                     )
                 else:
                     yield f"vec_{name}_{length}_{mode.to_name()}_one_less", invalid_test_case(
-                        lambda: serialize(
-                            basic_vector_case_fn(rng, mode, typ, length - 1)
-                        )
+                        lambda: serialize(basic_vector_case_fn(rng, mode, typ, length - 1))
                     )
                 yield f"vec_{name}_{length}_{mode.to_name()}_one_more", invalid_test_case(
                     lambda: serialize(basic_vector_case_fn(rng, mode, typ, length + 1))

@@ -455,9 +455,7 @@ def case06_verify_blob_kzg_proof_batch():
         proofs.append(spec.compute_blob_kzg_proof(blob, commitments[-1]))
 
     for i in range(len(proofs)):
-        assert spec.verify_blob_kzg_proof_batch(
-            VALID_BLOBS[:i], commitments[:i], proofs[:i]
-        )
+        assert spec.verify_blob_kzg_proof_batch(VALID_BLOBS[:i], commitments[:i], proofs[:i])
         identifier = f'{encode_hex(hash(b"".join(VALID_BLOBS[:i])))}'
         yield f'verify_blob_kzg_proof_batch_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
@@ -470,9 +468,7 @@ def case06_verify_blob_kzg_proof_batch():
 
     # Incorrect proof
     proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
-    assert not spec.verify_blob_kzg_proof_batch(
-        VALID_BLOBS, commitments, proofs_incorrect
-    )
+    assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
     yield "verify_blob_kzg_proof_batch_case_incorrect_proof_add_one", {
         "input": {
             "blobs": encode_hex_list(VALID_BLOBS),
@@ -499,9 +495,7 @@ def case06_verify_blob_kzg_proof_batch():
     # Edge case: Invalid blobs
     for blob in INVALID_BLOBS:
         blobs_invalid = VALID_BLOBS[:4] + [blob] + VALID_BLOBS[5:]
-        expect_exception(
-            spec.verify_blob_kzg_proof_batch, blobs_invalid, commitments, proofs
-        )
+        expect_exception(spec.verify_blob_kzg_proof_batch, blobs_invalid, commitments, proofs)
         identifier = f"{encode_hex(hash(blob))}"
         yield f'verify_blob_kzg_proof_batch_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
@@ -516,9 +510,7 @@ def case06_verify_blob_kzg_proof_batch():
     for commitment in INVALID_G1_POINTS:
         blobs = VALID_BLOBS
         commitments_invalid = [commitment] + commitments[1:]
-        expect_exception(
-            spec.verify_blob_kzg_proof_batch, blobs, commitments_invalid, proofs
-        )
+        expect_exception(spec.verify_blob_kzg_proof_batch, blobs, commitments_invalid, proofs)
         identifier = f"{encode_hex(hash(commitment))}"
         yield f'verify_blob_kzg_proof_batch_case_invalid_commitment_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
@@ -533,9 +525,7 @@ def case06_verify_blob_kzg_proof_batch():
     for proof in INVALID_G1_POINTS:
         blobs = VALID_BLOBS
         proofs_invalid = [proof] + proofs[1:]
-        expect_exception(
-            spec.verify_blob_kzg_proof_batch, blobs, commitments, proofs_invalid
-        )
+        expect_exception(spec.verify_blob_kzg_proof_batch, blobs, commitments, proofs_invalid)
         identifier = f"{encode_hex(hash(proof))}"
         yield f'verify_blob_kzg_proof_batch_case_invalid_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
@@ -547,9 +537,7 @@ def case06_verify_blob_kzg_proof_batch():
         }
 
     # Edge case: Blob length different
-    expect_exception(
-        spec.verify_blob_kzg_proof_batch, VALID_BLOBS[:-1], commitments, proofs
-    )
+    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS[:-1], commitments, proofs)
     yield "verify_blob_kzg_proof_batch_case_blob_length_different", {
         "input": {
             "blobs": encode_hex_list(VALID_BLOBS[:-1]),
@@ -560,9 +548,7 @@ def case06_verify_blob_kzg_proof_batch():
     }
 
     # Edge case: Commitment length different
-    expect_exception(
-        spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments[:-1], proofs
-    )
+    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments[:-1], proofs)
     yield "verify_blob_kzg_proof_batch_case_commitment_length_different", {
         "input": {
             "blobs": encode_hex_list(VALID_BLOBS),
@@ -573,9 +559,7 @@ def case06_verify_blob_kzg_proof_batch():
     }
 
     # Edge case: Proof length different
-    expect_exception(
-        spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, proofs[:-1]
-    )
+    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, proofs[:-1])
     yield "verify_blob_kzg_proof_batch_case_proof_length_different", {
         "input": {
             "blobs": encode_hex_list(VALID_BLOBS),
@@ -622,17 +606,11 @@ if __name__ == "__main__":
     gen_runner.run_generator(
         "kzg",
         [
-            create_provider(
-                DENEB, "blob_to_kzg_commitment", case01_blob_to_kzg_commitment
-            ),
+            create_provider(DENEB, "blob_to_kzg_commitment", case01_blob_to_kzg_commitment),
             create_provider(DENEB, "compute_kzg_proof", case02_compute_kzg_proof),
             create_provider(DENEB, "verify_kzg_proof", case03_verify_kzg_proof),
-            create_provider(
-                DENEB, "compute_blob_kzg_proof", case04_compute_blob_kzg_proof
-            ),
-            create_provider(
-                DENEB, "verify_blob_kzg_proof", case05_verify_blob_kzg_proof
-            ),
+            create_provider(DENEB, "compute_blob_kzg_proof", case04_compute_blob_kzg_proof),
+            create_provider(DENEB, "verify_blob_kzg_proof", case05_verify_blob_kzg_proof),
             create_provider(
                 DENEB, "verify_blob_kzg_proof_batch", case06_verify_blob_kzg_proof_batch
             ),

@@ -102,11 +102,7 @@ def test_should_override_forkchoice_update__true(spec, state):
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
-    assert (
-        state.current_justified_checkpoint.epoch
-        == store.justified_checkpoint.epoch
-        == 3
-    )
+    assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
 
     # Make an empty block
@@ -131,11 +127,7 @@ def test_should_override_forkchoice_update__true(spec, state):
 
     # Make the head block late
     attesting_cutoff = spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-    current_time = (
-        state.slot * spec.config.SECONDS_PER_SLOT
-        + store.genesis_time
-        + attesting_cutoff
-    )
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 

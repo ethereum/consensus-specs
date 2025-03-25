@@ -22,9 +22,7 @@ from eth2spec.debug.random_value import (
 
 
 def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_count=1):
-    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=blob_count
-    )
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_count)
     if rng is None:
         block = build_empty_block_for_next_slot(spec, state)
     else:

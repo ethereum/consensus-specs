@@ -18,9 +18,7 @@ from eth2spec.test.helpers.fork_transition import (
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-def test_transition_with_leaking_pre_fork(
-    state, fork_epoch, spec, post_spec, pre_tag, post_tag
-):
+def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
     The leaking starts before the fork transition in this case.
@@ -55,9 +53,7 @@ def test_transition_with_leaking_pre_fork(
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-def test_transition_with_leaking_at_fork(
-    state, fork_epoch, spec, post_spec, pre_tag, post_tag
-):
+def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
     The leaking starts at the fork transition in this case.

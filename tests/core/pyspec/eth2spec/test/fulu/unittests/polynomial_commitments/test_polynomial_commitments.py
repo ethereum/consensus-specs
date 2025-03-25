@@ -98,9 +98,7 @@ def test_construct_vanishing_polynomial(spec):
 
     num_missing_cells = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
     # Get a unique list of `num_missing_cells` cell indices
-    unique_missing_cell_indices = rng.sample(
-        range(spec.CELLS_PER_EXT_BLOB), num_missing_cells
-    )
+    unique_missing_cell_indices = rng.sample(range(spec.CELLS_PER_EXT_BLOB), num_missing_cells)
 
     zero_poly_coeff = spec.construct_vanishing_polynomial(unique_missing_cell_indices)
     roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_EXT_BLOB)
@@ -111,13 +109,9 @@ def test_construct_vanishing_polynomial(spec):
         start = cell_index * spec.FIELD_ELEMENTS_PER_CELL
         end = (cell_index + 1) * spec.FIELD_ELEMENTS_PER_CELL
         if cell_index in unique_missing_cell_indices:
-            assert all(
-                a == spec.BLSFieldElement(0) for a in zero_poly_eval_brp[start:end]
-            )
+            assert all(a == spec.BLSFieldElement(0) for a in zero_poly_eval_brp[start:end])
         else:  # cell_index in cell_indices
-            assert all(
-                a != spec.BLSFieldElement(0) for a in zero_poly_eval_brp[start:end]
-            )
+            assert all(a != spec.BLSFieldElement(0) for a in zero_poly_eval_brp[start:end])
 
 
 @with_fulu_and_later
@@ -268,9 +262,7 @@ def test_recover_cells_and_kzg_proofs(spec):
     known_cells = [cells[cell_index] for cell_index in cell_indices]
 
     # Recover the missing cells and proofs
-    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(
-        cell_indices, known_cells
-    )
+    recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(cell_indices, known_cells)
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
@@ -304,6 +296,4 @@ def test_multiply_polynomial_degree_overflow(spec):
         spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)
     ]
-    expect_assertion_error(
-        lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff)
-    )
+    expect_assertion_error(lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff))

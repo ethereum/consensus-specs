@@ -127,9 +127,7 @@ def deltas_name_to_flag_index(spec, deltas_name):
     raise ValueError("Wrong deltas_name %s" % deltas_name)
 
 
-def run_attestation_component_deltas(
-    spec, state, component_delta_fn, matching_att_fn, deltas_name
-):
+def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn, deltas_name):
     """
     Run ``component_delta_fn``, yielding:
       - deltas ('{``deltas_name``}')
@@ -140,9 +138,7 @@ def run_attestation_component_deltas(
 
     if not is_post_altair(spec):
         matching_attestations = matching_att_fn(state, spec.get_previous_epoch(state))
-        matching_indices = spec.get_unslashed_attesting_indices(
-            state, matching_attestations
-        )
+        matching_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
     else:
         matching_indices = spec.get_unslashed_participating_indices(
             state,
@@ -201,9 +197,7 @@ def run_get_inclusion_delay_deltas(spec, state):
     eligible_attestations = spec.get_matching_source_attestations(
         state, spec.get_previous_epoch(state)
     )
-    attesting_indices = spec.get_unslashed_attesting_indices(
-        state, eligible_attestations
-    )
+    attesting_indices = spec.get_unslashed_attesting_indices(state, eligible_attestations)
 
     rewarded_indices = set()
     rewarded_proposer_indices = set()
@@ -216,11 +210,7 @@ def run_get_inclusion_delay_deltas(spec, state):
 
             # Track proposer of earliest included attestation for the validator defined by index
             earliest_attestation = min(
-                [
-                    a
-                    for a in eligible_attestations
-                    if index in spec.get_attesting_indices(state, a)
-                ],
+                [a for a in eligible_attestations if index in spec.get_attesting_indices(state, a)],
                 key=lambda a: a.inclusion_delay,
             )
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
@@ -304,12 +294,10 @@ def run_get_inactivity_penalty_deltas(spec, state):
                 else:
                     # copied from spec:
                     penalty_numerator = (
-                        state.validators[index].effective_balance
-                        * state.inactivity_scores[index]
+                        state.validators[index].effective_balance * state.inactivity_scores[index]
                     )
                     penalty_denominator = (
-                        spec.config.INACTIVITY_SCORE_BIAS
-                        * get_inactivity_penalty_quotient(spec)
+                        spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
                     )
                     assert penalties[index] == penalty_numerator // penalty_denominator
 
@@ -378,9 +366,7 @@ def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
     else:
         for index in range(len(state.validators)):
             if rng.choice([True, False]):
-                state.previous_epoch_participation[index] = spec.ParticipationFlags(
-                    0b0000_0000
-                )
+                state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
 
@@ -391,14 +377,10 @@ def run_test_partial(spec, state, fraction_filled):
     # Remove portion of attestations
     if not is_post_altair(spec):
         num_attestations = int(len(state.previous_epoch_attestations) * fraction_filled)
-        state.previous_epoch_attestations = state.previous_epoch_attestations[
-            :num_attestations
-        ]
+        state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
     else:
         for index in range(int(len(state.validators) * fraction_filled)):
-            state.previous_epoch_participation[index] = spec.ParticipationFlags(
-                0b0000_0000
-            )
+            state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
 
@@ -469,9 +451,7 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
     yield from run_deltas(spec, state)
 
 
-def run_test_full_fraction_incorrect(
-    spec, state, correct_target, correct_head, fraction_incorrect
-):
+def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, fraction_incorrect):
     cached_prepare_state_with_attestations(spec, state)
 
     # Make fraction_incorrect of pending attestations have bad target/head as specified
@@ -529,18 +509,14 @@ def run_test_duplicate_attestations_at_later_slots(spec, state):
 
     # Remove 2/3 of attestations to make it more interesting
     num_attestations = int(len(state.previous_epoch_attestations) * 0.33)
-    state.previous_epoch_attestations = state.previous_epoch_attestations[
-        :num_attestations
-    ]
+    state.previous_epoch_attestations = state.previous_epoch_attestations[:num_attestations]
 
     # Get map of the proposer at each slot to make valid-looking duplicate attestations
     per_slot_proposers = {
         (a.data.slot + a.inclusion_delay): a.proposer_index
         for a in state.previous_epoch_attestations
     }
-    max_slot = max(
-        [a.data.slot + a.inclusion_delay for a in state.previous_epoch_attestations]
-    )
+    max_slot = max([a.data.slot + a.inclusion_delay for a in state.previous_epoch_attestations])
     later_attestations = []
     for a in state.previous_epoch_attestations:
         # Only have proposers for previous epoch so do not create later
@@ -549,9 +525,7 @@ def run_test_duplicate_attestations_at_later_slots(spec, state):
             continue
         later_a = a.copy()
         later_a.inclusion_delay += 1
-        later_a.proposer_index = per_slot_proposers[
-            later_a.data.slot + later_a.inclusion_delay
-        ]
+        later_a.proposer_index = per_slot_proposers[later_a.data.slot + later_a.inclusion_delay]
         later_attestations.append(later_a)
 
     assert any(later_attestations)

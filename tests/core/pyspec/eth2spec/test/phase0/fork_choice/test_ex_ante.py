@@ -113,9 +113,7 @@ def test_ex_ante_vanilla(spec, state):
     yield "steps", test_steps
 
 
-def _get_greater_than_proposer_boost_score(
-    spec, store, state, proposer_boost_root, root
-):
+def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root):
     """
     Return the minimum attestation participant count such that attestation_score > proposer_score
     """

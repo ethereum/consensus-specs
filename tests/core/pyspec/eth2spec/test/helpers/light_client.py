@@ -49,9 +49,7 @@ def compute_start_slot_at_next_sync_committee_period(spec, state):
     return compute_start_slot_at_sync_committee_period(spec, sync_committee_period + 1)
 
 
-def get_sync_aggregate(
-    spec, state, num_participants=None, signature_slot=None, phases=None
-):
+def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None, phases=None):
     # By default, the sync committee signs the previous slot
     if signature_slot is None:
         signature_slot = state.slot + 1
@@ -72,9 +70,7 @@ def get_sync_aggregate(
     assert committee_size >= num_participants >= 0
 
     # Compute sync aggregate
-    sync_committee_bits = [True] * num_participants + [False] * (
-        committee_size - num_participants
-    )
+    sync_committee_bits = [True] * num_participants + [False] * (committee_size - num_participants)
     sync_committee_signature = compute_aggregate_sync_committee_signature(
         signature_spec,
         signature_state,
@@ -149,9 +145,7 @@ def check_lc_header_equal(spec, new_spec, data, upgraded):
     assert upgraded.beacon.hash_tree_root() == data.beacon.hash_tree_root()
     if is_post_capella(new_spec):
         if is_post_capella(spec):
-            assert new_spec.get_lc_execution_root(
-                upgraded
-            ) == spec.get_lc_execution_root(data)
+            assert new_spec.get_lc_execution_root(upgraded) == spec.get_lc_execution_root(data)
         else:
             assert new_spec.get_lc_execution_root(upgraded) == new_spec.Root()
 
@@ -205,9 +199,7 @@ def upgrade_lc_bootstrap_to_new_spec(spec, new_spec, data, phases):
 
 
 def check_lc_update_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(
-        spec, new_spec, data.attested_header, upgraded.attested_header
-    )
+    check_lc_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
     assert upgraded.next_sync_committee == data.next_sync_committee
     check_merkle_branch_equal(
         spec,
@@ -216,9 +208,7 @@ def check_lc_update_equal(spec, new_spec, data, upgraded):
         upgraded.next_sync_committee_branch,
         latest_next_sync_committee_gindex(new_spec),
     )
-    check_lc_header_equal(
-        spec, new_spec, data.finalized_header, upgraded.finalized_header
-    )
+    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
     check_merkle_branch_equal(
         spec,
         new_spec,
@@ -249,12 +239,8 @@ def upgrade_lc_update_to_new_spec(spec, new_spec, data, phases):
 
 
 def check_lc_finality_update_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(
-        spec, new_spec, data.attested_header, upgraded.attested_header
-    )
-    check_lc_header_equal(
-        spec, new_spec, data.finalized_header, upgraded.finalized_header
-    )
+    check_lc_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
+    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
     check_merkle_branch_equal(
         spec,
         new_spec,
@@ -285,27 +271,16 @@ def upgrade_lc_finality_update_to_new_spec(spec, new_spec, data, phases):
 
 
 def check_lc_store_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(
-        spec, new_spec, data.finalized_header, upgraded.finalized_header
-    )
+    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
     assert upgraded.current_sync_committee == data.current_sync_committee
     assert upgraded.next_sync_committee == data.next_sync_committee
     if upgraded.best_valid_update is None:
         assert data.best_valid_update is None
     else:
-        check_lc_update_equal(
-            spec, new_spec, data.best_valid_update, upgraded.best_valid_update
-        )
-    check_lc_header_equal(
-        spec, new_spec, data.optimistic_header, upgraded.optimistic_header
-    )
-    assert (
-        upgraded.previous_max_active_participants
-        == data.previous_max_active_participants
-    )
-    assert (
-        upgraded.current_max_active_participants == data.current_max_active_participants
-    )
+        check_lc_update_equal(spec, new_spec, data.best_valid_update, upgraded.best_valid_update)
+    check_lc_header_equal(spec, new_spec, data.optimistic_header, upgraded.optimistic_header)
+    assert upgraded.previous_max_active_participants == data.previous_max_active_participants
+    assert upgraded.current_max_active_participants == data.current_max_active_participants
 
 
 def upgrade_lc_store_to_new_spec(spec, new_spec, data, phases):

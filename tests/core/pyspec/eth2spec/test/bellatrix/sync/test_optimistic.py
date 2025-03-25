@@ -65,9 +65,7 @@ def test_from_syncing_to_invalid(spec, state):
         block.body.execution_payload.parent_hash = (
             block_hashes[f"chain_a_{i - 1}"] if i != 0 else block_hashes["block_0"]
         )
-        block.body.execution_payload.extra_data = spec.hash(
-            bytes(f"chain_a_{i}", "UTF-8")
-        )
+        block.body.execution_payload.extra_data = spec.hash(bytes(f"chain_a_{i}", "UTF-8"))
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
         )
@@ -81,9 +79,7 @@ def test_from_syncing_to_invalid(spec, state):
             test_steps,
             status=PayloadStatusV1Status.VALID,
         )
-        assert (
-            spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
-        )
+        assert spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
         signed_blocks_a.append(signed_block.copy())
 
     # Create SYNCING chain `b`
@@ -94,17 +90,13 @@ def test_from_syncing_to_invalid(spec, state):
         block.body.execution_payload.parent_hash = (
             block_hashes[f"chain_b_{i - 1}"] if i != 0 else block_hashes["block_0"]
         )
-        block.body.execution_payload.extra_data = spec.hash(
-            bytes(f"chain_b_{i}", "UTF-8")
-        )
+        block.body.execution_payload.extra_data = spec.hash(bytes(f"chain_b_{i}", "UTF-8"))
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
         )
         block_hashes[f"chain_b_{i}"] = block.body.execution_payload.block_hash
 
-        signed_block = state_transition_with_full_block(
-            spec, state, True, True, block=block
-        )
+        signed_block = state_transition_with_full_block(spec, state, True, True, block=block)
         signed_blocks_b.append(signed_block.copy())
         yield from add_optimistic_block(
             spec,
@@ -113,9 +105,7 @@ def test_from_syncing_to_invalid(spec, state):
             test_steps,
             status=PayloadStatusV1Status.SYNCING,
         )
-        assert (
-            spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
-        )
+        assert spec.get_head(mega_store.fc_store) == mega_store.opt_store.head_block_root
 
     # Now add block 4 to chain `b` with INVALID
     block = build_empty_block_for_next_slot(spec, state)
@@ -140,9 +130,6 @@ def test_from_syncing_to_invalid(spec, state):
     yield from add_optimistic_block(
         spec, mega_store, signed_block, test_steps, payload_status=payload_status
     )
-    assert (
-        mega_store.opt_store.head_block_root
-        == signed_blocks_a[-1].message.hash_tree_root()
-    )
+    assert mega_store.opt_store.head_block_root == signed_blocks_a[-1].message.hash_tree_root()
 
     yield "steps", test_steps

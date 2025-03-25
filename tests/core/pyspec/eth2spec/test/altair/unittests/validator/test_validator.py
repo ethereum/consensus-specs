@@ -23,9 +23,7 @@ from eth2spec.test.helpers.constants import (
 rng = random.Random(1337)
 
 
-def ensure_assignments_in_sync_committee(
-    spec, state, epoch, sync_committee, active_pubkeys
-):
+def ensure_assignments_in_sync_committee(spec, state, epoch, sync_committee, active_pubkeys):
     assert len(sync_committee.pubkeys) >= 3
     some_pubkeys = rng.sample(sync_committee.pubkeys, 3)
     for pubkey in some_pubkeys:
@@ -52,8 +50,7 @@ def test_is_assigned_to_sync_committee(spec, state):
     )
 
     sync_committee_pubkeys = set(
-        list(state.current_sync_committee.pubkeys)
-        + list(state.next_sync_committee.pubkeys)
+        list(state.current_sync_committee.pubkeys) + list(state.next_sync_committee.pubkeys)
     )
     disqualified_pubkeys = set(
         filter(lambda key: key not in sync_committee_pubkeys, active_pubkeys)
@@ -65,12 +62,8 @@ def test_is_assigned_to_sync_committee(spec, state):
         some_pubkeys = rng.sample(sorted(disqualified_pubkeys), sample_size)
         for pubkey in some_pubkeys:
             validator_index = active_pubkeys.index(pubkey)
-            is_current = spec.is_assigned_to_sync_committee(
-                state, query_epoch, validator_index
-            )
-            is_next = spec.is_assigned_to_sync_committee(
-                state, next_query_epoch, validator_index
-            )
+            is_current = spec.is_assigned_to_sync_committee(state, query_epoch, validator_index)
+            is_next = spec.is_assigned_to_sync_committee(state, next_query_epoch, validator_index)
             is_current_or_next = is_current or is_next
             assert not is_current_or_next
 
@@ -84,9 +77,7 @@ def _get_sync_committee_signature(
     index_in_subcommittee,
 ):
     subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
-    sync_committee_index = (
-        subcommittee_index * subcommittee_size + index_in_subcommittee
-    )
+    sync_committee_index = subcommittee_index * subcommittee_size + index_in_subcommittee
     pubkey = state.current_sync_committee.pubkeys[sync_committee_index]
     privkey = pubkey_to_privkey[pubkey]
 
@@ -108,9 +99,7 @@ def test_process_sync_committee_contributions(spec, state):
     block = build_empty_block(spec, state)
     previous_slot = state.slot - 1
     target_block_root = spec.get_block_root_at_slot(state, previous_slot)
-    aggregation_bits = Bitvector[
-        spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
-    ]()
+    aggregation_bits = Bitvector[spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT]()
     aggregation_index = 0
     aggregation_bits[aggregation_index] = True
 
@@ -135,9 +124,7 @@ def test_process_sync_committee_contributions(spec, state):
 
     # and that after processing, it is no longer empty
     assert len(block.body.sync_aggregate.sync_committee_bits) != 0
-    assert (
-        block.body.sync_aggregate.sync_committee_signature != spec.G2_POINT_AT_INFINITY
-    )
+    assert block.body.sync_aggregate.sync_committee_signature != spec.G2_POINT_AT_INFINITY
     # moreover, ensure the sync aggregate is valid if the block is accepted
     spec.process_block(state, block)
 
@@ -185,9 +172,7 @@ def _get_expected_subnets_by_pubkey(sync_committee_members):
 @spec_state_test
 def test_compute_subnets_for_sync_committee(state, spec):
     # Transition to the head of the next period
-    transition_to(
-        spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
-    )
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
     assert spec.compute_sync_committee_period(
@@ -201,9 +186,7 @@ def test_compute_subnets_for_sync_committee(state, spec):
         # use current_sync_committee
         for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
     )
-    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(
-        some_sync_committee_members
-    )
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
@@ -217,9 +200,7 @@ def test_compute_subnets_for_sync_committee(state, spec):
 @spec_state_test
 def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
     # Transition to the end of the period
-    transition_to(
-        spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1
-    )
+    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1)
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
     assert spec.compute_sync_committee_period(
@@ -233,9 +214,7 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
         # use next_sync_committee
         for i, pubkey in enumerate(state.next_sync_committee.pubkeys)
     )
-    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(
-        some_sync_committee_members
-    )
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
@@ -276,9 +255,7 @@ def test_get_sync_committee_selection_proof(spec, state):
 @spec_state_test
 @with_presets([MAINNET], reason="to test against the mainnet SYNC_COMMITTEE_SIZE")
 def test_is_sync_committee_aggregator(spec, state):
-    sample_count = (
-        int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
-    )
+    sample_count = int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
     is_aggregator_count = 0
     for i in range(sample_count):
         signature = spec.hash(i.to_bytes(32, byteorder="little"))

@@ -61,9 +61,7 @@ def test_fork_many_next_epoch(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_custom_state(
-    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
-)
+@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_low_balances(spec, phases, state):

@@ -29,9 +29,7 @@ def create_valid_beacon_state(spec):
 
     eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
-    return spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    return spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
 
 def run_is_valid_genesis_state(spec, state, valid=True):
@@ -105,9 +103,7 @@ def test_one_more_validator(spec):
 
     eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
     yield from run_is_valid_genesis_state(spec, state)
 
@@ -130,8 +126,6 @@ def test_invalid_not_enough_validator_count(spec):
 
     eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
-    state = spec.initialize_beacon_state_from_eth1(
-        eth1_block_hash, eth1_timestamp, deposits
-    )
+    state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
     yield from run_is_valid_genesis_state(spec, state, valid=False)

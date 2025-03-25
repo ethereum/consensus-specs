@@ -39,9 +39,7 @@ def generate_from_tests(
            Set to the pre-fork (w.r.t. fork_name) in multi-fork tests.
     :return: an iterable of test cases.
     """
-    fn_names = [
-        name for (name, _) in getmembers(src, isfunction) if name.startswith("test_")
-    ]
+    fn_names = [name for (name, _) in getmembers(src, isfunction) if name.startswith("test_")]
 
     if phase is None:
         phase = fork_name
@@ -74,9 +72,7 @@ def generate_from_tests(
 
 
 def get_provider(
-    create_provider_fn: Callable[
-        [SpecForkName, PresetBaseName, str, str], TestProvider
-    ],
+    create_provider_fn: Callable[[SpecForkName, PresetBaseName, str, str], TestProvider],
     fork_name: SpecForkName,
     preset_name: PresetBaseName,
     all_mods: Dict[str, Dict[str, Union[List[str], str]]],

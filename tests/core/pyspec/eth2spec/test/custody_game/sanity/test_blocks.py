@@ -37,9 +37,7 @@ def run_beacon_block(spec, state, block, valid=True):
     yield "pre", state.copy()
 
     if not valid:
-        signed_beacon_block = state_transition_and_sign_block(
-            spec, state, block, expect_fail=True
-        )
+        signed_beacon_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
         yield "block", signed_beacon_block
         yield "post", None
         return
@@ -63,12 +61,8 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     shard = 0
     committee_index = get_committee_index_of_shard(spec, state, state.slot, shard)
     body = get_sample_shard_block_body(spec)
-    shard_block = build_shard_block(
-        spec, state, shard, body=body, slot=state.slot, signed=True
-    )
-    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {
-        shard: [shard_block]
-    }
+    shard_block = build_shard_block(spec, state, shard, body=body, slot=state.slot, signed=True)
+    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
     attestation = get_valid_attestation(
         spec,
@@ -83,9 +77,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
     block.body.shard_transitions = shard_transitions
 
     # CustodyChunkChallenge operation
-    challenge = get_valid_chunk_challenge(
-        spec, state, attestation, shard_transitions[shard]
-    )
+    challenge = get_valid_chunk_challenge(spec, state, attestation, shard_transitions[shard])
     block.body.chunk_challenges = [challenge]
     # CustodyChunkResponse operation
     chunk_challenge_index = state.custody_chunk_challenge_index
@@ -102,9 +94,7 @@ def test_with_shard_transition_with_custody_challenge_and_response(spec, state):
 @with_presets([MINIMAL])
 def test_custody_key_reveal(spec, state):
     transition_to_valid_shard_slot(spec, state)
-    transition_to(
-        spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
-    )
+    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
 
     block = build_empty_block(spec, state, slot=state.slot + 1)
     custody_key_reveal = get_valid_custody_key_reveal(spec, state)
@@ -146,9 +136,7 @@ def test_custody_slashing(spec, state):
     shard_block = build_shard_block(
         spec, state, shard, body=slashable_body, slot=state.slot, signed=True
     )
-    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {
-        shard: [shard_block]
-    }
+    shard_block_dict: Dict[spec.Shard, Sequence[spec.SignedShardBlock]] = {shard: [shard_block]}
     shard_transitions = get_shard_transitions(spec, state, shard_block_dict)
 
     attestation = get_valid_attestation(

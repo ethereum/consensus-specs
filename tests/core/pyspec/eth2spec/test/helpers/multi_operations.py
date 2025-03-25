@@ -43,9 +43,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     block.body.proposer_slashings.append(proposer_slashing)
     block.body.voluntary_exits.append(signed_exit)
 
-    signed_block = state_transition_and_sign_block(
-        spec, state, block, expect_fail=(not valid)
-    )
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=(not valid))
 
     yield "blocks", [signed_block]
 
@@ -58,9 +56,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 
 def get_random_proposer_slashings(spec, state, rng):
     num_slashings = rng.randrange(1, spec.MAX_PROPOSER_SLASHINGS)
-    active_indices = spec.get_active_validator_indices(
-        state, spec.get_current_epoch(state)
-    ).copy()
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [index for index in active_indices if not state.validators[index].slashed]
     slashings = [
         get_valid_proposer_slashing(
@@ -84,9 +80,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     # ensure at least one attester slashing, the max count
     # is small so not much room for random inclusion
     num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
-    active_indices = spec.get_active_validator_indices(
-        state, spec.get_current_epoch(state)
-    ).copy()
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index
         for index in active_indices
@@ -97,9 +91,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     if len(indices) < max_slashed_count:
         return []
 
-    slot_range = list(
-        range(state.slot - spec.SLOTS_PER_HISTORICAL_ROOT + 1, state.slot)
-    )
+    slot_range = list(range(state.slot - spec.SLOTS_PER_HISTORICAL_ROOT + 1, state.slot))
     slashings = [
         get_valid_attester_slashing_by_indices(
             spec,
@@ -148,9 +140,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     for i in range(num_deposits):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[-1 - index]
-        withdrawal_credentials = (
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        )
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
             deposit_data_leaves,
@@ -184,9 +174,7 @@ def _eligible_for_exit(spec, state, index):
 
     current_epoch = spec.get_current_epoch(state)
     activation_epoch = validator.activation_epoch
-    active_for_long_enough = (
-        current_epoch >= activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
-    )
+    active_for_long_enough = current_epoch >= activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
 
     not_exited = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
 
@@ -198,9 +186,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     active_indices = set(
         spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     )
-    indices = set(
-        index for index in active_indices if _eligible_for_exit(spec, state, index)
-    )
+    indices = set(index for index in active_indices if _eligible_for_exit(spec, state, index))
     eligible_indices = indices - to_be_slashed_indices
     indices_count = min(num_exits, len(eligible_indices))
     exit_indices = [eligible_indices.pop() for _ in range(indices_count)]
@@ -229,9 +215,7 @@ def get_random_sync_aggregate(
     )
 
 
-def get_random_bls_to_execution_changes(
-    spec, state, rng=Random(2188), num_address_changes=0
-):
+def get_random_bls_to_execution_changes(spec, state, rng=Random(2188), num_address_changes=0):
     bls_indices = [
         index
         for index, validator in enumerate(state.validators)
@@ -241,25 +225,18 @@ def get_random_bls_to_execution_changes(
 
     return [
         get_signed_address_change(spec, state, validator_index=validator_index)
-        for validator_index in rng.sample(
-            bls_indices, min(num_address_changes, len(bls_indices))
-        )
+        for validator_index in rng.sample(bls_indices, min(num_address_changes, len(bls_indices)))
     ]
 
 
-def build_random_block_from_state_for_next_slot(
-    spec, state, rng=Random(2188), deposits=None
-):
+def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), deposits=None):
     block = build_empty_block_for_next_slot(spec, state)
     proposer_slashings = get_random_proposer_slashings(spec, state, rng)
     block.body.proposer_slashings = proposer_slashings
     slashed_indices = [
-        slashing.signed_header_1.message.proposer_index
-        for slashing in proposer_slashings
+        slashing.signed_header_1.message.proposer_index for slashing in proposer_slashings
     ]
-    block.body.attester_slashings = get_random_attester_slashings(
-        spec, state, rng, slashed_indices
-    )
+    block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
     block.body.attestations = get_random_attestations(spec, state, rng)
     if deposits:
         block.body.deposits = deposits
@@ -272,15 +249,9 @@ def build_random_block_from_state_for_next_slot(
         ]
     )
     for attester_slashing in block.body.attester_slashings:
-        slashed_indices = slashed_indices.union(
-            attester_slashing.attestation_1.attesting_indices
-        )
-        slashed_indices = slashed_indices.union(
-            attester_slashing.attestation_2.attesting_indices
-        )
-    block.body.voluntary_exits = get_random_voluntary_exits(
-        spec, state, slashed_indices, rng
-    )
+        slashed_indices = slashed_indices.union(attester_slashing.attestation_1.attesting_indices)
+        slashed_indices = slashed_indices.union(attester_slashing.attestation_2.attesting_indices)
+    block.body.voluntary_exits = get_random_voluntary_exits(spec, state, slashed_indices, rng)
 
     return block
 
@@ -291,9 +262,7 @@ def run_test_full_random_operations(spec, state, rng=Random(2080)):
 
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)
-    block = build_random_block_from_state_for_next_slot(
-        spec, state, rng, deposits=deposits
-    )
+    block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield "pre", state
 
@@ -325,17 +294,13 @@ def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     for _ in range(num_deposits):
         index = rng.randrange(0, num_deposits)
         withdrawal_pubkey = pubkeys[index]
-        withdrawal_credentials = (
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        )
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,
             pubkeys[index],
             privkeys[index],
-            rng.randint(
-                spec.EFFECTIVE_BALANCE_INCREMENT, 2 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-            ),
+            rng.randint(spec.EFFECTIVE_BALANCE_INCREMENT, 2 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
             withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )

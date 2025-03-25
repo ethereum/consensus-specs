@@ -12,9 +12,7 @@ def test_effective_balance_hysteresis(spec, state):
     yield from run_test_effective_balance_hysteresis(spec, state)
 
 
-def run_test_effective_balance_hysteresis(
-    spec, state, with_compounding_credentials=False
-):
+def run_test_effective_balance_hysteresis(spec, state, with_compounding_credentials=False):
     assert is_post_electra(spec) or not with_compounding_credentials
     # Prepare state up to the final-updates.
     # Then overwrite the balances, we only want to focus to be on the hysteresis based changes.

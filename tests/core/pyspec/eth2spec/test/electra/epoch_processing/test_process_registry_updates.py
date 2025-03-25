@@ -56,9 +56,7 @@ def test_activation_queue_eligibility__min_activation_balance_eth1_creds(spec, s
 
 @with_electra_and_later
 @spec_state_test
-def test_activation_queue_eligibility__min_activation_balance_compounding_creds(
-    spec, state
-):
+def test_activation_queue_eligibility__min_activation_balance_compounding_creds(spec, state):
     index = 11
     balance = spec.MIN_ACTIVATION_BALANCE
     set_compounding_withdrawal_credential_with_balance(spec, state, index)

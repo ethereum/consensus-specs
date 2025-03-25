@@ -100,14 +100,10 @@ def get_valid_chunk_challenge(
         state, attestation.data.slot, attestation.data.index
     )
     responder_index = crosslink_committee[0]
-    data_index = (
-        len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
-    )
+    data_index = len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
 
     chunk_count = (
-        shard_transition.shard_block_lengths[data_index]
-        + spec.BYTES_PER_CUSTODY_CHUNK
-        - 1
+        shard_transition.shard_block_lengths[data_index] + spec.BYTES_PER_CUSTODY_CHUNK - 1
     ) // spec.BYTES_PER_CUSTODY_CHUNK
     chunk_index = chunk_count - 1 if not chunk_index else chunk_index
 
@@ -149,9 +145,9 @@ def get_valid_custody_chunk_response(
 
     leaf_index = chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH
     serialized_length = len(custody_data_block).to_bytes(32, "little")
-    data_branch = build_proof(
-        custody_data_block.get_backing().get_left(), leaf_index
-    ) + [serialized_length]
+    data_branch = build_proof(custody_data_block.get_backing().get_left(), leaf_index) + [
+        serialized_length
+    ]
 
     return spec.CustodyChunkResponse(
         challenge_index=challenge_index,
@@ -163,16 +159,12 @@ def get_valid_custody_chunk_response(
 
 def get_custody_test_vector(bytelength, offset=0):
     ints = bytelength // 4 + 1
-    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[
-        :bytelength
-    ]
+    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[:bytelength]
 
 
 def get_sample_shard_transition(spec, start_slot, block_lengths):
     b = [
-        spec.hash_tree_root(
-            ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x))
-        )
+        spec.hash_tree_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
         for x in block_lengths
     ]
     shard_transition = spec.ShardTransition(

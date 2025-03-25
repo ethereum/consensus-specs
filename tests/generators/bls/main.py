@@ -83,9 +83,7 @@ def case01_sign():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
             sig = bls.Sign(privkey, message)
-            assert sig == milagro_bls.Sign(
-                to_bytes(privkey), message
-            )  # double-check with milagro
+            assert sig == milagro_bls.Sign(to_bytes(privkey), message)  # double-check with milagro
             identifier = f"{int_to_hex(privkey)}_{encode_hex(message)}"
             yield f'sign_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
                 "input": {
@@ -160,9 +158,7 @@ def case02_verify():
 
     # Invalid pubkey and signature with the point at infinity
     assert not bls.Verify(G1_POINT_AT_INFINITY, SAMPLE_MESSAGE, G2_POINT_AT_INFINITY)
-    assert not milagro_bls.Verify(
-        G1_POINT_AT_INFINITY, SAMPLE_MESSAGE, G2_POINT_AT_INFINITY
-    )
+    assert not milagro_bls.Verify(G1_POINT_AT_INFINITY, SAMPLE_MESSAGE, G2_POINT_AT_INFINITY)
     yield "verify_infinity_pubkey_and_infinity_signature", {
         "input": {
             "pubkey": encode_hex(G1_POINT_AT_INFINITY),
@@ -194,11 +190,7 @@ def case03_aggregate():
 
     # Valid to aggregate G2 point at infinity
     aggregate_sig = bls.Aggregate([G2_POINT_AT_INFINITY])
-    assert (
-        aggregate_sig
-        == milagro_bls.Aggregate([G2_POINT_AT_INFINITY])
-        == G2_POINT_AT_INFINITY
-    )
+    assert aggregate_sig == milagro_bls.Aggregate([G2_POINT_AT_INFINITY]) == G2_POINT_AT_INFINITY
     yield "aggregate_infinity_signature", {
         "input": [encode_hex(G2_POINT_AT_INFINITY)],
         "output": encode_hex(aggregate_sig),
@@ -231,9 +223,7 @@ def case04_fast_aggregate_verify():
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f"{pubkeys_extra_serial}_{encode_hex(message)}"
         assert not bls.FastAggregateVerify(pubkeys_extra, message, aggregate_signature)
-        assert not milagro_bls.FastAggregateVerify(
-            pubkeys_extra, message, aggregate_signature
-        )
+        assert not milagro_bls.FastAggregateVerify(pubkeys_extra, message, aggregate_signature)
         yield f'fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
                 "pubkeys": pubkeys_extra_serial,
@@ -286,9 +276,7 @@ def case04_fast_aggregate_verify():
     pubkeys_with_infinity = pubkeys + [G1_POINT_AT_INFINITY]
     signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
     aggregate_signature = bls.Aggregate(signatures)
-    assert not bls.FastAggregateVerify(
-        pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature
-    )
+    assert not bls.FastAggregateVerify(pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature)
     assert not milagro_bls.FastAggregateVerify(
         pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature
     )
@@ -368,9 +356,7 @@ def case05_aggregate_verify():
     # Invalid pubkeys and signature -- pubkeys contains point at infinity
     pubkeys_with_infinity = pubkeys + [G1_POINT_AT_INFINITY]
     messages_with_sample = messages + [SAMPLE_MESSAGE]
-    assert not bls.AggregateVerify(
-        pubkeys_with_infinity, messages_with_sample, aggregate_signature
-    )
+    assert not bls.AggregateVerify(pubkeys_with_infinity, messages_with_sample, aggregate_signature)
     assert not milagro_bls.AggregateVerify(
         pubkeys_with_infinity, messages_with_sample, aggregate_signature
     )
@@ -465,9 +451,7 @@ def case07_eth_fast_aggregate_verify():
         pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
         identifier = f"{pubkeys_extra_serial}_{encode_hex(message)}"
-        assert not spec.eth_fast_aggregate_verify(
-            pubkeys_extra, message, aggregate_signature
-        )
+        assert not spec.eth_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
         yield f'eth_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
             "input": {
                 "pubkeys": pubkeys_extra_serial,
@@ -565,16 +549,10 @@ if __name__ == "__main__":
             create_provider(PHASE0, "sign", case01_sign),
             create_provider(PHASE0, "verify", case02_verify),
             create_provider(PHASE0, "aggregate", case03_aggregate),
-            create_provider(
-                PHASE0, "fast_aggregate_verify", case04_fast_aggregate_verify
-            ),
+            create_provider(PHASE0, "fast_aggregate_verify", case04_fast_aggregate_verify),
             create_provider(PHASE0, "aggregate_verify", case05_aggregate_verify),
             # ALTAIR
-            create_provider(
-                ALTAIR, "eth_aggregate_pubkeys", case06_eth_aggregate_pubkeys
-            ),
-            create_provider(
-                ALTAIR, "eth_fast_aggregate_verify", case07_eth_fast_aggregate_verify
-            ),
+            create_provider(ALTAIR, "eth_aggregate_pubkeys", case06_eth_aggregate_pubkeys),
+            create_provider(ALTAIR, "eth_fast_aggregate_verify", case07_eth_fast_aggregate_verify),
         ],
     )

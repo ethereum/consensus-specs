@@ -35,9 +35,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
     1/4 validators are slashed but still active at the fork transition.
     """
     # slash 1/4 validators
-    slashed_indices = slash_random_validators(
-        spec, state, rng=random.Random(5566), fraction=0.25
-    )
+    slashed_indices = slash_random_validators(spec, state, rng=random.Random(5566), fraction=0.25)
     assert len(slashed_indices) > 0
 
     # check if some validators are slashed but still active
@@ -58,12 +56,8 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
 
     # ensure that some of the current sync committee members are slashed
     slashed_pubkeys = [state.validators[index].pubkey for index in slashed_indices]
-    assert any(
-        set(slashed_pubkeys).intersection(list(state.current_sync_committee.pubkeys))
-    )
-    assert any(
-        set(slashed_pubkeys).difference(list(state.current_sync_committee.pubkeys))
-    )
+    assert any(set(slashed_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+    assert any(set(slashed_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
 
     # continue regular state transition with new spec into next epoch
     # since the proposer might have been slashed, here we only create blocks with non-slashed proposers
@@ -79,9 +73,7 @@ def test_transition_with_one_fourth_slashed_active_validators_pre_fork(
 
     # check post state
     for validator in state.validators:
-        assert post_spec.is_active_validator(
-            validator, post_spec.get_current_epoch(state)
-        )
+        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
     assert not post_spec.is_in_inactivity_leak(state)
 
     yield "blocks", blocks

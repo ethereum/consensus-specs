@@ -35,9 +35,9 @@ def test_basic(spec, state):
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert state.validators[
-        validator_index
-    ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
+    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(
+        current_epoch
+    )
 
 
 @with_all_phases
@@ -56,9 +56,7 @@ def test_invalid_incorrect_signature(spec, state):
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, 12345)
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
 def run_test_success_exit_queue(spec, state):
@@ -109,8 +107,7 @@ def run_test_success_exit_queue(spec, state):
 
     for index in initial_indices:
         assert (
-            state.validators[validator_index].exit_epoch
-            == state.validators[index].exit_epoch + 1
+            state.validators[validator_index].exit_epoch == state.validators[index].exit_epoch + 1
         )
 
 
@@ -160,9 +157,9 @@ def test_default_exit_epoch_subsequent_exit(spec, state):
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert state.validators[
-        validator_index
-    ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
+    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(
+        current_epoch
+    )
 
 
 @with_all_phases
@@ -181,9 +178,7 @@ def test_invalid_validator_exit_in_future(spec, state):
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
 @with_all_phases
@@ -202,9 +197,7 @@ def test_invalid_validator_incorrect_validator_index(spec, state):
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
 @with_all_phases
@@ -223,9 +216,7 @@ def test_invalid_validator_not_active(spec, state):
         privkey,
     )
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
 @with_all_phases
@@ -248,9 +239,7 @@ def test_invalid_validator_already_exited(spec, state):
         privkey,
     )
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
 @with_all_phases
@@ -272,6 +261,4 @@ def test_invalid_validator_not_active_long_enough(spec, state):
         < spec.config.SHARD_COMMITTEE_PERIOD
     )
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)

@@ -47,9 +47,7 @@ def _test_harness_for_randomized_test_case(
     else:
         assert committee_size == len(set(committee_indices))
 
-    yield from run_successful_sync_committee_test(
-        spec, state, committee_indices, committee_bits
-    )
+    yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
 @with_altair_and_later
@@ -140,9 +138,7 @@ def test_random_with_exits_with_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=default_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_only_one_participant_without_duplicates(spec, state):
     rng = random.Random(501)
@@ -156,9 +152,7 @@ def test_random_only_one_participant_without_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=default_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_low_participation_without_duplicates(spec, state):
     rng = random.Random(601)
@@ -172,9 +166,7 @@ def test_random_low_participation_without_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=default_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_high_participation_without_duplicates(spec, state):
     rng = random.Random(701)
@@ -188,9 +180,7 @@ def test_random_high_participation_without_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=default_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_all_but_one_participating_without_duplicates(spec, state):
     rng = random.Random(801)
@@ -204,9 +194,7 @@ def test_random_all_but_one_participating_without_duplicates(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=misc_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=misc_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_misc_balances_and_half_participation_without_duplicates(spec, state):
     rng = random.Random(1501)
@@ -220,9 +208,7 @@ def test_random_misc_balances_and_half_participation_without_duplicates(spec, st
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
-@with_custom_state(
-    balances_fn=default_balances_electra, threshold_fn=default_activation_threshold
-)
+@with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
 @single_phase
 def test_random_with_exits_without_duplicates(spec, state):
     rng = random.Random(1502)

@@ -44,14 +44,10 @@ class PayloadStatusV1:
         return {
             "status": str(self.status.value),
             "latest_valid_hash": (
-                encode_hex(self.latest_valid_hash)
-                if self.latest_valid_hash is not None
-                else None
+                encode_hex(self.latest_valid_hash) if self.latest_valid_hash is not None else None
             ),
             "validation_error": (
-                str(self.validation_error)
-                if self.validation_error is not None
-                else None
+                str(self.validation_error) if self.validation_error is not None else None
             ),
         }
 
@@ -133,10 +129,7 @@ def add_optimistic_block(
         # Update parent status to INVALID
         assert payload_status.latest_valid_hash is not None
         current_block = block
-        while (
-            el_block_hash != payload_status.latest_valid_hash
-            and el_block_hash != spec.Bytes32()
-        ):
+        while el_block_hash != payload_status.latest_valid_hash and el_block_hash != spec.Bytes32():
             current_block_root = current_block.hash_tree_root()
             assert current_block_root in mega_store.block_payload_statuses
             mega_store.block_payload_statuses[current_block_root].status = (
@@ -165,9 +158,9 @@ def add_optimistic_block(
         mega_store.opt_store.optimistic_roots.add(block_root)
         mega_store.opt_store.blocks[block_root] = signed_block.message.copy()
         if not is_invalidated(mega_store, block_root):
-            mega_store.opt_store.block_states[block_root] = (
-                mega_store.fc_store.block_states[block_root].copy()
-            )
+            mega_store.opt_store.block_states[block_root] = mega_store.fc_store.block_states[
+                block_root
+            ].copy()
 
     # Clean up the invalidated blocks
     clean_up_store(mega_store)
