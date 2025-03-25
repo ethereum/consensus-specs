@@ -1,4 +1,6 @@
-class SkippedTest(Exception): ...
+class SkippedTest(Exception):
+    pass
 
 
-class BlockNotFoundException(Exception): ...
+class BlockNotFoundException(Exception):
+    pass
