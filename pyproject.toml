@@ -21,7 +21,7 @@ dependencies = [
   "marko==1.0.2",
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.3.8",
-  "py_ecc==6.0.0",
+  "py_ecc==7.0.1",
   "pycryptodome==3.21.0",
   "remerkleable==0.1.28",
   "ruamel.yaml==0.17.21",
