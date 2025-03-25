@@ -54,9 +54,9 @@ def test_activation_queue_to_activated_if_finalized(spec, state):
 
     # mock validator as having been in queue since latest finalized
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[
-        index
-    ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
+    state.validators[index].activation_eligibility_epoch = (
+        state.finalized_checkpoint.epoch
+    )
 
     assert not spec.is_active_validator(
         state.validators[index], spec.get_current_epoch(state)
@@ -333,9 +333,9 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
     )
     for validator_index in activation_indices:
         mock_deposit(spec, state, validator_index)
-        state.validators[
-            validator_index
-        ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
+        state.validators[validator_index].activation_eligibility_epoch = (
+            state.finalized_checkpoint.epoch
+        )
 
     # ready for ejection
     ejection_start_index = num_per_status * 2
@@ -343,9 +343,9 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
         range(ejection_start_index, ejection_start_index + num_per_status)
     )
     for validator_index in ejection_indices:
-        state.validators[
-            validator_index
-        ].effective_balance = spec.config.EJECTION_BALANCE
+        state.validators[validator_index].effective_balance = (
+            spec.config.EJECTION_BALANCE
+        )
 
     churn_limit = spec.get_validator_churn_limit(state)
     yield from run_process_registry_updates(spec, state)

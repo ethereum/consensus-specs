@@ -45,9 +45,9 @@ def check_proposer_slashing_effect(spec, pre_state, state, slashed_index, block=
     ].effective_balance // get_whistleblower_reward_quotient(spec)
 
     # Altair introduces sync committee (SC) reward and penalty
-    sc_reward_for_slashed = (
-        sc_penalty_for_slashed
-    ) = sc_reward_for_proposer = sc_penalty_for_proposer = 0
+    sc_reward_for_slashed = sc_penalty_for_slashed = sc_reward_for_proposer = (
+        sc_penalty_for_proposer
+    ) = 0
     if is_post_altair(spec) and block is not None:
         committee_indices = compute_committee_indices(
             state, state.current_sync_committee

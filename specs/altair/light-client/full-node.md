@@ -32,8 +32,7 @@ This function return the Merkle proof of the given SSZ object `object` at genera
 ```python
 def compute_merkle_proof(
     object: SSZObject, index: GeneralizedIndex
-) -> Sequence[Bytes32]:
-    ...
+) -> Sequence[Bytes32]: ...
 ```
 
 ### `block_to_light_client_header`

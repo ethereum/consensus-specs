@@ -49,7 +49,7 @@ class GetPayloadResponse(object):
 
 ```python
 def get_pow_block_at_terminal_total_difficulty(
-    pow_chain: Dict[Hash32, PowBlock]
+    pow_chain: Dict[Hash32, PowBlock],
 ) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain.values():

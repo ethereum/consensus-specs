@@ -45,8 +45,7 @@ def notify_forkchoice_updated(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
-) -> Optional[PayloadId]:
-    ...
+) -> Optional[PayloadId]: ...
 ```
 
 ## Helpers

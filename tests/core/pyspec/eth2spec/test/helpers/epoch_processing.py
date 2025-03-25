@@ -27,13 +27,17 @@ def get_process_calls(spec):
         "process_slashings_reset",
         "process_randao_mixes_reset",
         # Capella replaced `process_historical_roots_update` with `process_historical_summaries_update`
-        "process_historical_summaries_update"
-        if is_post_capella(spec)
-        else ("process_historical_roots_update"),
+        (
+            "process_historical_summaries_update"
+            if is_post_capella(spec)
+            else ("process_historical_roots_update")
+        ),
         # Altair replaced `process_participation_record_updates` with `process_participation_flag_updates`
-        "process_participation_flag_updates"
-        if is_post_altair(spec)
-        else ("process_participation_record_updates"),
+        (
+            "process_participation_flag_updates"
+            if is_post_altair(spec)
+            else ("process_participation_record_updates")
+        ),
         "process_sync_committee_updates",  # altair
         # TODO: add sharding processing functions when spec stabilizes.
     ]

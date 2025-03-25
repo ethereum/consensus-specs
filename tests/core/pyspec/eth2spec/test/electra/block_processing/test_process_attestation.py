@@ -177,9 +177,9 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     )
     committee_offset = len(committee_0)
     for i in range(len(attestation_1.aggregation_bits)):
-        aggregate.aggregation_bits[
-            committee_offset + i
-        ] = attestation_1.aggregation_bits[i]
+        aggregate.aggregation_bits[committee_offset + i] = (
+            attestation_1.aggregation_bits[i]
+        )
 
     # Check that only one committee is presented
     assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(

@@ -317,4 +317,4 @@ def test_bytes_to_bls_field_max(spec):
     Verify that `bytes_to_bls_field` fails on 2**256 - 1
     """
 
-    expect_assertion_error(lambda: spec.bytes_to_bls_field(b"\xFF" * 32))
+    expect_assertion_error(lambda: spec.bytes_to_bls_field(b"\xff" * 32))

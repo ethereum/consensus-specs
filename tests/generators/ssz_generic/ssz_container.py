@@ -78,7 +78,7 @@ PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
 
 def valid_cases():
     rng = Random(1234)
-    for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
+    for name, (typ, offsets) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f"{name}_{mode.to_name()}", valid_test_case(
                 lambda: container_case_fn(rng, mode, typ)
@@ -128,7 +128,7 @@ def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
 
 def invalid_cases():
     rng = Random(1234)
-    for (name, (typ, offsets)) in PRESET_CONTAINERS.items():
+    for name, (typ, offsets) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f"{name}_extra_byte", invalid_test_case(
             lambda: serialize(

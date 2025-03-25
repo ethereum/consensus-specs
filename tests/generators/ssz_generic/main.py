@@ -16,7 +16,7 @@ def create_provider(
         return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
-        for (case_name, case_fn) in case_maker():
+        for case_name, case_fn in case_maker():
             yield gen_typing.TestCase(
                 fork_name=PHASE0,
                 preset_name="general",

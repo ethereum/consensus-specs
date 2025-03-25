@@ -81,7 +81,7 @@ def create_provider(
         count = cases_if_random if chaos or mode.is_changing() else 1
         spec = spec_targets[preset_name][fork_name]
 
-        for (i, (name, ssz_type)) in enumerate(get_spec_ssz_types(spec)):
+        for i, (name, ssz_type) in enumerate(get_spec_ssz_types(spec)):
             yield from ssz_static_cases(
                 fork_name,
                 preset_name,

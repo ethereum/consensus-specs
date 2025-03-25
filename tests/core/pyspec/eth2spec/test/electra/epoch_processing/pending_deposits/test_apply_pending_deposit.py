@@ -223,7 +223,7 @@ def test_apply_pending_deposit_non_versioned_withdrawal_credentials(spec, state)
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
-        b"\xFF"  # Non specified withdrawal credentials version
+        b"\xff"  # Non specified withdrawal credentials version
         + b"\x02" * 31  # Garabage bytes
     )
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -248,7 +248,7 @@ def test_apply_pending_deposit_non_versioned_withdrawal_credentials_over_min_act
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
-        b"\xFF"  # Non specified withdrawal credentials version
+        b"\xff"  # Non specified withdrawal credentials version
         + b"\x02" * 31  # Garabage bytes
     )
     # just 1 over the limit, effective balance should be set MIN_ACTIVATION_BALANCE during processing
@@ -363,9 +363,9 @@ def test_apply_pending_deposit_top_up__max_effective_balance_compounding(spec, s
 
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     state.validators[validator_index].withdrawal_credentials = withdrawal_credentials
-    state.validators[
-        validator_index
-    ].effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    state.validators[validator_index].effective_balance = (
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    )
 
     yield from run_pending_deposit_applying(
         spec, state, pending_deposit, validator_index

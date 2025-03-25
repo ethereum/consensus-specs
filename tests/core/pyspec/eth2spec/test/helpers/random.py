@@ -43,9 +43,9 @@ def set_some_new_deposits(spec, state, rng):
             mock_deposit(spec, state, index)
             if rng.choice([True, False]):
                 # Set ~half of selected to eligible for activation
-                state.validators[
-                    index
-                ].activation_eligibility_epoch = spec.get_current_epoch(state)
+                state.validators[index].activation_eligibility_epoch = (
+                    spec.get_current_epoch(state)
+                )
             else:
                 # The validators that just made a deposit
                 deposited_indices.append(index)

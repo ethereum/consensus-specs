@@ -43,9 +43,11 @@ def encode(value, include_hash_tree_roots=False):
         inner_value = value.value()
         return {
             "selector": int(value.selector()),
-            "value": None
-            if inner_value is None
-            else encode(inner_value, include_hash_tree_roots),
+            "value": (
+                None
+                if inner_value is None
+                else encode(inner_value, include_hash_tree_roots)
+            ),
         }
     else:
         raise Exception(f"Type not recognized: value={value}, typ={type(value)}")

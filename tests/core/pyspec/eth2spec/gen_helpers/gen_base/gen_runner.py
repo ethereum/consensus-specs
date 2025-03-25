@@ -444,7 +444,7 @@ def output_part(
 def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml):
     result = test_case.case_fn()
     written_part = False
-    for (name, out_kind, data) in result:
+    for name, out_kind, data in result:
         written_part = True
         if out_kind == "meta":
             meta[name] = data

@@ -448,9 +448,9 @@ def _create_lc_bootstrap(test, spec, bid):
     block = test.blocks[bid.root]
     period = spec.compute_sync_committee_period_at_slot(bid.slot)
     if period not in test.lc_data_store.db.sync_committees:
-        test.lc_data_store.db.sync_committees[
-            period
-        ] = _get_current_sync_committee_for_finalized_period(test, period)
+        test.lc_data_store.db.sync_committees[period] = (
+            _get_current_sync_committee_for_finalized_period(test, period)
+        )
     test.lc_data_store.db.headers[bid.root] = ForkedLightClientHeader(
         spec=block.spec, data=block.spec.block_to_light_client_header(block.data)
     )
@@ -755,9 +755,9 @@ def select_new_head(test, spec, head_bid):
                 )
                 if finalized_epoch != old_finalized_epoch:
                     state = test.states[block.data.message.state_root]
-                    test.finalized_checkpoint_states[
-                        block.data.message.state_root
-                    ] = state
+                    test.finalized_checkpoint_states[block.data.message.state_root] = (
+                        state
+                    )
                     old_finalized_epoch = finalized_epoch
                 block = test.blocks[block.data.message.parent_root]
                 bid = _block_to_block_id(block.data)

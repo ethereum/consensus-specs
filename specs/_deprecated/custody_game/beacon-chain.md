@@ -499,9 +499,9 @@ def process_chunk_challenge_response(
     )
     # Clear the challenge
     index_in_records = state.custody_chunk_challenge_records.index(challenge)
-    state.custody_chunk_challenge_records[
-        index_in_records
-    ] = CustodyChunkChallengeRecord()
+    state.custody_chunk_challenge_records[index_in_records] = (
+        CustodyChunkChallengeRecord()
+    )
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(
@@ -784,9 +784,9 @@ def process_challenge_deadlines(state: BeaconState) -> None:
             index_in_records = state.custody_chunk_challenge_records.index(
                 custody_chunk_challenge
             )
-            state.custody_chunk_challenge_records[
-                index_in_records
-            ] = CustodyChunkChallengeRecord()
+            state.custody_chunk_challenge_records[index_in_records] = (
+                CustodyChunkChallengeRecord()
+            )
 ```
 
 ### Final updates

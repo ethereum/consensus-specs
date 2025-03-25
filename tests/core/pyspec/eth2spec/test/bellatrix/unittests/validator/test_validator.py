@@ -127,9 +127,9 @@ def test_prepare_execution_payload(spec, state):
 
         # Default `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` is too big and too close to overflow
         _mock_terminal_block_hash_activation_epoch = 3
-        config_overrides[
-            "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"
-        ] = _mock_terminal_block_hash_activation_epoch
+        config_overrides["TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"] = (
+            _mock_terminal_block_hash_activation_epoch
+        )
         if is_activation_epoch_reached:
             state.slot = (
                 _mock_terminal_block_hash_activation_epoch * spec.SLOTS_PER_EPOCH

@@ -46,7 +46,7 @@ def invalid_cases():
     # Create a vector with test_size bits, but make the type typ_size instead,
     # which is invalid when used with the given type size
     # (and a bit set just after typ_size bits if necessary to avoid the valid 0 padding-but-same-last-byte case)
-    for (typ_size, test_size) in [
+    for typ_size, test_size in [
         (1, 2),
         (2, 3),
         (3, 4),

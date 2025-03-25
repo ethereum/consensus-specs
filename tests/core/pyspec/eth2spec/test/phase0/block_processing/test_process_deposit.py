@@ -81,7 +81,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
-        b"\xFF"  # Non specified withdrawal credentials version
+        b"\xff"  # Non specified withdrawal credentials version
         + b"\x02" * 31  # Garbage bytes
     )
     amount = spec.MAX_EFFECTIVE_BALANCE

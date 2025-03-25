@@ -745,7 +745,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
         for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))
     ]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
-    for (rewards, penalties) in deltas:
+    for rewards, penalties in deltas:
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
             decrease_balance(state, ValidatorIndex(index), penalties[index])

@@ -51,7 +51,7 @@ def create_provider(preset_name: PresetBaseName) -> gen_typing.TestProvider:
             spec = spec_minimal
         else:
             raise Exception(f"unrecognized preset: {preset_name}")
-        for (case_name, case_fn) in shuffling_test_cases(spec):
+        for case_name, case_fn in shuffling_test_cases(spec):
             yield gen_typing.TestCase(
                 fork_name=PHASE0,
                 preset_name=preset_name,

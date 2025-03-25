@@ -42,7 +42,7 @@ BASIC_TYPES: Dict[str, Type[BasicView]] = {
 
 def valid_cases():
     rng = Random(1234)
-    for (name, typ) in BASIC_TYPES.items():
+    for name, typ in BASIC_TYPES.items():
         random_modes = [RandomizationMode.mode_zero, RandomizationMode.mode_max]
         if name != "bool":
             random_modes.append(RandomizationMode.mode_random)
@@ -55,11 +55,11 @@ def valid_cases():
 
 def invalid_cases():
     # zero length vectors are illegal
-    for (name, typ) in BASIC_TYPES.items():
+    for name, typ in BASIC_TYPES.items():
         yield f"vec_{name}_0", invalid_test_case(lambda: b"")
 
     rng = Random(1234)
-    for (name, typ) in BASIC_TYPES.items():
+    for name, typ in BASIC_TYPES.items():
         random_modes = [RandomizationMode.mode_zero, RandomizationMode.mode_max]
         if name != "bool":
             random_modes.append(RandomizationMode.mode_random)

@@ -37,7 +37,7 @@ def invalid_cases():
     yield "bitlist_no_delimiter_zero_byte", invalid_test_case(lambda: b"\x00")
     yield "bitlist_no_delimiter_zeroes", invalid_test_case(lambda: b"\x00\x00\x00")
     rng = Random(1234)
-    for (typ_limit, test_limit) in [
+    for typ_limit, test_limit in [
         (1, 2),
         (1, 8),
         (1, 9),

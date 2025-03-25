@@ -564,9 +564,9 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     address = b"\x22" * 20
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     state.balances[validator_index] = 3 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-    state.validators[
-        validator_index
-    ].effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    state.validators[validator_index].effective_balance = (
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    )
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
     withdrawal_request = spec.WithdrawalRequest(

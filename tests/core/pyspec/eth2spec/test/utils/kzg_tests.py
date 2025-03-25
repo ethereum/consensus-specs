@@ -136,7 +136,7 @@ BLOB_ALMOST_ZERO = spec.Blob(
     b"".join([field_element_bytes(1 if n == 3211 else 0) for n in range(4096)])
 )
 
-BLOB_INVALID = spec.Blob(b"\xFF" * 4096 * 32)
+BLOB_INVALID = spec.Blob(b"\xff" * 4096 * 32)
 BLOB_INVALID_CLOSE = spec.Blob(
     b"".join(
         [
@@ -217,9 +217,11 @@ CELL_ALL_MAX_VALUE = b"".join(
 )
 CELL_ONE_INVALID_FIELD = b"".join(
     [
-        field_element_bytes_unchecked(spec.BLS_MODULUS)
-        if n == 7
-        else field_element_bytes(0)
+        (
+            field_element_bytes_unchecked(spec.BLS_MODULUS)
+            if n == 7
+            else field_element_bytes(0)
+        )
         for n in range(spec.FIELD_ELEMENTS_PER_CELL)
     ]
 )

@@ -145,7 +145,7 @@ def case02_verify():
             }
 
             # Invalid signature -- tampered with signature
-            tampered_signature = signature[:-4] + b"\xFF\xFF\xFF\xFF"
+            tampered_signature = signature[:-4] + b"\xff\xff\xff\xff"
             identifier = f"{encode_hex(pubkey)}_{encode_hex(message)}"
             assert not bls.Verify(pubkey, message, tampered_signature)
             assert not milagro_bls.Verify(pubkey, message, tampered_signature)

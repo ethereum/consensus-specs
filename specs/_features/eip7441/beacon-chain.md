@@ -371,9 +371,9 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
         )
         # Shuffle candidate trackers
         for i, shuffle_index in enumerate(shuffle_indices):
-            state.whisk_candidate_trackers[
-                shuffle_index
-            ] = body.whisk_post_shuffle_trackers[i]
+            state.whisk_candidate_trackers[shuffle_index] = (
+                body.whisk_post_shuffle_trackers[i]
+            )
 ```
 
 ```python

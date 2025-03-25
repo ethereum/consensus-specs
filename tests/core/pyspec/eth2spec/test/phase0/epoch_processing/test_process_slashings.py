@@ -128,9 +128,9 @@ def test_minimal_penalty(spec, state):
     )
     # All the other validators get the maximum.
     for i in range(1, len(state.validators)):
-        state.validators[i].effective_balance = state.balances[
-            i
-        ] = spec.MAX_EFFECTIVE_BALANCE
+        state.validators[i].effective_balance = state.balances[i] = (
+            spec.MAX_EFFECTIVE_BALANCE
+        )
 
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 

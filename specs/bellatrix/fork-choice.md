@@ -64,8 +64,7 @@ def notify_forkchoice_updated(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
-) -> Optional[PayloadId]:
-    ...
+) -> Optional[PayloadId]: ...
 ```
 
 *Note*: The `(head_block_hash, finalized_block_hash)` values of the `notify_forkchoice_updated` function call maps on the `POS_FORKCHOICE_UPDATED` event defined in the [EIP-3675](https://eips.ethereum.org/EIPS/eip-3675#definitions).

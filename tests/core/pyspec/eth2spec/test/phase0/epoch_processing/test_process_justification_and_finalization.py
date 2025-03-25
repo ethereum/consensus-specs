@@ -182,9 +182,9 @@ def finalize_on_23(spec, state, epoch, sufficient_support):
     state.previous_justified_checkpoint = c3
     state.current_justified_checkpoint = c3
     state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    state.justification_bits[
-        1
-    ] = 1  # mock 3rd latest epoch as justified (index is pre-shift)
+    state.justification_bits[1] = (
+        1  # mock 3rd latest epoch as justified (index is pre-shift)
+    )
     # mock the 2nd latest epoch as justifiable, with 3rd as source
     add_mock_attestations(
         spec,
@@ -225,9 +225,9 @@ def finalize_on_123(spec, state, epoch, sufficient_support):
     state.previous_justified_checkpoint = c5
     state.current_justified_checkpoint = c3
     state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    state.justification_bits[
-        1
-    ] = 1  # mock 3rd latest epochs as justified (index is pre-shift)
+    state.justification_bits[1] = (
+        1  # mock 3rd latest epochs as justified (index is pre-shift)
+    )
     # mock the 2nd latest epoch as justifiable, with 5th as source
     add_mock_attestations(
         spec,
@@ -277,9 +277,9 @@ def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
     state.previous_justified_checkpoint = c2
     state.current_justified_checkpoint = c2
     state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    state.justification_bits[
-        0
-    ] = 1  # mock 2nd latest epoch as justified (this is pre-shift)
+    state.justification_bits[0] = (
+        1  # mock 2nd latest epoch as justified (this is pre-shift)
+    )
     # mock the 1st latest epoch as justifiable, with 2nd as source
     add_mock_attestations(
         spec,

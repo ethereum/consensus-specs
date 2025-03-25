@@ -144,9 +144,9 @@ def test_all_consolidation_cases_together(spec, state):
         spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
     for i in range(4):
-        state.validators[
-            target_index[i]
-        ].withdrawal_credentials = eth1_withdrawal_credential
+        state.validators[target_index[i]].withdrawal_credentials = (
+            eth1_withdrawal_credential
+        )
     # Initiate exit of third source validator
     spec.initiate_validator_exit(state, 2)
 

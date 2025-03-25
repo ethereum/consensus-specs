@@ -249,9 +249,9 @@ def process_execution_payload(
         for commitment in body.blob_kzg_commitments
     ]
     # Verify inclusion list transactions
-    inclusion_list_transactions: Sequence[
-        Transaction
-    ] = []  # TODO: where do we get this?
+    inclusion_list_transactions: Sequence[Transaction] = (
+        []
+    )  # TODO: where do we get this?
     assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_INCLUSION_LIST
     # Verify the payload with the execution engine
     assert execution_engine.verify_and_notify_new_payload(

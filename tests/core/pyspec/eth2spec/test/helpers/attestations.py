@@ -490,9 +490,9 @@ def cached_prepare_state_with_attestations(spec, state):
     global _prep_state_cache_dict
     if key not in _prep_state_cache_dict:
         prepare_state_with_attestations(spec, state)
-        _prep_state_cache_dict[
-            key
-        ] = state.get_backing()  # cache the tree structure, not the view wrapping it.
+        _prep_state_cache_dict[key] = (
+            state.get_backing()
+        )  # cache the tree structure, not the view wrapping it.
 
     # Put the LRU cache result into the state view, as if we transitioned the original view
     state.set_backing(_prep_state_cache_dict[key])
