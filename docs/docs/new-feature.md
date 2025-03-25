@@ -105,8 +105,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
 - Update [GitHub Actions config](https://github.com/ethereum/consensus-specs/blob/dev/.github/workflows/run-tests.yml)
     - Update `pyspec-tests.strategy.matrix.version` list by adding new feature to it
-- Update [CircleCI config](https://github.com/ethereum/consensus-specs/blob/dev/.circleci/config.yml)
-    - Add new job to the `workflows.test_spec.jobs`
 
 ## Others
 
