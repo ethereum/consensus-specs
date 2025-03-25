@@ -161,7 +161,7 @@ class BeaconState(Container):
 ```python
 def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
-    Return the proposer indices for the given ``epoch``.
+    Return the proposer indices for the given `epoch`.
     """
     start_seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(compute_start_slot_at_epoch(epoch))
     seeds = [hash(start_seed + uint_to_bytes(Slot(i))) for i in range(SLOTS_PER_EPOCH)]
@@ -174,7 +174,8 @@ def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[Validator
 ```python
 def initialize_proposer_lookahead(state: BeaconState) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
     """
-    Return the proposer indices for the full available lookahead starting from current epoch.
+    Return the proposer indices for the full available lookahead starting from current epoch. 
+    Used to initialize the `proposer_lookahead` field in the beacon state at genesis and after forks.
     """
     current_epoch = get_current_epoch(state)
     lookahead = []
