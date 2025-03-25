@@ -9,7 +9,10 @@ from eth2spec.test.context import (
     with_all_phases,
 )
 from eth2spec.test.helpers.constants import PHASE0
-from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
+from eth2spec.test.helpers.attestations import (
+    build_attestation_data,
+    get_valid_attestation,
+)
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -18,7 +21,9 @@ from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
-def run_get_signature_test(spec, state, obj, domain, get_signature_fn, privkey, pubkey, signing_ssz_object=None):
+def run_get_signature_test(
+    spec, state, obj, domain, get_signature_fn, privkey, pubkey, signing_ssz_object=None
+):
     if signing_ssz_object is None:
         signing_ssz_object = obj
     signature = get_signature_fn(state, obj, privkey)
@@ -47,8 +52,11 @@ def run_is_candidate_block(spec, eth1_block, period_start, success=True):
 
 def get_min_new_period_epochs(spec):
     return (
-        (spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
-        // spec.config.SECONDS_PER_SLOT // spec.SLOTS_PER_EPOCH
+        (
+            spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2
+        )  # to seconds
+        // spec.config.SECONDS_PER_SLOT
+        // spec.SLOTS_PER_EPOCH
     )
 
 
@@ -72,7 +80,9 @@ def test_check_if_validator_active(spec, state):
     assert spec.check_if_validator_active(state, active_validator_index)
     new_validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(spec, state, new_validator_index, amount, signed=True)
+    deposit = prepare_state_and_deposit(
+        spec, state, new_validator_index, amount, signed=True
+    )
     spec.process_deposit(state, deposit)
     assert not spec.check_if_validator_active(state, new_validator_index)
 
@@ -130,7 +140,9 @@ def test_get_epoch_signature(spec, state):
     block = spec.BeaconBlock()
     privkey = privkeys[0]
     pubkey = pubkeys[0]
-    domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
+    domain = spec.get_domain(
+        state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot)
+    )
     run_get_signature_test(
         spec=spec,
         state=state,
@@ -146,7 +158,9 @@ def test_get_epoch_signature(spec, state):
 @with_all_phases
 @spec_state_test
 def test_is_candidate_block(spec, state):
-    distance_duration = spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+    distance_duration = (
+        spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+    )
     period_start = distance_duration * 2 + 1000
     run_is_candidate_block(
         spec,
@@ -200,14 +214,17 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     state.eth1_data_votes = ()
 
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+        - 1,
         deposit_count=state.eth1_data.deposit_count,
-        deposit_root=b'\x04' * 32,
+        deposit_root=b"\x04" * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
-        deposit_root=b'\x05' * 32,
+        deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
@@ -236,14 +253,17 @@ def test_get_eth1_vote_tie(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+        - 1,
         deposit_count=state.eth1_data.deposit_count,
-        deposit_root=b'\x04' * 32,
+        deposit_root=b"\x04" * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
-        deposit_root=b'\x05' * 32,
+        deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
@@ -275,9 +295,11 @@ def test_get_eth1_vote_chain_in_past(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
-        deposit_count=state.eth1_data.deposit_count - 1,  # Chain prior to current eth1data
-        deposit_root=b'\x42' * 32,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        deposit_count=state.eth1_data.deposit_count
+        - 1,  # Chain prior to current eth1data
+        deposit_root=b"\x42" * 32,
     )
     eth1_chain = [block_1]
     eth1_data_votes = []
@@ -313,7 +335,9 @@ def test_get_block_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     block = build_empty_block(spec, state)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
+    domain = spec.get_domain(
+        state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot)
+    )
     run_get_signature_test(
         spec=spec,
         state=state,
@@ -328,11 +352,16 @@ def test_get_block_signature(spec, state):
 @with_all_phases
 @spec_state_test
 def test_compute_fork_digest(spec, state):
-    actual_fork_digest = spec.compute_fork_digest(state.fork.current_version, state.genesis_validators_root)
+    actual_fork_digest = spec.compute_fork_digest(
+        state.fork.current_version, state.genesis_validators_root
+    )
 
     expected_fork_data_root = spec.hash_tree_root(
-        spec.ForkData(current_version=state.fork.current_version,
-                      genesis_validators_root=state.genesis_validators_root))
+        spec.ForkData(
+            current_version=state.fork.current_version,
+            genesis_validators_root=state.genesis_validators_root,
+        )
+    )
     expected_fork_digest = spec.ForkDigest(expected_fork_data_root[:4])
 
     assert actual_fork_digest == expected_fork_digest
@@ -348,7 +377,9 @@ def test_get_attestation_signature_phase0(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     attestation = get_valid_attestation(spec, state, signed=False)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+    domain = spec.get_domain(
+        state, spec.DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch
+    )
 
     run_get_signature_test(
         spec=spec,
@@ -366,12 +397,18 @@ def test_get_attestation_signature_phase0(spec, state):
 def test_compute_subnet_for_attestation(spec, state):
     for committee_idx in range(spec.MAX_COMMITTEES_PER_SLOT):
         for slot in range(state.slot, state.slot + spec.SLOTS_PER_EPOCH):
-            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot))
-            actual_subnet_id = spec.compute_subnet_for_attestation(committees_per_slot, slot, committee_idx)
+            committees_per_slot = spec.get_committee_count_per_slot(
+                state, spec.compute_epoch_at_slot(slot)
+            )
+            actual_subnet_id = spec.compute_subnet_for_attestation(
+                committees_per_slot, slot, committee_idx
+            )
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
-            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.config.ATTESTATION_SUBNET_COUNT
+            expected_subnet_id = (
+                committees_since_epoch_start + committee_idx
+            ) % spec.config.ATTESTATION_SUBNET_COUNT
 
             assert actual_subnet_id == expected_subnet_id
 
@@ -386,7 +423,9 @@ def test_get_slot_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     slot = spec.Slot(10)
-    domain = spec.get_domain(state, spec.DOMAIN_SELECTION_PROOF, spec.compute_epoch_at_slot(slot))
+    domain = spec.get_domain(
+        state, spec.DOMAIN_SELECTION_PROOF, spec.compute_epoch_at_slot(slot)
+    )
     run_get_signature_test(
         spec=spec,
         state=state,
@@ -425,14 +464,18 @@ def test_get_aggregate_signature(spec, state):
     attesting_pubkeys = []
     slot = state.slot
     committee_index = 0
-    attestation_data = build_attestation_data(spec, state, slot=slot, index=committee_index)
+    attestation_data = build_attestation_data(
+        spec, state, slot=slot, index=committee_index
+    )
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation_data.slot,
         attestation_data.index,
     )
     committee_size = len(beacon_committee)
-    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
+    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        *([0] * committee_size)
+    )
     for i, validator_index in enumerate(beacon_committee):
         bits = aggregation_bits.copy()
         bits[i] = True
@@ -440,13 +483,17 @@ def test_get_aggregate_signature(spec, state):
             spec.Attestation(
                 data=attestation_data,
                 aggregation_bits=bits,
-                signature=spec.get_attestation_signature(state, attestation_data, privkeys[validator_index]),
+                signature=spec.get_attestation_signature(
+                    state, attestation_data, privkeys[validator_index]
+                ),
             )
         )
         attesting_pubkeys.append(state.validators[validator_index].pubkey)
     assert len(attestations) > 0
     signature = spec.get_aggregate_signature(attestations)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    domain = spec.get_domain(
+        state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch
+    )
     signing_root = spec.compute_signing_root(attestation_data, domain)
     assert bls.FastAggregateVerify(attesting_pubkeys, signing_root, signature)
 
@@ -458,10 +505,14 @@ def test_get_aggregate_and_proof(spec, state):
     privkey = privkeys[0]
     aggregator_index = spec.ValidatorIndex(10)
     aggregate = get_mock_aggregate(spec)
-    aggregate_and_proof = spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
+    aggregate_and_proof = spec.get_aggregate_and_proof(
+        state, aggregator_index, aggregate, privkey
+    )
     assert aggregate_and_proof.aggregator_index == aggregator_index
     assert aggregate_and_proof.aggregate == aggregate
-    assert aggregate_and_proof.selection_proof == spec.get_slot_signature(state, aggregate.data.slot, privkey)
+    assert aggregate_and_proof.selection_proof == spec.get_slot_signature(
+        state, aggregate.data.slot, privkey
+    )
 
 
 @with_all_phases
@@ -471,8 +522,14 @@ def test_get_aggregate_and_proof_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     aggregate = get_mock_aggregate(spec)
-    aggregate_and_proof = spec.get_aggregate_and_proof(state, spec.ValidatorIndex(1), aggregate, privkey)
-    domain = spec.get_domain(state, spec.DOMAIN_AGGREGATE_AND_PROOF, spec.compute_epoch_at_slot(aggregate.data.slot))
+    aggregate_and_proof = spec.get_aggregate_and_proof(
+        state, spec.ValidatorIndex(1), aggregate, privkey
+    )
+    domain = spec.get_domain(
+        state,
+        spec.DOMAIN_AGGREGATE_AND_PROOF,
+        spec.compute_epoch_at_slot(aggregate.data.slot),
+    )
     run_get_signature_test(
         spec=spec,
         state=state,

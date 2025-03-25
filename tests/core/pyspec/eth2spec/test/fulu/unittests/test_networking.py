@@ -36,7 +36,9 @@ def compute_data_column_sidecar(spec, state):
     )
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
     return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)[0]
@@ -152,7 +154,9 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @with_fulu_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
+def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
+    spec, state
+):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -161,7 +165,9 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
 @with_fulu_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
+def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(
+    spec, state
+):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -180,5 +186,7 @@ def test_compute_subnet_for_data_column_sidecar(spec):
     # no duplicates
     assert len(subnet_results) == len(set(subnet_results))
     # next one should be duplicate
-    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    next_subnet = spec.compute_subnet_for_data_column_sidecar(
+        spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    )
     assert next_subnet == subnet_results[0]

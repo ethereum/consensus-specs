@@ -13,7 +13,10 @@ def set_some_activations(spec, state, rng, activation_epoch=None):
     selected_indices = []
     for index in range(num_validators):
         # If is slashed or exiting, skip
-        if state.validators[index].slashed or state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH:
+        if (
+            state.validators[index].slashed
+            or state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH
+        ):
             continue
         # Set ~1/10 validators' activation_eligibility_epoch and activation_epoch
         if rng.randrange(num_validators) < num_validators // 10:
@@ -32,20 +35,32 @@ def set_some_new_deposits(spec, state, rng):
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
         # If not already active, skip
-        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
+        if not spec.is_active_validator(
+            state.validators[index], spec.get_current_epoch(state)
+        ):
             continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
             if rng.choice([True, False]):
                 # Set ~half of selected to eligible for activation
-                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
+                state.validators[
+                    index
+                ].activation_eligibility_epoch = spec.get_current_epoch(state)
             else:
                 # The validators that just made a deposit
                 deposited_indices.append(index)
     return deposited_indices
 
 
-def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, withdrawable_epoch=None, from_epoch=None):
+def exit_random_validators(
+    spec,
+    state,
+    rng,
+    fraction=0.5,
+    exit_epoch=None,
+    withdrawable_epoch=None,
+    from_epoch=None,
+):
     """
     Set some validators' exit_epoch and withdrawable_epoch.
 
@@ -69,7 +84,9 @@ def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, with
         validator = state.validators[index]
         if exit_epoch is None:
             assert withdrawable_epoch is None
-            validator.exit_epoch = rng.choice([current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3])
+            validator.exit_epoch = rng.choice(
+                [current_epoch, current_epoch - 1, current_epoch - 2, current_epoch - 3]
+            )
             # ~1/2 are withdrawable (note, unnatural span between exit epoch and withdrawable epoch)
             if rng.choice([True, False]):
                 validator.withdrawable_epoch = current_epoch
@@ -78,7 +95,10 @@ def exit_random_validators(spec, state, rng, fraction=0.5, exit_epoch=None, with
         else:
             validator.exit_epoch = exit_epoch
             if withdrawable_epoch is None:
-                validator.withdrawable_epoch = validator.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+                validator.withdrawable_epoch = (
+                    validator.exit_epoch
+                    + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+                )
             else:
                 validator.withdrawable_epoch = withdrawable_epoch
 
@@ -106,13 +126,14 @@ def randomize_epoch_participation(spec, state, epoch, rng):
         for pending_attestation in pending_attestations:
             # ~1/3 have bad target
             if rng.randint(0, 2) == 0:
-                pending_attestation.data.target.root = b'\x55' * 32
+                pending_attestation.data.target.root = b"\x55" * 32
             # ~1/3 have bad head
             if rng.randint(0, 2) == 0:
-                pending_attestation.data.beacon_block_root = b'\x66' * 32
+                pending_attestation.data.beacon_block_root = b"\x66" * 32
             # ~50% participation
-            pending_attestation.aggregation_bits = [rng.choice([True, False])
-                                                    for _ in pending_attestation.aggregation_bits]
+            pending_attestation.aggregation_bits = [
+                rng.choice([True, False]) for _ in pending_attestation.aggregation_bits
+            ]
             # Random inclusion delay
             pending_attestation.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
     else:
@@ -131,7 +152,7 @@ def randomize_epoch_participation(spec, state, epoch, rng):
                 if value:
                     flags |= flag
                 else:
-                    flags &= 0xff ^ flag
+                    flags &= 0xFF ^ flag
 
             set_flag(spec.TIMELY_HEAD_FLAG_INDEX, is_timely_correct_head)
             if is_timely_correct_head:
@@ -153,7 +174,9 @@ def randomize_previous_epoch_participation(spec, state, rng=Random(8020)):
     if not is_post_altair(spec):
         state.current_epoch_attestations = []
     else:
-        state.current_epoch_participation = [spec.ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
+        state.current_epoch_participation = [
+            spec.ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))
+        ]
 
 
 def randomize_attestation_participation(spec, state, rng=Random(8020)):
@@ -162,7 +185,9 @@ def randomize_attestation_participation(spec, state, rng=Random(8020)):
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):
+def randomize_state(
+    spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5
+):
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)

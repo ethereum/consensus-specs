@@ -58,7 +58,9 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
 ### `eth_fast_aggregate_verify`
 
 ```python
-def eth_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+def eth_fast_aggregate_verify(
+    pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature
+) -> bool:
     """
     Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
     """

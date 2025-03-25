@@ -71,7 +71,9 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
+    kzg_commitment_inclusion_proof: Vector[
+        Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732
+    ]
 ```
 
 #### Helpers
@@ -83,8 +85,7 @@ class BlobSidecar(Container):
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     inner_gindex = get_generalized_index(
-        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-        blob_sidecar.index
+        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_sidecar.index
     )
     outer_gindex = get_generalized_index(
         BeaconBlockBody,

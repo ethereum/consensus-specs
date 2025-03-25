@@ -1,7 +1,8 @@
 from random import Random
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with, run_epoch_processing_to
+    run_epoch_processing_with,
+    run_epoch_processing_to,
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
@@ -15,7 +16,7 @@ from eth2spec.test.helpers.state import next_epoch
 
 
 def run_process_slashings(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_slashings')
+    yield from run_epoch_processing_with(spec, state, "process_slashings")
 
 
 def slash_validators(spec, state, indices, out_epochs):
@@ -44,16 +45,23 @@ def get_slashing_multiplier(spec):
         return spec.PROPORTIONAL_SLASHING_MULTIPLIER
 
 
-def _compute_expected_correlation_penalty(spec, effective_balance, total_slashed_balance, total_balance):
+def _compute_expected_correlation_penalty(
+    spec, effective_balance, total_slashed_balance, total_balance
+):
     if is_post_electra(spec):
-        return ((get_slashing_multiplier(spec) * total_slashed_balance)
-                // (total_balance // spec.EFFECTIVE_BALANCE_INCREMENT)
-                * (effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT))
+        return (
+            (get_slashing_multiplier(spec) * total_slashed_balance)
+            // (total_balance // spec.EFFECTIVE_BALANCE_INCREMENT)
+            * (effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT)
+        )
     else:
-        return (effective_balance // spec.EFFECTIVE_BALANCE_INCREMENT
-                * (get_slashing_multiplier(spec) * total_slashed_balance)
-                // total_balance
-                * spec.EFFECTIVE_BALANCE_INCREMENT)
+        return (
+            effective_balance
+            // spec.EFFECTIVE_BALANCE_INCREMENT
+            * (get_slashing_multiplier(spec) * total_slashed_balance)
+            // total_balance
+            * spec.EFFECTIVE_BALANCE_INCREMENT
+        )
 
 
 def _setup_process_slashings_test(spec, state, not_slashable_set=set()):
@@ -61,7 +69,7 @@ def _setup_process_slashings_test(spec, state, not_slashable_set=set()):
     slashed_count = min(
         (len(state.validators) // get_slashing_multiplier(spec)) + 1,
         # Can't slash more than validator count!
-        len(state.validators)
+        len(state.validators),
     )
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 
@@ -116,10 +124,13 @@ def test_minimal_penalty(spec, state):
 
     # Just the bare minimum for this one validator
     state.balances[0] = state.validators[0].effective_balance = (
-        spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT)
+        spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    )
     # All the other validators get the maximum.
     for i in range(1, len(state.validators)):
-        state.validators[i].effective_balance = state.balances[i] = spec.MAX_EFFECTIVE_BALANCE
+        state.validators[i].effective_balance = state.balances[
+            i
+        ] = spec.MAX_EFFECTIVE_BALANCE
 
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 
@@ -130,14 +141,15 @@ def test_minimal_penalty(spec, state):
 
     assert total_balance // 3 > total_penalties
 
-    run_epoch_processing_to(spec, state, 'process_slashings')
+    run_epoch_processing_to(spec, state, "process_slashings")
     pre_slash_balances = list(state.balances)
-    yield 'pre', state
+    yield "pre", state
     spec.process_slashings(state)
-    yield 'post', state
+    yield "post", state
 
     expected_penalty = _compute_expected_correlation_penalty(
-        spec, state.validators[0].effective_balance, total_penalties, total_balance)
+        spec, state.validators[0].effective_balance, total_penalties, total_balance
+    )
 
     assert state.balances[0] == pre_slash_balances[0] - expected_penalty
 
@@ -180,21 +192,22 @@ def test_scaled_penalties(spec, state):
     # Process up to the sub-transition, then Hi-jack and get the balances.
     # We just want to test the slashings.
     # But we are not interested in the other balance changes during the same epoch transition.
-    run_epoch_processing_to(spec, state, 'process_slashings')
+    run_epoch_processing_to(spec, state, "process_slashings")
     pre_slash_balances = list(state.balances)
 
     slash_validators(spec, state, slashed_indices, [out_epoch] * slashed_count)
 
-    yield 'pre', state
+    yield "pre", state
     spec.process_slashings(state)
-    yield 'post', state
+    yield "post", state
 
     total_penalties = sum(state.slashings)
 
     for i in slashed_indices:
         v = state.validators[i]
         expected_penalty = _compute_expected_correlation_penalty(
-            spec, v.effective_balance, total_penalties, total_balance)
+            spec, v.effective_balance, total_penalties, total_balance
+        )
         assert state.balances[i] == pre_slash_balances[i] - expected_penalty
 
 
@@ -210,7 +223,9 @@ def test_slashings_with_random_state(spec, state):
     assert len(target_validators) != 0
     assert has_active_balance_differential(spec, state)
 
-    slashed_indices = _setup_process_slashings_test(spec, state, not_slashable_set=target_validators)
+    slashed_indices = _setup_process_slashings_test(
+        spec, state, not_slashable_set=target_validators
+    )
 
     # ensure no accidental slashings of protected set...
     current_target_validators = get_unslashed_exited_validators(spec, state)

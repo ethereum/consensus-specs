@@ -18,7 +18,7 @@ from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal
 
 
 def run_process_challenge_deadlines(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_challenge_deadlines')
+    yield from run_epoch_processing_with(spec, state, "process_challenge_deadlines")
 
 
 @with_phases([CUSTODY_GAME])
@@ -26,13 +26,19 @@ def run_process_challenge_deadlines(spec, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_validator_slashed_after_reveal_deadline(spec, state):
     assert state.validators[0].slashed == 0
-    transition_to(spec, state, spec.get_randao_epoch_for_custody_period(0, 0) * spec.SLOTS_PER_EPOCH)
+    transition_to(
+        spec,
+        state,
+        spec.get_randao_epoch_for_custody_period(0, 0) * spec.SLOTS_PER_EPOCH,
+    )
 
     # Need to run at least one reveal so that not all validators are slashed (otherwise spec fails to find proposers)
     custody_key_reveal = get_valid_custody_key_reveal(spec, state, validator_index=1)
     _, _, _ = run_custody_key_reveal_processing(spec, state, custody_key_reveal)
 
-    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
+    transition_to(
+        spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
+    )
 
     state.validators[0].slashed = 0
 
@@ -52,7 +58,9 @@ def test_validator_not_slashed_after_reveal(spec, state):
 
     assert state.validators[0].slashed == 0
 
-    transition_to(spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH)
+    transition_to(
+        spec, state, state.slot + spec.EPOCHS_PER_CUSTODY_PERIOD * spec.SLOTS_PER_EPOCH
+    )
 
     yield from run_process_challenge_deadlines(spec, state)
 

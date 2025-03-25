@@ -121,11 +121,15 @@ This topic is used to propagate partially aggregated sync committee messages to 
 The following validations MUST pass before forwarding the `signed_contribution_and_proof` on the network; define `contribution_and_proof = signed_contribution_and_proof.message`, `contribution = contribution_and_proof.contribution`, and the following function `get_sync_subcommittee_pubkeys` for convenience:
 
 ```python
-def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64) -> Sequence[BLSPubkey]:
+def get_sync_subcommittee_pubkeys(
+    state: BeaconState, subcommittee_index: uint64
+) -> Sequence[BLSPubkey]:
     # Committees assigned to `slot` sign for `slot - 1`
     # This creates the exceptional logic below when transitioning between sync committee periods
     next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
-    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
+    if compute_sync_committee_period(
+        get_current_epoch(state)
+    ) == compute_sync_committee_period(next_slot_epoch):
         sync_committee = state.current_sync_committee
     else:
         sync_committee = state.next_sync_committee
@@ -133,7 +137,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
     # Return pubkeys for the subcommittee index
     sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
     i = subcommittee_index * sync_subcommittee_size
-    return sync_committee.pubkeys[i:i + sync_subcommittee_size]
+    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
 ```
 
 - _[IGNORE]_ The contribution's slot is for the current slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `contribution.slot == current_slot`.

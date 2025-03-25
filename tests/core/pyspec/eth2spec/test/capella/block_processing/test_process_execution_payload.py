@@ -8,7 +8,9 @@ from eth2spec.test.context import (
     with_capella_and_later,
 )
 from eth2spec.test.helpers.state import next_slot
-from eth2spec.test.bellatrix.block_processing.test_process_execution_payload import run_execution_payload_processing
+from eth2spec.test.bellatrix.block_processing.test_process_execution_payload import (
+    run_execution_payload_processing,
+)
 
 
 @with_capella_and_later
@@ -18,7 +20,9 @@ def test_invalid_bad_parent_hash_first_payload(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.parent_hash = b'\x55' * 32
+    execution_payload.parent_hash = b"\x55" * 32
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False
+    )

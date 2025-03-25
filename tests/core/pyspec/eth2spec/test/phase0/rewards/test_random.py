@@ -6,7 +6,8 @@ from eth2spec.test.context import (
     spec_state_test,
     with_custom_state,
     single_phase,
-    low_balances, misc_balances,
+    low_balances,
+    misc_balances,
 )
 import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.helpers.random import (
@@ -58,7 +59,9 @@ def test_full_random_4(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 def test_full_random_low_balances_0(spec, state):
@@ -66,7 +69,9 @@ def test_full_random_low_balances_0(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 def test_full_random_low_balances_1(spec, state):
@@ -74,7 +79,9 @@ def test_full_random_low_balances_1(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 def test_full_random_misc_balances(spec, state):
@@ -121,7 +128,9 @@ def test_full_random_without_leak_and_current_exit_0(spec, state):
         # patch exited validators to exit in the current epoch
         validator = state.validators[index]
         validator.exit_epoch = current_epoch
-        validator.withdrawable_epoch = current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        validator.withdrawable_epoch = (
+            current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        )
 
     # re-randomize attestation participation for the current epoch
     randomize_attestation_participation(spec, state, rng)

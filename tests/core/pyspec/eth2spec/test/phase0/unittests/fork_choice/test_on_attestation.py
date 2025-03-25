@@ -3,7 +3,12 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.constants import ALL_PHASES
 from eth2spec.test.helpers.forks import is_post_electra, is_post_eip7732
-from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
+from eth2spec.test.helpers.state import (
+    transition_to,
+    state_transition_and_sign_block,
+    next_epoch,
+    next_slot,
+)
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 
 
@@ -32,9 +37,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         )
     # elif spec.fork == SHARDING: TODO: check if vote count for shard blob increased as expected
 
-    assert (
-        store.latest_messages[sample_index] == latest_message
-    )
+    assert store.latest_messages[sample_index] == latest_message
 
 
 @with_all_phases
@@ -51,7 +54,9 @@ def test_on_attestation_current_epoch(spec, state):
 
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH
-    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH
+    assert (
+        spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH
+    )
 
     run_on_attestation(spec, state, store, attestation)
 
@@ -60,7 +65,9 @@ def test_on_attestation_current_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_previous_epoch(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(store, store.time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH)
+    spec.on_tick(
+        store, store.time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    )
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -70,7 +77,10 @@ def test_on_attestation_previous_epoch(spec, state):
 
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH
-    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 1
+    assert (
+        spec.compute_epoch_at_slot(spec.get_current_slot(store))
+        == spec.GENESIS_EPOCH + 1
+    )
 
     run_on_attestation(spec, state, store, attestation)
 
@@ -92,7 +102,10 @@ def test_on_attestation_past_epoch(spec, state):
     # create attestation for past block
     attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH
-    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 2
+    assert (
+        spec.compute_epoch_at_slot(spec.get_current_slot(store))
+        == spec.GENESIS_EPOCH + 2
+    )
 
     run_on_attestation(spec, state, store, attestation, False)
 
@@ -101,7 +114,9 @@ def test_on_attestation_past_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_mismatched_target_and_slot(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(store, store.time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH)
+    spec.on_tick(
+        store, store.time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    )
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -115,7 +130,10 @@ def test_on_attestation_mismatched_target_and_slot(spec, state):
 
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH + 1
     assert spec.compute_epoch_at_slot(attestation.data.slot) == spec.GENESIS_EPOCH
-    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 1
+    assert (
+        spec.compute_epoch_at_slot(spec.get_current_slot(store))
+        == spec.GENESIS_EPOCH + 1
+    )
 
     run_on_attestation(spec, state, store, attestation, False)
 
@@ -124,7 +142,9 @@ def test_on_attestation_mismatched_target_and_slot(spec, state):
 @spec_state_test
 def test_on_attestation_inconsistent_target_and_head(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(store, store.time + 2 * spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH)
+    spec.on_tick(
+        store, store.time + 2 * spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    )
 
     # Create chain 1 as empty chain between genesis and start of 1st epoch
     target_state_1 = state.copy()
@@ -133,22 +153,30 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
     # Create chain 2 with different block in chain from chain 1 from chain 1 from chain 1 from chain 1
     target_state_2 = state.copy()
     diff_block = build_empty_block_for_next_slot(spec, target_state_2)
-    signed_diff_block = state_transition_and_sign_block(spec, target_state_2, diff_block)
+    signed_diff_block = state_transition_and_sign_block(
+        spec, target_state_2, diff_block
+    )
     spec.on_block(store, signed_diff_block)
     next_epoch(spec, target_state_2)
     next_slot(spec, target_state_2)
 
     # Create and store block new head block on target state 1
     head_block = build_empty_block_for_next_slot(spec, target_state_1)
-    signed_head_block = state_transition_and_sign_block(spec, target_state_1, head_block)
+    signed_head_block = state_transition_and_sign_block(
+        spec, target_state_1, head_block
+    )
     spec.on_block(store, signed_head_block)
 
     # Attest to head of chain 1
-    attestation = get_valid_attestation(spec, target_state_1, slot=head_block.slot, signed=False)
+    attestation = get_valid_attestation(
+        spec, target_state_1, slot=head_block.slot, signed=False
+    )
     epoch = spec.compute_epoch_at_slot(attestation.data.slot)
 
     # Set attestation target to be from chain 2
-    attestation.data.target = spec.Checkpoint(epoch=epoch, root=spec.get_block_root(target_state_2, epoch))
+    attestation.data.target = spec.Checkpoint(
+        epoch=epoch, root=spec.get_block_root(target_state_2, epoch)
+    )
     sign_attestation(spec, state, attestation)
 
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH + 1
@@ -174,7 +202,9 @@ def test_on_attestation_target_block_not_in_store(spec, state):
 
     # do not add target block to store
 
-    attestation = get_valid_attestation(spec, state, slot=target_block.slot, signed=True)
+    attestation = get_valid_attestation(
+        spec, state, slot=target_block.slot, signed=True
+    )
     assert attestation.data.target.root == target_block.hash_tree_root()
 
     run_on_attestation(spec, state, store, attestation, False)
@@ -199,7 +229,9 @@ def test_on_attestation_target_checkpoint_not_in_store(spec, state):
 
     # target checkpoint state is not yet in store
 
-    attestation = get_valid_attestation(spec, state, slot=target_block.slot, signed=True)
+    attestation = get_valid_attestation(
+        spec, state, slot=target_block.slot, signed=True
+    )
     assert attestation.data.target.root == target_block.hash_tree_root()
 
     run_on_attestation(spec, state, store, attestation)

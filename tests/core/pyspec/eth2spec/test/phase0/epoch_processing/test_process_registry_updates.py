@@ -3,16 +3,19 @@ from eth2spec.test.helpers.state import next_epoch, next_slots
 from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    spec_test, spec_state_test,
-    with_all_phases, single_phase,
-    with_custom_state, with_presets,
+    spec_test,
+    spec_state_test,
+    with_all_phases,
+    single_phase,
+    with_custom_state,
+    with_presets,
     scaled_churn_balances_min_churn_limit,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_registry_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
+    yield from run_epoch_processing_with(spec, state, "process_registry_updates")
 
 
 @with_all_phases
@@ -30,8 +33,13 @@ def test_add_to_activation_queue(spec, state):
     # validator moved into queue
     assert state.validators[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
     assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
-    assert spec.get_committee_assignment(state, spec.get_current_epoch(state), index) is None
+    assert not spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
+    assert (
+        spec.get_committee_assignment(state, spec.get_current_epoch(state), index)
+        is None
+    )
 
 
 @with_all_phases
@@ -46,19 +54,25 @@ def test_activation_queue_to_activated_if_finalized(spec, state):
 
     # mock validator as having been in queue since latest finalized
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch
+    state.validators[
+        index
+    ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert not spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
 
     yield from run_process_registry_updates(spec, state)
 
     # validator activated for future epoch
     assert state.validators[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
     assert state.validators[index].activation_epoch != spec.FAR_FUTURE_EPOCH
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert not spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
     assert spec.is_active_validator(
         state.validators[index],
-        spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+        spec.compute_activation_exit_epoch(spec.get_current_epoch(state)),
     )
 
 
@@ -74,9 +88,13 @@ def test_activation_queue_no_activation_no_finality(spec, state):
 
     # mock validator as having been in queue only after latest finalized
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch + 1
+    state.validators[index].activation_eligibility_epoch = (
+        state.finalized_checkpoint.epoch + 1
+    )
 
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert not spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
 
     yield from run_process_registry_updates(spec, state)
 
@@ -110,20 +128,30 @@ def test_activation_queue_sorting(spec, state):
     if is_post_electra(spec):
         # NOTE: EIP-7521 changed how activations are gated
         # given the prefix setup here, all validators should be activated
-        activation_epochs = [state.validators[i].activation_epoch for i in range(mock_activations)]
+        activation_epochs = [
+            state.validators[i].activation_epoch for i in range(mock_activations)
+        ]
         assert all([epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs])
     else:
         # the first got in as second
         assert state.validators[0].activation_epoch != spec.FAR_FUTURE_EPOCH
         # the prioritized got in as first
-        assert state.validators[mock_activations - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
+        assert (
+            state.validators[mock_activations - 1].activation_epoch
+            != spec.FAR_FUTURE_EPOCH
+        )
         # the second last is at the end of the queue, and did not make the churn,
         #  hence is not assigned an activation_epoch yet.
-        assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
+        assert (
+            state.validators[mock_activations - 2].activation_epoch
+            == spec.FAR_FUTURE_EPOCH
+        )
         # the one at churn_limit did not make it, it was out-prioritized
         assert state.validators[churn_limit].activation_epoch == spec.FAR_FUTURE_EPOCH
         # but the one in front of the above did
-        assert state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
+        assert (
+            state.validators[churn_limit - 1].activation_epoch != spec.FAR_FUTURE_EPOCH
+        )
 
 
 def run_test_activation_queue_efficiency(spec, state):
@@ -166,16 +194,22 @@ def run_test_activation_queue_efficiency(spec, state):
 @with_all_phases
 @spec_state_test
 def test_activation_queue_efficiency_min(spec, state):
-    assert spec.get_validator_churn_limit(state) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    assert (
+        spec.get_validator_churn_limit(state) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    )
     yield from run_test_activation_queue_efficiency(spec, state)
 
 
 @with_all_phases
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_min_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
 def test_activation_queue_efficiency_scaled(spec, state):
     assert spec.get_validator_churn_limit(state) > spec.config.MIN_PER_EPOCH_CHURN_LIMIT
@@ -186,7 +220,9 @@ def test_activation_queue_efficiency_scaled(spec, state):
 @spec_state_test
 def test_ejection(spec, state):
     index = 0
-    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
     assert state.validators[index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # Mock an ejection
@@ -195,10 +231,12 @@ def test_ejection(spec, state):
     yield from run_process_registry_updates(spec, state)
 
     assert state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH
-    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert spec.is_active_validator(
+        state.validators[index], spec.get_current_epoch(state)
+    )
     assert not spec.is_active_validator(
         state.validators[index],
-        spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+        spec.compute_activation_exit_epoch(spec.get_current_epoch(state)),
     )
 
 
@@ -211,7 +249,9 @@ def run_test_ejection_past_churn_limit(spec, state):
     for i in range(mock_ejections):
         state.validators[i].effective_balance = spec.config.EJECTION_BALANCE
 
-    expected_ejection_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+    expected_ejection_epoch = spec.compute_activation_exit_epoch(
+        spec.get_current_epoch(state)
+    )
 
     yield from run_process_registry_updates(spec, state)
 
@@ -221,10 +261,14 @@ def run_test_ejection_past_churn_limit(spec, state):
         def map_index_to_exit_epoch(i):
             balance_so_far = i * spec.config.EJECTION_BALANCE
             offset_epoch = balance_so_far // per_epoch_churn
-            if spec.config.EJECTION_BALANCE > per_epoch_churn - (balance_so_far % per_epoch_churn):
+            if spec.config.EJECTION_BALANCE > per_epoch_churn - (
+                balance_so_far % per_epoch_churn
+            ):
                 offset_epoch += 1
             return expected_ejection_epoch + offset_epoch
+
     else:
+
         def map_index_to_exit_epoch(i):
             # first third ejected in normal speed
             if i < mock_ejections // 3:
@@ -244,16 +288,22 @@ def run_test_ejection_past_churn_limit(spec, state):
 @with_all_phases
 @spec_state_test
 def test_ejection_past_churn_limit_min(spec, state):
-    assert spec.get_validator_churn_limit(state) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    assert (
+        spec.get_validator_churn_limit(state) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    )
     yield from run_test_ejection_past_churn_limit(spec, state)
 
 
 @with_all_phases
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_min_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
 def test_ejection_past_churn_limit_scaled(spec, state):
     assert spec.get_validator_churn_limit(state) > spec.config.MIN_PER_EPOCH_CHURN_LIMIT
@@ -267,23 +317,35 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
 
     # ready for entrance into activation queue
     activation_queue_start_index = 0
-    activation_queue_indices = list(range(activation_queue_start_index, activation_queue_start_index + num_per_status))
+    activation_queue_indices = list(
+        range(
+            activation_queue_start_index, activation_queue_start_index + num_per_status
+        )
+    )
     for validator_index in activation_queue_indices:
         mock_deposit(spec, state, validator_index)
 
     # ready for activation
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
     activation_start_index = num_per_status
-    activation_indices = list(range(activation_start_index, activation_start_index + num_per_status))
+    activation_indices = list(
+        range(activation_start_index, activation_start_index + num_per_status)
+    )
     for validator_index in activation_indices:
         mock_deposit(spec, state, validator_index)
-        state.validators[validator_index].activation_eligibility_epoch = state.finalized_checkpoint.epoch
+        state.validators[
+            validator_index
+        ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
     # ready for ejection
     ejection_start_index = num_per_status * 2
-    ejection_indices = list(range(ejection_start_index, ejection_start_index + num_per_status))
+    ejection_indices = list(
+        range(ejection_start_index, ejection_start_index + num_per_status)
+    )
     for validator_index in ejection_indices:
-        state.validators[validator_index].effective_balance = spec.config.EJECTION_BALANCE
+        state.validators[
+            validator_index
+        ].effective_balance = spec.config.EJECTION_BALANCE
 
     churn_limit = spec.get_validator_churn_limit(state)
     yield from run_process_registry_updates(spec, state)
@@ -302,8 +364,7 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
         assert validator.activation_epoch != spec.FAR_FUTURE_EPOCH
         assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
         assert spec.is_active_validator(
-            validator,
-            spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+            validator, spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
         )
 
     # any remaining validators do not exit the activation queue
@@ -323,7 +384,8 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
         queue_offset = i // churn_limit
         assert not spec.is_active_validator(
             validator,
-            spec.compute_activation_exit_epoch(spec.get_current_epoch(state)) + queue_offset
+            spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+            + queue_offset,
         )
 
 
@@ -338,7 +400,9 @@ def test_activation_queue_activation_and_ejection__1(spec, state):
 def test_activation_queue_activation_and_ejection__churn_limit(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
     assert churn_limit == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
-    yield from run_test_activation_queue_activation_and_ejection(spec, state, churn_limit)
+    yield from run_test_activation_queue_activation_and_ejection(
+        spec, state, churn_limit
+    )
 
 
 @with_all_phases
@@ -346,33 +410,49 @@ def test_activation_queue_activation_and_ejection__churn_limit(spec, state):
 def test_activation_queue_activation_and_ejection__exceed_churn_limit(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
     assert churn_limit == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
-    yield from run_test_activation_queue_activation_and_ejection(spec, state, churn_limit + 1)
+    yield from run_test_activation_queue_activation_and_ejection(
+        spec, state, churn_limit + 1
+    )
 
 
 @with_all_phases
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_min_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
 def test_activation_queue_activation_and_ejection__scaled_churn_limit(spec, state):
     churn_limit = spec.get_validator_churn_limit(state)
     assert churn_limit > spec.config.MIN_PER_EPOCH_CHURN_LIMIT
-    yield from run_test_activation_queue_activation_and_ejection(spec, state, churn_limit)
+    yield from run_test_activation_queue_activation_and_ejection(
+        spec, state, churn_limit
+    )
 
 
 @with_all_phases
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_min_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
-def test_activation_queue_activation_and_ejection__exceed_scaled_churn_limit(spec, state):
+def test_activation_queue_activation_and_ejection__exceed_scaled_churn_limit(
+    spec, state
+):
     churn_limit = spec.get_validator_churn_limit(state)
     assert churn_limit > spec.config.MIN_PER_EPOCH_CHURN_LIMIT
-    yield from run_test_activation_queue_activation_and_ejection(spec, state, churn_limit * 2)
+    yield from run_test_activation_queue_activation_and_ejection(
+        spec, state, churn_limit * 2
+    )
 
 
 @with_all_phases
@@ -401,7 +481,7 @@ def test_invalid_large_withdrawable_epoch(spec, state):
     try:
         yield from run_process_registry_updates(spec, state)
     except ValueError:
-        yield 'post', None
+        yield "post", None
         return
 
-    raise AssertionError('expected ValueError')
+    raise AssertionError("expected ValueError")

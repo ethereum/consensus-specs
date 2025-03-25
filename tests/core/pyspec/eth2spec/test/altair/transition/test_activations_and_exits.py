@@ -25,15 +25,20 @@ from eth2spec.test.helpers.random import (
 # Exit
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-@with_presets([MINIMAL],
-              reason="only test with enough validators such that at least one exited index is not in sync committee")
-def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
-                                                                      fork_epoch,
-                                                                      spec,
-                                                                      post_spec,
-                                                                      pre_tag,
-                                                                      post_tag):
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+@with_presets(
+    [MINIMAL],
+    reason="only test with enough validators such that at least one exited index is not in sync committee",
+)
+def test_transition_with_one_fourth_exiting_validators_exit_post_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     1/4 validators initiated voluntary exit before the fork,
     and are exiting but still active *after* the fork transition.
@@ -68,30 +73,40 @@ def test_transition_with_one_fourth_exiting_validators_exit_post_fork(state,
 
     # ensure that some of the current sync committee members are exiting
     exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
-    assert any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
-    assert any(set(exited_pubkeys).difference(list(state.current_sync_committee.pubkeys)))
+    assert any(
+        set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys))
+    )
+    assert any(
+        set(exited_pubkeys).difference(list(state.current_sync_committee.pubkeys))
+    )
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     # check state
     for index in exited_indices:
         validator = state.validators[index]
         assert not validator.slashed
-        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
+        assert post_spec.is_active_validator(
+            validator, post_spec.get_current_epoch(state)
+        )
     assert not post_spec.is_in_inactivity_leak(state)
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
-                                                                    fork_epoch,
-                                                                    spec,
-                                                                    post_spec,
-                                                                    pre_tag,
-                                                                    post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_one_fourth_exiting_validators_exit_at_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     1/4 validators initiated voluntary exit before the fork,
     and being exited and inactive *right after* the fork transition.
@@ -128,11 +143,15 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
     for index in exited_indices:
         validator = state.validators[index]
         assert not validator.slashed
-        assert not post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
+        assert not post_spec.is_active_validator(
+            validator, post_spec.get_current_epoch(state)
+        )
     assert not post_spec.is_in_inactivity_leak(state)
 
     exited_pubkeys = [state.validators[index].pubkey for index in exited_indices]
-    some_sync_committee_exited = any(set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys)))
+    some_sync_committee_exited = any(
+        set(exited_pubkeys).intersection(list(state.current_sync_committee.pubkeys))
+    )
     if post_spec.fork == ALTAIR:
         # in Altair fork, the sync committee members would be set with only active validators
         assert not some_sync_committee_exited
@@ -140,7 +159,9 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
         assert some_sync_committee_exited
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state
@@ -151,8 +172,15 @@ def test_transition_with_one_fourth_exiting_validators_exit_at_fork(state,
 #
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_non_empty_activation_queue(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create some deposits before the transition
     """
@@ -163,7 +191,9 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     assert spec.get_current_epoch(state) < fork_epoch
     assert len(deposited_indices) > 0
     for validator_index in deposited_indices:
-        assert not spec.is_active_validator(state.validators[validator_index], spec.get_current_epoch(state))
+        assert not spec.is_active_validator(
+            state.validators[validator_index], spec.get_current_epoch(state)
+        )
 
     yield "pre", state
 
@@ -173,20 +203,31 @@ def test_transition_with_non_empty_activation_queue(state, fork_epoch, spec, pos
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_activation_at_fork_epoch(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create some deposits before the transition
     """
     transition_until_fork(spec, state, fork_epoch)
 
-    selected_indices = set_some_activations(spec, state, rng=random.Random(5566), activation_epoch=fork_epoch)
+    selected_indices = set_some_activations(
+        spec, state, rng=random.Random(5566), activation_epoch=fork_epoch
+    )
 
     assert spec.get_current_epoch(state) < fork_epoch
     assert len(selected_indices) > 0
@@ -203,12 +244,16 @@ def test_transition_with_activation_at_fork_epoch(state, fork_epoch, spec, post_
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     # now they are active
     for validator_index in selected_indices:
         validator = state.validators[validator_index]
-        assert post_spec.is_active_validator(validator, post_spec.get_current_epoch(state))
+        assert post_spec.is_active_validator(
+            validator, post_spec.get_current_epoch(state)
+        )
 
     yield "blocks", blocks
     yield "post", state

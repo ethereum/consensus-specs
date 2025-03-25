@@ -24,7 +24,12 @@ from eth2spec.test.helpers.fork_transition import (
 )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 def test_simple_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     transition_until_fork(spec, state, fork_epoch)
 
@@ -39,13 +44,20 @@ def test_simple_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
@@ -58,10 +70,12 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     # regular state transition until fork:
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     blocks = []
-    blocks.extend([
-        pre_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot)
-    ])
+    blocks.extend(
+        [
+            pre_tag(block)
+            for block in state_transition_across_slots(spec, state, to_slot)
+        ]
+    )
 
     # irregular state transition to handle fork:
     state, block = do_fork(state, spec, post_spec, fork_epoch)
@@ -81,8 +95,15 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=8) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=8)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_randomized_state(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     randomize_state(spec, state)
 
     transition_until_fork(spec, state, fork_epoch)
@@ -96,7 +117,9 @@ def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag
     blocks = []
     # since there are slashed validators, set with_block=False here
     state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
-    slashed_indices = [index for index, validator in enumerate(state.validators) if validator.slashed]
+    slashed_indices = [
+        index for index, validator in enumerate(state.validators) if validator.slashed
+    ]
 
     # continue regular state transition with new spec into next epoch
     transition_to_next_epoch_and_append_blocks(
@@ -112,8 +135,15 @@ def test_transition_randomized_state(state, fork_epoch, spec, post_spec, pre_tag
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_missing_first_post_block(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
     producing blocks for every slot along the way except for the first block
@@ -126,10 +156,12 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     # regular state transition until fork:
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     blocks = []
-    blocks.extend([
-        pre_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot)
-    ])
+    blocks.extend(
+        [
+            pre_tag(block)
+            for block in state_transition_across_slots(spec, state, to_slot)
+        ]
+    )
 
     # irregular state transition to handle fork:
     state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
@@ -142,15 +174,24 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
 
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
-    expected_slots = set(range(1, state.slot + 1)).difference(set([fork_epoch * spec.SLOTS_PER_EPOCH]))
+    expected_slots = set(range(1, state.slot + 1)).difference(
+        set([fork_epoch * spec.SLOTS_PER_EPOCH])
+    )
     assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_missing_last_pre_fork_block(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
     producing blocks for every slot along the way except for the last block
@@ -164,10 +205,14 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
     last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     to_slot = last_slot_of_pre_fork
     blocks = []
-    blocks.extend([
-        pre_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot, block_filter=skip_slots(last_slot_of_pre_fork))
-    ])
+    blocks.extend(
+        [
+            pre_tag(block)
+            for block in state_transition_across_slots(
+                spec, state, to_slot, block_filter=skip_slots(last_slot_of_pre_fork)
+            )
+        ]
+    )
 
     # irregular state transition to handle fork:
     state, block = do_fork(state, spec, post_spec, fork_epoch)
@@ -181,15 +226,24 @@ def test_transition_missing_last_pre_fork_block(state, fork_epoch, spec, post_sp
 
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
-    expected_slots = set(range(1, state.slot + 1)).difference(set([last_slot_of_pre_fork]))
+    expected_slots = set(range(1, state.slot + 1)).difference(
+        set([last_slot_of_pre_fork])
+    )
     assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_only_blocks_post_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
     skipping blocks for every slot along the way except for the first block
@@ -203,10 +257,14 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     to_slot = last_slot_of_pre_fork
     blocks = []
-    blocks.extend([
-        pre_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot, block_filter=no_blocks)
-    ])
+    blocks.extend(
+        [
+            pre_tag(block)
+            for block in state_transition_across_slots(
+                spec, state, to_slot, block_filter=no_blocks
+            )
+        ]
+    )
 
     # irregular state transition to handle fork:
     state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
@@ -214,10 +272,14 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     # continue regular state transition with new spec into next epoch
     to_slot = post_spec.SLOTS_PER_EPOCH + state.slot
     last_slot = (fork_epoch + 1) * post_spec.SLOTS_PER_EPOCH
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot, block_filter=only_at(last_slot))
-    ])
+    blocks.extend(
+        [
+            post_tag(block)
+            for block in state_transition_across_slots(
+                post_spec, state, to_slot, block_filter=only_at(last_slot)
+            )
+        ]
+    )
 
     assert state.slot % post_spec.SLOTS_PER_EPOCH == 0
     assert post_spec.get_current_epoch(state) == fork_epoch + 1
@@ -230,14 +292,16 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     yield "post", state
 
 
-def _run_transition_test_with_attestations(state,
-                                           fork_epoch,
-                                           spec,
-                                           post_spec,
-                                           pre_tag,
-                                           post_tag,
-                                           participation_fn=None,
-                                           expect_finality=True):
+def _run_transition_test_with_attestations(
+    state,
+    fork_epoch,
+    spec,
+    post_spec,
+    pre_tag,
+    post_tag,
+    participation_fn=None,
+    expect_finality=True,
+):
     yield "pre", state
 
     current_epoch = spec.get_current_epoch(state)
@@ -304,27 +368,47 @@ def _run_transition_test_with_attestations(state,
     assert len(blocks) == (fork_epoch + 3) * post_spec.SLOTS_PER_EPOCH + 1
     assert len(blocks) == len(set(blocks))
 
-    blocks_without_attestations = [block for block in blocks if len(block.message.body.attestations) == 0]
+    blocks_without_attestations = [
+        block for block in blocks if len(block.message.body.attestations) == 0
+    ]
     assert len(blocks_without_attestations) == 2
     slots_without_attestations = [b.message.slot for b in blocks_without_attestations]
 
-    assert set(slots_without_attestations) == set([spec.SLOTS_PER_EPOCH, fork_epoch * spec.SLOTS_PER_EPOCH])
+    assert set(slots_without_attestations) == set(
+        [spec.SLOTS_PER_EPOCH, fork_epoch * spec.SLOTS_PER_EPOCH]
+    )
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_finality(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_finality(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
     including attestations so as to produce finality through the fork boundary.
     """
-    yield from _run_transition_test_with_attestations(state, fork_epoch, spec, post_spec, pre_tag, post_tag)
+    yield from _run_transition_test_with_attestations(
+        state, fork_epoch, spec, post_spec, pre_tag, post_tag
+    )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_random_three_quarters_participation(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_random_three_quarters_participation(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the epoch after the ``fork_epoch``,
     including attestations so as to produce finality through the fork boundary.
@@ -346,12 +430,19 @@ def test_transition_with_random_three_quarters_participation(state, fork_epoch, 
         post_spec,
         pre_tag,
         post_tag,
-        participation_fn=_drop_random_quarter
+        participation_fn=_drop_random_quarter,
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_random_half_participation(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_random_half_participation(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     rng = random.Random(2020)
 
     def _drop_random_half(_slot, _index, indices):
@@ -370,12 +461,19 @@ def test_transition_with_random_half_participation(state, fork_epoch, spec, post
         pre_tag,
         post_tag,
         participation_fn=_drop_random_half,
-        expect_finality=False
+        expect_finality=False,
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=3)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_no_attestations_until_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Transition from the initial ``state`` to the ``fork_epoch`` with no attestations,
     then transition forward with enough attestations to finalize the fork epoch.
@@ -387,10 +485,12 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
     # regular state transition until fork:
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     blocks = []
-    blocks.extend([
-        pre_tag(block) for block in
-        state_transition_across_slots(spec, state, to_slot)
-    ])
+    blocks.extend(
+        [
+            pre_tag(block)
+            for block in state_transition_across_slots(spec, state, to_slot)
+        ]
+    )
 
     # irregular state transition to handle fork:
     state, block = do_fork(state, spec, post_spec, fork_epoch)
@@ -420,8 +520,15 @@ def test_transition_with_no_attestations_until_after_fork(state, fork_epoch, spe
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_non_empty_historical_roots(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Test with non-empty pre-state `state.historical_roots`.
 
@@ -429,7 +536,7 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     Therefore, we need to fill in `historical_roots` with non-empty value.
     """
     # fill in historical_roots with non-empty values
-    pre_historical_roots = [b'\x56' * 32]
+    pre_historical_roots = [b"\x56" * 32]
     state.historical_roots = pre_historical_roots
 
     transition_until_fork(spec, state, fork_epoch)
@@ -445,7 +552,9 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     blocks.append(post_tag(block))
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state

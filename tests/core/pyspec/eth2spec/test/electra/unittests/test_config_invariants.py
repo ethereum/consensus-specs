@@ -19,10 +19,16 @@ def test_processing_pending_partial_withdrawals(spec):
 @spec_test
 @single_phase
 def test_networking(spec):
-    assert spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
     assert (
-        spec.config.MAX_REQUEST_BLOB_SIDECARS_ELECTRA ==
-        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+        spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+    )
+    assert (
+        spec.config.MAX_REQUEST_BLOB_SIDECARS_ELECTRA
+        == spec.config.MAX_REQUEST_BLOCKS_DENEB
+        * spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     )
     # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
-    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT_ELECTRA == spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+    assert (
+        spec.config.BLOB_SIDECAR_SUBNET_COUNT_ELECTRA
+        == spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+    )

@@ -23,7 +23,9 @@ from eth2spec.debug.random_value import (
 
 
 def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
-    opaque_tx, blobs, blob_kzg_commitments, proofs = get_sample_blob_tx(spec, blob_count=1)
+    opaque_tx, blobs, blob_kzg_commitments, proofs = get_sample_blob_tx(
+        spec, blob_count=1
+    )
     if rng is None:
         block = build_empty_block_for_next_slot(spec, state)
     else:
@@ -36,19 +38,25 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
             chaos=True,
         )
     if is_post_eip7732(spec):
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-            blob_kzg_commitments
-        )
+        blob_kzg_commitments = spec.List[
+            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+        ](blob_kzg_commitments)
         kzg_root = blob_kzg_commitments.hash_tree_root()
-        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
+        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = (
+            kzg_root
+        )
     else:
         block.body.blob_kzg_commitments = blob_kzg_commitments
         block.body.execution_payload.transactions = [opaque_tx]
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
 
     signed_block = sign_block(spec, state, block, proposer_index=0)
     if is_post_eip7732(spec):
-        blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_commitments, proofs)
+        blob_sidecars = spec.get_blob_sidecars(
+            signed_block, blobs, blob_kzg_commitments, proofs
+        )
     else:
         blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, proofs)
     blob_index = 0
@@ -60,7 +68,7 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
     if is_post_eip7732(spec):
         inner_gindex = spec.get_generalized_index(
             spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK],
-            blob_index
+            blob_index,
         )
         outer_gindex = spec.get_generalized_index(
             spec.BeaconBlockBody,
@@ -70,12 +78,14 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
         )
         gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
     else:
-        gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', blob_index)
+        gindex = spec.get_generalized_index(
+            spec.BeaconBlockBody, "blob_kzg_commitments", blob_index
+        )
 
     yield "proof", {
         "leaf": "0x" + blob_sidecar.kzg_commitment.hash_tree_root().hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in kzg_commitment_inclusion_proof]
+        "branch": ["0x" + root.hex() for root in kzg_commitment_inclusion_proof],
     }
 
     assert spec.is_valid_merkle_branch(

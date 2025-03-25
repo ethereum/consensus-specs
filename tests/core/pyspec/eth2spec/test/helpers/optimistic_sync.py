@@ -42,9 +42,13 @@ class PayloadStatusV1:
     @property
     def formatted_output(self):
         return {
-            'status': str(self.status.value),
-            'latest_valid_hash': encode_hex(self.latest_valid_hash) if self.latest_valid_hash is not None else None,
-            'validation_error': str(self.validation_error) if self.validation_error is not None else None
+            "status": str(self.status.value),
+            "latest_valid_hash": encode_hex(self.latest_valid_hash)
+            if self.latest_valid_hash is not None
+            else None,
+            "validation_error": str(self.validation_error)
+            if self.validation_error is not None
+            else None,
         }
 
 
@@ -66,7 +70,6 @@ def get_optimistic_store(spec, anchor_state, anchor_block):
     opt_store = spec.OptimisticStore(
         optimistic_roots=set(),
         head_block_root=anchor_block.hash_tree_root(),
-
     )
     anchor_block_root = anchor_block.hash_tree_root()
     opt_store.blocks[anchor_block_root] = anchor_block.copy()
@@ -85,8 +88,14 @@ def get_valid_flag_value(status: PayloadStatusV1Status) -> bool:
         return False
 
 
-def add_optimistic_block(spec, mega_store, signed_block, test_steps,
-                         payload_status=None, status=PayloadStatusV1Status.SYNCING):
+def add_optimistic_block(
+    spec,
+    mega_store,
+    signed_block,
+    test_steps,
+    payload_status=None,
+    status=PayloadStatusV1Status.SYNCING,
+):
     """
     Add a block with optimistic sync logic
 
@@ -103,10 +112,12 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
             payload_status.latest_valid_hash = el_block_hash
 
     mega_store.block_payload_statuses[block_root] = payload_status
-    test_steps.append({
-        'block_hash': encode_hex(el_block_hash),
-        'payload_status': payload_status.formatted_output,
-    })
+    test_steps.append(
+        {
+            "block_hash": encode_hex(el_block_hash),
+            "payload_status": payload_status.formatted_output,
+        }
+    )
 
     # Set `valid` flag
     valid = get_valid_flag_value(payload_status.status)
@@ -118,18 +129,27 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
         # Update parent status to INVALID
         assert payload_status.latest_valid_hash is not None
         current_block = block
-        while el_block_hash != payload_status.latest_valid_hash and el_block_hash != spec.Bytes32():
+        while (
+            el_block_hash != payload_status.latest_valid_hash
+            and el_block_hash != spec.Bytes32()
+        ):
             current_block_root = current_block.hash_tree_root()
             assert current_block_root in mega_store.block_payload_statuses
-            mega_store.block_payload_statuses[current_block_root].status = PayloadStatusV1Status.INVALID
+            mega_store.block_payload_statuses[
+                current_block_root
+            ].status = PayloadStatusV1Status.INVALID
             # Get parent
             current_block = mega_store.fc_store.blocks[current_block.parent_root]
             el_block_hash = current_block.body.execution_payload.block_hash
 
-    yield from add_block(spec, mega_store.fc_store, signed_block,
-                         valid=valid,
-                         test_steps=test_steps,
-                         is_optimistic=True)
+    yield from add_block(
+        spec,
+        mega_store.fc_store,
+        signed_block,
+        valid=valid,
+        test_steps=test_steps,
+        is_optimistic=True,
+    )
 
     # Update stores
     is_optimistic_candidate = spec.is_optimistic_candidate_block(
@@ -141,18 +161,22 @@ def add_optimistic_block(spec, mega_store, signed_block, test_steps,
         mega_store.opt_store.optimistic_roots.add(block_root)
         mega_store.opt_store.blocks[block_root] = signed_block.message.copy()
         if not is_invalidated(mega_store, block_root):
-            mega_store.opt_store.block_states[block_root] = mega_store.fc_store.block_states[block_root].copy()
+            mega_store.opt_store.block_states[
+                block_root
+            ] = mega_store.fc_store.block_states[block_root].copy()
 
     # Clean up the invalidated blocks
     clean_up_store(mega_store)
 
     # Update head
     mega_store.opt_store.head_block_root = get_opt_head_block_root(spec, mega_store)
-    test_steps.append({
-        'checks': {
-            'head': get_formatted_optimistic_head_output(mega_store),
+    test_steps.append(
+        {
+            "checks": {
+                "head": get_formatted_optimistic_head_output(mega_store),
+            }
         }
-    })
+    )
 
 
 def get_opt_head_block_root(spec, mega_store):
@@ -167,7 +191,8 @@ def get_opt_head_block_root(spec, mega_store):
     head = store.justified_checkpoint.root
     while True:
         children = [
-            root for root in blocks.keys()
+            root
+            for root in blocks.keys()
             if (
                 blocks[root].parent_root == head
                 and not is_invalidated(mega_store, root)  # For optimistic sync
@@ -182,7 +207,10 @@ def get_opt_head_block_root(spec, mega_store):
 
 def is_invalidated(mega_store, block_root):
     if block_root in mega_store.block_payload_statuses:
-        return mega_store.block_payload_statuses[block_root].status.alias == PayloadStatusV1StatusAlias.INVALIDATED
+        return (
+            mega_store.block_payload_statuses[block_root].status.alias
+            == PayloadStatusV1StatusAlias.INVALIDATED
+        )
     else:
         return False
 
@@ -191,8 +219,8 @@ def get_formatted_optimistic_head_output(mega_store):
     head = mega_store.opt_store.head_block_root
     slot = mega_store.fc_store.blocks[head].slot
     return {
-        'slot': int(slot),
-        'root': encode_hex(head),
+        "slot": int(slot),
+        "root": encode_hex(head),
     }
 
 

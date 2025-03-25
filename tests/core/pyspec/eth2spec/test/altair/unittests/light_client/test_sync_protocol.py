@@ -53,7 +53,9 @@ def test_process_light_client_update_not_timeout(spec, state):
 
     pre_store = deepcopy(store)
 
-    spec.process_light_client_update(store, update, signature_slot, state.genesis_validators_root)
+    spec.process_light_client_update(
+        store, update, signature_slot, state.genesis_validators_root
+    )
 
     assert store.finalized_header == pre_store.finalized_header
     assert store.best_valid_update == update
@@ -69,7 +71,9 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
     # Forward to slot before next sync committee period so that next block is final one in period
     next_slots(spec, state, spec.UPDATE_TIMEOUT - 2)
-    store_period = spec.compute_sync_committee_period_at_slot(store.optimistic_header.beacon.slot)
+    store_period = spec.compute_sync_committee_period_at_slot(
+        store.optimistic_header.beacon.slot
+    )
     update_period = spec.compute_sync_committee_period_at_slot(state.slot)
     assert store_period == update_period
 
@@ -88,7 +92,9 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
     pre_store = deepcopy(store)
 
-    spec.process_light_client_update(store, update, signature_slot, state.genesis_validators_root)
+    spec.process_light_client_update(
+        store, update, signature_slot, state.genesis_validators_root
+    )
 
     assert store.finalized_header == pre_store.finalized_header
     assert store.best_valid_update == update
@@ -104,7 +110,9 @@ def test_process_light_client_update_timeout(spec, state):
 
     # Forward to next sync committee period
     next_slots(spec, state, spec.UPDATE_TIMEOUT)
-    store_period = spec.compute_sync_committee_period_at_slot(store.optimistic_header.beacon.slot)
+    store_period = spec.compute_sync_committee_period_at_slot(
+        store.optimistic_header.beacon.slot
+    )
     update_period = spec.compute_sync_committee_period_at_slot(state.slot)
     assert store_period + 1 == update_period
 
@@ -123,7 +131,9 @@ def test_process_light_client_update_timeout(spec, state):
 
     pre_store = deepcopy(store)
 
-    spec.process_light_client_update(store, update, signature_slot, state.genesis_validators_root)
+    spec.process_light_client_update(
+        store, update, signature_slot, state.genesis_validators_root
+    )
 
     assert store.finalized_header == pre_store.finalized_header
     assert store.best_valid_update == update
@@ -141,12 +151,16 @@ def test_process_light_client_update_finality_updated(spec, state):
     blocks = []
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
     for epoch in range(3):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+        prev_state, new_blocks, state = next_epoch_with_attestations(
+            spec, state, True, True
+        )
         blocks += new_blocks
     # Ensure that finality checkpoint has changed
     assert state.finalized_checkpoint.epoch == 3
     # Ensure that it's same period
-    store_period = spec.compute_sync_committee_period_at_slot(store.optimistic_header.beacon.slot)
+    store_period = spec.compute_sync_committee_period_at_slot(
+        store.optimistic_header.beacon.slot
+    )
     update_period = spec.compute_sync_committee_period_at_slot(state.slot)
     assert store_period == update_period
 
@@ -155,7 +169,9 @@ def test_process_light_client_update_finality_updated(spec, state):
 
     # Updated finality
     finalized_block = blocks[spec.SLOTS_PER_EPOCH - 1]
-    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(
+        state.finalized_checkpoint.epoch
+    )
     assert finalized_block.message.hash_tree_root() == state.finalized_checkpoint.root
 
     update = create_update(
@@ -168,7 +184,9 @@ def test_process_light_client_update_finality_updated(spec, state):
         participation_rate=1.0,
     )
 
-    spec.process_light_client_update(store, update, signature_slot, state.genesis_validators_root)
+    spec.process_light_client_update(
+        store, update, signature_slot, state.genesis_validators_root
+    )
 
     assert store.finalized_header == update.finalized_header
     assert store.best_valid_update is None

@@ -26,8 +26,9 @@ This document describes how to upgrade existing light client objects based on th
 ### `normalize_merkle_branch`
 
 ```python
-def normalize_merkle_branch(branch: Sequence[Bytes32],
-                            gindex: GeneralizedIndex) -> Sequence[Bytes32]:
+def normalize_merkle_branch(
+    branch: Sequence[Bytes32], gindex: GeneralizedIndex
+) -> Sequence[Bytes32]:
     depth = floorlog2(gindex)
     num_extra = depth - len(branch)
     return [Bytes32()] * num_extra + [*branch]
@@ -47,12 +48,15 @@ def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHea
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_electra(pre: deneb.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_lc_bootstrap_to_electra(
+    pre: deneb.LightClientBootstrap,
+) -> LightClientBootstrap:
     return LightClientBootstrap(
         header=upgrade_lc_header_to_electra(pre.header),
         current_sync_committee=pre.current_sync_committee,
         current_sync_committee_branch=normalize_merkle_branch(
-            pre.current_sync_committee_branch, CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA),
+            pre.current_sync_committee_branch, CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
+        ),
     )
 ```
 
@@ -62,29 +66,36 @@ def upgrade_lc_update_to_electra(pre: deneb.LightClientUpdate) -> LightClientUpd
         attested_header=upgrade_lc_header_to_electra(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
         next_sync_committee_branch=normalize_merkle_branch(
-            pre.next_sync_committee_branch, NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA),
+            pre.next_sync_committee_branch, NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
+        ),
         finalized_header=upgrade_lc_header_to_electra(pre.finalized_header),
         finality_branch=normalize_merkle_branch(
-            pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA),
+            pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA
+        ),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
 ```
 
 ```python
-def upgrade_lc_finality_update_to_electra(pre: deneb.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_electra(
+    pre: deneb.LightClientFinalityUpdate,
+) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_electra(pre.attested_header),
         finalized_header=upgrade_lc_header_to_electra(pre.finalized_header),
         finality_branch=normalize_merkle_branch(
-            pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA),
+            pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA
+        ),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_electra(pre: deneb.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_electra(
+    pre: deneb.LightClientOptimisticUpdate,
+) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_electra(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,

@@ -54,7 +54,10 @@ This ensures that we drop right into the beginning of the shuffling phase but wi
 ```python
 def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:
     # Compute initial unsafe trackers for all validators
-    ks = [get_initial_whisk_k(ValidatorIndex(validator_index), 0) for validator_index in range(len(pre.validators))]
+    ks = [
+        get_initial_whisk_k(ValidatorIndex(validator_index), 0)
+        for validator_index in range(len(pre.validators))
+    ]
     whisk_k_commitments = [get_k_commitment(k) for k in ks]
     whisk_trackers = [get_initial_tracker(k) for k in ks]
 
@@ -106,15 +109,21 @@ def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # Whisk
-        whisk_proposer_trackers=[WhiskTracker() for _ in range(PROPOSER_TRACKERS_COUNT)],  # [New in EIP7441]
-        whisk_candidate_trackers=[WhiskTracker() for _ in range(CANDIDATE_TRACKERS_COUNT)],  # [New in EIP7441]
+        whisk_proposer_trackers=[
+            WhiskTracker() for _ in range(PROPOSER_TRACKERS_COUNT)
+        ],  # [New in EIP7441]
+        whisk_candidate_trackers=[
+            WhiskTracker() for _ in range(CANDIDATE_TRACKERS_COUNT)
+        ],  # [New in EIP7441]
         whisk_trackers=whisk_trackers,  # [New in EIP7441]
         whisk_k_commitments=whisk_k_commitments,  # [New in EIP7441]
     )
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day
     # Use an old epoch when selecting candidates so that we don't get the same seed as in the next candidate selection
-    select_whisk_candidate_trackers(post, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP + 1)))
+    select_whisk_candidate_trackers(
+        post, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP + 1))
+    )
     select_whisk_proposer_trackers(post, epoch)
 
     # Do a final round of candidate selection.

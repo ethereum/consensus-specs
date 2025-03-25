@@ -46,7 +46,10 @@ def test_min_balance_exit(spec, state):
     assert state.exit_balance_to_consume == churn_limit - spec.MIN_ACTIVATION_BALANCE
     # Check exit epoch and withdrawable epoch
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
+    assert (
+        state.validators[validator_index].withdrawable_epoch
+        == expected_withdrawable_epoch
+    )
     # Check earliest_exit_epoch
     assert state.earliest_exit_epoch == expected_exit_epoch
 
@@ -196,7 +199,9 @@ def test_max_balance_exit(spec, state):
         == expected_withdrawable_epoch
     )
     # Check exit_balance_to_consume
-    assert state.exit_balance_to_consume == (additional_epochs + 1) * churn_limit - to_exit
+    assert (
+        state.exit_balance_to_consume == (additional_epochs + 1) * churn_limit - to_exit
+    )
     # Check earliest_exit_epoch
     assert state.earliest_exit_epoch == expected_exit_epoch
 
@@ -255,7 +260,9 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set validator effective balance to a multiple of churn_limit
     epochs_to_consume = 3
-    state.validators[validator_index].effective_balance = epochs_to_consume * churn_limit
+    state.validators[validator_index].effective_balance = (
+        epochs_to_consume * churn_limit
+    )
 
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     signed_voluntary_exit = sign_voluntary_exit(
@@ -269,7 +276,8 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     # Validator consumes churn limit fully in epochs_to_consume epochs
     expected_exit_epoch = (
         spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
-        + epochs_to_consume - 1
+        + epochs_to_consume
+        - 1
     )
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY

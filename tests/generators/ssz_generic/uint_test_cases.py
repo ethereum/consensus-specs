@@ -48,13 +48,15 @@ def generate_random_uint_test_cases():
 def generate_uint_wrong_length_test_cases():
     for bit_size in BIT_SIZES:
         sedes = UInt(bit_size)
-        lengths = sorted({
-            0,
-            sedes.length // 2,
-            sedes.length - 1,
-            sedes.length + 1,
-            sedes.length * 2,
-        })
+        lengths = sorted(
+            {
+                0,
+                sedes.length // 2,
+                sedes.length - 1,
+                sedes.length + 1,
+                sedes.length * 2,
+            }
+        )
         for length in lengths:
             for _ in range(RANDOM_TEST_CASES_PER_LENGTH):
                 tags = tuple(["atomic", "uint", "wrong_length"])
@@ -72,7 +74,10 @@ def generate_uint_bounds_test_cases():
     for bit_size in BIT_SIZES:
         sedes = UInt(bit_size)
 
-        for value, tag in ((0, "uint_lower_bound"), (2 ** bit_size - 1, "uint_upper_bound")):
+        for value, tag in (
+            (0, "uint_lower_bound"),
+            (2**bit_size - 1, "uint_upper_bound"),
+        ):
             serial = ssz.encode(value, sedes)
             yield render_test_case(
                 sedes=sedes,
@@ -89,7 +94,7 @@ def generate_uint_out_of_bounds_test_cases():
     for bit_size in BIT_SIZES:
         sedes = UInt(bit_size)
 
-        for value, tag in ((-1, "uint_underflow"), (2 ** bit_size, "uint_overflow")):
+        for value, tag in ((-1, "uint_underflow"), (2**bit_size, "uint_overflow")):
             yield render_test_case(
                 sedes=sedes,
                 valid=False,

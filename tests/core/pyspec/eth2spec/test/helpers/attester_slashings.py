@@ -1,15 +1,24 @@
-from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation, sign_indexed_attestation
+from eth2spec.test.helpers.attestations import (
+    get_valid_attestation,
+    sign_attestation,
+    sign_indexed_attestation,
+)
 from eth2spec.test.helpers.forks import is_post_electra
 
 
-def get_valid_attester_slashing(spec, state, slot=None, signed_1=False, signed_2=False, filter_participant_set=None):
+def get_valid_attester_slashing(
+    spec, state, slot=None, signed_1=False, signed_2=False, filter_participant_set=None
+):
     attestation_1 = get_valid_attestation(
-        spec, state,
-        slot=slot, signed=signed_1, filter_participant_set=filter_participant_set
+        spec,
+        state,
+        slot=slot,
+        signed=signed_1,
+        filter_participant_set=filter_participant_set,
     )
 
     attestation_2 = attestation_1.copy()
-    attestation_2.data.target.root = b'\x01' * 32
+    attestation_2.data.target.root = b"\x01" * 32
 
     if signed_2:
         sign_attestation(spec, state, attestation_2)
@@ -20,10 +29,9 @@ def get_valid_attester_slashing(spec, state, slot=None, signed_1=False, signed_2
     )
 
 
-def get_valid_attester_slashing_by_indices(spec, state,
-                                           indices_1, indices_2=None,
-                                           slot=None,
-                                           signed_1=False, signed_2=False):
+def get_valid_attester_slashing_by_indices(
+    spec, state, indices_1, indices_2=None, slot=None, signed_1=False, signed_2=False
+):
     if indices_2 is None:
         indices_2 = indices_1
 

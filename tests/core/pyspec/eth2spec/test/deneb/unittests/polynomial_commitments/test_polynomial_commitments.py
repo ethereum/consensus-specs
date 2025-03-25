@@ -5,7 +5,7 @@ from eth2spec.test.context import (
     single_phase,
     with_deneb_and_later,
     expect_assertion_error,
-    always_bls
+    always_bls,
 )
 from eth2spec.test.helpers.blob import (
     get_sample_blob,
@@ -16,10 +16,14 @@ from eth2spec.utils import bls
 from eth2spec.utils.bls import BLS_MODULUS
 
 G1 = bls.G1_to_bytes48(bls.G1())
-P1_NOT_IN_G1 = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-                             "0123456789abcdef0123456789abcdef0123456789abcdef")
-P1_NOT_ON_CURVE = bytes.fromhex("8123456789abcdef0123456789abcdef0123456789abcdef" +
-                                "0123456789abcdef0123456789abcdef0123456789abcde0")
+P1_NOT_IN_G1 = bytes.fromhex(
+    "8123456789abcdef0123456789abcdef0123456789abcdef"
+    + "0123456789abcdef0123456789abcdef0123456789abcdef"
+)
+P1_NOT_ON_CURVE = bytes.fromhex(
+    "8123456789abcdef0123456789abcdef0123456789abcdef"
+    + "0123456789abcdef0123456789abcdef0123456789abcde0"
+)
 
 
 def bls_add_one(x):
@@ -27,9 +31,7 @@ def bls_add_one(x):
     Adds "one" (actually bls.G1()) to a compressed group element.
     Useful to compute definitely incorrect proofs.
     """
-    return bls.G1_to_bytes48(
-        bls.add(bls.bytes48_to_G1(x), bls.G1())
-    )
+    return bls.G1_to_bytes48(bls.add(bls.bytes48_to_G1(x), bls.G1()))
 
 
 @with_deneb_and_later
@@ -109,7 +111,9 @@ def test_barycentric_outside_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
+    roots_of_unity_brp = spec.bit_reversal_permutation(
+        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+    )
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n_samples = 12
@@ -143,7 +147,9 @@ def test_barycentric_within_domain(spec):
     """
     rng = random.Random(5566)
     poly_coeff, poly_eval = get_poly_in_both_forms(spec)
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
+    roots_of_unity_brp = spec.bit_reversal_permutation(
+        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+    )
 
     assert len(poly_coeff) == len(poly_eval) == len(roots_of_unity_brp)
     n = len(poly_coeff)
@@ -178,7 +184,9 @@ def test_compute_kzg_proof_within_domain(spec):
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
+    roots_of_unity_brp = spec.bit_reversal_permutation(
+        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+    )
 
     # Let's test some roots of unity
     for _ in range(6):
@@ -281,7 +289,9 @@ def test_bytes_to_bls_field_modulus_minus_one(spec):
     Verify that `bytes_to_bls_field` handles modulus minus one
     """
 
-    spec.bytes_to_bls_field((BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS))
+    spec.bytes_to_bls_field(
+        (BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
+    )
 
 
 @with_deneb_and_later
@@ -292,9 +302,11 @@ def test_bytes_to_bls_field_modulus(spec):
     Verify that `bytes_to_bls_field` fails on BLS modulus
     """
 
-    expect_assertion_error(lambda: spec.bytes_to_bls_field(
-        BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
-    ))
+    expect_assertion_error(
+        lambda: spec.bytes_to_bls_field(
+            BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
+        )
+    )
 
 
 @with_deneb_and_later

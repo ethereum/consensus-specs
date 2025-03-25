@@ -60,13 +60,17 @@ def test_with_slashed_validators(spec, state):
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_attested(spec, state):
-    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(spec, state)
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_attested(
+        spec, state
+    )
 
 
 @with_all_phases
 @spec_state_test
 def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
-    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_did_not_attest(spec, state)
+    yield from rewards_helpers.run_test_some_very_low_effective_balances_that_did_not_attest(
+        spec, state
+    )
 
 
 #
@@ -80,7 +84,8 @@ def test_some_very_low_effective_balances_that_did_not_attest(spec, state):
 @spec_state_test
 def test_full_half_correct_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
-        spec, state,
+        spec,
+        state,
         correct_target=True,
         correct_head=False,
         fraction_incorrect=0.5,
@@ -91,7 +96,8 @@ def test_full_half_correct_target_incorrect_head(spec, state):
 @spec_state_test
 def test_full_correct_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
-        spec, state,
+        spec,
+        state,
         correct_target=True,
         correct_head=False,
         fraction_incorrect=1.0,
@@ -102,7 +108,8 @@ def test_full_correct_target_incorrect_head(spec, state):
 @spec_state_test
 def test_full_half_incorrect_target_incorrect_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
-        spec, state,
+        spec,
+        state,
         correct_target=False,
         correct_head=False,
         fraction_incorrect=0.5,
@@ -113,7 +120,8 @@ def test_full_half_incorrect_target_incorrect_head(spec, state):
 @spec_state_test
 def test_full_half_incorrect_target_correct_head(spec, state):
     yield from rewards_helpers.run_test_full_fraction_incorrect(
-        spec, state,
+        spec,
+        state,
         correct_target=False,
         correct_head=True,
         fraction_incorrect=0.5,
@@ -147,7 +155,9 @@ def test_proposer_not_in_attestations(spec, state):
 @with_phases([PHASE0])
 @spec_state_test
 def test_duplicate_attestations_at_later_slots(spec, state):
-    yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(spec, state)
+    yield from rewards_helpers.run_test_duplicate_attestations_at_later_slots(
+        spec, state
+    )
 
 
 @with_all_phases

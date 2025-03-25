@@ -149,7 +149,9 @@ class IPAProof(Container):
 class VerkleProof(Container):
     other_stems: List[Bytes31, MAX_STEMS]
     depth_extension_present: ByteList[MAX_STEMS]
-    commitments_by_path: List[BanderwagonGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM]
+    commitments_by_path: List[
+        BanderwagonGroupElement, MAX_STEMS * MAX_COMMITMENTS_PER_STEM
+    ]
     d: BanderwagonGroupElement
     ipa_proof: IPAProof
 ```
@@ -171,7 +173,9 @@ class ExecutionWitness(Container):
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
+) -> None:
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -187,7 +191,10 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify the execution payload is valid
     # Pass `versioned_hashes` to Execution Engine
     # Pass `parent_beacon_block_root` to Execution Engine
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment)
+        for commitment in body.blob_kzg_commitments
+    ]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -214,7 +221,9 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
         excess_data_gas=payload.excess_data_gas,
-        execution_witness_root=hash_tree_root(payload.execution_witness),  # [New in EIP6800]
+        execution_witness_root=hash_tree_root(
+            payload.execution_witness
+        ),  # [New in EIP6800]
     )
 ```
 

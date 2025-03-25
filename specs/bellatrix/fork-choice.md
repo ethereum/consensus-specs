@@ -58,11 +58,13 @@ Additionally, if `payload_attributes` is provided, this function sets in motion 
 `head_block_hash` and returns an identifier of initiated process.
 
 ```python
-def notify_forkchoice_updated(self: ExecutionEngine,
-                              head_block_hash: Hash32,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]:
     ...
 ```
 
@@ -125,8 +127,9 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     proposing_on_time = is_proposing_on_time(store)
 
     # Note that this condition is different from `get_proposer_head`
-    current_time_ok = (head_block.slot == current_slot
-                       or (proposal_slot == current_slot and proposing_on_time))
+    current_time_ok = head_block.slot == current_slot or (
+        proposal_slot == current_slot and proposing_on_time
+    )
     single_slot_reorg = parent_slot_ok and current_time_ok
 
     # Check the head weight only if the attestations from the head slot have already been applied.
@@ -139,9 +142,18 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
         head_weak = True
         parent_strong = True
 
-    return all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
-                proposing_reorg_slot, single_slot_reorg,
-                head_weak, parent_strong])
+    return all(
+        [
+            head_late,
+            shuffling_stable,
+            ffg_competitive,
+            finalization_ok,
+            proposing_reorg_slot,
+            single_slot_reorg,
+            head_weak,
+            parent_strong,
+        ]
+    )
 ```
 
 *Note*: The ordering of conditions is a suggestion only. Implementations are free to
@@ -195,7 +207,9 @@ Used by fork-choice handler, `on_block`.
 ```python
 def is_valid_terminal_pow_block(block: PowBlock, parent: PowBlock) -> bool:
     is_total_difficulty_reached = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
-    is_parent_total_difficulty_valid = parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
+    is_parent_total_difficulty_valid = (
+        parent.total_difficulty < TERMINAL_TOTAL_DIFFICULTY
+    )
     return is_total_difficulty_reached and is_parent_total_difficulty_valid
 ```
 
@@ -275,7 +289,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_attesting_interval = (
+        time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    )
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
@@ -285,7 +301,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
-    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
+    update_checkpoints(
+        store, state.current_justified_checkpoint, state.finalized_checkpoint
+    )
 
     # Eagerly compute unrealized justification and finality.
     compute_pulled_up_tip(store, block_root)

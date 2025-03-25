@@ -156,17 +156,30 @@ return bytes(array)
 
 ```python
 # Recursively serialize
-fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
-variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
+fixed_parts = [
+    serialize(element) if not is_variable_size(element) else None for element in value
+]
+variable_parts = [
+    serialize(element) if is_variable_size(element) else b"" for element in value
+]
 
 # Compute and check lengths
-fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
+fixed_lengths = [
+    len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts
+]
 variable_lengths = [len(part) for part in variable_parts]
-assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
+assert sum(fixed_lengths + variable_lengths) < 2 ** (
+    BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE
+)
 
 # Interleave offsets of variable-size parts with fixed-size parts
-variable_offsets = [serialize(uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))]
-fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
+variable_offsets = [
+    serialize(uint32(sum(fixed_lengths + variable_lengths[:i])))
+    for i in range(len(value))
+]
+fixed_parts = [
+    part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)
+]
 
 # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
 return b"".join(fixed_parts + variable_parts)

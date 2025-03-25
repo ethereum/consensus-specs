@@ -20,6 +20,7 @@ from eth2spec.test.helpers.epoch_processing import (
 # Calculating sync committees requires pubkey aggregation, thus all tests are generated with `always_bls`
 #
 
+
 def run_sync_committees_progress_test(spec, state):
     first_sync_committee = state.current_sync_committee.copy()
     second_sync_committee = state.next_sync_committee.copy()
@@ -35,7 +36,7 @@ def run_sync_committees_progress_test(spec, state):
     assert state.current_sync_committee == first_sync_committee
     assert state.next_sync_committee == second_sync_committee
 
-    yield from run_epoch_processing_with(spec, state, 'process_sync_committee_updates')
+    yield from run_epoch_processing_with(spec, state, "process_sync_committee_updates")
 
     # Can compute the third committee having computed final balances in the last epoch
     # of this `EPOCHS_PER_SYNC_COMMITTEE_PERIOD`
@@ -72,14 +73,18 @@ def test_sync_committees_progress_genesis(spec, state):
 def test_sync_committees_progress_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
-    slot_in_next_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    slot_in_next_period = (
+        state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    )
     transition_to(spec, state, slot_in_next_period)
 
     yield from run_sync_committees_progress_test(spec, state)
 
 
 @with_altair_and_later
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 @always_bls
@@ -92,7 +97,9 @@ def test_sync_committees_progress_misc_balances_genesis(spec, state):
 
 
 @with_altair_and_later
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 @always_bls
@@ -100,7 +107,9 @@ def test_sync_committees_progress_misc_balances_genesis(spec, state):
 def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
-    slot_in_next_period = state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    slot_in_next_period = (
+        state.slot + spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    )
     transition_to(spec, state, slot_in_next_period)
 
     yield from run_sync_committees_progress_test(spec, state)
@@ -118,7 +127,7 @@ def test_sync_committees_no_progress_not_at_period_boundary(spec, state):
     first_sync_committee = state.current_sync_committee.copy()
     second_sync_committee = state.next_sync_committee.copy()
 
-    yield from run_epoch_processing_with(spec, state, 'process_sync_committee_updates')
+    yield from run_epoch_processing_with(spec, state, "process_sync_committee_updates")
 
     # Ensure assignments have not changed:
     assert state.current_sync_committee == first_sync_committee

@@ -36,8 +36,11 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
 
 def get_valid_custody_key_reveal(spec, state, period=None, validator_index=None):
     current_epoch = spec.get_current_epoch(state)
-    revealer_index = (spec.get_active_validator_indices(state, current_epoch)[0]
-                      if validator_index is None else validator_index)
+    revealer_index = (
+        spec.get_active_validator_indices(state, current_epoch)[0]
+        if validator_index is None
+        else validator_index
+    )
     revealer = state.validators[revealer_index]
 
     if period is None:
@@ -59,7 +62,9 @@ def bitlist_from_int(max_len, num_bits, n):
     return Bitlist[max_len](*[(n >> i) & 0b1 for i in range(num_bits)])
 
 
-def get_valid_custody_slashing(spec, state, attestation, shard_transition, custody_secret, data, data_index=0):
+def get_valid_custody_slashing(
+    spec, state, attestation, shard_transition, custody_secret, data, data_index=0
+):
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
@@ -82,23 +87,28 @@ def get_valid_custody_slashing(spec, state, attestation, shard_transition, custo
 
     signed_slashing = spec.SignedCustodySlashing(
         message=slashing,
-        signature=bls.Sign(privkeys[whistleblower_index], slashing_root)
+        signature=bls.Sign(privkeys[whistleblower_index], slashing_root),
     )
 
     return signed_slashing
 
 
-def get_valid_chunk_challenge(spec, state, attestation, shard_transition, data_index=None, chunk_index=None):
+def get_valid_chunk_challenge(
+    spec, state, attestation, shard_transition, data_index=None, chunk_index=None
+):
     crosslink_committee = spec.get_beacon_committee(
-        state,
-        attestation.data.slot,
-        attestation.data.index
+        state, attestation.data.slot, attestation.data.index
     )
     responder_index = crosslink_committee[0]
-    data_index = len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
+    data_index = (
+        len(shard_transition.shard_block_lengths) - 1 if not data_index else data_index
+    )
 
-    chunk_count = (shard_transition.shard_block_lengths[data_index]
-                   + spec.BYTES_PER_CUSTODY_CHUNK - 1) // spec.BYTES_PER_CUSTODY_CHUNK
+    chunk_count = (
+        shard_transition.shard_block_lengths[data_index]
+        + spec.BYTES_PER_CUSTODY_CHUNK
+        - 1
+    ) // spec.BYTES_PER_CUSTODY_CHUNK
     chunk_index = chunk_count - 1 if not chunk_index else chunk_index
 
     return spec.CustodyChunkChallenge(
@@ -111,14 +121,22 @@ def get_valid_chunk_challenge(spec, state, attestation, shard_transition, data_i
 
 
 def custody_chunkify(spec, x):
-    chunks = [bytes(x[i:i + spec.BYTES_PER_CUSTODY_CHUNK]) for i in range(0, len(x), spec.BYTES_PER_CUSTODY_CHUNK)]
+    chunks = [
+        bytes(x[i : i + spec.BYTES_PER_CUSTODY_CHUNK])
+        for i in range(0, len(x), spec.BYTES_PER_CUSTODY_CHUNK)
+    ]
     chunks[-1] = chunks[-1].ljust(spec.BYTES_PER_CUSTODY_CHUNK, b"\0")
     return [ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](c) for c in chunks]
 
 
-def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_index,
-                                     block_length_or_custody_data,
-                                     invalid_chunk_data=False):
+def get_valid_custody_chunk_response(
+    spec,
+    state,
+    chunk_challenge,
+    challenge_index,
+    block_length_or_custody_data,
+    invalid_chunk_data=False,
+):
     if isinstance(block_length_or_custody_data, int):
         custody_data = get_custody_test_vector(block_length_or_custody_data)
     else:
@@ -130,8 +148,10 @@ def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_ind
     chunk_index = chunk_challenge.chunk_index
 
     leaf_index = chunk_index + 2**spec.CUSTODY_RESPONSE_DEPTH
-    serialized_length = len(custody_data_block).to_bytes(32, 'little')
-    data_branch = build_proof(custody_data_block.get_backing().get_left(), leaf_index) + [serialized_length]
+    serialized_length = len(custody_data_block).to_bytes(32, "little")
+    data_branch = build_proof(
+        custody_data_block.get_backing().get_left(), leaf_index
+    ) + [serialized_length]
 
     return spec.CustodyChunkResponse(
         challenge_index=challenge_index,
@@ -143,12 +163,18 @@ def get_valid_custody_chunk_response(spec, state, chunk_challenge, challenge_ind
 
 def get_custody_test_vector(bytelength, offset=0):
     ints = bytelength // 4 + 1
-    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[:bytelength]
+    return (b"".join((i + offset).to_bytes(4, "little") for i in range(ints)))[
+        :bytelength
+    ]
 
 
 def get_sample_shard_transition(spec, start_slot, block_lengths):
-    b = [spec.hash_tree_root(ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x)))
-         for x in block_lengths]
+    b = [
+        spec.hash_tree_root(
+            ByteList[spec.MAX_SHARD_BLOCK_SIZE](get_custody_test_vector(x))
+        )
+        for x in block_lengths
+    ]
     shard_transition = spec.ShardTransition(
         start_slot=start_slot,
         shard_block_lengths=block_lengths,
@@ -168,10 +194,13 @@ def get_custody_slashable_test_vector(spec, custody_secret, length, slashable=Tr
     return test_vector
 
 
-def get_custody_slashable_shard_transition(spec, start_slot, block_lengths, custody_secret, slashable=True):
+def get_custody_slashable_shard_transition(
+    spec, start_slot, block_lengths, custody_secret, slashable=True
+):
     shard_transition = get_sample_shard_transition(spec, start_slot, block_lengths)
-    slashable_test_vector = get_custody_slashable_test_vector(spec, custody_secret,
-                                                              block_lengths[0], slashable=slashable)
+    slashable_test_vector = get_custody_slashable_test_vector(
+        spec, custody_secret, block_lengths[0], slashable=slashable
+    )
     block_data = ByteList[spec.MAX_SHARD_BLOCK_SIZE](slashable_test_vector)
     shard_transition.shard_data_roots[0] = spec.hash_tree_root(block_data)
     return shard_transition, slashable_test_vector

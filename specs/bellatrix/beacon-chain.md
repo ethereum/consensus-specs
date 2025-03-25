@@ -143,12 +143,16 @@ class BeaconState(Container):
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    slashings: Vector[
+        Gwei, EPOCHS_PER_SLASHINGS_VECTOR
+    ]  # Per-epoch sums of slashed effective balances
     # Participation
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    justification_bits: Bitvector[
+        JUSTIFICATION_BITS_LENGTH
+    ]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -222,7 +226,10 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
 
 ```python
 def is_merge_transition_block(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return not is_merge_transition_complete(state) and body.execution_payload != ExecutionPayload()
+    return (
+        not is_merge_transition_complete(state)
+        and body.execution_payload != ExecutionPayload()
+    )
 ```
 
 #### `is_execution_enabled`
@@ -251,19 +258,28 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 *Note*: The function `get_inactivity_penalty_deltas` is modified to use `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(
+    state: BeaconState,
+) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     previous_epoch = get_previous_epoch(state)
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+    matching_target_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, previous_epoch
+    )
     for index in get_eligible_validator_indices(state):
         if index not in matching_target_indices:
-            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+            penalty_numerator = (
+                state.validators[index].effective_balance
+                * state.inactivity_scores[index]
+            )
             # [Modified in Bellatrix]
-            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+            penalty_denominator = (
+                INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+            )
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
@@ -275,9 +291,11 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 *Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
-def slash_validator(state: BeaconState,
-                    slashed_index: ValidatorIndex,
-                    whistleblower_index: ValidatorIndex=None) -> None:
+def slash_validator(
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: ValidatorIndex = None,
+) -> None:
     """
     Slash the validator with index ``slashed_index``.
     """
@@ -285,19 +303,27 @@ def slash_validator(state: BeaconState,
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
     validator.slashed = True
-    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    validator.withdrawable_epoch = max(
+        validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
+    )
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX  # [Modified in Bellatrix]
+    slashing_penalty = (
+        validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
+    )  # [Modified in Bellatrix]
     decrease_balance(state, slashed_index, slashing_penalty)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    whistleblower_reward = Gwei(
+        validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT
+    )
     proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+    increase_balance(
+        state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward)
+    )
 ```
 
 ## Beacon chain state transition function
@@ -329,7 +355,9 @@ The Engine API may be used to implement this and similarly defined functions via
 `notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
 
 ```python
-def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def notify_new_payload(
+    self: ExecutionEngine, execution_payload: ExecutionPayload
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
@@ -339,7 +367,9 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
 #### `is_valid_block_hash`
 
 ```python
-def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
+def is_valid_block_hash(
+    self: ExecutionEngine, execution_payload: ExecutionPayload
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -349,14 +379,15 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
 #### `verify_and_notify_new_payload`
 
 ```python
-def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
+def verify_and_notify_new_payload(
+    self: ExecutionEngine, new_payload_request: NewPayloadRequest
+) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
 
-    if b'' in execution_payload.transactions:
+    if b"" in execution_payload.transactions:
         return False
 
     if not self.is_valid_block_hash(execution_payload):
@@ -376,7 +407,9 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [New in Bellatrix]
+        process_execution_payload(
+            state, block.body, EXECUTION_ENGINE
+        )  # [New in Bellatrix]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -388,7 +421,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ##### `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
+) -> None:
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -399,7 +434,9 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify the execution payload is valid
-    assert execution_engine.verify_and_notify_new_payload(NewPayloadRequest(execution_payload=payload))
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(execution_payload=payload)
+    )
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -430,13 +467,21 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,  # [Modified in Bellatrix]
-        total_balance
+        sum(state.slashings)
+        * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,  # [Modified in Bellatrix]
+        total_balance,
     )
     for index, validator in enumerate(state.validators):
-        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+        if (
+            validator.slashed
+            and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
+        ):
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
-            penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
+            penalty_numerator = (
+                validator.effective_balance
+                // increment
+                * adjusted_total_slashing_balance
+            )
             penalty = penalty_numerator // total_balance * increment
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```

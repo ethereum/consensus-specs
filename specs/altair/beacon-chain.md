@@ -183,12 +183,20 @@ class BeaconState(Container):
     # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
+    slashings: Vector[
+        Gwei, EPOCHS_PER_SLASHINGS_VECTOR
+    ]  # Per-epoch sums of slashed effective balances
     # Participation
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Altair]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]  # [Modified in Altair]
+    previous_epoch_participation: List[
+        ParticipationFlags, VALIDATOR_REGISTRY_LIMIT
+    ]  # [Modified in Altair]
+    current_epoch_participation: List[
+        ParticipationFlags, VALIDATOR_REGISTRY_LIMIT
+    ]  # [Modified in Altair]
     # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    justification_bits: Bitvector[
+        JUSTIFICATION_BITS_LENGTH
+    ]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -284,7 +292,9 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     i = 0
     sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
-        shuffled_index = compute_shuffled_index(uint64(i % active_validator_count), active_validator_count, seed)
+        shuffled_index = compute_shuffled_index(
+            uint64(i % active_validator_count), active_validator_count, seed
+        )
         candidate_index = active_validator_indices[shuffled_index]
         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
@@ -313,7 +323,11 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
 
 ```python
 def get_base_reward_per_increment(state: BeaconState) -> Gwei:
-    return Gwei(EFFECTIVE_BALANCE_INCREMENT * BASE_REWARD_FACTOR // integer_squareroot(get_total_active_balance(state)))
+    return Gwei(
+        EFFECTIVE_BALANCE_INCREMENT
+        * BASE_REWARD_FACTOR
+        // integer_squareroot(get_total_active_balance(state))
+    )
 ```
 
 #### `get_base_reward`
@@ -327,14 +341,18 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
     """
-    increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    increments = (
+        state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    )
     return Gwei(increments * get_base_reward_per_increment(state))
 ```
 
 #### `get_unslashed_participating_indices`
 
 ```python
-def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epoch: Epoch) -> Set[ValidatorIndex]:
+def get_unslashed_participating_indices(
+    state: BeaconState, flag_index: int, epoch: Epoch
+) -> Set[ValidatorIndex]:
     """
     Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
@@ -344,16 +362,22 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int, epo
     else:
         epoch_participation = state.previous_epoch_participation
     active_validator_indices = get_active_validator_indices(state, epoch)
-    participating_indices = [i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)]
-    return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
+    participating_indices = [
+        i
+        for i in active_validator_indices
+        if has_flag(epoch_participation[i], flag_index)
+    ]
+    return set(
+        filter(lambda index: not state.validators[index].slashed, participating_indices)
+    )
 ```
 
 #### `get_attestation_participation_flag_indices`
 
 ```python
-def get_attestation_participation_flag_indices(state: BeaconState,
-                                               data: AttestationData,
-                                               inclusion_delay: uint64) -> Sequence[int]:
+def get_attestation_participation_flag_indices(
+    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """
@@ -364,8 +388,13 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 
     # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
-    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    is_matching_target = is_matching_source and data.target.root == get_block_root(
+        state, data.target.epoch
+    )
+    is_matching_head = (
+        is_matching_target
+        and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    )
     assert is_matching_source
 
     participation_flag_indices = []
@@ -382,24 +411,36 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 #### `get_flag_index_deltas`
 
 ```python
-def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_index_deltas(
+    state: BeaconState, flag_index: int
+) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
     rewards = [Gwei(0)] * len(state.validators)
     penalties = [Gwei(0)] * len(state.validators)
     previous_epoch = get_previous_epoch(state)
-    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index, previous_epoch)
+    unslashed_participating_indices = get_unslashed_participating_indices(
+        state, flag_index, previous_epoch
+    )
     weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
-    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
-    unslashed_participating_increments = unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    unslashed_participating_balance = get_total_balance(
+        state, unslashed_participating_indices
+    )
+    unslashed_participating_increments = (
+        unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    )
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
-                reward_numerator = base_reward * weight * unslashed_participating_increments
-                rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
+                reward_numerator = (
+                    base_reward * weight * unslashed_participating_increments
+                )
+                rewards[index] += Gwei(
+                    reward_numerator // (active_increments * WEIGHT_DENOMINATOR)
+                )
         elif flag_index != TIMELY_HEAD_FLAG_INDEX:
             penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
     return rewards, penalties
@@ -408,18 +449,27 @@ def get_flag_index_deltas(state: BeaconState, flag_index: int) -> Tuple[Sequence
 #### Modified `get_inactivity_penalty_deltas`
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(
+    state: BeaconState,
+) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
     rewards = [Gwei(0) for _ in range(len(state.validators))]
     penalties = [Gwei(0) for _ in range(len(state.validators))]
     previous_epoch = get_previous_epoch(state)
-    matching_target_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, previous_epoch)
+    matching_target_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, previous_epoch
+    )
     for index in get_eligible_validator_indices(state):
         if index not in matching_target_indices:
-            penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            penalty_numerator = (
+                state.validators[index].effective_balance
+                * state.inactivity_scores[index]
+            )
+            penalty_denominator = (
+                INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
+            )
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
@@ -432,9 +482,11 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 and use `PROPOSER_WEIGHT` when calculating the proposer reward.
 
 ```python
-def slash_validator(state: BeaconState,
-                    slashed_index: ValidatorIndex,
-                    whistleblower_index: ValidatorIndex=None) -> None:
+def slash_validator(
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: ValidatorIndex = None,
+) -> None:
     """
     Slash the validator with index ``slashed_index``.
     """
@@ -442,18 +494,28 @@ def slash_validator(state: BeaconState,
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
     validator.slashed = True
-    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    validator.withdrawable_epoch = max(
+        validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
+    )
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR)
+    decrease_balance(
+        state,
+        slashed_index,
+        validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR,
+    )
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    whistleblower_reward = Gwei(
+        validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT
+    )
     proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+    increase_balance(
+        state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward)
+    )
 ```
 
 ### Block processing
@@ -476,17 +538,25 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
+    assert (
+        data.slot + MIN_ATTESTATION_INCLUSION_DELAY
+        <= state.slot
+        <= data.slot + SLOTS_PER_EPOCH
+    )
     assert data.index < get_committee_count_per_slot(state, data.target.epoch)
 
     committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(committee)
 
     # Participation flag indices
-    participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
+    participation_flag_indices = get_attestation_participation_flag_indices(
+        state, data, state.slot - data.slot
+    )
 
     # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(
+        state, get_indexed_attestation(state, attestation)
+    )
 
     # Update epoch participation flags
     if data.target.epoch == get_current_epoch(state):
@@ -497,12 +567,18 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
-            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
-                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+            if flag_index in participation_flag_indices and not has_flag(
+                epoch_participation[index], flag_index
+            ):
+                epoch_participation[index] = add_flag(
+                    epoch_participation[index], flag_index
+                )
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward_denominator = (
+        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    )
     proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
@@ -512,17 +588,23 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 *Note*: The function `add_validator_to_registry` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
 
 ```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
+def add_validator_to_registry(
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64,
+) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
     # [New in Altair]
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(
+        state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000)
+    )
+    set_or_append_list(
+        state.current_epoch_participation, index, ParticipationFlags(0b0000_0000)
+    )
     set_or_append_list(state.inactivity_scores, index, uint64(0))
 ```
 
@@ -534,23 +616,46 @@ def add_validator_to_registry(state: BeaconState,
 def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit]
+    participant_pubkeys = [
+        pubkey
+        for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits)
+        if bit
+    ]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
-    signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    assert eth_fast_aggregate_verify(participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature)
+    domain = get_domain(
+        state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot)
+    )
+    signing_root = compute_signing_root(
+        get_block_root_at_slot(state, previous_slot), domain
+    )
+    assert eth_fast_aggregate_verify(
+        participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
+    )
 
     # Compute participant and proposer rewards
-    total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
-    total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
-    max_participant_rewards = Gwei(total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH)
+    total_active_increments = (
+        get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    )
+    total_base_rewards = Gwei(
+        get_base_reward_per_increment(state) * total_active_increments
+    )
+    max_participant_rewards = Gwei(
+        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH
+    )
     participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
-    proposer_reward = Gwei(participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT))
+    proposer_reward = Gwei(
+        participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
+    )
 
     # Apply participant and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]
-    committee_indices = [ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys]
-    for participant_index, participation_bit in zip(committee_indices, sync_aggregate.sync_committee_bits):
+    committee_indices = [
+        ValidatorIndex(all_pubkeys.index(pubkey))
+        for pubkey in state.current_sync_committee.pubkeys
+    ]
+    for participant_index, participation_bit in zip(
+        committee_indices, sync_aggregate.sync_committee_bits
+    ):
         if participation_bit:
             increase_balance(state, participant_index, participant_reward)
             increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
@@ -586,12 +691,18 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Skip FFG updates in the first two epochs to avoid corner cases that might result in modifying this stub.
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
-    previous_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state))
-    current_indices = get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_current_epoch(state))
+    previous_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
+    )
+    current_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, get_current_epoch(state)
+    )
     total_active_balance = get_total_active_balance(state)
     previous_target_balance = get_total_balance(state, previous_indices)
     current_target_balance = get_total_balance(state, current_indices)
-    weigh_justification_and_finalization(state, total_active_balance, previous_target_balance, current_target_balance)
+    weigh_justification_and_finalization(
+        state, total_active_balance, previous_target_balance, current_target_balance
+    )
 ```
 
 #### Inactivity scores
@@ -606,13 +717,17 @@ def process_inactivity_updates(state: BeaconState) -> None:
 
     for index in get_eligible_validator_indices(state):
         # Increase the inactivity score of inactive validators
-        if index in get_unslashed_participating_indices(state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)):
+        if index in get_unslashed_participating_indices(
+            state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
+        ):
             state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
         # Decrease the inactivity score of all eligible validators during a leak-free epoch
         if not is_in_inactivity_leak(state):
-            state.inactivity_scores[index] -= min(INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index])
+            state.inactivity_scores[index] -= min(
+                INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index]
+            )
 ```
 
 #### Rewards and penalties
@@ -625,7 +740,10 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    flag_deltas = [get_flag_index_deltas(state, flag_index) for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))]
+    flag_deltas = [
+        get_flag_index_deltas(state, flag_index)
+        for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))
+    ]
     deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
     for (rewards, penalties) in deltas:
         for index in range(len(state.validators)):
@@ -641,11 +759,20 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
-    adjusted_total_slashing_balance = min(sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance)
+    adjusted_total_slashing_balance = min(
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance
+    )
     for index, validator in enumerate(state.validators):
-        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+        if (
+            validator.slashed
+            and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
+        ):
             increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
-            penalty_numerator = validator.effective_balance // increment * adjusted_total_slashing_balance
+            penalty_numerator = (
+                validator.effective_balance
+                // increment
+                * adjusted_total_slashing_balance
+            )
             penalty = penalty_numerator // total_balance * increment
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
@@ -657,7 +784,9 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = [ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
+    state.current_epoch_participation = [
+        ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))
+    ]
 ```
 
 #### Sync committee updates

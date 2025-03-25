@@ -21,7 +21,9 @@ from eth2spec.test.helpers.state import next_slot
 from eth2spec.test.helpers.forks import is_post_eip7732
 
 
-def run_execution_payload_processing(spec, state, execution_payload, valid=True, execution_valid=True):
+def run_execution_payload_processing(
+    spec, state, execution_payload, valid=True, execution_valid=True
+):
     """
     Run ``process_execution_payload``, yielding:
       - pre-state ('pre')
@@ -55,10 +57,10 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     else:
         body = spec.BeaconBlockBody(execution_payload=execution_payload)
 
-    yield 'pre', state
-    yield 'execution', {'execution_valid': execution_valid}
+    yield "pre", state
+    yield "execution", {"execution_valid": execution_valid}
     if not is_post_eip7732(spec):
-        yield 'body', body
+        yield "body", body
 
     called_new_block = False
 
@@ -71,10 +73,16 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 
     if not valid:
         if is_post_eip7732(spec):
-            expect_assertion_error(lambda: spec.process_execution_payload(state, signed_envelope, TestEngine()))
+            expect_assertion_error(
+                lambda: spec.process_execution_payload(
+                    state, signed_envelope, TestEngine()
+                )
+            )
         else:
-            expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
-        yield 'post', None
+            expect_assertion_error(
+                lambda: spec.process_execution_payload(state, body, TestEngine())
+            )
+        yield "post", None
         return
 
     if is_post_eip7732(spec):
@@ -85,14 +93,15 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
     # Make sure we called the engine
     assert called_new_block
 
-    yield 'post', state
+    yield "post", state
 
     if is_post_eip7732(spec):
         assert state.latest_full_slot == state.slot
         assert state.latest_block_hash == execution_payload.block_hash
     else:
         assert state.latest_execution_payload_header == get_execution_payload_header(
-            spec, state, body.execution_payload)
+            spec, state, body.execution_payload
+        )
 
 
 def run_success_test(spec, state):
@@ -145,7 +154,9 @@ def run_bad_execution_test(spec, state):
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False, execution_valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False, execution_valid=False
+    )
 
 
 @with_bellatrix_until_eip7732
@@ -169,7 +180,7 @@ def test_bad_parent_hash_first_payload(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.parent_hash = b'\x55' * 32
+    execution_payload.parent_hash = b"\x55" * 32
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
@@ -185,17 +196,21 @@ def test_invalid_bad_parent_hash_regular_payload(spec, state):
     execution_payload.parent_hash = spec.Hash32()
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False
+    )
 
 
 def run_bad_prev_randao_test(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.prev_randao = b'\x42' * 32
+    execution_payload.prev_randao = b"\x42" * 32
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False
+    )
 
 
 @with_bellatrix_and_later
@@ -221,7 +236,9 @@ def run_bad_everything_test(spec, state):
     execution_payload.timestamp = 0
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False
+    )
 
 
 @with_bellatrix_and_later
@@ -250,7 +267,9 @@ def run_bad_timestamp_test(spec, state, is_future):
     execution_payload.timestamp = timestamp
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, valid=False)
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, valid=False
+    )
 
 
 @with_bellatrix_and_later
@@ -285,11 +304,13 @@ def run_non_empty_extra_data_test(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.extra_data = b'\x45' * 12
+    execution_payload.extra_data = b"\x45" * 12
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
+    assert (
+        state.latest_execution_payload_header.extra_data == execution_payload.extra_data
+    )
 
 
 @with_bellatrix_until_eip7732
@@ -312,13 +333,15 @@ def run_non_empty_transactions_test(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     num_transactions = 2
     execution_payload.transactions = [
-        spec.Transaction(b'\x99' * 128)
-        for _ in range(num_transactions)
+        spec.Transaction(b"\x99" * 128) for _ in range(num_transactions)
     ]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
+    assert (
+        state.latest_execution_payload_header.transactions_root
+        == execution_payload.transactions.hash_tree_root()
+    )
 
 
 @with_bellatrix_until_eip7732
@@ -339,12 +362,15 @@ def run_zero_length_transaction_test(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.transactions = [spec.Transaction(b'')]
+    execution_payload.transactions = [spec.Transaction(b"")]
     assert len(execution_payload.transactions[0]) == 0
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert state.latest_execution_payload_header.transactions_root == execution_payload.transactions.hash_tree_root()
+    assert (
+        state.latest_execution_payload_header.transactions_root
+        == execution_payload.transactions.hash_tree_root()
+    )
 
 
 @with_bellatrix_until_eip7732
@@ -361,7 +387,9 @@ def test_zero_length_transaction_regular_payload(spec, state):
     yield from run_zero_length_transaction_test(spec, state)
 
 
-def run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=True):
+def run_randomized_non_validated_execution_fields_test(
+    spec, state, rng, execution_valid=True
+):
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
@@ -371,15 +399,19 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
         state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(
-        spec, state,
+        spec,
+        state,
         execution_payload,
-        valid=execution_valid, execution_valid=execution_valid
+        valid=execution_valid,
+        execution_valid=execution_valid,
     )
 
 
 @with_bellatrix_until_eip7732
 @spec_state_test
-def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
+def test_randomized_non_validated_execution_fields_first_payload__execution_valid(
+    spec, state
+):
     rng = Random(1111)
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
@@ -387,7 +419,9 @@ def test_randomized_non_validated_execution_fields_first_payload__execution_vali
 
 @with_bellatrix_until_eip7732
 @spec_state_test
-def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
+def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(
+    spec, state
+):
     rng = Random(2222)
     state = build_state_with_complete_transition(spec, state)
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
@@ -395,15 +429,23 @@ def test_randomized_non_validated_execution_fields_regular_payload__execution_va
 
 @with_bellatrix_until_eip7732
 @spec_state_test
-def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(spec, state):
+def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(
+    spec, state
+):
     rng = Random(3333)
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(
+        spec, state, rng, execution_valid=False
+    )
 
 
 @with_bellatrix_until_eip7732
 @spec_state_test
-def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(spec, state):
+def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(
+    spec, state
+):
     rng = Random(4444)
     state = build_state_with_complete_transition(spec, state)
-    yield from run_randomized_non_validated_execution_fields_test(spec, state, rng, execution_valid=False)
+    yield from run_randomized_non_validated_execution_fields_test(
+        spec, state, rng, execution_valid=False
+    )

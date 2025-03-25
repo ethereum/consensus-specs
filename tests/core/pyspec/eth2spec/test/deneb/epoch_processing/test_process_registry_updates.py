@@ -15,7 +15,7 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_registry_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
+    yield from run_epoch_processing_with(spec, state, "process_registry_updates")
 
 
 def run_test_activation_churn_limit(spec, state):
@@ -23,13 +23,19 @@ def run_test_activation_churn_limit(spec, state):
 
     validator_count_0 = len(state.validators)
 
-    balance = spec.MIN_ACTIVATION_BALANCE if is_post_electra(spec) else spec.MAX_EFFECTIVE_BALANCE
+    balance = (
+        spec.MIN_ACTIVATION_BALANCE
+        if is_post_electra(spec)
+        else spec.MAX_EFFECTIVE_BALANCE
+    )
 
     for i in range(mock_activations):
         index = validator_count_0 + i
         validator = spec.Validator(
             pubkey=pubkeys[index],
-            withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + b'\x56' * 20,
+            withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+            + b"\x00" * 11
+            + b"\x56" * 20,
             activation_eligibility_epoch=0,
             activation_epoch=spec.FAR_FUTURE_EPOCH,
             exit_epoch=spec.FAR_FUTURE_EPOCH,
@@ -60,36 +66,64 @@ def run_test_activation_churn_limit(spec, state):
 
 
 @with_deneb_and_later
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
 def test_activation_churn_limit__greater_than_activation_limit(spec, state):
-    assert spec.get_validator_activation_churn_limit(state) == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-    assert spec.get_validator_churn_limit(state) > spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    assert (
+        spec.get_validator_activation_churn_limit(state)
+        == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
+    assert (
+        spec.get_validator_churn_limit(state)
+        > spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
     yield from run_test_activation_churn_limit(spec, state)
 
 
 @with_deneb_and_later
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit,
-                   threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=scaled_churn_balances_equal_activation_churn_limit,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @single_phase
 def test_activation_churn_limit__equal_to_activation_limit(spec, state):
-    assert spec.get_validator_activation_churn_limit(state) == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-    assert spec.get_validator_churn_limit(state) == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    assert (
+        spec.get_validator_activation_churn_limit(state)
+        == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
+    assert (
+        spec.get_validator_churn_limit(state)
+        == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
     yield from run_test_activation_churn_limit(spec, state)
 
 
 @with_deneb_and_later
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_state_test
 def test_activation_churn_limit__less_than_activation_limit(spec, state):
-    assert spec.get_validator_activation_churn_limit(state) < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-    assert spec.get_validator_churn_limit(state) < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    assert (
+        spec.get_validator_activation_churn_limit(state)
+        < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
+    assert (
+        spec.get_validator_churn_limit(state)
+        < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
     yield from run_test_activation_churn_limit(spec, state)

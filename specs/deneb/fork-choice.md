@@ -51,7 +51,9 @@ The block MUST NOT be considered valid until all valid `Blob`s have been downloa
 *Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
 
 ```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+def is_data_available(
+    beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]
+) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of
@@ -109,7 +111,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_attesting_interval = (
+        time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    )
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
@@ -119,7 +123,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
-    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
+    update_checkpoints(
+        store, state.current_justified_checkpoint, state.finalized_checkpoint
+    )
 
     # Eagerly compute unrealized justification and finality.
     compute_pulled_up_tip(store, block_root)

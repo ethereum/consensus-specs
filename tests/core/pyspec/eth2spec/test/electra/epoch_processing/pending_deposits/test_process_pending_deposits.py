@@ -20,8 +20,7 @@ from eth2spec.test.helpers.constants import MINIMAL
 
 
 def run_process_pending_deposits(spec, state):
-    yield from run_epoch_processing_with(
-        spec, state, 'process_pending_deposits')
+    yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
 
 def _ensure_enough_churn_to_process_deposits(spec, state):
@@ -50,12 +49,14 @@ def _prepare_eth1_bridge_deprecation(spec, state, eth1_bridge_flags):
                 state,
                 pending_deposit.pubkey,
                 pending_deposit.withdrawal_credentials,
-                spec.Gwei(0)
+                spec.Gwei(0),
             )
             state.eth1_deposit_index += 1
 
     # Advance state to make pending deposits finalized
-    advance_finality_to(spec, state, spec.compute_epoch_at_slot(deposit_request_slot) + 1)
+    advance_finality_to(
+        spec, state, spec.compute_epoch_at_slot(deposit_request_slot) + 1
+    )
 
     # Add pending deposits
     for pending_deposit in new_pending_deposits:
@@ -67,11 +68,17 @@ def _prepare_eth1_bridge_deprecation(spec, state, eth1_bridge_flags):
     return state, new_pending_deposits
 
 
-def _check_pending_deposits_induced_new_validators(spec, state, pre_validator_count, applied_pending_deposits):
+def _check_pending_deposits_induced_new_validators(
+    spec, state, pre_validator_count, applied_pending_deposits
+):
     assert pre_validator_count + len(applied_pending_deposits) == len(state.validators)
 
-    eth1_bridge_deposits = [d for d in applied_pending_deposits if d.slot == spec.GENESIS_SLOT]
-    deposit_requests = [d for d in applied_pending_deposits if d.slot > spec.GENESIS_SLOT]
+    eth1_bridge_deposits = [
+        d for d in applied_pending_deposits if d.slot == spec.GENESIS_SLOT
+    ]
+    deposit_requests = [
+        d for d in applied_pending_deposits if d.slot > spec.GENESIS_SLOT
+    ]
 
     # Eth1 bridge deposits should induce new validators in the first place
     for index, deposit in enumerate(eth1_bridge_deposits):
@@ -103,13 +110,17 @@ def test_process_pending_deposits_eth1_bridge_transition_pending(spec, state):
     state.eth1_data.deposit_count = len(state.validators) + 3
     state.deposit_requests_start_index = state.eth1_data.deposit_count
 
-    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(spec, state, [True, True, False])
+    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(
+        spec, state, [True, True, False]
+    )
     assert state.eth1_deposit_index < state.deposit_requests_start_index
 
     yield from run_process_pending_deposits(spec, state)
 
     # Eth1 bridge deposits were applied
-    _check_pending_deposits_induced_new_validators(spec, state, pre_validator_count, new_pending_deposits[:2])
+    _check_pending_deposits_induced_new_validators(
+        spec, state, pre_validator_count, new_pending_deposits[:2]
+    )
     # deposit request was postponed and not processed
     assert state.pending_deposits == new_pending_deposits[2:]
     # deposit_balance_to_consume was reset to 0
@@ -125,7 +136,9 @@ def test_process_pending_deposits_eth1_bridge_transition_not_applied(spec, state
     state.eth1_data.deposit_count = len(state.validators) + 3
     state.deposit_requests_start_index = state.eth1_data.deposit_count
 
-    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(spec, state, [False, True, True])
+    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(
+        spec, state, [False, True, True]
+    )
     assert state.eth1_deposit_index < state.deposit_requests_start_index
 
     yield from run_process_pending_deposits(spec, state)
@@ -146,14 +159,18 @@ def test_process_pending_deposits_eth1_bridge_transition_complete(spec, state):
     state.eth1_data.deposit_count = len(state.validators) + 2
     state.deposit_requests_start_index = state.eth1_data.deposit_count
 
-    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(spec, state, [True, False, True])
+    state, new_pending_deposits = _prepare_eth1_bridge_deprecation(
+        spec, state, [True, False, True]
+    )
     assert state.eth1_deposit_index == state.deposit_requests_start_index
 
     yield from run_process_pending_deposits(spec, state)
 
     # all deposits were applied
     assert state.pending_deposits == []
-    _check_pending_deposits_induced_new_validators(spec, state, pre_validator_count, new_pending_deposits)
+    _check_pending_deposits_induced_new_validators(
+        spec, state, pre_validator_count, new_pending_deposits
+    )
     # deposit_balance_to_consume was reset to 0
     assert state.deposit_balance_to_consume == 0
 
@@ -175,7 +192,7 @@ def test_process_pending_deposits_not_finalized(spec, state):
                 validator_index=pre_validator_count + index,
                 amount=spec.MIN_ACTIVATION_BALANCE,
                 signed=True,
-                slot=state.slot + index
+                slot=state.slot + index,
             )
         )
     new_pending_deposits = state.pending_deposits.copy()
@@ -194,7 +211,9 @@ def test_process_pending_deposits_not_finalized(spec, state):
     assert state.deposit_balance_to_consume == 0
     # second deposit was not processed as it hasn't been finalized
     assert state.pending_deposits == new_pending_deposits[1:]
-    _check_pending_deposits_induced_new_validators(spec, state, pre_validator_count, new_pending_deposits[:1])
+    _check_pending_deposits_induced_new_validators(
+        spec, state, pre_validator_count, new_pending_deposits[:1]
+    )
 
 
 @with_electra_and_later
@@ -204,7 +223,9 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT * 1
     for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):
         wc = state.validators[i].withdrawal_credentials
-        pd = prepare_pending_deposit(spec, i, amount, withdrawal_credentials=wc, signed=True)
+        pd = prepare_pending_deposit(
+            spec, i, amount, withdrawal_credentials=wc, signed=True
+        )
         state.pending_deposits.append(pd)
     new_pending_deposits = state.pending_deposits.copy()
 
@@ -217,10 +238,15 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
     # deposit_balance_to_consume was reset to 0
     assert state.deposit_balance_to_consume == 0
     # no deposits above limit were processed
-    assert state.pending_deposits == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH:]
+    assert (
+        state.pending_deposits
+        == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH :]
+    )
     for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH):
         assert state.balances[i] == pre_balances[i] + amount
-    for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH, spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):
+    for i in range(
+        spec.MAX_PENDING_DEPOSITS_PER_EPOCH, spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2
+    ):
         assert state.balances[i] == pre_balances[i]
 
 
@@ -229,9 +255,7 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
 def test_process_pending_deposits_balance_equal_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state)
-    state.pending_deposits.append(
-        prepare_pending_deposit(spec, index, amount)
-    )
+    state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
     yield from run_process_pending_deposits(spec, state)
@@ -246,9 +270,7 @@ def test_process_pending_deposits_balance_equal_churn(spec, state):
 def test_process_pending_deposits_balance_above_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state) + 1
-    state.pending_deposits.append(
-        prepare_pending_deposit(spec, index, amount)
-    )
+    state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
     yield from run_process_pending_deposits(spec, state)
@@ -259,9 +281,7 @@ def test_process_pending_deposits_balance_above_churn(spec, state):
     wantedBalanceToConsume = spec.get_activation_exit_churn_limit(state)
     assert state.deposit_balance_to_consume == wantedBalanceToConsume
     # deposit is still in the queue
-    assert state.pending_deposits == [
-        prepare_pending_deposit(spec, index, amount)
-    ]
+    assert state.pending_deposits == [prepare_pending_deposit(spec, index, amount)]
 
 
 @with_electra_and_later
@@ -270,9 +290,7 @@ def test_process_pending_deposits_preexisting_churn(spec, state):
     index = 0
     amount = spec.EFFECTIVE_BALANCE_INCREMENT + 1
     state.deposit_balance_to_consume = 2 * amount
-    state.pending_deposits.append(
-        prepare_pending_deposit(spec, index, amount)
-    )
+    state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
     yield from run_process_pending_deposits(spec, state)
@@ -351,9 +369,15 @@ def test_process_pending_deposits_multiple_for_new_validator(spec, state):
 
     # Add pending deposits to the state
     # Provide different amounts so we can tell which were applied
-    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 1, signed=False))
-    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 2, signed=True))
-    state.pending_deposits.append(prepare_pending_deposit(spec, validator_index, amount * 4, signed=True))
+    state.pending_deposits.append(
+        prepare_pending_deposit(spec, validator_index, amount * 1, signed=False)
+    )
+    state.pending_deposits.append(
+        prepare_pending_deposit(spec, validator_index, amount * 2, signed=True)
+    )
+    state.pending_deposits.append(
+        prepare_pending_deposit(spec, validator_index, amount * 4, signed=True)
+    )
 
     yield from run_process_pending_deposits(spec, state)
 
@@ -388,7 +412,9 @@ def test_process_pending_deposits_skipped_deposit_exiting_validator(spec, state)
 
 @with_electra_and_later
 @spec_state_test
-def test_process_pending_deposits_multiple_skipped_deposits_exiting_validators(spec, state):
+def test_process_pending_deposits_multiple_skipped_deposits_exiting_validators(
+    spec, state
+):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     for i in [0, 1, 2]:
         # Append pending deposit for validator i
@@ -468,7 +494,7 @@ def test_process_pending_deposits_mixture_of_skipped_and_above_churn(spec, state
     # second and third deposit still in the queue
     assert state.pending_deposits == [
         prepare_pending_deposit(spec, validator_index=2, amount=amount2),
-        prepare_pending_deposit(spec, validator_index=1, amount=amount1)
+        prepare_pending_deposit(spec, validator_index=1, amount=amount1),
     ]
 
 
@@ -511,9 +537,9 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
     withdraw_epoch = state.validators[0].withdrawable_epoch
     state.slot = spec.SLOTS_PER_EPOCH * (withdraw_epoch + 1)
     # Don't use run_epoch_processing_with to avoid penalties being applied
-    yield 'pre', state
+    yield "pre", state
     spec.process_pending_deposits(state)
-    yield 'post', state
+    yield "post", state
     # First deposit is processed though above churn limit
     assert state.balances[0] == pre_balances[0] + amount
     # Second deposit is not processed because above churn
@@ -538,9 +564,7 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
 def test_process_pending_deposits_scaled_churn(spec, state):
     index = 0
     amount = spec.get_activation_exit_churn_limit(state)
-    state.pending_deposits.append(
-        prepare_pending_deposit(spec, index, amount)
-    )
+    state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
     yield from run_process_pending_deposits(spec, state)

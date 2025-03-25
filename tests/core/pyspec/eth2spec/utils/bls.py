@@ -48,7 +48,7 @@ class py_ecc_Scalar(FQ):
         """
         Raises the self to the power of the given exponent.
         """
-        return self**int(exp)
+        return self ** int(exp)
 
     def inverse(self):
         """
@@ -78,9 +78,9 @@ bls_active = True
 bls = fastest_bls
 Scalar = fastest_bls.Scalar
 
-STUB_SIGNATURE = b'\x11' * 96
-STUB_PUBKEY = b'\x22' * 48
-G2_POINT_AT_INFINITY = b'\xc0' + b'\x00' * 95
+STUB_SIGNATURE = b"\x11" * 96
+STUB_PUBKEY = b"\x22" * 48
+G2_POINT_AT_INFINITY = b"\xc0" + b"\x00" * 95
 STUB_COORDINATES = _signature_to_G2(G2_POINT_AT_INFINITY)
 
 
@@ -128,13 +128,16 @@ def only_with_bls(alt_return=None):
     """
     Decorator factory to make a function only run when BLS is active. Otherwise return the default.
     """
+
     def runner(fn):
         def entry(*args, **kw):
             if bls_active:
                 return fn(*args, **kw)
             else:
                 return alt_return
+
         return entry
+
     return runner
 
 
@@ -155,7 +158,9 @@ def Verify(PK, message, signature):
 def AggregateVerify(pubkeys, messages, signature):
     try:
         if bls == arkworks_bls:  # no signature API in arkworks
-            result = py_ecc_bls.AggregateVerify(list(pubkeys), list(messages), signature)
+            result = py_ecc_bls.AggregateVerify(
+                list(pubkeys), list(messages), signature
+            )
         else:
             result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
     except Exception:
@@ -191,7 +196,7 @@ def Sign(SK, message):
     elif bls == py_ecc_bls:
         return bls.Sign(SK, message)
     else:
-        return bls.Sign(SK.to_bytes(32, 'big'), message)
+        return bls.Sign(SK.to_bytes(32, "big"), message)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
@@ -218,7 +223,7 @@ def SkToPk(SK):
     if bls == py_ecc_bls or bls == arkworks_bls:  # no signature API in arkworks
         return py_ecc_bls.SkToPk(SK)
     else:
-        return bls.SkToPk(SK.to_bytes(32, 'big'))
+        return bls.SkToPk(SK.to_bytes(32, "big"))
 
 
 def pairing_check(values):

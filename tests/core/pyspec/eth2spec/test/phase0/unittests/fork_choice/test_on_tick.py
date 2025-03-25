@@ -77,7 +77,7 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     # Create a block at epoch 1
     next_epoch(spec, state)
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.graffiti = b'\x11' * 32
+    block.body.graffiti = b"\x11" * 32
     state_transition_and_sign_block(spec, state, block)
     store.blocks[block.hash_tree_root()] = block.copy()
     store.block_states[block.hash_tree_root()] = state.copy()
@@ -91,7 +91,7 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     state = init_state.copy()
     next_epoch(spec, state)
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.graffiti = b'\x22' * 32
+    block.body.graffiti = b"\x22" * 32
     state_transition_and_sign_block(spec, state, block)
     store.blocks[block.hash_tree_root()] = block.copy()
     store.block_states[block.hash_tree_root()] = state.copy()

@@ -14,7 +14,9 @@ from eth2spec.test.bellatrix.block_processing.test_process_voluntary_exit import
 @with_deneb_and_later
 @spec_state_test
 @always_bls
-def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch(spec, state):
+def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch(
+    spec, state
+):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
     """
@@ -31,7 +33,9 @@ def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epo
 @with_deneb_and_later
 @spec_state_test
 @always_bls
-def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec, state):
+def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(
+    spec, state
+):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
 

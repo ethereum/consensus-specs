@@ -2,7 +2,7 @@ from eth2spec.utils.hash_function import hash
 from math import log2
 
 
-ZERO_BYTES32 = b'\x00' * 32
+ZERO_BYTES32 = b"\x00" * 32
 
 zerohashes = [ZERO_BYTES32]
 for layer in range(1, 100):
@@ -21,7 +21,9 @@ def calc_merkle_tree_from_leaves(values, layer_count=32):
 
 
 def get_merkle_tree(values, pad_to=None):
-    layer_count = (len(values) - 1).bit_length() if pad_to is None else (pad_to - 1).bit_length()
+    layer_count = (
+        (len(values) - 1).bit_length() if pad_to is None else (pad_to - 1).bit_length()
+    )
     if len(values) == 0:
         return zerohashes[layer_count]
     return calc_merkle_tree_from_leaves(values, layer_count)
@@ -66,7 +68,9 @@ def merkleize_chunks(chunks, limit=None):
         while True:
             if i & (1 << j) == 0:
                 if i == count and j < depth:
-                    h = hash(h + zerohashes[j])  # keep going if we are complementing the void to the next power of 2
+                    h = hash(
+                        h + zerohashes[j]
+                    )  # keep going if we are complementing the void to the next power of 2
                 else:
                     break
             else:

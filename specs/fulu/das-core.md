@@ -83,7 +83,9 @@ class DataColumnSidecar(Container):
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: Vector[
+        Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH
+    ]
 ```
 
 #### `MatrixEntry`
@@ -101,7 +103,9 @@ class MatrixEntry(Container):
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(
+    node_id: NodeID, custody_group_count: uint64
+) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     current_id = uint256(node_id)
@@ -126,13 +130,17 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 ### `compute_columns_for_custody_group`
 
 ```python
-def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[ColumnIndex]:
+def compute_columns_for_custody_group(
+    custody_group: CustodyIndex,
+) -> Sequence[ColumnIndex]:
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
-    return sorted([
-        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
-        for i in range(columns_per_group)
-    ])
+    return sorted(
+        [
+            ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
+            for i in range(columns_per_group)
+        ]
+    )
 ```
 
 ### `compute_matrix`
@@ -149,19 +157,23 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
         for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
-            matrix.append(MatrixEntry(
-                cell=cell,
-                kzg_proof=proof,
-                row_index=blob_index,
-                column_index=cell_index,
-            ))
+            matrix.append(
+                MatrixEntry(
+                    cell=cell,
+                    kzg_proof=proof,
+                    row_index=blob_index,
+                    column_index=cell_index,
+                )
+            )
     return matrix
 ```
 
 ### `recover_matrix`
 
 ```python
-def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) -> Sequence[MatrixEntry]:
+def recover_matrix(
+    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.
 
@@ -170,16 +182,24 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) ->
     """
     matrix = []
     for blob_index in range(blob_count):
-        cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
+        cell_indices = [
+            e.column_index for e in partial_matrix if e.row_index == blob_index
+        ]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
-        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
-        for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
-            matrix.append(MatrixEntry(
-                cell=cell,
-                kzg_proof=proof,
-                row_index=blob_index,
-                column_index=cell_index,
-            ))
+        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(
+            cell_indices, cells
+        )
+        for cell_index, (cell, proof) in enumerate(
+            zip(recovered_cells, recovered_proofs)
+        ):
+            matrix.append(
+                MatrixEntry(
+                    cell=cell,
+                    kzg_proof=proof,
+                    row_index=blob_index,
+                    column_index=cell_index,
+                )
+            )
     return matrix
 ```
 

@@ -2,12 +2,16 @@ from eth2spec.test.context import (
     with_phases,
     with_custom_state,
     with_presets,
-    spec_test, with_state,
-    low_balances, misc_balances, large_validator_set,
+    spec_test,
+    with_state,
+    low_balances,
+    misc_balances,
+    large_validator_set,
 )
 from eth2spec.test.utils import with_meta_tags
 from eth2spec.test.helpers.constants import (
-    ELECTRA, FULU,
+    ELECTRA,
+    FULU,
     MINIMAL,
 )
 from eth2spec.test.helpers.state import (
@@ -57,7 +61,9 @@ def test_fork_many_next_epoch(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_low_balances(spec, phases, state):
@@ -65,7 +71,9 @@ def test_fork_random_low_balances(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_misc_balances(spec, phases, state):
@@ -73,9 +81,14 @@ def test_fork_random_misc_balances(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
+@with_custom_state(
+    balances_fn=large_validator_set,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):

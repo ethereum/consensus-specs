@@ -32,11 +32,13 @@ def with_pow_block_patch(spec, blocks, func):
             if block.block_hash == hash:
                 return block
         raise BlockNotFoundException()
+
     get_pow_block_backup = spec.get_pow_block
     spec.get_pow_block = get_pow_block
 
-    class AtomicBoolean():
+    class AtomicBoolean:
         value = False
+
     is_called = AtomicBoolean()
 
     def wrap(flag: AtomicBoolean):
@@ -57,14 +59,16 @@ def test_all_valid(spec, state):
     # Initialization
     state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec)
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(
+        1
+    )
     pow_block = prepare_random_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
@@ -75,14 +79,18 @@ def test_all_valid(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
         signed_block = state_transition_and_sign_block(spec, state, block)
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, merge_block=True)
+        yield from tick_and_add_block(
+            spec, store, signed_block, test_steps, merge_block=True
+        )
         # valid
         assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     yield from with_pow_block_patch(spec, pow_blocks, run_func)
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_phases([BELLATRIX])
@@ -92,8 +100,8 @@ def test_block_lookup_failed(spec, state):
     # Initialization
     state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -107,13 +115,22 @@ def test_block_lookup_failed(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
         signed_block = state_transition_and_sign_block(spec, state, block)
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True,
-                                      block_not_found=True)
+        yield from tick_and_add_block(
+            spec,
+            store,
+            signed_block,
+            test_steps,
+            valid=False,
+            merge_block=True,
+            block_not_found=True,
+        )
 
     yield from with_pow_block_patch(spec, pow_blocks, run_func)
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_phases([BELLATRIX])
@@ -123,14 +140,16 @@ def test_too_early_for_merge(spec, state):
     # Initialization
     state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec)
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(
+        2
+    )
     pow_block = prepare_random_pow_block(spec)
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
@@ -141,12 +160,16 @@ def test_too_early_for_merge(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
         signed_block = state_transition_and_sign_block(spec, state, block)
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True)
+        yield from tick_and_add_block(
+            spec, store, signed_block, test_steps, valid=False, merge_block=True
+        )
 
     yield from with_pow_block_patch(spec, pow_blocks, run_func)
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_phases([BELLATRIX])
@@ -156,8 +179,8 @@ def test_too_late_for_merge(spec, state):
     # Initialization
     state = build_state_with_incomplete_transition(spec, state)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -174,9 +197,13 @@ def test_too_late_for_merge(spec, state):
     def run_func():
         block = build_empty_block_for_next_slot(spec, state)
         block.body.execution_payload.parent_hash = pow_block.block_hash
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
         signed_block = state_transition_and_sign_block(spec, state, block)
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, valid=False, merge_block=True)
+        yield from tick_and_add_block(
+            spec, store, signed_block, test_steps, valid=False, merge_block=True
+        )
 
     yield from with_pow_block_patch(spec, pow_blocks, run_func)
-    yield 'steps', test_steps
+    yield "steps", test_steps

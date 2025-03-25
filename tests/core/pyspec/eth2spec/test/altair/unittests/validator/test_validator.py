@@ -147,7 +147,7 @@ def test_process_sync_committee_contributions(spec, state):
 @always_bls
 def test_get_sync_committee_message(spec, state):
     validator_index = 0
-    block_root = spec.Root(b'\x12' * 32)
+    block_root = spec.Root(b"\x12" * 32)
     sync_committee_message = spec.get_sync_committee_message(
         state=state,
         block_root=block_root,
@@ -185,13 +185,14 @@ def _get_expected_subnets_by_pubkey(sync_committee_members):
 @spec_state_test
 def test_compute_subnets_for_sync_committee(state, spec):
     # Transition to the head of the next period
-    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    transition_to(
+        spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    )
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
-    assert (
-        spec.compute_sync_committee_period(spec.get_current_epoch(state))
-        == spec.compute_sync_committee_period(next_slot_epoch)
-    )
+    assert spec.compute_sync_committee_period(
+        spec.get_current_epoch(state)
+    ) == spec.compute_sync_committee_period(next_slot_epoch)
     some_sync_committee_members = list(
         (
             _subnet_for_sync_committee_index(spec, i),
@@ -200,7 +201,9 @@ def test_compute_subnets_for_sync_committee(state, spec):
         # use current_sync_committee
         for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
     )
-    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(
+        some_sync_committee_members
+    )
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
@@ -214,13 +217,14 @@ def test_compute_subnets_for_sync_committee(state, spec):
 @spec_state_test
 def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
     # Transition to the end of the period
-    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1)
+    transition_to(
+        spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1
+    )
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
-    assert (
-        spec.compute_sync_committee_period(spec.get_current_epoch(state))
-        != spec.compute_sync_committee_period(next_slot_epoch)
-    )
+    assert spec.compute_sync_committee_period(
+        spec.get_current_epoch(state)
+    ) != spec.compute_sync_committee_period(next_slot_epoch)
     some_sync_committee_members = list(
         (
             _subnet_for_sync_committee_index(spec, i),
@@ -229,7 +233,9 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
         # use next_sync_committee
         for i, pubkey in enumerate(state.next_sync_committee.pubkeys)
     )
-    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
+    expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(
+        some_sync_committee_members
+    )
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
@@ -252,7 +258,11 @@ def test_get_sync_committee_selection_proof(spec, state):
         privkey,
     )
 
-    domain = spec.get_domain(state, spec.DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, spec.compute_epoch_at_slot(slot))
+    domain = spec.get_domain(
+        state,
+        spec.DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF,
+        spec.compute_epoch_at_slot(slot),
+    )
     signing_data = spec.SyncAggregatorSelectionData(
         slot=slot,
         subcommittee_index=subcommittee_index,
@@ -266,7 +276,9 @@ def test_get_sync_committee_selection_proof(spec, state):
 @spec_state_test
 @with_presets([MAINNET], reason="to test against the mainnet SYNC_COMMITTEE_SIZE")
 def test_is_sync_committee_aggregator(spec, state):
-    sample_count = int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
+    sample_count = (
+        int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
+    )
     is_aggregator_count = 0
     for i in range(sample_count):
         signature = spec.hash(i.to_bytes(32, byteorder="little"))
@@ -288,10 +300,12 @@ def test_get_contribution_and_proof(spec, state):
     privkey = privkeys[3]
     contribution = spec.SyncCommitteeContribution(
         slot=10,
-        beacon_block_root=b'\x12' * 32,
+        beacon_block_root=b"\x12" * 32,
         subcommittee_index=1,
-        aggregation_bits=spec.Bitvector[spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT](),
-        signature=b'\x32' * 96,
+        aggregation_bits=spec.Bitvector[
+            spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
+        ](),
+        signature=b"\x32" * 96,
     )
     selection_proof = spec.get_sync_committee_selection_proof(
         state,
@@ -323,12 +337,14 @@ def test_get_contribution_and_proof_signature(spec, state):
         aggregator_index=10,
         contribution=spec.SyncCommitteeContribution(
             slot=10,
-            beacon_block_root=b'\x12' * 32,
+            beacon_block_root=b"\x12" * 32,
             subcommittee_index=1,
-            aggregation_bits=spec.Bitvector[spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT](),
-            signature=b'\x34' * 96,
+            aggregation_bits=spec.Bitvector[
+                spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
+            ](),
+            signature=b"\x34" * 96,
         ),
-        selection_proof=b'\x56' * 96,
+        selection_proof=b"\x56" * 96,
     )
     contribution_and_proof_signature = spec.get_contribution_and_proof_signature(
         state,
@@ -336,6 +352,10 @@ def test_get_contribution_and_proof_signature(spec, state):
         privkey,
     )
     contribution = contribution_and_proof.contribution
-    domain = spec.get_domain(state, spec.DOMAIN_CONTRIBUTION_AND_PROOF, spec.compute_epoch_at_slot(contribution.slot))
+    domain = spec.get_domain(
+        state,
+        spec.DOMAIN_CONTRIBUTION_AND_PROOF,
+        spec.compute_epoch_at_slot(contribution.slot),
+    )
     signing_root = spec.compute_signing_root(contribution_and_proof, domain)
     assert bls.Verify(pubkey, signing_root, contribution_and_proof_signature)

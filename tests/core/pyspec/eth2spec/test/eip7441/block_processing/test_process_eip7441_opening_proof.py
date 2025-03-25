@@ -1,8 +1,12 @@
-from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
+from eth2spec.test.context import (
+    spec_state_test,
+    with_eip7441_and_later,
+    expect_assertion_error,
+)
 from eth2spec.test.helpers.eip7441 import (
     compute_whisk_k_commitment,
     compute_whisk_tracker,
-    set_opening_proof
+    set_opening_proof,
 )
 
 
@@ -11,17 +15,17 @@ def empty_block(spec):
 
 
 def run_process_whisk_opening_proof(spec, state, block, valid=True):
-    yield 'pre', state
-    yield 'block', block
+    yield "pre", state
+    yield "block", block
 
     if not valid:
         expect_assertion_error(lambda: spec.process_whisk_opening_proof(state, block))
-        yield 'post', None
+        yield "post", None
         return
 
     spec.process_whisk_opening_proof(state, block)
 
-    yield 'post', state
+    yield "post", state
 
 
 PROPOSER_INDEX = 0
@@ -54,7 +58,9 @@ def test_wrong_tracker_r(spec, state):
     block = empty_block(spec)
     set_opening_proof(spec, state, block, PROPOSER_INDEX, K_OK, R_OK)
     wrong_tracker = compute_whisk_tracker(K_OK, R_WRONG)
-    state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT] = wrong_tracker
+    state.whisk_proposer_trackers[
+        state.slot % spec.PROPOSER_TRACKERS_COUNT
+    ] = wrong_tracker
     run_process_whisk_opening_proof(spec, state, block, valid=False)
 
 

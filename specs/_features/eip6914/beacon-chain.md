@@ -61,7 +61,9 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
 ```python
 def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
     for index, validator in enumerate(state.validators):
-        if is_reusable_validator(validator, state.balances[index], get_current_epoch(state)):
+        if is_reusable_validator(
+            validator, state.balances[index], get_current_epoch(state)
+        ):
             return ValidatorIndex(index)
     return ValidatorIndex(len(state.validators))
 ```

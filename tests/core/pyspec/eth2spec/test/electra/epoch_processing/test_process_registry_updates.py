@@ -4,7 +4,7 @@ from eth2spec.test.context import spec_state_test, with_electra_and_later
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
-    set_compounding_withdrawal_credential_with_balance
+    set_compounding_withdrawal_credential_with_balance,
 )
 
 
@@ -19,7 +19,7 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
     # ready for entrance into activation queue
     mock_deposit(spec, state, validator_index)
 
-    yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
+    yield from run_epoch_processing_with(spec, state, "process_registry_updates")
 
     # validator moved into activation queue if eligible
     validator = state.validators[validator_index]
@@ -56,7 +56,9 @@ def test_activation_queue_eligibility__min_activation_balance_eth1_creds(spec, s
 
 @with_electra_and_later
 @spec_state_test
-def test_activation_queue_eligibility__min_activation_balance_compounding_creds(spec, state):
+def test_activation_queue_eligibility__min_activation_balance_compounding_creds(
+    spec, state
+):
     index = 11
     balance = spec.MIN_ACTIVATION_BALANCE
     set_compounding_withdrawal_credential_with_balance(spec, state, index)

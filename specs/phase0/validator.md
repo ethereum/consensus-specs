@@ -194,7 +194,9 @@ In normal operation, the validator is quickly activated, at which point the vali
 The function [`is_active_validator`](./beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
-def check_if_validator_active(state: BeaconState, validator_index: ValidatorIndex) -> bool:
+def check_if_validator_active(
+    state: BeaconState, validator_index: ValidatorIndex
+) -> bool:
     validator = state.validators[validator_index]
     return is_active_validator(validator, get_current_epoch(state))
 ```
@@ -208,10 +210,9 @@ Once a validator is activated, the validator is assigned [responsibilities](#bea
 A validator can get committee assignments for a given epoch using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
 
 ```python
-def get_committee_assignment(state: BeaconState,
-                             epoch: Epoch,
-                             validator_index: ValidatorIndex
-                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
+def get_committee_assignment(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -323,7 +324,9 @@ Set `block.parent_root = hash_tree_root(parent)`.
 Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is obtained from:
 
 ```python
-def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
+def get_epoch_signature(
+    state: BeaconState, block: BeaconBlock, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(compute_epoch_at_slot(block.slot), domain)
     return bls.Sign(privkey, signing_root)
@@ -354,7 +357,9 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 ```python
 def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = Slot(state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH))
+    eth1_voting_period_start_slot = Slot(
+        state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
+    )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
@@ -362,7 +367,8 @@ def voting_period_start_time(state: BeaconState) -> uint64:
 def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
     return (
         block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= period_start
-        and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2 >= period_start
+        and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2
+        >= period_start
     )
 ```
 
@@ -371,7 +377,8 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     period_start = voting_period_start_time(state)
     # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
     votes_to_consider = [
-        get_eth1_data(block) for block in eth1_chain
+        get_eth1_data(block)
+        for block in eth1_chain
         if (
             is_candidate_block(block, period_start)
             # Ensure cannot move back to earlier deposit contract states
@@ -385,12 +392,19 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     # Default vote on latest eth1 block data in the period range unless eth1 chain is not live
     # Non-substantive casting for linter
     state_eth1_data: Eth1Data = state.eth1_data
-    default_vote = votes_to_consider[len(votes_to_consider) - 1] if any(votes_to_consider) else state_eth1_data
+    default_vote = (
+        votes_to_consider[len(votes_to_consider) - 1]
+        if any(votes_to_consider)
+        else state_eth1_data
+    )
 
     return max(
         valid_votes,
-        key=lambda v: (valid_votes.count(v), -valid_votes.index(v)),  # Tiebreak by smallest distance
-        default=default_vote
+        key=lambda v: (
+            valid_votes.count(v),
+            -valid_votes.index(v),
+        ),  # Tiebreak by smallest distance
+        default=default_vote,
     )
 ```
 
@@ -443,8 +457,12 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 `signed_block = SignedBeaconBlock(message=block, signature=block_signature)`, where `block_signature` is obtained from:
 
 ```python
-def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+def get_block_signature(
+    state: BeaconState, block: BeaconBlock, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot)
+    )
     signing_root = compute_signing_root(block, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -502,7 +520,9 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 Set `attestation.signature = attestation_signature` where `attestation_signature` is obtained from:
 
 ```python
-def get_attestation_signature(state: BeaconState, attestation_data: AttestationData, privkey: int) -> BLSSignature:
+def get_attestation_signature(
+    state: BeaconState, attestation_data: AttestationData, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
@@ -518,9 +538,9 @@ The `subnet_id` for the `attestation` is calculated with:
 - Let `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.data.index)`.
 
 ```python
-def compute_subnet_for_attestation(committees_per_slot: uint64,
-                                   slot: Slot,
-                                   committee_index: CommitteeIndex) -> SubnetID:
+def compute_subnet_for_attestation(
+    committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex
+) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
@@ -528,7 +548,9 @@ def compute_subnet_for_attestation(committees_per_slot: uint64,
     slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
-    return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
+    return SubnetID(
+        (committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT
+    )
 ```
 
 ### Attestation aggregation
@@ -547,7 +569,9 @@ def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSigna
 ```
 
 ```python
-def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+def is_aggregator(
+    state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature
+) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
     return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
@@ -588,10 +612,12 @@ Selection proofs are provided in `AggregateAndProof` to prove to the gossip chan
 First, `aggregate_and_proof = get_aggregate_and_proof(state, validator_index, aggregate_attestation, privkey)` is constructed.
 
 ```python
-def get_aggregate_and_proof(state: BeaconState,
-                            aggregator_index: ValidatorIndex,
-                            aggregate: Attestation,
-                            privkey: int) -> AggregateAndProof:
+def get_aggregate_and_proof(
+    state: BeaconState,
+    aggregator_index: ValidatorIndex,
+    aggregate: Attestation,
+    privkey: int,
+) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
@@ -602,11 +628,13 @@ def get_aggregate_and_proof(state: BeaconState,
 Then `signed_aggregate_and_proof = SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)` is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
-def get_aggregate_and_proof_signature(state: BeaconState,
-                                      aggregate_and_proof: AggregateAndProof,
-                                      privkey: int) -> BLSSignature:
+def get_aggregate_and_proof_signature(
+    state: BeaconState, aggregate_and_proof: AggregateAndProof, privkey: int
+) -> BLSSignature:
     aggregate = aggregate_and_proof.aggregate
-    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot))
+    domain = get_domain(
+        state, DOMAIN_AGGREGATE_AND_PROOF, compute_epoch_at_slot(aggregate.data.slot)
+    )
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     return bls.Sign(privkey, signing_root)
 ```

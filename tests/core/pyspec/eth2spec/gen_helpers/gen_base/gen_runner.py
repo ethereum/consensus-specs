@@ -49,9 +49,14 @@ class Diagnostics(object):
 
 
 TestCaseParams = namedtuple(
-    'TestCaseParams', [
-        'test_case', 'case_dir', 'log_file', 'file_mode',
-    ])
+    "TestCaseParams",
+    [
+        "test_case",
+        "case_dir",
+        "log_file",
+        "file_mode",
+    ],
+)
 
 
 def worker_function(item):
@@ -63,12 +68,12 @@ def get_default_yaml():
     yaml.default_flow_style = None
 
     def _represent_none(self, _):
-        return self.represent_scalar('tag:yaml.org,2002:null', 'null')
+        return self.represent_scalar("tag:yaml.org,2002:null", "null")
 
     def _represent_str(self, data):
         if data.startswith("0x"):
             # Without this, a zero-byte hex string is represented without quotes.
-            return self.represent_scalar('tag:yaml.org,2002:str', data, style="'")
+            return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
         return self.represent_str(data)
 
     yaml.representer.add_representer(type(None), _represent_none)
@@ -88,7 +93,7 @@ def get_cfg_yaml():
     cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
 
     def cfg_represent_quoted_str(self, data):
-        return self.represent_scalar(u'tag:yaml.org,2002:str', data, style="'")
+        return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
 
     cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
     return cfg_yaml
@@ -108,21 +113,27 @@ def validate_output_dir(path_str):
 
 def get_test_case_dir(test_case, output_dir):
     return (
-        Path(output_dir) / Path(test_case.preset_name) / Path(test_case.fork_name)
-        / Path(test_case.runner_name) / Path(test_case.handler_name)
-        / Path(test_case.suite_name) / Path(test_case.case_name)
+        Path(output_dir)
+        / Path(test_case.preset_name)
+        / Path(test_case.fork_name)
+        / Path(test_case.runner_name)
+        / Path(test_case.handler_name)
+        / Path(test_case.suite_name)
+        / Path(test_case.case_name)
     )
 
 
 def get_test_identifier(test_case):
-    return "::".join([
-        test_case.preset_name,
-        test_case.fork_name,
-        test_case.runner_name,
-        test_case.handler_name,
-        test_case.suite_name,
-        test_case.case_name
-    ])
+    return "::".join(
+        [
+            test_case.preset_name,
+            test_case.fork_name,
+            test_case.runner_name,
+            test_case.handler_name,
+            test_case.suite_name,
+            test_case.case_name,
+        ]
+    )
 
 
 def get_incomplete_tag_file(case_dir):
@@ -136,11 +147,13 @@ def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
     if case_dir.exists():
         if not is_force and not incomplete_tag_file.exists():
             diagnostics_obj.skipped_test_count += 1
-            print(f'Skipping already existing test: {case_dir}')
+            print(f"Skipping already existing test: {case_dir}")
             is_skip = True
         else:
-            print(f'Warning, output directory {case_dir} already exist, '
-                  ' old files will be deleted and it will generate test vector files with the latest version')
+            print(
+                f"Warning, output directory {case_dir} already exist, "
+                " old files will be deleted and it will generate test vector files with the latest version"
+            )
             # Clear the existing case_dir folder
             shutil.rmtree(case_dir)
 
@@ -168,7 +181,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         dest="output_dir",
         required=True,
         type=validate_output_dir,
-        help="directory into which the generated YAML files will be dumped"
+        help="directory into which the generated YAML files will be dumped",
     )
     parser.add_argument(
         "-f",
@@ -180,7 +193,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     parser.add_argument(
         "--preset-list",
         dest="preset_list",
-        nargs='*',
+        nargs="*",
         type=str,
         required=False,
         help="specify presets to run with. Allows all if no preset names are specified.",
@@ -188,7 +201,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     parser.add_argument(
         "--fork-list",
         dest="fork_list",
-        nargs='*',
+        nargs="*",
         type=str,
         required=False,
         help="specify forks to run with. Allows all if no fork names are specified.",
@@ -211,10 +224,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     else:
         file_mode = "w"
 
-    log_file = Path(output_dir) / 'testgen_error_log.txt'
+    log_file = Path(output_dir) / "testgen_error_log.txt"
 
     print(f"Generating tests into {output_dir}")
-    print(f'Error log file: {log_file}')
+    print(f"Error log file: {log_file}")
 
     # preset_list arg
     presets = args.preset_list
@@ -222,7 +235,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         presets = []
 
     if len(presets) != 0:
-        print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
+        print(
+            f"Filtering test-generator runs to only include presets: {', '.join(presets)}"
+        )
 
     # fork_list arg
     forks = args.fork_list
@@ -230,7 +245,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         forks = []
 
     if len(presets) != 0:
-        print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
+        print(
+            f"Filtering test-generator runs to only include forks: {', '.join(forks)}"
+        )
 
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
@@ -255,7 +272,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             print(f"Collected test at: {case_dir}")
             diagnostics_obj.collected_test_count += 1
 
-            is_skip, diagnostics_obj = should_skip_case_dir(case_dir, args.force, diagnostics_obj)
+            is_skip, diagnostics_obj = should_skip_case_dir(
+                case_dir, args.force, diagnostics_obj
+            )
             if is_skip:
                 continue
 
@@ -312,7 +331,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
 
     written_part = False
 
-    print(f'Generating test: {case_dir}')
+    print(f"Generating test: {case_dir}")
     test_start = time.time()
 
     # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
@@ -325,7 +344,9 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     try:
         meta = dict()
         try:
-            written_part, meta = execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml)
+            written_part, meta = execute_test(
+                test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml
+            )
         except SkippedTest as e:
             result = 0  # 0 means skipped
             print(e)
@@ -335,7 +356,13 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
             written_part = True
-            output_part(case_dir, log_file, "data", "meta", dump_yaml_fn(meta, "meta", file_mode, yaml))
+            output_part(
+                case_dir,
+                log_file,
+                "data",
+                "meta",
+                dump_yaml_fn(meta, "meta", file_mode, yaml),
+            )
 
     except Exception as e:
         result = -1  # -1 means error
@@ -344,7 +371,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
         with log_file.open("a+") as f:
             f.write(error_message)
             traceback.print_exc(file=f)
-            f.write('\n')
+            f.write("\n")
         print(error_message)
         traceback.print_exc()
     else:
@@ -360,7 +387,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     test_end = time.time()
     span = round(test_end - test_start, 2)
     if span > TIME_THRESHOLD_TO_PRINT:
-        print(f'- generated in {span} seconds')
+        print(f"- generated in {span} seconds")
 
     return result
 
@@ -379,14 +406,26 @@ def write_result_into_diagnostics_obj(result, diagnostics_obj):
 
 def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
     def dump(case_path: Path):
-        out_path = case_path / Path(name + '.yaml')
+        out_path = case_path / Path(name + ".yaml")
         with out_path.open(file_mode) as f:
             yaml_encoder.dump(data, f)
             f.close()
+
     return dump
 
 
-def output_part(case_dir, log_file, out_kind: str, name: str, fn: Callable[[Path, ], None]):
+def output_part(
+    case_dir,
+    log_file,
+    out_kind: str,
+    name: str,
+    fn: Callable[
+        [
+            Path,
+        ],
+        None,
+    ],
+):
     # make sure the test case directory is created before any test part is written.
     case_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -397,7 +436,7 @@ def output_part(case_dir, log_file, out_kind: str, name: str, fn: Callable[[Path
         with log_file.open("a+") as f:
             f.write(error_message)
             traceback.print_exc(file=f)
-            f.write('\n')
+            f.write("\n")
         print(error_message)
         sys.exit(error_message)
 
@@ -410,11 +449,25 @@ def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml)
         if out_kind == "meta":
             meta[name] = data
         elif out_kind == "cfg":
-            output_part(case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, file_mode, cfg_yaml))
+            output_part(
+                case_dir,
+                log_file,
+                out_kind,
+                name,
+                dump_yaml_fn(data, name, file_mode, cfg_yaml),
+            )
         elif out_kind == "data":
-            output_part(case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, file_mode, yaml))
+            output_part(
+                case_dir,
+                log_file,
+                out_kind,
+                name,
+                dump_yaml_fn(data, name, file_mode, yaml),
+            )
         elif out_kind == "ssz":
-            output_part(case_dir, log_file, out_kind, name, dump_ssz_fn(data, name, file_mode))
+            output_part(
+                case_dir, log_file, out_kind, name, dump_ssz_fn(data, name, file_mode)
+            )
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 
@@ -423,8 +476,9 @@ def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml)
 
 def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
     def dump(case_path: Path):
-        out_path = case_path / Path(name + '.ssz_snappy')
+        out_path = case_path / Path(name + ".ssz_snappy")
         compressed = compress(data)
-        with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
+        with out_path.open(file_mode + "b") as f:  # write in raw binary mode
             f.write(compressed)
+
     return dump
