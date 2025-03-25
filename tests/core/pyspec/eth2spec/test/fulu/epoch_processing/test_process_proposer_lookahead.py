@@ -29,7 +29,7 @@ def test_proposer_lookahead_in_state_matches_computed_lookahead(spec, state):
     next_epoch(spec, state)
 
     # Run epoch processing
-    yield from run_epoch_processing_with(spec, state, 'process_proposer_lookahead')
+    next_epoch(spec, state)
 
     # Verify lookahead in state matches the lookahead computed on the fly
     computed_lookahead = spec.initialize_proposer_lookahead(state)
