@@ -151,7 +151,7 @@ ALL_CURDLEPROOFS_CRS = {
 
 @lru_cache(maxsize=None)
 def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
-    _, _, title = child._parse_info
+    title = child.title
     if not (title[0] == "(" and title[len(title)-1] == ")"):
         return None
     title = title[1:len(title)-1]
