@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "marko==1.0.2",
+  "marko==2.1.2",
   "ruamel.yaml==0.17.21",
   "setuptools==75.8.0",
   "wheel==0.45.1",
@@ -18,7 +18,7 @@ dependencies = [
   "eth-typing==3.5.2",
   "eth-utils==2.3.2",
   "lru-dict==1.2.0",
-  "marko==1.0.2",
+  "marko==2.1.2",
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.3.8",
   "py_ecc==6.0.0",
