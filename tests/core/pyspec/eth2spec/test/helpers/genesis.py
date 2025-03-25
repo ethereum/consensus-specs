@@ -16,6 +16,8 @@ from eth2spec.test.helpers.eip7441 import (
     compute_whisk_initial_k_commitment_cached
 )
 
+from build.lib.eth2spec.test.helpers.forks import is_post_fulu
+
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
@@ -176,8 +178,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-        # Initialize proposer lookahead list
-        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
 
     if is_post_eip7441(spec):
         vc = len(state.validators)
@@ -205,5 +205,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
         state.latest_withdrawals_root = withdrawals.hash_tree_root()
         state.latest_block_hash = state.latest_execution_payload_header.block_hash  # last block is full
+
+    if is_post_fulu(spec):
+        # Initialize proposer lookahead list
+        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
 
     return state
