@@ -132,3 +132,64 @@ def test_pending_consolidation(spec, state):
     assert state.validators[source_index].effective_balance == 0
     assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE * 2
     assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE * 2
+
+
+@with_electra_and_later
+@spec_state_test
+def test_duplicate_deposit_min_act_balance(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    amount = spec.MIN_ACTIVATION_BALANCE
+    pre_validator_count = len(state.validators)
+    pending_deposit1 = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+    pending_deposit2 = prepare_pending_deposit(spec, validator_index, amount, signed=True)
+
+    pending_deposits = [pending_deposit1, pending_deposit2]
+
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
+
+    # Only one new validator should have been added
+    post_validator_count = len(state.validators)
+    assert post_validator_count == pre_validator_count + 1
+    balance_after_deposits = state.balances[validator_index]
+    assert balance_after_deposits == amount * 2
+
+
+# To be removed after @jtraglia reviews for potential issue.
+@with_electra_and_later
+@spec_state_test
+def test_duplicate_deposit_max_eff_balance_electra(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    withdrawal_credentials = (
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX
+        + b'\x00' * 11  # specified 0s
+        + b'\x59' * 20  # a 20-byte eth1 address
+    )
+    pre_validator_count = len(state.validators)
+
+    pending_deposit1 = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True
+    )
+    pending_deposit2 = prepare_pending_deposit(
+        spec,
+        validator_index,
+        amount=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True
+    )
+    pending_deposits = [pending_deposit1, pending_deposit2]
+
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
+
+    # Only one new validator should have been added
+    post_validator_count = len(state.validators)
+    assert post_validator_count == pre_validator_count + 1
+
+    balance_after_deposits = state.balances[validator_index]
+    assert balance_after_deposits == amount
