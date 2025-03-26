@@ -127,10 +127,13 @@ def get_data_column_sidecars(signed_block_header: SignedBeaconBlockHeader,
 ```
 
 ```python
-def get_data_column_sidecars_from_block(signed_block: SignedBeaconBlock,
-                                        cells_and_kzg_proofs: Sequence[Tuple[
-                    Vector[Cell, CELLS_PER_EXT_BLOB],
-                    Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
+def get_data_column_sidecars_from_block(
+    signed_block: SignedBeaconBlock,
+    cells_and_kzg_proofs: Sequence[Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
     block, assemble the sidecars which can be distributed to peers.
@@ -149,12 +152,14 @@ def get_data_column_sidecars_from_block(signed_block: SignedBeaconBlock,
     )
 ```
 
-
 ```python
-def get_data_column_sidecars_from_column_sidecar(sidecar: DataColumnSidecar, 
-                                                 cells_and_kzg_proofs: Sequence[Tuple[
-                            Vector[Cell, CELLS_PER_EXT_BLOB],
-                            Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
     """
     Given a DataColumnSidecar and the cells and_kzg proofs associated with each blob corresponding
     to the kzg commitments it contains, assemble all sidecars for distribution to peers
