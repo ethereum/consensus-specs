@@ -210,8 +210,8 @@ Honest nodes SHOULD query `engine_getBlobsV1` as soon as they receive a valid go
 
 When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
 
-* publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
-* update gossip rule related data structures (i.e. update the anti-equivocation cache).
+* Publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
+* Update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ##### Attestation subnets
 

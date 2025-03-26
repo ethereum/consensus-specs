@@ -15,6 +15,8 @@
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the sidecars](#constructing-the-sidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
+      - [`get_data_column_sidecars_from_block`](#get_data_column_sidecars_from_block)
+      - [`get_data_column_sidecars_from_column_sidecar`](#get_data_column_sidecars_from_column_sidecar)
     - [Sidecar publishing](#sidecar-publishing)
     - [Sidecar retention](#sidecar-retention)
 
@@ -126,6 +128,8 @@ def get_data_column_sidecars(signed_block_header: SignedBeaconBlockHeader,
     return sidecars
 ```
 
+##### `get_data_column_sidecars_from_block`
+
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
@@ -151,6 +155,8 @@ def get_data_column_sidecars_from_block(
         cells_and_kzg_proofs
     )
 ```
+
+##### `get_data_column_sidecars_from_column_sidecar`
 
 ```python
 def get_data_column_sidecars_from_column_sidecar(
