@@ -99,15 +99,18 @@ on the wire, as well as all cells and kzg proofs retrieved from the local execut
 
 
 ```python
-def get_data_column_sidecars(signed_block_header: SignedBeaconBlockHeader,
-                             kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-                             kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
-                             cells_and_kzg_proofs: Sequence[Tuple[
+def get_data_column_sidecars(
+    signed_block_header: SignedBeaconBlockHeader,
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
+    cells_and_kzg_proofs: Sequence[Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
     """
-    Given a signed block header and the kzg_committments, inclusion proof, cells and kzg proofs
-    associated with each blob in the block, assemble the sidecars which can be distributed to peers.
+    Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
+    each blob in the block, assemble the sidecars which can be distributed to peers.
     """
     assert len(cells_and_kzg_proofs) == len(kzg_commitments)
 
@@ -167,8 +170,8 @@ def get_data_column_sidecars_from_column_sidecar(
     ]]
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a DataColumnSidecar and the cells and_kzg proofs associated with each blob corresponding
-    to the kzg commitments it contains, assemble all sidecars for distribution to peers
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
     """
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
 
