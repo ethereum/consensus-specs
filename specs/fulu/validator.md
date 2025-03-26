@@ -98,8 +98,8 @@ on the wire, as well as all cells and kzg proofs retrieved from the local execut
 
 ```python
 def get_data_column_sidecars(signed_block_header: SignedBeaconBlockHeader,
-                             kzg_commitments: MAX_BLOB_COMMITMENTS_PER_BLOCK],
-                             kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+                             kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+                             kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
                              cells_and_kzg_proofs: Sequence[Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
         Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
