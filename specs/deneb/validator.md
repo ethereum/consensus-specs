@@ -46,9 +46,9 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ```python
 @dataclass
 class BlobsBundle(object):
-    commitments: Sequence[KZGCommitment]
-    proofs: Sequence[KZGProof]
-    blobs: Sequence[Blob]
+    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
 ### Modified `GetPayloadResponse`

@@ -151,7 +151,7 @@ ALL_CURDLEPROOFS_CRS = {
 
 @lru_cache(maxsize=None)
 def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
-    _, _, title = child._parse_info
+    title = child.title
     if not (title[0] == "(" and title[len(title)-1] == ")"):
         return None
     title = title[1:len(title)-1]
@@ -363,7 +363,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 @lru_cache(maxsize=None)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
-    Loads the a directory of preset files, merges the result into one preset.
+    Loads a directory of preset files, merges the result into one preset.
     """
     preset = {}
     for fork_file in preset_files:
