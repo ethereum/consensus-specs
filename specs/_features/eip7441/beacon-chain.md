@@ -85,7 +85,8 @@ def BLSG1ScalarMultiply(scalar: BLSFieldElement, point: BLSG1Point) -> BLSG1Poin
 def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     """
     Convert bytes to a BLS field scalar. The output is not uniform over the BLS field.
-    TODO: Deneb will introduces this helper too. Should delete it once it's rebased to post-Deneb.
+    NOTE: This function is also defined in Deneb specs. When rebasing to post-Deneb,
+    remove this duplicate implementation and use the common function from the base specs.
     """
     field_element = int.from_bytes(b, ENDIANNESS)
     return BLSFieldElement(field_element % BLS_MODULUS)
@@ -95,7 +96,7 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 | --------------------- | ------------------------------------------------------------------------------- |
 | `BLS_G1_GENERATOR`    | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
 | `BLS_MODULUS`         | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
-| `CURDLEPROOFS_CRS`    | TBD |
+| `CURDLEPROOFS_CRS`    | This value will be determined prior to mainnet deployment. It represents the Common Reference String for Curdleproofs verification and must be generated through a secure, multi-party computation ceremony to ensure no single party knows the trapdoor. The ceremony details and resulting CRS will be documented before the fork. |
 
 ### Curdleproofs and opening proofs
 
