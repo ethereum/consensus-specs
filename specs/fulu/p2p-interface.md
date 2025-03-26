@@ -211,10 +211,10 @@ Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid `b
 
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish data columns on time.
 
-When clients use the local execution layer to retrieve blob and compute data columns, they MUST behave as if the imported `data_column_sidecar` had been received via gossip. Note that this only applies to the data columns gossip topics they are subscribed to - specifically, the node’s assigned custody columns. In particular, clients MUST:
+When clients use the local execution layer to retrieve blob and compute data columns, they MUST behave as if the imported `data_column_sidecar` had been received via gossip. In particular, clients MUST:
 
-* publish the corresponding `data_column_sidecar` on the `data_column_sidecar_{subnet_id}` subnet.
-* update gossip rule related data structures (i.e. update the anti-equivocation cache).
+* Publish the corresponding `data_column_sidecar` on the `data_column_sidecar_{subnet_id}` topic **if and only if** they are **subscribed** to it, either due to custody requirement or additional sampling.
+* Update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ### The Req/Resp domain
 
