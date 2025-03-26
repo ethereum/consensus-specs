@@ -163,8 +163,9 @@ def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[Validator
     """
     Return the proposer indices for the given `epoch`.
     """
-    start_seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(compute_start_slot_at_epoch(epoch))
-    seeds = [hash(start_seed + uint_to_bytes(Slot(i))) for i in range(SLOTS_PER_EPOCH)]
+    epoch_seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+    start_slot = compute_start_slot_at_epoch(epoch)
+    seeds = [hash(epoch_seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
     indices = get_active_validator_indices(state, epoch)
     return [compute_proposer_index(state, indices, seed) for seed in seeds]
 ```
