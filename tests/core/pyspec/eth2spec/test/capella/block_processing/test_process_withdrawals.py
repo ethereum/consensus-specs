@@ -601,7 +601,8 @@ def test_success_no_max_effective_balance(spec, state):
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE - 1)
     validator = state.validators[validator_index]
 
-    assert validator.effective_balance < spec.MAX_EFFECTIVE_BALANCE
+    # Effective balance should be 1 increment lower than MAX_EFFECTIVE_BALANCE
+    assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
 
     execution_payload = build_empty_execution_payload(spec, state)

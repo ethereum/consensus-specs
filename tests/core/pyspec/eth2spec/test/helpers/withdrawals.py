@@ -37,7 +37,7 @@ def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance=None
 
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + address
-    validator.effective_balance = min(balance, spec.MAX_EFFECTIVE_BALANCE)
+    validator.effective_balance = min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     state.balances[index] = balance
 
 
@@ -104,7 +104,7 @@ def set_compounding_withdrawal_credential_with_balance(spec, state, index,
     if balance is None:
         balance = effective_balance
 
-    state.validators[index].effective_balance = effective_balance
+    state.validators[index].effective_balance = effective_balance - effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
     state.balances[index] = balance
 
 

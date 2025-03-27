@@ -439,7 +439,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
 
 def _insert_validator(spec, state, balance):
-    effective_balance = balance if balance < spec.MAX_EFFECTIVE_BALANCE else spec.MAX_EFFECTIVE_BALANCE
+    effective_balance = balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT if balance < spec.MAX_EFFECTIVE_BALANCE else spec.MAX_EFFECTIVE_BALANCE
     validator_index = len(state.validators)
     validator = spec.Validator(
         pubkey=pubkeys[validator_index],
