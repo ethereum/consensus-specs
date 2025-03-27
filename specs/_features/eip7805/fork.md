@@ -1,4 +1,4 @@
-# EIP-7732 -- Fork Logic
+# EIP-7805 -- Fork Logic
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -13,8 +13,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to EIP-7732](#fork-to-eip-7732)
-  - [Fork trigger](#fork-trigger)
+- [Fork to EIP-7805](#fork-to-eip-7805)
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -22,16 +21,16 @@
 
 ## Introduction
 
-This document describes the process of the EIP-7732 upgrade.
+This document describes the process of the EIP-7805 upgrade.
 
 ## Configuration
 
 Warning: this configuration is not definitive.
 
-| Name                | Value |
-|---------------------| - |
-| `EIP7732_FORK_VERSION` | `Version('0x09000000')` |
-| `EIP7732_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name | Value |
+| - | - |
+| `EIP7805_FORK_VERSION` | `Version('0x10000000')` |
+| `EIP7805_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -44,8 +43,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP7732_FORK_EPOCH:
-        return EIP7732_FORK_VERSION
+    if epoch >= EIP7805_FORK_EPOCH:
+        return EIP7805_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -59,19 +58,15 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to EIP-7732
-
-### Fork trigger
-
-The fork is triggered at epoch `EIP7732_FORK_EPOCH`. The EIP may be combined with other consensus-layer upgrade.
+## Fork to EIP-7805
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`,
-an irregular state change is made to upgrade to EIP-7732.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7805_FORK_EPOCH`,
+an irregular state change is made to upgrade to EIP-7805.
 
 ```python
-def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
+def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
     epoch = electra.get_current_epoch(pre)
 
     post = BeaconState(
@@ -81,7 +76,7 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=EIP7732_FORK_VERSION,  # [Modified in EIP-7732]
+            current_version=EIP7805_FORK_VERSION,  # [Modified in EIP-7805]
             epoch=epoch,
         ),
         # History
@@ -114,13 +109,15 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # Execution-layer
-        latest_execution_payload_header=ExecutionPayloadHeader(),  # [Modified in EIP-7732]
+        latest_execution_payload_header=pre.latest_execution_payload_header,
         # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
+        # On-chain deposits
         deposit_requests_start_index=pre.deposit_requests_start_index,
+        # Consolidations
         deposit_balance_to_consume=pre.deposit_balance_to_consume,
         exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,
@@ -129,10 +126,6 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
-        # ePBS
-        latest_block_hash=pre.latest_execution_payload_header.block_hash,  # [New in EIP-7732]
-        latest_full_slot=pre.slot,  # [New in EIP-7732]
-        latest_withdrawals_root=Root(),  # [New in EIP-7732]
     )
 
     return post

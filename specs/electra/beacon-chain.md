@@ -1644,7 +1644,7 @@ def process_consolidation_request(
         switch_to_compounding_validator(state, source_index)
         return
 
-    # Verify that source != target, so a consolidation cannot be used as an exit.
+    # Verify that source != target, so a consolidation cannot be used as an exit
     if consolidation_request.source_pubkey == consolidation_request.target_pubkey:
         return
     # If the pending consolidations queue is full, consolidation requests are ignored

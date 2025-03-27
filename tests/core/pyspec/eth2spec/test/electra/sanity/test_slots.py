@@ -111,7 +111,7 @@ def test_pending_consolidation(spec, state):
     # Set withdrawable epoch to current epoch to allow processing
     state.validators[source_index].withdrawable_epoch = current_epoch
     # Set the source withdrawal credential to eth1
-    state.validators[target_index].withdrawal_credentials = (
+    state.validators[source_index].withdrawal_credentials = (
         spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
     # Set the target withdrawal credential to compounding
