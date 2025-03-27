@@ -155,7 +155,7 @@ The sequence of sidecars associated with a block and can be obtained by first co
 Moreover, the full sequence of sidecars can also be computed from `cells_and_kzg_proofs` and any single
 `sidecar`, by calling `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
 This can be used in distributed blob publishing, to reconstruct all sidecars from any sidecar received
-on the wire, as well as all cells and kzg proofs retrieved from the local execution layer client.
+on the wire, assuming all cells and kzg proofs could be retrieved from the local execution layer client.
 
 ```python
 def get_data_column_sidecars(
