@@ -76,7 +76,7 @@ def validate_inclusion_lists(store: Store,
     # pylint: disable=unused-argument
 
     # Verify inclusion list is a valid length
-    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_INCLUSION_LIST * INCLUSION_LIST_COMMITTEE_SIZE
+    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_PAYLOAD * INCLUSION_LIST_COMMITTEE_SIZE
 
     # Verify inclusion list transactions are present in the execution payload
     contains_all_txs = all(tx in execution_payload.transactions for tx in inclusion_list_transactions)

@@ -53,12 +53,6 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 | - | - |
 | `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16) |
 
-### Execution
-
-| Name | Value |
-| - | - |
-| `MAX_TRANSACTIONS_PER_INCLUSION_LIST` | `uint64(1)` **TBD** |
-
 ## Containers
 
 ### New containers
@@ -70,7 +64,7 @@ class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
     inclusion_list_committee_root: Root
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_INCLUSION_LIST]
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
 ```
 
 #### `SignedInclusionList`
@@ -231,7 +225,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     # Verify inclusion list transactions
     inclusion_list_transactions: Sequence[Transaction] = []  # TODO: where do we get this?
-    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_INCLUSION_LIST
+    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_PAYLOAD
     # Verify the payload with the execution engine
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
