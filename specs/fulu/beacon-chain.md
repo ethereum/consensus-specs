@@ -1,6 +1,6 @@
 # Fulu -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -19,7 +19,7 @@
 
 ## Introduction
 
-*Note:* This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
 
 ## Configuration
 

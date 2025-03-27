@@ -1,6 +1,6 @@
 # EIP-7805 -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
