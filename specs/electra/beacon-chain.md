@@ -291,10 +291,6 @@ class ConsolidationRequest(Container):
 
 #### `ExecutionRequests`
 
-*Note*: This container holds requests from the execution layer that are received in [
-`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
-the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
-
 ```python
 class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
