@@ -9,7 +9,7 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
@@ -25,7 +25,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-### Extended `PayloadAttributes`
+### Modified `PayloadAttributes`
 
 `PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
 

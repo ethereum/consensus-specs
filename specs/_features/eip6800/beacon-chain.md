@@ -13,7 +13,7 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Containers](#containers)
-  - [Extended containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
   - [New containers](#new-containers)
@@ -56,7 +56,7 @@ This upgrade adds transaction execution to the beacon chain as part of the eip68
 
 ## Containers
 
-### Extended containers
+### Modified containers
 
 #### `ExecutionPayload`
 

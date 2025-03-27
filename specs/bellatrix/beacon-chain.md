@@ -14,7 +14,7 @@
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
-  - [Extended containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
@@ -99,7 +99,7 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 
 ## Containers
 
-### Extended containers
+### Modified containers
 
 #### `BeaconBlockBody`
 
