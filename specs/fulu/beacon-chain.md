@@ -145,8 +145,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ##### Modified `process_execution_payload`
 
 *Note*: The function `process_execution_payload` is modified to use the updated `BeaconBlockBody`
-*container, the new `MAX_BLOBS_PER_BLOCK_FULU` configuration value in the commitments limit check,
-*and the updated `verify_and_notify_new_payload` function from the engine API.
+container, the new `MAX_BLOBS_PER_BLOCK_FULU` configuration value in the commitments limit check,
+and the updated `verify_and_notify_new_payload` function from the engine API.
 
 ```python
 def process_execution_payload(
