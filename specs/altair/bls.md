@@ -40,7 +40,7 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     """
     Return the aggregate public key for the public keys in ``pubkeys``.
 
-    NOTE: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
+    Note: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
     elliptic curve points that must be decoded from the input ``BLSPubkey``s.
     This implementation is for demonstrative purposes only and ignores encoding/decoding concerns.
     Refer to the BLS signature draft standard for more information.

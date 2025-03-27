@@ -37,7 +37,7 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 #### Modified `Store`
 
-**Note:** `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
+*Note*: `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
 
 ```python
 @dataclass
