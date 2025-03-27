@@ -11,6 +11,8 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Execution](#execution)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
 
@@ -28,6 +30,10 @@
 | Name | Value | Description |
 | - | - | - |
 | `MAX_BLOBS_PER_BLOCK_FULU` | `uint64(12)` | *[New in Fulu:EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+
+## Beacon chain state transition function
+
+### Block processing
 
 #### Execution payload
 
