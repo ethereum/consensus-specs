@@ -148,9 +148,9 @@ value that Execution Layer client mock returns in responses to the following Eng
 * [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1) if `payload.blockHash == payload_info.block_hash`
 * [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_forkchoiceupdatedv1) if `forkchoiceState.headBlockHash == payload_info.block_hash`
 
-*Note:* Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
+*Note*: Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
 
-*Note:* Status of the same payload may be updated for several times throughout the test.
+*Note*: Status of the same payload may be updated for several times throughout the test.
 
 #### Checks step
 

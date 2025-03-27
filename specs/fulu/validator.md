@@ -129,7 +129,7 @@ addition, when the validator custody requirement increases, due to an increase i
 of the attached validators, a node MUST backfill columns from the new custody groups. However, a
 node MAY wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
-*Note:* The node SHOULD manage validator custody (and any changes during its lifetime) without any
+*Note*: The node SHOULD manage validator custody (and any changes during its lifetime) without any
 input from the user, for example by using existing signals about validator metadata to compute the
 required custody.
 

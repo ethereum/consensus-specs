@@ -103,7 +103,7 @@ and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limi
 
 #### `BeaconBlockBody`
 
-Note: `BeaconBlock` and `SignedBeaconBlock` types are updated indirectly.
+*Note*: `BeaconBlock` and `SignedBeaconBlock` types are updated indirectly.
 
 ```python
 class BeaconBlockBody(Container):
@@ -235,7 +235,7 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
 
 #### Modified `get_attestation_participation_flag_indices`
 
-*Note:* The function `get_attestation_participation_flag_indices` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
+*Note*: The function `get_attestation_participation_flag_indices` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
 
 ```python
 def get_attestation_participation_flag_indices(state: BeaconState,

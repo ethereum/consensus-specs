@@ -1,6 +1,6 @@
 # Electra -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -123,7 +123,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 * [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
 * [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
-*Note:* This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -290,10 +290,6 @@ class ConsolidationRequest(Container):
 ```
 
 #### `ExecutionRequests`
-
-*Note*: This container holds requests from the execution layer that are received in [
-`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
-the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
 
 ```python
 class ExecutionRequests(Container):

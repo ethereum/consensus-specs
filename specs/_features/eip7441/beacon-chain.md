@@ -1,6 +1,6 @@
 # EIP-7441 -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -33,7 +33,7 @@
 
 This document details the beacon chain additions and changes of to support the EIP-7441 (Whisk SSLE).
 
-*Note:* This specification is built upon [capella](../../capella/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
