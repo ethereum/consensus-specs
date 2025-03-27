@@ -19,7 +19,7 @@
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
     - [`HistoricalSummary`](#historicalsummary)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -135,7 +135,7 @@ class HistoricalSummary(Container):
     state_summary_root: Root
 ```
 
-### Modified Containers
+### Modified containers
 
 #### `ExecutionPayload`
 

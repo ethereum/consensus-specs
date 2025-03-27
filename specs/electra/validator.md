@@ -13,7 +13,7 @@
 - [Helpers](#helpers)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Protocol](#protocol)
@@ -63,7 +63,7 @@ class GetPayloadResponse(object):
 
 ## Containers
 
-### Modified Containers
+### Modified containers
 
 #### `AggregateAndProof`
 

@@ -34,10 +34,10 @@
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`ExecutionRequests`](#executionrequests)
     - [`SingleAttestation`](#singleattestation)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
-  - [Modified Containers](#modified-containers-1)
+  - [Modified containers](#modified-containers-1)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconState`](#beaconstate)
@@ -308,7 +308,7 @@ class SingleAttestation(Container):
     signature: BLSSignature
 ```
 
-### Modified Containers
+### Modified containers
 
 #### `AttesterSlashing`
 
@@ -339,7 +339,7 @@ class BeaconBlockBody(Container):
     execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
-### Modified Containers
+### Modified containers
 
 #### `Attestation`
 

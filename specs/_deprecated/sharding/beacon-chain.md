@@ -25,7 +25,7 @@
     - [`BuilderBlockBidWithRecipientAddress`](#builderblockbidwithrecipientaddress)
     - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
     - [`ShardSample`](#shardsample)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
     - [`BuilderBlockData`](#builderblockdata)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -175,7 +175,7 @@ class ShardSample(Container):
     signature: BLSSignature
 ```
 
-### Modified Containers
+### Modified containers
 
 #### `BeaconState`
 

@@ -16,7 +16,7 @@
   - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -99,7 +99,7 @@ and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limi
 
 ## Containers
 
-### Modified Containers
+### Modified containers
 
 #### `BeaconBlockBody`
 
