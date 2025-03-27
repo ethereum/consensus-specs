@@ -75,7 +75,7 @@ class ExecutionPayload(Container):
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     blob_gas_used: uint64
     excess_blob_gas: uint64
-    proof_version: uint8  # [New in Fulu:7594]
+    proof_version: uint8  # [New in Fulu:EIP7594]
 ```
 
 #### `BeaconBlockBody`
@@ -89,15 +89,16 @@ class BeaconBlockBody(Container):
     graffiti: Bytes32  # Arbitrary data
     # Operations
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
+    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
     # Execution
-    execution_payload: ExecutionPayload  # [Modified in Fulu:7594]
+    execution_payload: ExecutionPayload  # [Modified in Fulu:EIP7594]
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    execution_requests: ExecutionRequests
 ```
 
 #### `BeaconBlock`
@@ -110,7 +111,7 @@ class BeaconBlock(Container):
     proposer_index: ValidatorIndex
     parent_root: Root
     state_root: Root
-    body: BeaconBlockBody  # [Modified in Fulu:7594]
+    body: BeaconBlockBody  # [Modified in Fulu:EIP7594]
 ```
 
 #### `SignedBeaconBlock`
@@ -119,7 +120,7 @@ class BeaconBlock(Container):
 
 ```python
 class SignedBeaconBlock(Container):
-    message: BeaconBlock  # [Modified in Fulu:7594]
+    message: BeaconBlock  # [Modified in Fulu:EIP7594]
     signature: BLSSignature
 ```
 
@@ -133,7 +134,7 @@ class SignedBeaconBlock(Container):
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state, block.body.execution_payload)
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Fulu:7594]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Fulu:EIP7594]
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -209,7 +210,7 @@ def process_execution_payload(
 ```python
 @dataclass
 class NewPayloadRequest(object):
-    execution_payload: ExecutionPayload  # [Modified in Fulu:7594]
+    execution_payload: ExecutionPayload  # [Modified in Fulu:EIP7594]
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests
@@ -224,7 +225,7 @@ class NewPayloadRequest(object):
 ```python
 def is_valid_block_hash(
     self: ExecutionEngine,
-    execution_payload: ExecutionPayload,  # [Modified in Fulu:7594]
+    execution_payload: ExecutionPayload,  # [Modified in Fulu:EIP7594]
     parent_beacon_block_root: Root,
     execution_requests_list: Sequence[bytes],
 ) -> bool:
@@ -241,7 +242,7 @@ def is_valid_block_hash(
 ```python
 def is_valid_versioned_hashes(
     self: ExecutionEngine,
-    new_payload_request: NewPayloadRequest,  # [Modified in Fulu:7594]
+    new_payload_request: NewPayloadRequest,  # [Modified in Fulu:EIP7594]
 ) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
@@ -257,7 +258,7 @@ def is_valid_versioned_hashes(
 ```python
 def notify_new_payload(
     self: ExecutionEngine,
-    execution_payload: ExecutionPayload,  # [Modified in Fulu:7594]
+    execution_payload: ExecutionPayload,  # [Modified in Fulu:EIP7594]
     parent_beacon_block_root: Root,
     execution_requests_list: Sequence[bytes],
 ) -> bool:
@@ -275,7 +276,7 @@ def notify_new_payload(
 ```python
 def verify_and_notify_new_payload(
     self: ExecutionEngine,
-    new_payload_request: NewPayloadRequest  # [Modified in Fulu:7594]
+    new_payload_request: NewPayloadRequest  # [Modified in Fulu:EIP7594]
 ) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
