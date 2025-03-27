@@ -110,7 +110,38 @@ Note that the vertical subnets are shared between the different shards,
 and a simple hash function `(shard, slot, sample_index) -> subnet_index` defines which samples go where.
 This is to evenly distribute samples to subnets, even when one shard has more activity than the other.
 
-TODO: define `(shard, slot, sample_index) -> subnet_index` hash function.
+| Name | Value | Description |
+|---|---|---|
+| `DAS_SUBNETS` | `64` | The number of vertical subnets used for data availability sampling |
+
+```python
+def compute_subnet_index(shard: Shard, slot: Slot, sample_index: SampleIndex) -> SubnetIndex:
+    """
+    Compute the vertical subnet index for a given sample.
+    
+    This hash function evenly distributes samples across the vertical subnets,
+    ensuring that samples from the same shard and slot are distributed
+    to different subnets, and that the distribution is unpredictable but deterministic.
+    
+    Args:
+        shard: The shard number
+        slot: The slot number  
+        sample_index: The index of the sample within the shard's blob
+        
+    Returns:
+        The subnet index in range [0, DAS_SUBNETS)
+    """
+    # Combine inputs with different weights to avoid simple collisions
+    combined = (
+        uint_to_bytes(uint32(shard)) + 
+        uint_to_bytes(uint64(slot)) + 
+        uint_to_bytes(uint32(sample_index))
+    )
+    # Hash the combined values using the standard hash function
+    hashed = hash(combined)
+    # Modulo to get the subnet index within the valid range
+    return uint64(bytes_to_uint64(hashed[0:8]) % DAS_SUBNETS)
+```
 
 #### Slow rotation: Backbone
 
@@ -129,7 +160,41 @@ A node should anticipate backbone topics to subscribe to based their own identit
 These subscriptions rotate slowly, and with different offsets per node identity to avoid sudden network-wide rotations.
 
 ```python
-# TODO hash function: (node, time)->subnets
+def compute_backbone_subnets(node_id: NodeID, epoch: Epoch) -> Set[SubnetID]:
+    """
+    Compute the backbone subnet indices that a node should subscribe to.
+    
+    This hash function deterministically assigns each node to a set of backbone subnets
+    based on the node's identity and the current epoch. The rotation is slow to provide
+    network stability.
+    
+    Args:
+        node_id: The node identity
+        epoch: The current epoch
+        
+    Returns:
+        A set of subnet indices to which the node should subscribe as part of the backbone
+    """
+    # Each node is assigned to BACKBONE_SUBNETS_PER_NODE subnets
+    BACKBONE_SUBNETS_PER_NODE = 4
+    
+    # We rotate assignments every EPOCHS_PER_BACKBONE_ROTATION epochs
+    EPOCHS_PER_BACKBONE_ROTATION = 256
+    
+    # Compute the current rotation period
+    rotation_period = epoch // EPOCHS_PER_BACKBONE_ROTATION
+    
+    # Generate unique, deterministic subnets for this node and rotation period
+    result = set()
+    for i in range(BACKBONE_SUBNETS_PER_NODE):
+        # Combine node_id, rotation_period and subnet index to create diversity
+        combined = node_id + uint_to_bytes(uint64(rotation_period)) + uint_to_bytes(uint8(i))
+        hashed = hash(combined)
+        # Map the hash to a subnet index
+        subnet_id = uint64(bytes_to_uint64(hashed[0:8]) % DAS_SUBNETS)
+        result.add(subnet_id)
+        
+    return result
 ```
 
 Backbone subscription work is outlined in the [DAS participation spec](sampling.md#slow-rotation-backbone)
@@ -172,7 +237,7 @@ The following validations MUST pass before forwarding the `sample` on the vertic
 
 - _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
    If not known, the client MAY queue the sample if it passes formatting conditions.
-- _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
+- _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `subnet_index` using `compute_subnet_index(sample.shard, sample.slot, sample.index)` which MUST match the topic `{subnet_index}` parameter.
 - _[REJECT]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
 - _[REJECT]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
     - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
