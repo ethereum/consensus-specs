@@ -598,7 +598,13 @@ def test_random_full_withdrawals_3(spec, state):
 def test_success_no_max_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
     # To be partially withdrawable, the validator's effective balance must be maxed out
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT, balance=spec.MAX_EFFECTIVE_BALANCE - 1)
+    set_eth1_withdrawal_credential_with_balance(
+        spec,
+        state,
+        validator_index,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
+        balance=spec.MAX_EFFECTIVE_BALANCE - 1,
+    )
     validator = state.validators[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT

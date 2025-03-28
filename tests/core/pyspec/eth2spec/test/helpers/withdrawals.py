@@ -53,7 +53,13 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
         validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         state.balances[index] = validator.effective_balance + excess_balance
     else:
-        set_eth1_withdrawal_credential_with_balance(spec, state, index, effective_balance=spec.MAX_EFFECTIVE_BALANCE, balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance)
+        set_eth1_withdrawal_credential_with_balance(
+            spec,
+            state,
+            index,
+            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+            balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance,
+        )
 
     assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
 
