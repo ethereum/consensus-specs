@@ -23,8 +23,8 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     """
     Helper function to run a test that slashes and exits two validators
     """
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     yield 'pre', state
 
@@ -162,7 +162,7 @@ def _eligible_for_exit(spec, state, index):
 
     current_epoch = spec.get_current_epoch(state)
     activation_epoch = validator.activation_epoch
-    active_for_long_enough = current_epoch >= activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
+    active_for_long_enough = current_epoch >= activation_epoch + spec.config.MIN_VALIDATOR_ACTIVE_PERIOD
 
     not_exited = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
 
@@ -244,8 +244,8 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), d
 
 
 def run_test_full_random_operations(spec, state, rng=Random(2080)):
-    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # move state forward MIN_VALIDATOR_ACTIVE_PERIOD epochs to allow for exit
+    state.slot += spec.config.MIN_VALIDATOR_ACTIVE_PERIOD * spec.SLOTS_PER_EPOCH
 
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)
