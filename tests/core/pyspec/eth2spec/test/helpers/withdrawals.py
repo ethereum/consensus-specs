@@ -29,15 +29,21 @@ def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None
     assert spec.is_fully_withdrawable_validator(validator, state.balances[index], withdrawable_epoch)
 
 
-def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance=None, address=None):
-    if balance is None:
+def set_eth1_withdrawal_credential_with_balance(spec, state, index, effective_balance=None, balance=None, address=None):
+    if balance is None and effective_balance is None:
         balance = spec.MAX_EFFECTIVE_BALANCE
+        effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    elif balance is None:
+        balance = effective_balance
+    elif effective_balance is None:
+        effective_balance = min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+
     if address is None:
         address = b'\x11' * 20
 
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + address
-    validator.effective_balance = min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+    validator.effective_balance = effective_balance
     state.balances[index] = balance
 
 
@@ -47,7 +53,7 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
         validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         state.balances[index] = validator.effective_balance + excess_balance
     else:
-        set_eth1_withdrawal_credential_with_balance(spec, state, index, spec.MAX_EFFECTIVE_BALANCE + excess_balance)
+        set_eth1_withdrawal_credential_with_balance(spec, state, index, effective_balance=spec.MAX_EFFECTIVE_BALANCE, balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance)
 
     assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
 

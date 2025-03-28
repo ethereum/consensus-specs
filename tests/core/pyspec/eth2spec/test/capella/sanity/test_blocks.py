@@ -351,7 +351,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     next_withdrawal_validator_index = 0
     validator_index = next_withdrawal_validator_index + 1
 
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE)
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE)
     validator = state.validators[validator_index]
     balance = state.balances[validator_index]
     assert not spec.is_partially_withdrawable_validator(validator, balance)

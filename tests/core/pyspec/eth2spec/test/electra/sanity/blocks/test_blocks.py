@@ -264,7 +264,7 @@ def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
     excess_balance = 200000
     balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
     address = b'\x22' * 20
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance, address)
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, effective_balance=spec.MAX_EFFECTIVE_BALANCE, balance=balance, address=address)
 
     # Ensure the validator has an upcoming withdrawal
     # This will happen before the withdrawal request
@@ -301,7 +301,7 @@ def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state
     excess_balance = 200000
     balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
     address = b'\x22' * 20
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance, address)
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, effective_balance=spec.MAX_EFFECTIVE_BALANCE, balance=balance, address=address)
 
     # Ensure the validator has an upcoming withdrawal
     # This will happen before the withdrawal request

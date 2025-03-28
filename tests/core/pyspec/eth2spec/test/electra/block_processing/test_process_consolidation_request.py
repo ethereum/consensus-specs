@@ -1079,7 +1079,7 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
     source_address = b"\x22" * 20
     excess_balance = spec.EFFECTIVE_BALANCE_INCREMENT // 4
     set_eth1_withdrawal_credential_with_balance(
-        spec, state, source_index, address=source_address, balance=spec.MIN_ACTIVATION_BALANCE + excess_balance
+        spec, state, source_index, address=source_address, effective_balance=spec.MIN_ACTIVATION_BALANCE, balance=spec.MIN_ACTIVATION_BALANCE + excess_balance
     )
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,
@@ -1118,7 +1118,7 @@ def test_incorrect_source_not_active_long_enough(spec, state):
     source_address = b"\x22" * 20
     excess_balance = spec.EFFECTIVE_BALANCE_INCREMENT // 4
     set_eth1_withdrawal_credential_with_balance(
-        spec, state, source_index, address=source_address, balance=spec.MIN_ACTIVATION_BALANCE + excess_balance
+        spec, state, source_index, address=source_address, effective_balance=spec.MIN_ACTIVATION_BALANCE, balance=spec.MIN_ACTIVATION_BALANCE + excess_balance
     )
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,

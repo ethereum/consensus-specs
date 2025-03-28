@@ -598,10 +598,9 @@ def test_random_full_withdrawals_3(spec, state):
 def test_success_no_max_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
     # To be partially withdrawable, the validator's effective balance must be maxed out
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE - 1)
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT, balance=spec.MAX_EFFECTIVE_BALANCE - 1)
     validator = state.validators[validator_index]
 
-    # Effective balance should be 1 increment lower than MAX_EFFECTIVE_BALANCE
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
 
@@ -615,7 +614,7 @@ def test_success_no_max_effective_balance(spec, state):
 def test_success_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
     # To be partially withdrawable, the validator needs an excess balance
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, spec.MAX_EFFECTIVE_BALANCE)
+    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE)
     validator = state.validators[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
@@ -824,6 +823,7 @@ def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state,
         validator_index,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
         balance=spec.MAX_EFFECTIVE_BALANCE + 1
     )
     assert spec.is_partially_withdrawable_validator(
@@ -873,6 +873,7 @@ def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state,
         validator_index,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
         balance=spec.MAX_EFFECTIVE_BALANCE - 1
     )
     assert not spec.is_partially_withdrawable_validator(
