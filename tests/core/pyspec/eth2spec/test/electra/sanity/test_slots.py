@@ -4,6 +4,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.deposits import prepare_pending_deposit
 from eth2spec.test.helpers.state import transition_to
+from eth2spec.test.helpers.state import next_epoch
 
 
 def run_epoch_processing(spec, state, pending_deposits=None, pending_consolidations=None):
@@ -132,3 +133,18 @@ def test_pending_consolidation(spec, state):
     assert state.validators[source_index].effective_balance == 0
     assert state.balances[target_index] == spec.MIN_ACTIVATION_BALANCE * 2
     assert state.validators[target_index].effective_balance == spec.MIN_ACTIVATION_BALANCE * 2
+
+
+@with_electra_and_later
+@spec_state_test
+def test_balance_change_affects_proposer(spec, state):
+    future_state = state.copy()
+    next_epoch(spec, future_state)
+    proposer_next_epoch = spec.get_beacon_proposer_index(future_state)
+
+    state.validators[proposer_next_epoch].effective_balance = 0
+
+    run_epoch_processing(spec, state)
+    proposer_next_epoch_after_change = spec.get_beacon_proposer_index(state)
+
+    assert proposer_next_epoch != proposer_next_epoch_after_change
