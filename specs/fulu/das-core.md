@@ -26,7 +26,7 @@
   - [Custody requirement](#custody-requirement)
   - [Public, deterministic selection](#public-deterministic-selection)
 - [Custody sampling](#custody-sampling)
-- [Extended data](#extended-data)
+- [Modified data](#modified-data)
 - [Column gossip](#column-gossip)
   - [Parameters](#parameters)
 - [Reconstruction and cross-seeding](#reconstruction-and-cross-seeding)
@@ -203,7 +203,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 
 At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count * columns_per_group)` total columns, where `columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS`. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
 
-## Extended data
+## Modified data
 
 In this construction, we extend the blobs using a one-dimensional erasure coding extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed `NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its corresponding extension. `compute_matrix` demonstrates the relationship between blobs and the matrix, a potential method of storing cells/proofs.
 
