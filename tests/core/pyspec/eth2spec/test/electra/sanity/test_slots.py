@@ -115,7 +115,7 @@ def test_pending_consolidation(spec, state):
         spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
     # Set the target withdrawal credential to compounding
-    state.validators[target_index].withdrawal_credentials = (
+    state.validators[source_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
     pending_consolidations = [spec.PendingConsolidation(source_index=source_index, target_index=target_index)]
