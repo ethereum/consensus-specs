@@ -1,9 +1,16 @@
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.context import (
+    spec_test,
     spec_state_test,
     with_electra_until_eip7732,
+    single_phase,
+    with_presets,
+    with_custom_state,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    default_activation_threshold,
 )
 from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
@@ -16,6 +23,7 @@ from eth2spec.test.helpers.voluntary_exits import (
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
+    transition_to,
 )
 from eth2spec.test.helpers.withdrawals import (
     set_eth1_withdrawal_credential_with_balance,
@@ -370,3 +378,101 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
             signature=deposit_request.signature,
             slot=signed_block.message.slot,
         )
+
+
+@with_electra_until_eip7732
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # We are going to process two blocks:
+    #   1) A block which processes a withdrawal and consolidation.
+    #   2) A block which forces epoch processing to happen.
+    # For this to work, we must transition to the 2nd to last slot of the epoch.
+    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 2
+    transition_to(spec, state, slot)
+
+    current_epoch = spec.get_current_epoch(state)
+
+    # Initialize validator A (0x01 validator with 31.9 ETH)
+    a_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    a_addr = b'\xaa' * 20
+    assert state.validators[a_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    set_eth1_withdrawal_credential_with_balance(
+        spec,
+        state,
+        a_index,
+        # 31.9 ETH
+        balance=31_900_000_000,
+        address=a_addr,
+    )
+    # Set withdrawable epoch to current epoch to allow processing
+    state.validators[a_index].withdrawable_epoch = current_epoch
+
+    # Initialize validator B (0x02 validator with 64.0 ETH)
+    b_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    b_addr = b'\xbb' * 20
+    assert state.validators[b_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    set_compounding_withdrawal_credential_with_balance(
+        spec,
+        state,
+        b_index,
+        # 64 ETH
+        balance=64_000_000_000,
+        effective_balance=64_000_000_000,
+        address=b_addr,
+    )
+
+    # Add a pending consolidation from A -> B
+    state.validators[a_index].exit_epoch = spec.compute_consolidation_epoch_and_update_churn(
+        state, state.validators[a_index].effective_balance
+    )
+    state.validators[a_index].withdrawable_epoch = current_epoch + 1
+    state.pending_consolidations = [
+        spec.PendingConsolidation(
+            source_index=a_index,
+            target_index=b_index
+        )
+    ]
+
+    # Add a pending partial withdrawal for 32 ETH from B
+    state.pending_partial_withdrawals = [
+        spec.PendingPartialWithdrawal(
+            validator_index=b_index,
+            amount=spec.MIN_ACTIVATION_BALANCE,
+            withdrawable_epoch=current_epoch,
+        )
+    ]
+
+    yield 'pre', state
+
+    # Process a block to process the pending withdrawal/consolidation
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block_a = state_transition_and_sign_block(spec, state, block)
+
+    # Process another block to trigger epoch processing
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block_b = state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [signed_block_a, signed_block_b]
+    yield 'post', state
+
+    # Ensure we are in the next epoch
+    assert spec.get_current_epoch(state) == current_epoch + 1
+    # The pending consolidation should have been processed
+    assert state.pending_consolidations == []
+    # The pending partial withdrawal should have been processed
+    assert state.pending_partial_withdrawals == []
+    # Validator A should have exited, consolidation
+    assert state.validators[a_index].exit_epoch != spec.FAR_FUTURE_EPOCH
+    # Validator B should have an effective balance of 64 ETH
+    assert state.validators[b_index].effective_balance == 64 * spec.EFFECTIVE_BALANCE_INCREMENT
