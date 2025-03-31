@@ -423,8 +423,12 @@ def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
         spec,
         state,
         a_index,
-        # 31.9 ETH
+        # Given a balance of 31.9 ETH
+        # An excess balance isn't required for consolidations
         balance=31_900_000_000,
+        # And given an effect balance of 32.0 ETH
+        # It's possible that its effective balance hasn't been updated yet
+        effective_balance=32_000_000_000,
         address=a_addr,
     )
     # Set withdrawable epoch to current epoch to allow processing
@@ -490,3 +494,5 @@ def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
     assert state.validators[a_index].exit_epoch != spec.FAR_FUTURE_EPOCH
     # Validator B should have an effective balance of 64 ETH
     assert state.validators[b_index].effective_balance == 64 * spec.EFFECTIVE_BALANCE_INCREMENT
+    # Validator B's balance should be less than its effective balance, hysteria
+    assert state.balances[b_index] < state.validators[b_index].effective_balance
