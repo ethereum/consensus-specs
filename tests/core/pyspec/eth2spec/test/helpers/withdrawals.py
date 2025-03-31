@@ -36,7 +36,10 @@ def set_eth1_withdrawal_credential_with_balance(spec, state, index, effective_ba
     elif balance is None:
         balance = effective_balance
     elif effective_balance is None:
-        effective_balance = min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
+        effective_balance = min(
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT,
+            spec.MAX_EFFECTIVE_BALANCE
+        )
 
     if address is None:
         address = b'\x11' * 20
@@ -111,12 +114,18 @@ def set_compounding_withdrawal_credential_with_balance(spec, state, index,
                                                        effective_balance=None, balance=None, address=None):
     set_compounding_withdrawal_credential(spec, state, index, address)
 
-    if effective_balance is None:
+    if balance is None and effective_balance is None:
+        balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-    if balance is None:
+    elif balance is None:
         balance = effective_balance
+    elif effective_balance is None:
+        effective_balance = min(
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT,
+            spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
 
-    state.validators[index].effective_balance = effective_balance - effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
+    state.validators[index].effective_balance = effective_balance
     state.balances[index] = balance
 
 
