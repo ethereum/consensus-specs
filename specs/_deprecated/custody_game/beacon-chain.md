@@ -1,6 +1,6 @@
 # Custody Game -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -18,7 +18,7 @@
   - [Size parameters](#size-parameters)
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
 - [Data structures](#data-structures)
-  - [Extended types](#extended-types)
+  - [Modified types](#modified-types)
     - [`Validator`](#validator)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
@@ -116,7 +116,7 @@ building upon the [Sharding](../sharding/beacon-chain.md) specification.
 
 ## Data structures
 
-### Extended types
+### Modified types
 
 #### `Validator`
 

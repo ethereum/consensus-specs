@@ -14,7 +14,7 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
     next_epoch(spec, state)
 
     state.balances[validator_index] = balance
-    state.validators[validator_index].effective_balance = balance
+    state.validators[validator_index].effective_balance = balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT
 
     # ready for entrance into activation queue
     mock_deposit(spec, state, validator_index)
@@ -23,7 +23,7 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
 
     # validator moved into activation queue if eligible
     validator = state.validators[validator_index]
-    if validator.effective_balance < spec.MIN_ACTIVATION_BALANCE:
+    if validator.effective_balance <= (spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT):
         assert validator.activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
     else:
         assert validator.activation_eligibility_epoch < spec.FAR_FUTURE_EPOCH
