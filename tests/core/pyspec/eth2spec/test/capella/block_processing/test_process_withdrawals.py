@@ -602,8 +602,10 @@ def test_success_no_max_effective_balance(spec, state):
         spec,
         state,
         validator_index,
+        # Reduce validator's effective balance to make it ineligible for withdrawals
         effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
-        balance=spec.MAX_EFFECTIVE_BALANCE - 1,
+        # Give the validator an excess balance, so this isn't the reason it fails
+        balance=spec.MAX_EFFECTIVE_BALANCE + 1,
     )
     validator = state.validators[validator_index]
 
@@ -620,7 +622,15 @@ def test_success_no_max_effective_balance(spec, state):
 def test_success_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
     # To be partially withdrawable, the validator needs an excess balance
-    set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE)
+    set_eth1_withdrawal_credential_with_balance(
+        spec,
+        state,
+        validator_index,
+        # Ensure validator has the required effective balance, so this isn't the reason it fails
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+        # Remove validator's excess balance to make it ineligible for withdrawals
+        balance=spec.MAX_EFFECTIVE_BALANCE,
+    )
     validator = state.validators[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
@@ -879,7 +889,8 @@ def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state,
         validator_index,
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
+        # Assume effective balance updates haven't happened yet
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
         balance=spec.MAX_EFFECTIVE_BALANCE - 1
     )
     assert not spec.is_partially_withdrawable_validator(
