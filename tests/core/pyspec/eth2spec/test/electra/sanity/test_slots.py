@@ -42,6 +42,37 @@ def test_multiple_pending_deposits_same_pubkey(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_multiple_pending_deposits_same_pubkey_different_signature(spec, state):
+    # Create multiple deposits with the same pubkey, but only the first has a valid signature
+    index = len(state.validators)
+
+    # First deposit with valid signature
+    deposit0 = prepare_pending_deposit(
+        spec,
+        validator_index=index,
+        amount=spec.MIN_ACTIVATION_BALANCE // 2,
+        signed=True
+    )
+
+    # Second deposit without signature
+    deposit1 = prepare_pending_deposit(
+        spec,
+        validator_index=index,
+        amount=spec.MIN_ACTIVATION_BALANCE // 2,
+        signed=False
+    )
+
+    pending_deposits = [deposit0, deposit1]
+
+    yield from run_epoch_processing(spec, state, pending_deposits=pending_deposits)
+
+    # Check that both deposits are accepted
+    assert state.balances[index] == deposit0.amount + deposit1.amount
+    assert state.validators[index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
 def test_multiple_pending_deposits_same_pubkey_compounding(spec, state):
     # Create multiple deposits with the same pubkey and compounding creds
     index = len(state.validators)
