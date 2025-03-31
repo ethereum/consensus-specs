@@ -165,6 +165,32 @@ def test_pending_withdrawals_exiting_validator(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_full_pending_withdrawals_but_first_skipped_exiting_validator(spec, state):
+    # Fill the pending withdrawals, plus one which will be skipped
+    for index in range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1):
+        # Note, this adds the pending withdrawal to the state
+        prepare_pending_withdrawal(spec, state, index)
+
+    # Ensure that there's one more than the limit, the first will be skipped
+    assert len(state.pending_partial_withdrawals) == spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1
+
+    # For the first pending withdrawal, set the validator as exiting
+    spec.initiate_validator_exit(state, 0)
+
+    yield from run_withdrawals_processing(
+        spec,
+        state,
+        build_empty_execution_payload(spec, state),
+        # We expect the first pending withdrawal to be skipped
+        num_expected_withdrawals=spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    )
+
+    # Ensure all pending withdrawals were processed and the first one was skipped
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_withdrawals_low_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
 
@@ -181,6 +207,32 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
 
 @with_electra_and_later
 @spec_state_test
+def test_full_pending_withdrawals_but_first_skipped_low_effective_balance(spec, state):
+    # Fill the pending withdrawals, plus one which will be skipped
+    for index in range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1):
+        # Note, this adds the pending withdrawal to the state
+        prepare_pending_withdrawal(spec, state, index)
+
+    # Ensure that there's one more than the limit, the first will be skipped
+    assert len(state.pending_partial_withdrawals) == spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1
+
+    # For the first pending withdrawal, set the validator to insufficient effective balance
+    state.validators[0].effective_balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+
+    yield from run_withdrawals_processing(
+        spec,
+        state,
+        build_empty_execution_payload(spec, state),
+        # We expect the first pending withdrawal to be skipped
+        num_expected_withdrawals=spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    )
+
+    # Ensure all pending withdrawals were processed and the first one was skipped
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
 def test_pending_withdrawals_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
 
@@ -190,6 +242,32 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     yield from run_withdrawals_processing(spec, state, execution_payload, num_expected_withdrawals=0)
 
+    assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_full_pending_withdrawals_but_first_skipped_no_excess_balance(spec, state):
+    # Fill the pending withdrawals, plus one which will be skipped
+    for index in range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1):
+        # Note, this adds the pending withdrawal to the state
+        prepare_pending_withdrawal(spec, state, index)
+
+    # Ensure that there's one more than the limit, the first will be skipped
+    assert len(state.pending_partial_withdrawals) == spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1
+
+    # For the first pending withdrawal, set the validator to have no excess balance
+    state.balances[0] = spec.MIN_ACTIVATION_BALANCE
+
+    yield from run_withdrawals_processing(
+        spec,
+        state,
+        build_empty_execution_payload(spec, state),
+        # We expect the first pending withdrawal to be skipped
+        num_expected_withdrawals=spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    )
+
+    # Ensure all pending withdrawals were processed and the first one was skipped
     assert state.pending_partial_withdrawals == []
 
 
