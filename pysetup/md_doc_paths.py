@@ -52,22 +52,17 @@ def is_post_fork(a, b) -> bool:
     if a == b:
         return True
 
-    prev_fork = PREVIOUS_FORK_OF[a]
-    if prev_fork == b:
-        return True
-    elif prev_fork == None:
-        return False
-    else:
-        return is_post_fork(prev_fork, b)
+    curr_fork = a
+    while curr_fork := PREVIOUS_FORK_OF.get(curr_fork):
+        if curr_fork == b:
+            return True
+    return False
 
 
 def get_fork_directory(fork):
-    dir1 = f'specs/{fork}'
-    if os.path.exists(dir1):
-        return dir1
-    dir2 = f'specs/_features/{fork}'
-    if os.path.exists(dir2):
-        return dir2
+    for directory in (f'specs/{fork}', f'specs/_features/{fork}'):
+        if os.path.exists(directory):
+            return directory
     raise FileNotFoundError(f"No directory found for fork: {fork}")
 
 
@@ -79,21 +74,22 @@ def sort_key(s):
 
 
 def get_md_doc_paths(spec_fork: str) -> str:
-    md_doc_paths = ""
+    md_doc_paths = []
 
     for fork in ALL_FORKS:
         if is_post_fork(spec_fork, fork):
             # Append all files in fork directory recursively
-            for root, _, files in os.walk(get_fork_directory(fork)):
-                filepaths = []
-                for filename in files:
-                    filepath = os.path.join(root, filename)
-                    filepaths.append(filepath)
+            fork_dir = get_fork_directory(fork)
+            for root, _, files in os.walk(fork_dir):
+                filepaths = [os.path.join(root, filename) for filename in files 
+                             if filename.endswith('.md')]
+                
                 for filepath in sorted(filepaths, key=sort_key):
-                    if filepath.endswith('.md') and filepath not in IGNORE_SPEC_FILES:
-                        md_doc_paths += filepath + "\n"
+                    if filepath not in IGNORE_SPEC_FILES:
+                        md_doc_paths.append(filepath)
+            
             # Append extra files if any
-            if fork in EXTRA_SPEC_FILES:
-                md_doc_paths += EXTRA_SPEC_FILES[fork] + "\n"
+            if extra_file := EXTRA_SPEC_FILES.get(fork):
+                md_doc_paths.append(extra_file)
 
-    return md_doc_paths
+    return '\n'.join(md_doc_paths) + '\n'
