@@ -81,7 +81,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
             # Append all files in fork directory recursively
             fork_dir = get_fork_directory(fork)
             for root, _, files in os.walk(fork_dir):
-                filepaths = [os.path.join(root, filename) for filename in files 
+                filepaths = [os.path.join(root, filename) for filename in files
                              if filename.endswith('.md')]
                 
                 for filepath in sorted(filepaths, key=sort_key):
