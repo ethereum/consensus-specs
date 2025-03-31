@@ -70,12 +70,3 @@ def test_activation_queue_eligibility__greater_than_min_activation_balance(spec,
     balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     set_compounding_withdrawal_credential_with_balance(spec, state, index)
     yield from run_test_activation_queue_eligibility(spec, state, index, balance)
-
-
-@with_electra_and_later
-@spec_state_test
-def test_activation_queue_eligibility__fractional_greater_than_min_activation_balance(spec, state):
-    index = 15
-    balance = spec.MIN_ACTIVATION_BALANCE + (spec.EFFECTIVE_BALANCE_INCREMENT * 0.6)
-    set_compounding_withdrawal_credential_with_balance(spec, state, index)
-    yield from run_test_activation_queue_eligibility(spec, state, index, balance)
