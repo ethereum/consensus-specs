@@ -9,8 +9,8 @@
 - [Introduction](#introduction)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
-    - [`compute_weak_subjectivity_period`](#compute_weak_subjectivity_period)
-    - [`is_within_weak_subjectivity_period`](#is_within_weak_subjectivity_period)
+    - [Modified `compute_weak_subjectivity_period`](#modified-compute_weak_subjectivity_period)
+    - [Modified `is_within_weak_subjectivity_period`](#modified-is_within_weak_subjectivity_period)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
@@ -29,7 +29,7 @@ maximum effective balance for validators and allows validators to consolidate.
 
 ### Calculating the Weak Subjectivity Period
 
-#### `compute_weak_subjectivity_period`
+#### Modified `compute_weak_subjectivity_period`
 
 A detailed analysis of the calculation of the Weak Subjectivity Period for Electra is made
 [here](https://notes.ethereum.org/@CarlBeek/electra_weak_subjectivity).
@@ -53,7 +53,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     return ws_period
 ```
 
-#### `is_within_weak_subjectivity_period`
+#### Modified `is_within_weak_subjectivity_period`
 
 ```python
 def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
@@ -61,7 +61,7 @@ def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_c
     assert ws_state.latest_block_header.state_root == ws_checkpoint.root
     assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch
 
-    ws_period = compute_weak_subjectivity_period(ws_state)
+    ws_period = compute_weak_subjectivity_period(ws_state)  # [Modified in Electra]
     ws_state_epoch = compute_epoch_at_slot(ws_state.slot)
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     return current_epoch <= ws_state_epoch + ws_period
