@@ -225,7 +225,6 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     # Verify inclusion list transactions
     inclusion_list_transactions: Sequence[Transaction] = []  # TODO: where do we get this?
-    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_PAYLOAD
     # Verify the payload with the execution engine
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
