@@ -82,12 +82,10 @@ def get_md_doc_paths(spec_fork: str) -> str:
             fork_dir = get_fork_directory(fork)
             for root, _, files in os.walk(fork_dir):
                 filepaths = [os.path.join(root, filename) for filename in files
-                             if filename.endswith('.md')]
-                
+                             if filename.endswith('.md')]                
                 for filepath in sorted(filepaths, key=sort_key):
                     if filepath not in IGNORE_SPEC_FILES:
-                        md_doc_paths.append(filepath)
-            
+                        md_doc_paths.append(filepath)       
             # Append extra files if any
             if extra_file := EXTRA_SPEC_FILES.get(fork):
                 md_doc_paths.append(extra_file)
