@@ -31,17 +31,14 @@ maximum effective balance for validators and allows validators to consolidate.
 
 #### Modified `compute_weak_subjectivity_period`
 
-A detailed analysis of the calculation of the Weak Subjectivity Period for Electra is made
-[here](https://notes.ethereum.org/@CarlBeek/electra_weak_subjectivity).
-
 ```python
 def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     """
     Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:
-        - validator set churn (bounded by ``get_balance_churn_limit()`` per epoch), and
+        - validator set churn (bounded by ``get_balance_churn_limit()`` per epoch)
     A detailed calculation can be found at:
-    https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf
+    https://notes.ethereum.org/@CarlBeek/electra_weak_subjectivity
     """
     t = get_total_active_balance(state)
     delta = get_balance_churn_limit(state)
