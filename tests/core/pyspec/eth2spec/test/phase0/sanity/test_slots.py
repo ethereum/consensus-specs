@@ -8,6 +8,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.state import (
     get_state_root,
     next_epoch,
+    next_slot,
     transition_to
 )
 
@@ -105,23 +106,44 @@ def run_epoch_processing(spec, state):
 @with_all_phases
 @spec_state_test
 def test_balance_change_affects_proposer(spec, state):
-    # Get 1 epoch in the future and get the proposer index selected
-    future_state = state.copy()
-    next_epoch(spec, future_state)
-    proposer_next_epoch = spec.get_beacon_proposer_index(future_state)
+    # Brute-force an instance where a validator's balance change prevents it from proposing.
+    # We must brute-force this because sometimes the balance change doesn't make a difference.
+    # Give this approach 100 attempts to find such a case.
+    for _ in range(100):
+        original_state = state.copy()
 
-    # Set the effective balance of the proposer selected to 0 so that the
-    # the following condition in 'compute_proposer_index'
-    # if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-    # leads to a different proposer selection
-    state.validators[proposer_next_epoch].effective_balance = 0
+        # Get the proposer of the first slot in the next epoch
+        next_epoch_state = state.copy()
+        next_epoch(spec, next_epoch_state)
+        proposer_next_epoch = spec.get_beacon_proposer_index(next_epoch_state)
 
-    # Process the epoch to go forward in time and ensure the balance
-    # change is taken into account
-    run_epoch_processing(spec, state)
+        # Reduce the validator's balance, making it less likely to propose
+        # The validator's effective balance will be updated during epoch processing
+        spec.decrease_balance(state, proposer_next_epoch, 10 * spec.EFFECTIVE_BALANCE_INCREMENT)
 
-    # Retrieve the index of the proposer selected
+        # Check if the proposer changed as a result of the balance change
+        tmp_state = state.copy()
+        next_epoch(spec, tmp_state)
+        if proposer_next_epoch != spec.get_beacon_proposer_index(tmp_state):
+            # Use this state
+            break
+        else:
+            # Try another state
+            state = original_state.copy()
+            next_epoch(spec, state)
+
+    # Transition to the last slot of the current epoch
+    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
+    transition_to(spec, state, slot)
+
+    yield 'pre', state
+    yield 'slots', 1
+
+    # Transition to the next epoch
+    next_slot(spec, state)
+
+    yield 'post', state
+
+    # Verify that the proposer changed because of the balance change
     proposer_next_epoch_after_change = spec.get_beacon_proposer_index(state)
-
-    # Assert that the proposer selected did change
     assert proposer_next_epoch != proposer_next_epoch_after_change
