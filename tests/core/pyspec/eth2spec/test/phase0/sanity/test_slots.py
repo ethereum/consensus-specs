@@ -110,7 +110,10 @@ def test_balance_change_affects_proposer(spec, state):
     next_epoch(spec, future_state)
     proposer_next_epoch = spec.get_beacon_proposer_index(future_state)
 
-    # Set the effective balance of the proposer selected to 0
+    # Set the effective balance of the proposer selected to 0 so that the
+    # the following condition in 'compute_proposer_index'
+    # if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+    # leads to a different proposer selection
     state.validators[proposer_next_epoch].effective_balance = 0
 
     # Process the epoch to go forward in time and ensure the balance
