@@ -94,15 +94,6 @@ def test_historical_accumulator(spec, state):
         assert len(state.historical_roots) == len(pre_historical_roots) + 1
 
 
-def run_epoch_processing(spec, state):
-    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
-    transition_to(spec, state, slot)
-    yield 'pre', state
-    yield 'slots', 1
-    spec.process_slots(state, state.slot + 1)
-    yield 'post', state
-
-
 @with_all_phases
 @spec_state_test
 def test_balance_change_affects_proposer(spec, state):
