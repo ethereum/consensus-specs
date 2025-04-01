@@ -10,7 +10,6 @@
 - [Preset](#preset)
   - [Domain types](#domain-types)
   - [Inclusion List Committee](#inclusion-list-committee)
-  - [Execution](#execution)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
