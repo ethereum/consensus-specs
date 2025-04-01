@@ -67,7 +67,6 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
             key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
-            global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
                 _custom_state_cache_dict[key] = state.get_backing()
