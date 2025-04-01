@@ -1,4 +1,4 @@
-# Phase 0 -- Weak Subjectivity Guide
+# Electra -- Weak Subjectivity Guide
 
 ## Table of contents
 
@@ -7,7 +7,6 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
 - [Custom Types](#custom-types)
 - [Constants](#constants)
 - [Configuration](#configuration)
@@ -19,24 +18,13 @@
   - [Weak Subjectivity Sync Procedure](#weak-subjectivity-sync-procedure)
   - [Checking for Stale Weak Subjectivity Checkpoint](#checking-for-stale-weak-subjectivity-checkpoint)
     - [`is_within_weak_subjectivity_period`](#is_within_weak_subjectivity_period)
-- [Distributing Weak Subjectivity Checkpoints](#distributing-weak-subjectivity-checkpoints)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
 
-This document is a guide for implementing the Weak Subjectivity protections in Phase 0.
-This document is still a work-in-progress, and is subject to large changes.
-For more information about weak subjectivity and why it is required, please refer to:
-
-- [Weak Subjectivity in Ethereum Proof-of-Stake](https://notes.ethereum.org/@adiasg/weak-subjectvity-eth2)
-- [Proof of Stake: How I Learned to Love Weak Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)
-
-## Prerequisites
-
-This document uses data structures, constants, functions, and terminology from
-[Phase 0 -- The Beacon Chain](./beacon-chain.md) and [Phase 0 -- Beacon Chain Fork Choice](./fork-choice.md).
+This document is a guide for implementing Weak Subjectivity protections in Electra. The Weak Subjectivity Period (WSP) calculations have changed in Electra due to changes to how the `churn_limit` changed to account for the increased `MAXIMUM_EFFECTIVE_BALANCE` and the introductions of `ConsolidationRequest`s.
 
 ## Custom Types
 
@@ -75,11 +63,7 @@ a safety margin of at least `1/3 - SAFETY_DECAY/100`.
 
 ### Calculating the Weak Subjectivity Period
 
-A detailed analysis of the calculation of the weak subjectivity period is made in [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf).
-
-*Note*: The expressions in the report use fractions, whereas the consensus-specs only use `uint64` arithmetic. The expressions have been simplified to avoid computing fractions, and more details can be found [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
-
-*Note*: The calculations here use `Ether` instead of `Gwei`, because the large magnitude of balances in `Gwei` can cause an overflow while computing using `uint64` arithmetic operations. Using `Ether` reduces the magnitude of the multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the scope for overflows in `uint64`.
+A detailed analysis of the calculation of the weak subjectivity period is made in [here](https://notes.ethereum.org/@CarlBeek/electra_weak_subjectivity).
 
 #### `compute_weak_subjectivity_period`
 
@@ -96,28 +80,11 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     delta = get_balance_churn_limit(state)
     D = SAFETY_DECAY
 
-    epochs_for_validator_set_churn = D * t // (2 * delta)
+    epochs_for_validator_set_churn = D * t // (4 * delta * 100)
     ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
 
     return ws_period
 ```
-
-A brief reference for what these values look like in practice ([reference script](https://gist.github.com/adiasg/3aceab409b36aa9a9d9156c1baa3c248)):
-
-| Safety Decay | Avg. Val. Balance (ETH) | Val. Count | Weak Sub. Period (Epochs) |
-| ---- | ---- | ---- | ---- |
-| 10 | 28 | 32768 | 504 |
-| 10 | 28 | 65536 | 752 |
-| 10 | 28 | 131072 | 1248 |
-| 10 | 28 | 262144 | 2241 |
-| 10 | 28 | 524288 | 2241 |
-| 10 | 28 | 1048576 | 2241 |
-| 10 | 32 | 32768 | 665 |
-| 10 | 32 | 65536 | 1075 |
-| 10 | 32 | 131072 | 1894 |
-| 10 | 32 | 262144 | 3532 |
-| 10 | 32 | 524288 | 3532 |
-| 10 | 32 | 1048576 | 3532 |
 
 ## Weak Subjectivity Sync
 
@@ -163,7 +130,3 @@ def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_c
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
     return current_epoch <= ws_state_epoch + ws_period
 ```
-
-## Distributing Weak Subjectivity Checkpoints
-
-This section will be updated soon.
