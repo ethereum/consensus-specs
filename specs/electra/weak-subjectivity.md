@@ -24,7 +24,13 @@
 
 ## Introduction
 
-This document is a guide for implementing Weak Subjectivity protections in Electra. The Weak Subjectivity Period (WSP) calculations have changed in Electra due to changes to how the `churn_limit` changed to account for the increased `MAXIMUM_EFFECTIVE_BALANCE` and the introductions of `ConsolidationRequest`s.
+This document is an extension of the [Phase 0 -- Weak Subjectivity
+Guide](../phase0/weak-subjectivity.md). All behaviors and definitions defined in this document, and
+documents it extends, carry over unless explicitly noted or overridden.
+
+This document is a guide for implementing Weak Subjectivity protections in Electra. The Weak
+Subjectivity Period (WSP) calculations have changed in Electra due to EIP-7251, which increases the
+maximum effective balance for validators and allows validators to consolidate.
 
 ## Custom Types
 
