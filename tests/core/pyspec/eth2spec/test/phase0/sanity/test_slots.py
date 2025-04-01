@@ -1,13 +1,15 @@
 from eth2spec.test.helpers.forks import (
     is_post_capella,
 )
-from eth2spec.test.helpers.state import get_state_root
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from eth2spec.test.helpers.state import next_epoch
-from eth2spec.test.helpers.state import transition_to
+from eth2spec.test.helpers.state import (
+    get_state_root,
+    next_epoch,
+    transition_to
+)
 
 
 @with_all_phases
