@@ -64,7 +64,7 @@ def run_execution_payload_processing(spec, state, execution_payload, valid=True,
 
     class TestEngine(spec.NoopExecutionEngine):
         def verify_and_notify_new_payload(self, new_payload_request) -> bool:
-            nonlocal called_new_block, execution_valid
+            nonlocal called_new_block
             called_new_block = True
             assert new_payload_request.execution_payload == execution_payload
             return execution_valid

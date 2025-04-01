@@ -422,7 +422,6 @@ def cached_prepare_state_with_attestations(spec, state):
     # prepare it with attestations, and put it in the LRU.
     # The input state is likely already cached, so the hash-tree-root does not affect speed.
     key = (spec.fork, state.hash_tree_root())
-    global _prep_state_cache_dict
     if key not in _prep_state_cache_dict:
         prepare_state_with_attestations(spec, state)
         _prep_state_cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
