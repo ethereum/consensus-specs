@@ -300,7 +300,6 @@ def leaking(epochs=None):
             # transition it to leak, and put it in the LRU.
             # The input state is likely already cached, so the hash-tree-root does not affect speed.
             key = (state.hash_tree_root(), spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY, spec.SLOTS_PER_EPOCH, epochs)
-            global _cache_dict
             if key not in _cache_dict:
                 transition_state_to_leak(spec, state, epochs=epochs)
                 _cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.

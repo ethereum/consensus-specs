@@ -21,6 +21,8 @@
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the sidecars](#constructing-the-sidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
+      - [`get_data_column_sidecars_from_block`](#get_data_column_sidecars_from_block)
+      - [`get_data_column_sidecars_from_column_sidecar`](#get_data_column_sidecars_from_column_sidecar)
     - [Sidecar publishing](#sidecar-publishing)
     - [Sidecar retention](#sidecar-retention)
 
@@ -48,7 +50,7 @@ document and used throughout.
 | Name | Value | Description |
 | - | - | - |
 | `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody |
 
 ## Helpers
 
@@ -106,17 +108,17 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
 
 A node with validators attached downloads and custodies a higher minimum of custody groups per slot,
 determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the
-current `BeaconState` and `validator_indices` is the list of indices corresponding to validators
+latest finalized `BeaconState` and `validator_indices` is the list of indices corresponding to validators
 attached to the node. Any node with at least one validator attached, and with the sum of the
-balances of all attached validators being `total_node_balance`, downloads and custodies
+effective balances of all attached validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum
 of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`. The node
-SHOULD dynamically adjust its custody groups following any changes to the balances of attached
-validators.
+SHOULD dynamically adjust its custody groups following any changes to the effective balances of
+attached validators.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
-    total_node_balance = sum(state.balances[index] for index in validator_indices)
+    total_node_balance = sum(state.validators[index].effective_balance for index in validator_indices)
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
@@ -125,9 +127,10 @@ This higher custody is advertised in the node's Metadata by setting a higher `cu
 and in the node's ENR by setting a higher `custody_group_count`. As with the regular custody
 requirement, a node with validators MAY still choose to custody, advertise and serve more than
 this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In
-addition, when the validator custody requirement increases, due to an increase in the total balance
-of the attached validators, a node MUST backfill columns from the new custody groups. However, a
-node MAY wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
+addition, when the validator custody requirement increases, due to an increase in the total
+effective balance of the attached validators, a node MUST backfill columns from the new custody
+groups. However, a node MAY wait to advertise a higher custody in its Metadata and ENR until
+backfilling is complete.
 
 *Note*: The node SHOULD manage validator custody (and any changes during its lifetime) without any
 input from the user, for example by using existing signals about validator metadata to compute the
@@ -148,24 +151,28 @@ each other, with extra fields for the necessary context.
 
 The sequence of sidecars associated with a block and can be obtained by first computing
 `cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then calling
-`get_data_column_sidecars(signed_block, cells_and_kzg_proofs)`.
+`get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
+
+Moreover, the full sequence of sidecars can also be computed from `cells_and_kzg_proofs` and any single
+`sidecar`, by calling `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
+This can be used in distributed blob publishing, to reconstruct all sidecars from any sidecar received
+on the wire, assuming all cells and kzg proofs could be retrieved from the local execution layer client.
 
 ```python
-def get_data_column_sidecars(signed_block: SignedBeaconBlock,
-                             cells_and_kzg_proofs: Sequence[Tuple[
+def get_data_column_sidecars(
+    signed_block_header: SignedBeaconBlockHeader,
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
+    cells_and_kzg_proofs: Sequence[Tuple[
         Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
     """
-    Given a signed block and the cells/proofs associated with each blob in the
-    block, assemble the sidecars which can be distributed to peers.
+    Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
+    each blob in the block, assemble the sidecars which can be distributed to peers.
     """
-    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
-    assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
-    signed_block_header = compute_signed_block_header(signed_block)
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
-    )
+    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
 
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
@@ -176,12 +183,64 @@ def get_data_column_sidecars(signed_block: SignedBeaconBlock,
         sidecars.append(DataColumnSidecar(
             index=column_index,
             column=column_cells,
-            kzg_commitments=blob_kzg_commitments,
+            kzg_commitments=kzg_commitments,
             kzg_proofs=column_proofs,
             signed_block_header=signed_block_header,
             kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
         ))
     return sidecars
+```
+
+##### `get_data_column_sidecars_from_block`
+
+```python
+def get_data_column_sidecars_from_block(
+    signed_block: SignedBeaconBlock,
+    cells_and_kzg_proofs: Sequence[Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block and the cells/proofs associated with each blob in the
+    block, assemble the sidecars which can be distributed to peers.
+    """
+    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
+    signed_block_header = compute_signed_block_header(signed_block)
+    kzg_commitments_inclusion_proof = compute_merkle_proof(
+        signed_block.message.body,
+        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
+    )
+    return get_data_column_sidecars(
+        signed_block_header,
+        blob_kzg_commitments,
+        kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs
+    )
+```
+
+##### `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[Tuple[
+        Vector[Cell, CELLS_PER_EXT_BLOB],
+        Vector[KZGProof, CELLS_PER_EXT_BLOB]
+    ]]
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.signed_block_header,
+        sidecar.kzg_commitments,
+        sidecar.kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs
+    )
 ```
 
 #### Sidecar publishing
