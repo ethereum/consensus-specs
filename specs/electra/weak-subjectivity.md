@@ -46,6 +46,30 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
 ```
 
+A brief reference for what these values look like in practice ([reference
+script](https://gist.github.com/jtraglia/af88887a0718b12f0543580dc195dd09)):
+
+| Safety Decay | Avg. Val. Balance (ETH) | Val. Count | Weak Sub. Period (Epochs) |
+| ---- | ---- | ---- | ---- |
+| 10 | 28000000000 | 32768 | 435 |
+| 10 | 28000000000 | 65536 | 614 |
+| 10 | 28000000000 | 131072 | 972 |
+| 10 | 28000000000 | 262144 | 1689 |
+| 10 | 28000000000 | 524288 | 1894 |
+| 10 | 28000000000 | 1048576 | 1894 |
+| 10 | 32000000000 | 32768 | 460 |
+| 10 | 32000000000 | 65536 | 665 |
+| 10 | 32000000000 | 131072 | 1075 |
+| 10 | 32000000000 | 262144 | 1894 |
+| 10 | 32000000000 | 524288 | 1894 |
+| 10 | 32000000000 | 1048576 | 1894 |
+| 10 | 36000000000 | 32768 | 486 |
+| 10 | 36000000000 | 65536 | 716 |
+| 10 | 36000000000 | 131072 | 1177 |
+| 10 | 36000000000 | 262144 | 1894 |
+| 10 | 36000000000 | 524288 | 1894 |
+| 10 | 36000000000 | 1048576 | 1894 |
+
 #### Modified `is_within_weak_subjectivity_period`
 
 ```python
