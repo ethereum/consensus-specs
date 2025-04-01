@@ -88,16 +88,31 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     """
     Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:
-        - validator set churn (bounded by ``get_balance_churn_limit()`` per epoch), and
+        - validator set churn (bounded by ``get_validator_churn_limit()`` per epoch), and
+        - validator balance top-ups (bounded by ``MAX_DEPOSITS * SLOTS_PER_EPOCH`` per epoch).
     A detailed calculation can be found at:
     https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf
     """
-    t = get_total_active_balance(state)
-    delta = get_balance_churn_limit(state)
+    ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    N = len(get_active_validator_indices(state, get_current_epoch(state)))
+    t = get_total_active_balance(state) // N // ETH_TO_GWEI
+    T = MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI
+    delta = get_validator_churn_limit(state)
+    Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
     D = SAFETY_DECAY
 
-    epochs_for_validator_set_churn = D * t // (2 * delta)
-    ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
+    if T * (200 + 3 * D) < t * (200 + 12 * D):
+        epochs_for_validator_set_churn = (
+            N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
+        )
+        epochs_for_balance_top_ups = (
+            N * (200 + 3 * D) // (600 * Delta)
+        )
+        ws_period += max(epochs_for_validator_set_churn, epochs_for_balance_top_ups)
+    else:
+        ws_period += (
+            3 * N * D * t // (200 * Delta * (T - t))
+        )
 
     return ws_period
 ```
