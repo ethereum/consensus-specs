@@ -197,7 +197,7 @@ The gossip `ForkDigestValue` is determined based on `compute_fork_version(comput
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 |--------------------------------|---------------------|
@@ -251,7 +251,7 @@ The Deneb fork-digest is introduced to the `context` enum to specify Deneb beaco
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -269,7 +269,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -363,7 +363,7 @@ For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 |--------------------------------|---------------------|
@@ -417,7 +417,7 @@ For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 |--------------------------------|---------------------|

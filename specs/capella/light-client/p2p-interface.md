@@ -34,7 +34,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ###### `light_client_finality_update`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -44,7 +44,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ###### `light_client_optimistic_update`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -58,7 +58,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ##### GetLightClientBootstrap
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -68,7 +68,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ##### LightClientUpdatesByRange
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response chunk SSZ type               |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -78,7 +78,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ##### GetLightClientFinalityUpdate
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -88,7 +88,7 @@ The [Altair light client networking specification](../../altair/light-client/p2p
 
 ##### GetLightClientOptimisticUpdate
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 | ------------------------------------------------------ | ------------------------------------- |

@@ -68,7 +68,7 @@ The following validations MUST pass before forwarding the `inclusion_list` on th
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                 |
 |------------------------|--------------------------------|

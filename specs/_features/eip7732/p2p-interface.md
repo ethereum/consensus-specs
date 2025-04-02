@@ -207,7 +207,7 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -224,7 +224,7 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -239,7 +239,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -275,7 +275,7 @@ For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                           |
 |------------------------|------------------------------------------|
@@ -287,7 +287,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                           |
 |------------------------|------------------------------------------|

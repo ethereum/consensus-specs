@@ -120,7 +120,7 @@ Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |
@@ -137,7 +137,7 @@ Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |

@@ -34,7 +34,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ###### `light_client_finality_update`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                    |
 |--------------------------------------------------------|-------------------------------------|
@@ -45,7 +45,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ###### `light_client_optimistic_update`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
 |--------------------------------------------------------|---------------------------------------|
@@ -60,7 +60,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ##### GetLightClientBootstrap
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                  |
 |--------------------------------------------------------|------------------------------------|
@@ -71,7 +71,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ##### LightClientUpdatesByRange
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response chunk SSZ type          |
 |--------------------------------------------------------|----------------------------------|
@@ -82,7 +82,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ##### GetLightClientFinalityUpdate
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                   |
 |--------------------------------------------------------|-------------------------------------|
@@ -93,7 +93,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 ##### GetLightClientOptimisticUpdate
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 |--------------------------------------------------------|---------------------------------------|

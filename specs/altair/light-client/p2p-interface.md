@@ -76,7 +76,7 @@ The gossip `ForkDigestValue` is determined based on `compute_fork_version(comput
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Message SSZ type                     |
 | ------------------------------- | ------------------------------------ |
@@ -107,7 +107,7 @@ The gossip `ForkDigestValue` is determined based on `compute_fork_version(comput
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Message SSZ type                     |
 | ------------------------------- | ------------------------------------ |
@@ -150,7 +150,7 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(boot
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Response SSZ type                    |
 | ------------------------------- | ------------------------------------ |
@@ -190,7 +190,7 @@ For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Response chunk SSZ type              |
 | ------------------------------- | ------------------------------------ |
@@ -221,7 +221,7 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(fina
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Response SSZ type                    |
 | ------------------------------- | ------------------------------------ |
@@ -252,7 +252,7 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(opti
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Response SSZ type                    |
 | ------------------------------- | ------------------------------------ |

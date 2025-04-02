@@ -1573,7 +1573,7 @@ the epoch range that a new node syncing from a checkpoint must backfill.
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 ```python
 MIN_EPOCHS_FOR_BLOCK_REQUESTS = (

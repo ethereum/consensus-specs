@@ -226,7 +226,7 @@ When clients use the local execution layer to retrieve blob and compute data col
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`      | Chunk SSZ type           |
 |---------------------|--------------------------|
@@ -309,7 +309,7 @@ After the initial data column sidecar, clients MAY stop in the process of respon
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`      | Chunk SSZ type           |
 |---------------------|--------------------------|

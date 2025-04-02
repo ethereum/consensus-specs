@@ -127,7 +127,7 @@ The Electra fork-digest is introduced to the `context` enum to specify Electra b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|
@@ -144,7 +144,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 |--------------------------|-------------------------------|

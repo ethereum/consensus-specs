@@ -241,7 +241,7 @@ Request and Response remain unchanged. A `ForkDigest`-context is used to select 
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |
@@ -256,7 +256,7 @@ Request and Response remain unchanged. A `ForkDigest`-context is used to select 
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type             |
 | ------------------------ | -------------------------- |
