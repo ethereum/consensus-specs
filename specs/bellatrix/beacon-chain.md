@@ -48,27 +48,28 @@
 This upgrade adds transaction execution to the beacon chain as part of Bellatrix upgrade.
 
 Additionally, this upgrade introduces the following minor changes:
-* Penalty parameter updates to their planned maximally punitive values
+
+- Penalty parameter updates to their planned maximally punitive values
 
 ## Custom types
 
 *Note*: The `Transaction` type is a stub which is not final.
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
-| `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
+| Name               | SSZ equivalent                        | Description                                                                                                                                       |
+| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
+| `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
 
 ## Preset
 
 ### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_BYTES_PER_TRANSACTION` | `uint64(2**30)` (= 1,073,741,824) |
-| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
-| `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-| `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
+| Name                           | Value                             |
+| ------------------------------ | --------------------------------- |
+| `MAX_BYTES_PER_TRANSACTION`    | `uint64(2**30)` (= 1,073,741,824) |
+| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576)     |
+| `BYTES_PER_LOGS_BLOOM`         | `uint64(2**8)` (= 256)            |
+| `MAX_EXTRA_DATA_BYTES`         | `2**5` (= 32)                     |
 
 ### Updated penalty values
 
@@ -76,21 +77,21 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
-| Name | Value |
-| - | - |
-| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**5)` (= 32) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)` |
+| Name                                         | Value                          |
+| -------------------------------------------- | ------------------------------ |
+| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`    | `uint64(2**5)` (= 32)          |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)`                    |
 
 ## Configuration
 
 ### Transition settings
 
-| Name | Value |
-| - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | `58750000000000000000000` (Estimated: Sept 15, 2022)|
-| `TERMINAL_BLOCK_HASH` | `Hash32()` |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
+| Name                                   | Value                                                |
+| -------------------------------------- | ---------------------------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
 
 ## Containers
 
@@ -313,8 +314,8 @@ class NewPayloadRequest(object):
 
 The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
 
-* a state object `self.execution_state` of type `ExecutionState`
-* a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
+- a state object `self.execution_state` of type `ExecutionState`
+- a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
 
 The body of these functions are implementation dependent.
 The Engine API may be used to implement this and similarly defined functions via an external execution engine.

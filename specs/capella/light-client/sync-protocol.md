@@ -18,19 +18,20 @@
 This upgrade adds information about the execution payload to light client data as part of the Capella upgrade. It extends the [Altair Light Client specifications](../../altair/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Altair based deployments to Capella.
 
 Additional documents describes the impact of the upgrade on certain roles:
+
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
+| Name              | SSZ equivalent                                         | Description                                                   |
+| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
 | `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
 
 ## Constants
 
-| Name | Value |
-| - | - |
+| Name                       | Value                                                                |
+| -------------------------- | -------------------------------------------------------------------- |
 | `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
 
 ## Containers

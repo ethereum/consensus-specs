@@ -14,6 +14,7 @@
 This upgrade updates light client data to include the Deneb changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to Deneb.
 
 Additional documents describes the impact of the upgrade on certain roles:
+
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 

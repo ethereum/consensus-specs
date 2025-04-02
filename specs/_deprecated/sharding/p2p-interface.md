@@ -36,11 +36,11 @@ The adjustments and additions for Shards are outlined in this document.
 
 Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 
-| Name                            | Message Type             |
-|---------------------------------|--------------------------|
-| `shard_row_{subnet_id}`         | `SignedShardSample`      |
-| `shard_column_{subnet_id}`      | `SignedShardSample`      |
-| `builder_block_bid`             | `BuilderBlockBid`        |
+| Name                       | Message Type        |
+| -------------------------- | ------------------- |
+| `shard_row_{subnet_id}`    | `SignedShardSample` |
+| `shard_column_{subnet_id}` | `SignedShardSample` |
+| `builder_block_bid`        | `BuilderBlockBid`   |
 
 The [DAS network specification](../das/das-core.md) defines additional topics.
 
@@ -83,4 +83,3 @@ The following validations MUST pass before forwarding the `sample`.
 - _[REJECT]_ The sample signature, `sample.signature`, is valid for the builder --
   i.e. `bls.Verify(builder_pubkey, sample_signing_root, sample.signature)` OR `sample.signature == Bytes96(b"\0" * 96)` AND
   the sample verification `verify_sample` passes
-

@@ -34,7 +34,7 @@ The [Deneb light client networking specification](../../deneb/light-client/p2p-i
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                    |
-|--------------------------------------------------------|-------------------------------------|
+| ------------------------------------------------------ | ----------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
@@ -46,7 +46,7 @@ The [Deneb light client networking specification](../../deneb/light-client/p2p-i
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
-|--------------------------------------------------------|---------------------------------------|
+| ------------------------------------------------------ | ------------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |
@@ -61,32 +61,32 @@ The [Deneb light client networking specification](../../deneb/light-client/p2p-i
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                                         | Response SSZ type                  |
-|--------------------------------------------------------|------------------------------------|
-| `GENESIS_FORK_VERSION`                                 | n/a                                |
-| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientBootstrap`      |
-| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientBootstrap`     |
-| `DENEB_FORK_VERSION`                                   | `deneb.LightClientBootstrap`       |
-| `ELECTRA_FORK_VERSION` and later                       | `electra.LightClientBootstrap`     |
+| `fork_version`                                         | Response SSZ type              |
+| ------------------------------------------------------ | ------------------------------ |
+| `GENESIS_FORK_VERSION`                                 | n/a                            |
+| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientBootstrap`  |
+| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientBootstrap` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientBootstrap`   |
+| `ELECTRA_FORK_VERSION` and later                       | `electra.LightClientBootstrap` |
 
 ##### LightClientUpdatesByRange
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                                         | Response chunk SSZ type          |
-|--------------------------------------------------------|----------------------------------|
-| `GENESIS_FORK_VERSION`                                 | n/a                              |
-| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientUpdate`       |
-| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientUpdate`      |
-| `DENEB_FORK_VERSION`                                   | `deneb.LightClientUpdate`        |
-| `ELECTRA_FORK_VERSION` and later                       | `electra.LightClientUpdate`      |
+| `fork_version`                                         | Response chunk SSZ type     |
+| ------------------------------------------------------ | --------------------------- |
+| `GENESIS_FORK_VERSION`                                 | n/a                         |
+| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientUpdate`  |
+| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientUpdate` |
+| `DENEB_FORK_VERSION`                                   | `deneb.LightClientUpdate`   |
+| `ELECTRA_FORK_VERSION` and later                       | `electra.LightClientUpdate` |
 
 ##### GetLightClientFinalityUpdate
 
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                   |
-|--------------------------------------------------------|-------------------------------------|
+| ------------------------------------------------------ | ----------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
@@ -98,7 +98,7 @@ The [Deneb light client networking specification](../../deneb/light-client/p2p-i
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
-|--------------------------------------------------------|---------------------------------------|
+| ------------------------------------------------------ | ------------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |

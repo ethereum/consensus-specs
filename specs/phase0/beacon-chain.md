@@ -150,21 +150,21 @@ Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Slot` | `uint64` | a slot number |
-| `Epoch` | `uint64` | an epoch number |
-| `CommitteeIndex` | `uint64` | a committee index at a slot |
-| `ValidatorIndex` | `uint64` | a validator registry index |
-| `Gwei` | `uint64` | an amount in Gwei |
-| `Root` | `Bytes32` | a Merkle root |
-| `Hash32` | `Bytes32` | a 256-bit hash |
-| `Version` | `Bytes4` | a fork version number |
-| `DomainType` | `Bytes4` | a domain type |
-| `ForkDigest` | `Bytes4` | a digest of the current fork data |
-| `Domain` | `Bytes32` | a signature domain |
-| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
+| Name             | SSZ equivalent | Description                       |
+| ---------------- | -------------- | --------------------------------- |
+| `Slot`           | `uint64`       | a slot number                     |
+| `Epoch`          | `uint64`       | an epoch number                   |
+| `CommitteeIndex` | `uint64`       | a committee index at a slot       |
+| `ValidatorIndex` | `uint64`       | a validator registry index        |
+| `Gwei`           | `uint64`       | an amount in Gwei                 |
+| `Root`           | `Bytes32`      | a Merkle root                     |
+| `Hash32`         | `Bytes32`      | a 256-bit hash                    |
+| `Version`        | `Bytes4`       | a fork version number             |
+| `DomainType`     | `Bytes4`       | a domain type                     |
+| `ForkDigest`     | `Bytes4`       | a digest of the current fork data |
+| `Domain`         | `Bytes32`      | a signature domain                |
+| `BLSPubkey`      | `Bytes48`      | a BLS12-381 public key            |
+| `BLSSignature`   | `Bytes96`      | a BLS12-381 signature             |
 
 ## Constants
 
@@ -172,29 +172,29 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `UINT64_MAX` | `uint64(2**64 - 1)` |
-| `UINT64_MAX_SQRT` | `uint64(4294967295)` |
-| `GENESIS_SLOT` | `Slot(0)` |
-| `GENESIS_EPOCH` | `Epoch(0)` |
-| `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `BASE_REWARDS_PER_EPOCH` | `uint64(4)` |
+| Name                          | Value                 |
+| ----------------------------- | --------------------- |
+| `UINT64_MAX`                  | `uint64(2**64 - 1)`   |
+| `UINT64_MAX_SQRT`             | `uint64(4294967295)`  |
+| `GENESIS_SLOT`                | `Slot(0)`             |
+| `GENESIS_EPOCH`               | `Epoch(0)`            |
+| `FAR_FUTURE_EPOCH`            | `Epoch(2**64 - 1)`    |
+| `BASE_REWARDS_PER_EPOCH`      | `uint64(4)`           |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
-| `ENDIANNESS` | `'little'` |
+| `JUSTIFICATION_BITS_LENGTH`   | `uint64(4)`           |
+| `ENDIANNESS`                  | `'little'`            |
 
 ### Withdrawal prefixes
 
-| Name | Value |
-| - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
+| Name                             | Value            |
+| -------------------------------- | ---------------- |
+| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
 | `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
 | `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
 | `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
@@ -214,57 +214,57 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
-| `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
-| `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
-| `HYSTERESIS_QUOTIENT` | `uint64(4)` |
-| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
-| `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
+| Name                             | Value                     |
+| -------------------------------- | ------------------------- |
+| `MAX_COMMITTEES_PER_SLOT`        | `uint64(2**6)` (= 64)     |
+| `TARGET_COMMITTEE_SIZE`          | `uint64(2**7)` (= 128)    |
+| `MAX_VALIDATORS_PER_COMMITTEE`   | `uint64(2**11)` (= 2,048) |
+| `SHUFFLE_ROUND_COUNT`            | `uint64(90)`              |
+| `HYSTERESIS_QUOTIENT`            | `uint64(4)`               |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)`               |
+| `HYSTERESIS_UPWARD_MULTIPLIER`   | `uint64(5)`               |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
-| Name | Value |
-| - | - |
-| `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
-| `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
-| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
+| Name                          | Value                                   |
+| ----------------------------- | --------------------------------------- |
+| `MIN_DEPOSIT_AMOUNT`          | `Gwei(2**0 * 10**9)` (= 1,000,000,000)  |
+| `MAX_EFFECTIVE_BALANCE`       | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
+| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000)  |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
-| `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
-| `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
+| Name                               | Value                     |  Unit  |   Duration   |
+| ---------------------------------- | ------------------------- | :----: | :----------: |
+| `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |  12 seconds  |
+| `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  | 6.4 minutes  |
+| `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs | 6.4 minutes  |
+| `MAX_SEED_LOOKAHEAD`               | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `uint64(2**6)` (= 64)     | epochs |  ~6.8 hours  |
+| `SLOTS_PER_HISTORICAL_ROOT`        | `uint64(2**13)` (= 8,192) | slots  |  ~27 hours   |
 
 ### State list lengths
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `uint64(2**13)` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | validators |
+| Name                           | Value                                 |       Unit       |   Duration    |
+| ------------------------------ | ------------------------------------- | :--------------: | :-----------: |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            |      epochs      |  ~0.8 years   |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             |      epochs      |   ~36 days    |
+| `HISTORICAL_ROOTS_LIMIT`       | `uint64(2**24)` (= 16,777,216)        | historical roots | ~52,262 years |
+| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) |    validators    |               |
 
 ### Rewards and penalties
 
-| Name | Value |
-| - | - |
-| `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
-| `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (= 128) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
+| Name                               | Value                          |
+| ---------------------------------- | ------------------------------ |
+| `BASE_REWARD_FACTOR`               | `uint64(2**6)` (= 64)          |
+| `WHISTLEBLOWER_REWARD_QUOTIENT`    | `uint64(2**9)` (= 512)         |
+| `PROPOSER_REWARD_QUOTIENT`         | `uint64(2**3)` (= 8)           |
+| `INACTIVITY_PENALTY_QUOTIENT`      | `uint64(2**26)` (= 67,108,864) |
+| `MIN_SLASHING_PENALTY_QUOTIENT`    | `uint64(2**7)` (= 128)         |
+| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)`                    |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
 
@@ -272,13 +272,13 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
-| `MAX_ATTESTER_SLASHINGS` | `2**1` (= 2) |
-| `MAX_ATTESTATIONS` | `2**7` (= 128) |
-| `MAX_DEPOSITS` | `2**4` (= 16) |
-| `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
+| Name                     | Value          |
+| ------------------------ | -------------- |
+| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16)  |
+| `MAX_ATTESTER_SLASHINGS` | `2**1` (= 2)   |
+| `MAX_ATTESTATIONS`       | `2**7` (= 128) |
+| `MAX_DEPOSITS`           | `2**4` (= 16)  |
+| `MAX_VOLUNTARY_EXITS`    | `2**4` (= 16)  |
 
 ## Configuration
 
@@ -288,30 +288,30 @@ Testnets and other types of chain instances may use a different configuration.
 
 ### Genesis settings
 
-| Name | Value |
-| - | - |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
-| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
-| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
-| `GENESIS_DELAY` | `uint64(604800)` (7 days) |
+| Name                                 | Value                                        |
+| ------------------------------------ | -------------------------------------------- |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384)                   |
+| `MIN_GENESIS_TIME`                   | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
+| `GENESIS_FORK_VERSION`               | `Version('0x00000000')`                      |
+| `GENESIS_DELAY`                      | `uint64(604800)` (7 days)                    |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
+| Name                                  | Value                     |    Unit     |  Duration  |
+| ------------------------------------- | ------------------------- | :---------: | :--------: |
+| `SECONDS_PER_SLOT`                    | `uint64(12)`              |   seconds   | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds   | 14 seconds |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks |  ~8 hours  |
 
 ### Validator cycle
 
-| Name | Value |
-| - | - |
-| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| Name                        | Value                                   |
+| --------------------------- | --------------------------------------- |
+| `EJECTION_BALANCE`          | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4)                    |
+| `CHURN_LIMIT_QUOTIENT`      | `uint64(2**16)` (= 65,536)              |
 
 ## Containers
 
@@ -619,7 +619,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 
 #### `uint_to_bytes`
 
-`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint` type object to bytes in ``ENDIANNESS``-endian. The expected length of the output is the byte-length of the `uint` type.
+`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint` type object to bytes in `ENDIANNESS`-endian. The expected length of the output is the byte-length of the `uint` type.
 
 #### `bytes_to_uint64`
 
@@ -1622,6 +1622,7 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Eth1 data votes updates
+
 ```python
 def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -1667,6 +1668,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 ```
 
 #### Historical roots updates
+
 ```python
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator

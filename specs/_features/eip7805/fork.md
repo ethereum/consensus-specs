@@ -22,10 +22,10 @@ This document describes the process of the EIP-7805 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `EIP7805_FORK_VERSION` | `Version('0x10000000')` |
-| `EIP7805_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP7805_FORK_VERSION` | `Version('0x10000000')`               |
+| `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 

@@ -23,16 +23,16 @@
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `SampleIndex` | `uint64` | A sample index, corresponding to chunk of extended data |
+| Name          | SSZ equivalent | Description                                             |
+| ------------- | -------------- | ------------------------------------------------------- |
+| `SampleIndex` | `uint64`       | A sample index, corresponding to chunk of extended data |
 
 ## Configuration
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
+| Name                | Value           | Notes                                                             |
+| ------------------- | --------------- | ----------------------------------------------------------------- |
 | `MAX_RESAMPLE_TIME` | `TODO` (= TODO) | Time window to sample a shard blob and put it on vertical subnets |
 
 ## New containers
@@ -75,6 +75,7 @@ def reverse_bit_order_list(elements: Sequence[int]) -> Sequence[int]:
 ### Data extension
 
 Implementations:
+
 - [Python](https://github.com/protolambda/partial_fft/blob/master/das_fft.py)
 - [Go](https://github.com/protolambda/go-kate/blob/master/das_extension.go)
 
@@ -90,8 +91,9 @@ def das_fft_extension(data: Sequence[Point]) -> Sequence[Point]:
 
 ### Data recovery
 
-See [Reed-Solomon erasure code recovery in n*log^2(n) time with FFTs](https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039) for theory.
+See [Reed-Solomon erasure code recovery in `n*log^2(n)` time with FFTs](https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039) for theory.
 Implementations:
+
 - [Original Python](https://github.com/ethereum/research/blob/master/mimc_stark/recovery.py)
 - [New optimized approach in python](https://github.com/ethereum/research/tree/master/polynomial_reconstruction)
 - [Old approach in Go](https://github.com/protolambda/go-kzg/blob/master/legacy_recovery.go)

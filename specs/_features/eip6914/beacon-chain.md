@@ -26,8 +26,8 @@ This is the beacon chain specification to assign new deposits to existing valida
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | - | - |
+| Name                         | Value                      | Unit   | Duration  |
+| ---------------------------- | -------------------------- | ------ | --------- |
 | `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions

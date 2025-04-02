@@ -23,10 +23,10 @@ This document describes the process of the Electra upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')` |
-| `ELECTRA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`               |
+| `ELECTRA_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 

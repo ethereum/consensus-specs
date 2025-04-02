@@ -23,10 +23,10 @@ This document describes the process of the eip6800 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `EIP6800_FORK_VERSION` | `Version('0x05000000')` |
-| `EIP6800_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP6800_FORK_VERSION` | `Version('0x05000000')`               |
+| `EIP6800_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 

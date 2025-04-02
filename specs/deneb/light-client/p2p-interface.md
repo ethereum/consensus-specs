@@ -32,7 +32,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                    |
-|--------------------------------------------------------|-------------------------------------|
+| ------------------------------------------------------ | ----------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
@@ -43,7 +43,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
-|--------------------------------------------------------|---------------------------------------|
+| ------------------------------------------------------ | ------------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |
@@ -57,30 +57,30 @@ The [Capella light client networking specification](../../capella/light-client/p
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                                         | Response SSZ type                  |
-|--------------------------------------------------------|------------------------------------|
-| `GENESIS_FORK_VERSION`                                 | n/a                                |
-| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientBootstrap`      |
-| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientBootstrap`     |
-| `DENEB_FORK_VERSION` and later                         | `deneb.LightClientBootstrap`       |
+| `fork_version`                                         | Response SSZ type              |
+| ------------------------------------------------------ | ------------------------------ |
+| `GENESIS_FORK_VERSION`                                 | n/a                            |
+| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientBootstrap`  |
+| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientBootstrap` |
+| `DENEB_FORK_VERSION` and later                         | `deneb.LightClientBootstrap`   |
 
 ##### LightClientUpdatesByRange
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                                         | Response chunk SSZ type          |
-|--------------------------------------------------------|----------------------------------|
-| `GENESIS_FORK_VERSION`                                 | n/a                              |
-| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientUpdate`       |
-| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientUpdate`      |
-| `DENEB_FORK_VERSION` and later                         | `deneb.LightClientUpdate`        |
+| `fork_version`                                         | Response chunk SSZ type     |
+| ------------------------------------------------------ | --------------------------- |
+| `GENESIS_FORK_VERSION`                                 | n/a                         |
+| `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientUpdate`  |
+| `CAPELLA_FORK_VERSION`                                 | `capella.LightClientUpdate` |
+| `DENEB_FORK_VERSION` and later                         | `deneb.LightClientUpdate`   |
 
 ##### GetLightClientFinalityUpdate
 
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                   |
-|--------------------------------------------------------|-------------------------------------|
+| ------------------------------------------------------ | ----------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                 |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientFinalityUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientFinalityUpdate` |
@@ -91,7 +91,7 @@ The [Capella light client networking specification](../../capella/light-client/p
 <!-- eth2spec: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
-|--------------------------------------------------------|---------------------------------------|
+| ------------------------------------------------------ | ------------------------------------- |
 | `GENESIS_FORK_VERSION`                                 | n/a                                   |
 | `ALTAIR_FORK_VERSION` through `BELLATRIX_FORK_VERSION` | `altair.LightClientOptimisticUpdate`  |
 | `CAPELLA_FORK_VERSION`                                 | `capella.LightClientOptimisticUpdate` |

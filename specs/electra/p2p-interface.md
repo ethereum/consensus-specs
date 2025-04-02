@@ -37,7 +37,7 @@ The specification of these changes continues in the same format as the network s
 *[New in Electra:EIP7691]*
 
 | Name                                | Value                                                    | Description                                                       |
-|-------------------------------------|----------------------------------------------------------|-------------------------------------------------------------------|
+| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
 | `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
 | `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
 
@@ -76,8 +76,8 @@ The following convenience variables are re-defined
 
 The following validations are added:
 
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
-* [REJECT] `aggregate.data.index == 0`
+- [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
+- [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`
 
@@ -85,7 +85,7 @@ The following validations are added:
 
 The existing validations all apply as given from previous forks, with the following exceptions:
 
-* Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with `MAX_BLOBS_PER_BLOCK_ELECTRA`.
+- Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
 ##### Attestation subnets
 
@@ -125,7 +125,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -142,7 +142,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |

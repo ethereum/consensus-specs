@@ -28,8 +28,8 @@ This section extends the [networking specification for Altair](../p2p-interface.
 
 ### Configuration
 
-| Name | Value | Description |
-| - | - | - |
+| Name                               | Value          | Description                                                         |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------- |
 | `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `2**7` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
 
 ### The gossip domain: gossipsub
@@ -40,9 +40,9 @@ Gossip meshes are added to allow light clients to stay in sync with the network.
 
 New global topics are added to provide light clients with the latest updates.
 
-| name | Message Type |
-| - | - |
-| `light_client_finality_update` | `LightClientFinalityUpdate` |
+| name                             | Message Type                  |
+| -------------------------------- | ----------------------------- |
+| `light_client_finality_update`   | `LightClientFinalityUpdate`   |
 | `light_client_optimistic_update` | `LightClientOptimisticUpdate` |
 
 ##### Global topics
@@ -73,10 +73,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                  | Message SSZ type                     |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate`   |
+| `fork_version`                  | Message SSZ type                   |
+| ------------------------------- | ---------------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                                |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate` |
 
 ###### `light_client_optimistic_update`
 
@@ -147,10 +147,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                  | Response SSZ type                    |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientBootstrap`        |
+| `fork_version`                  | Response SSZ type             |
+| ------------------------------- | ----------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                           |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientBootstrap` |
 
 ##### LightClientUpdatesByRange
 
@@ -187,10 +187,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                  | Response chunk SSZ type              |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientUpdate`           |
+| `fork_version`                  | Response chunk SSZ type    |
+| ------------------------------- | -------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                        |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientUpdate` |
 
 ##### GetLightClientFinalityUpdate
 
@@ -218,10 +218,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`                  | Response SSZ type                    |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate`   |
+| `fork_version`                  | Response SSZ type                  |
+| ------------------------------- | ---------------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                                |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate` |
 
 ##### GetLightClientOptimisticUpdate
 

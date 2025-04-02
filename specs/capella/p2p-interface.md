@@ -35,10 +35,10 @@ Topics follow the same specification as in prior upgrades. All existing topics r
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name | Message Type |
-| - | - |
-| `beacon_block` | `SignedBeaconBlock` (modified) |
-| `bls_to_execution_change` | `SignedBLSToExecutionChange` |
+| Name                      | Message Type                   |
+| ------------------------- | ------------------------------ |
+| `beacon_block`            | `SignedBeaconBlock` (modified) |
+| `bls_to_execution_change` | `SignedBLSToExecutionChange`   |
 
 Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
 
@@ -83,12 +83,12 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
-| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
 ##### BeaconBlocksByRoot v2
 
@@ -100,10 +100,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
-| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock` |
-
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |

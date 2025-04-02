@@ -21,10 +21,10 @@ This document describes the process of Deneb upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `DENEB_FORK_VERSION` | `Version('0x04000000')` |
-| `DENEB_FORK_EPOCH` | `Epoch(269568)` (March 13, 2024, 01:55:35pm UTC) |
+| Name                 | Value                                            |
+| -------------------- | ------------------------------------------------ |
+| `DENEB_FORK_VERSION` | `Version('0x04000000')`                          |
+| `DENEB_FORK_EPOCH`   | `Epoch(269568)` (March 13, 2024, 01:55:35pm UTC) |
 
 ## Helper functions
 

@@ -50,20 +50,20 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Deneb:EIP4844]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH`   | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+| Name                                   | Value                                                                                                                                     | Description                                                                 |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
 ### Configuration
 
 *[New in Deneb:EIP4844]*
 
-| Name                                     | Value                             | Description                                                         |
-|------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
-| `MAX_REQUEST_BLOCKS_DENEB`               | `2**7` (= 128)                    | Maximum number of blocks in a single request                        |
-| `MAX_REQUEST_BLOB_SIDECARS`              | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request  |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`  | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars  |
-| `BLOB_SIDECAR_SUBNET_COUNT`              | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol.  |
+| Name                                    | Value                                            | Description                                                        |
+| --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
+| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ### Containers
 
@@ -127,8 +127,8 @@ The derivation of the `message-id` remains stable.
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name | Message Type |
-| - | - |
+| Name                       | Message Type                         |
+| -------------------------- | ------------------------------------ |
 | `blob_sidecar_{subnet_id}` | `BlobSidecar` [New in Deneb:EIP4844] |
 
 ##### Global topics
@@ -150,16 +150,16 @@ New validation:
 
 The following validation is removed:
 
-* _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+- _[IGNORE]_ `aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
 
 The following validations are added in its place:
 
-* _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+- _[IGNORE]_ `aggregate.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `aggregate.data.slot <= current_slot`
   (a client MAY queue future aggregates for processing at the appropriate slot).
-* _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
+- _[IGNORE]_ the epoch of `aggregate.data.slot` is either the current or previous epoch
   (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `compute_epoch_at_slot(aggregate.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
 
@@ -195,7 +195,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
-|--------------------------------|---------------------|
+| ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ###### Blob retrieval via local execution layer client
@@ -205,8 +205,8 @@ Honest nodes SHOULD query `engine_getBlobsV1` as soon as they receive a valid go
 
 When clients use the local execution layer to retrieve blobs, they MUST behave as if the corresponding `blob_sidecar` had been received via gossip. In particular they MUST:
 
-* Publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
-* Update gossip rule related data structures (i.e. update the anti-equivocation cache).
+- Publish the corresponding `blob_sidecar` on the `blob_sidecar_{subnet_id}` subnet.
+- Update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ##### Attestation subnets
 
@@ -216,16 +216,16 @@ When clients use the local execution layer to retrieve blobs, they MUST behave a
 
 The following validation is removed:
 
-* _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+- _[IGNORE]_ `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
   (a client MAY queue future attestations for processing at the appropriate slot).
 
 The following validations are added in its place:
 
-* _[IGNORE]_ `attestation.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
+- _[IGNORE]_ `attestation.data.slot` is equal to or earlier than the `current_slot` (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `attestation.data.slot <= current_slot`
   (a client MAY queue future attestation for processing at the appropriate slot).
-* _[IGNORE]_ the epoch of `attestation.data.slot` is either the current or previous epoch
+- _[IGNORE]_ the epoch of `attestation.data.slot` is either the current or previous epoch
   (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. `compute_epoch_at_slot(attestation.data.slot) in (get_previous_epoch(state), get_current_epoch(state))`
 
@@ -249,7 +249,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -267,7 +267,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -361,7 +361,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
-|--------------------------------|---------------------|
+| ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ##### BlobSidecarsByRoot v1
@@ -415,7 +415,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 <!-- eth2spec: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
-|--------------------------------|---------------------|
+| ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
 ## Design decision rationale

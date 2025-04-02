@@ -10,9 +10,9 @@
   - [KZG Trusted setup](#kzg-trusted-setup)
 - [Custom types](#custom-types)
 - [Helper functions](#helper-functions)
-    - [`next_power_of_two`](#next_power_of_two)
-    - [`reverse_bit_order`](#reverse_bit_order)
-    - [`list_to_reverse_bit_order`](#list_to_reverse_bit_order)
+  - [`next_power_of_two`](#next_power_of_two)
+  - [`reverse_bit_order`](#reverse_bit_order)
+  - [`list_to_reverse_bit_order`](#list_to_reverse_bit_order)
 - [Field operations](#field-operations)
   - [Generic field operations](#generic-field-operations)
     - [`bls_modular_inverse`](#bls_modular_inverse)
@@ -23,10 +23,10 @@
     - [`vector_lincomb`](#vector_lincomb)
     - [`bytes_to_field_elements`](#bytes_to_field_elements)
 - [Polynomial operations](#polynomial-operations)
-    - [`add_polynomials`](#add_polynomials)
-    - [`multiply_polynomials`](#multiply_polynomials)
-    - [`interpolate_polynomial`](#interpolate_polynomial)
-    - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
+  - [`add_polynomials`](#add_polynomials)
+  - [`multiply_polynomials`](#multiply_polynomials)
+  - [`interpolate_polynomial`](#interpolate_polynomial)
+  - [`evaluate_polynomial_in_evaluation_form`](#evaluate_polynomial_in_evaluation_form)
 - [KZG Operations](#kzg-operations)
   - [Elliptic curve helper functions](#elliptic-curve-helper-functions)
     - [`elliptic_curve_lincomb`](#elliptic_curve_lincomb)
@@ -47,28 +47,28 @@ This document specifies basic polynomial operations and KZG polynomial commitmen
 
 ### BLS Field
 
-| Name | Value | Notes |
-| - | - | - |
-| `BLS_MODULUS` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7` | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
+| Name                      | Value                                                                                           | Notes                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `BLS_MODULUS`             | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` (curve order of BLS12_381) |                                                              |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7`                                                                                             | Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS |
 
 ### KZG Trusted setup
 
-| Name | Value |
-| - | - |
+| Name       | Value                                                                                                          |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
 | `G1_SETUP` | Type `List[G1]`. The G1-side trusted setup `[G, G*s, G*s**2....]`; note that the first point is the generator. |
-| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]` |
+| `G2_SETUP` | Type `List[G2]`. The G2-side trusted setup `[G, G*s, G*s**2....]`                                              |
 
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `KZGCommitment` | `Bytes48` | A G1 curve point |
-| `BLSFieldElement` | `uint256` | A number `x` in the range `0 <= x < BLS_MODULUS` |
+| Name                          | SSZ equivalent          | Description                                                |
+| ----------------------------- | ----------------------- | ---------------------------------------------------------- |
+| `KZGCommitment`               | `Bytes48`               | A G1 curve point                                           |
+| `BLSFieldElement`             | `uint256`               | A number `x` in the range `0 <= x < BLS_MODULUS`           |
 | `BLSPolynomialByCoefficients` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in coefficient form |
-| `BLSPolynomialByEvaluations` | `List[BLSFieldElement]` | A polynomial over the BLS field, given in evaluation form |
+| `BLSPolynomialByEvaluations`  | `List[BLSFieldElement]` | A polynomial over the BLS field, given in evaluation form  |
 
 ## Helper functions
 

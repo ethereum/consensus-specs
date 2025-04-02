@@ -22,8 +22,8 @@ This document represents the specification for the beacon chain deposit contract
 
 The following values are (non-configurable) constants used throughout the specification.
 
-| Name | Value |
-| - | - |
+| Name                          | Value         |
+| ----------------------------- | ------------- |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ## Configuration
@@ -32,10 +32,10 @@ The following values are (non-configurable) constants used throughout the specif
 The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory.
 These configurations are updated for releases and may be out of sync during `dev` changes.
 
-| Name | Value |
-| - | - |
-| `DEPOSIT_CHAIN_ID` | `1` |
-| `DEPOSIT_NETWORK_ID` | `1` |
+| Name                       | Value                                        |
+| -------------------------- | -------------------------------------------- |
+| `DEPOSIT_CHAIN_ID`         | `1`                                          |
+| `DEPOSIT_NETWORK_ID`       | `1`                                          |
 | `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
 ## Staking deposit contract

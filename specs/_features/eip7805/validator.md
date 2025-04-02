@@ -14,11 +14,11 @@
   - [Block proposal](#block-proposal)
     - [Update execution client with inclusion lists](#update-execution-client-with-inclusion-lists)
 - [New inclusion list committee duty](#new-inclusion-list-committee-duty)
-    - [Constructing a signed inclusion list](#constructing-a-signed-inclusion-list)
+  - [Constructing a signed inclusion list](#constructing-a-signed-inclusion-list)
 - [Modified attester duty](#modified-attester-duty)
-    - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
+  - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
 - [Modified sync committee duty](#modified-sync-committee-duty)
-    - [Modified beacon block root](#modified-beacon-block-root)
+  - [Modified beacon block root](#modified-beacon-block-root)
 
 <!-- mdformat-toc end -->
 
@@ -38,8 +38,8 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                              | Value                  |  Unit   |  Duration  |
+| --------------------------------- | ---------------------- | :-----: | :--------: |
 | `PROPOSER_INCLUSION_LIST_CUT_OFF` | `SECONDS_PER_SLOT - 1` | seconds | 11 seconds |
 
 ## Protocol
@@ -98,6 +98,7 @@ A validator should create and broadcast the `signed_inclusion_list` to the globa
 #### Constructing a signed inclusion list
 
 The validator creates the `signed_inclusion_list` as follows:
+
 - First, the validator creates the `inclusion_list`.
 - Set `inclusion_list.slot` to the assigned slot returned by `get_inclusion_committee_assignment`.
 - Set `inclusion_list.validator_index` to the validator's index.

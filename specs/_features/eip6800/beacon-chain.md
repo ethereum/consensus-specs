@@ -32,22 +32,22 @@ This upgrade adds transaction execution to the beacon chain as part of the eip68
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `BanderwagonGroupElement` | `Bytes32` | |
-| `BanderwagonFieldElement` | `Bytes32` | |
-| `Stem` | `Bytes31` | |
+| Name                      | SSZ equivalent | Description |
+| ------------------------- | -------------- | ----------- |
+| `BanderwagonGroupElement` | `Bytes32`      |             |
+| `BanderwagonFieldElement` | `Bytes32`      |             |
+| `Stem`                    | `Bytes31`      |             |
 
 ## Preset
 
 ### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_STEMS` | `uint64(2**16)` (= 65,536) |
-| `MAX_COMMITMENTS_PER_STEM` | `uint64(33)` |
-| `VERKLE_WIDTH` | `uint64(2**8)` (= 256) |
-| `IPA_PROOF_DEPTH` | `uint64(2**3)` (= 8) |
+| Name                       | Value                      |
+| -------------------------- | -------------------------- |
+| `MAX_STEMS`                | `uint64(2**16)` (= 65,536) |
+| `MAX_COMMITMENTS_PER_STEM` | `uint64(33)`               |
+| `VERKLE_WIDTH`             | `uint64(2**8)` (= 256)     |
+| `IPA_PROOF_DEPTH`          | `uint64(2**3)` (= 8)       |
 
 ## Containers
 

@@ -35,9 +35,9 @@ Builders can broadcast a payload bid for the current or the next slot's proposer
 4. Set `header.block_hash` to be the block hash of the constructed payload, that is `payload.block_hash`.
 5. Set `header.gas_limit` to be the gas limit of the constructed payload, that is `payload.gas_limit`.
 6. Set `header.builder_index` to be the validator index of the builder performing these actions.
-7. Set `header.slot`  to be the slot for which this bid is aimed. This slot **MUST** be either the current slot or the next slot.
+7. Set `header.slot` to be the slot for which this bid is aimed. This slot **MUST** be either the current slot or the next slot.
 8. Set `header.value` to be the value that the builder will pay the proposer if the bid is accepted. The builder **MUST** have balance enough to fulfill this bid.
-9. Set `header.kzg_commitments_root` to be the `hash_tree_root`  of the `blobsbundle.commitments`  field returned by `engine_getPayloadV4`.
+9. Set `header.kzg_commitments_root` to be the `hash_tree_root` of the `blobsbundle.commitments` field returned by `engine_getPayloadV4`.
 
 After building the `header`, the builder obtains a `signature` of the header by using
 
@@ -101,7 +101,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
 
 ### Constructing the execution payload envelope
 
-When the proposer publishes a valid `SignedBeaconBlock` containing a signed commitment by the builder, the builder is later expected to broadcast the corresponding `SignedExecutionPayloadEnvelope`  that fulfills this commitment. See below for a special case of an *honestly withheld payload*.
+When the proposer publishes a valid `SignedBeaconBlock` containing a signed commitment by the builder, the builder is later expected to broadcast the corresponding `SignedExecutionPayloadEnvelope` that fulfills this commitment. See below for a special case of an *honestly withheld payload*.
 
 To construct the `execution_payload_envelope` the builder must perform the following steps, we alias `header` to be the committed `ExecutionPayloadHeader` in the beacon block.
 

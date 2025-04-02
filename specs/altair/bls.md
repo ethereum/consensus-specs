@@ -18,8 +18,8 @@ Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed, 
 
 ## Constants
 
-| Name | Value |
-| - | - |
+| Name                   | Value                                  |
+| ---------------------- | -------------------------------------- |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Extensions

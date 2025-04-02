@@ -57,38 +57,38 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
+| Name                        | Value                 | Notes               |
+| --------------------------- | --------------------- | ------------------- |
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                  | Value                      |
+| --------------------- | -------------------------- |
 | `DOMAIN_SHARD_SAMPLE` | `DomainType('0x10000000')` |
 
 ## Preset
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
-| `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
-| `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
-| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16) | TODO: Need to define what happens if there were more blocks without builder blocks |
+| Name                                         | Value                     | Notes                                                                              |
+| -------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| `MAX_SHARDS`                                 | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes)               |
+| `ACTIVE_SHARDS`                              | `uint64(2**8)` (= 256)    | Initial shard count                                                                |
+| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16)     | TODO: Need to define what happens if there were more blocks without builder blocks |
 
 ### Time parameters
 
 With the introduction of builder blocks the number of slots per epoch is doubled (it counts beacon blocks and builder blocks).
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name              | Value                 | Unit  |   Duration   |
+| ----------------- | --------------------- | :---: | :----------: |
 | `SLOTS_PER_EPOCH` | `uint64(2**6)` (= 64) | slots | 8:32 minutes |
 
 ### Shard blob samples
 
-| Name | Value | Notes |
-| - | - | - |
+| Name               | Value                  | Notes                     |
+| ------------------ | ---------------------- | ------------------------- |
 | `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 512) | 248 * 512 = 126,976 bytes |
 
 ## Configuration
@@ -98,8 +98,8 @@ E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name               | Value       |  Unit   | Duration  |
+| ------------------ | ----------- | :-----: | :-------: |
 | `SECONDS_PER_SLOT` | `uint64(8)` | seconds | 8 seconds |
 
 ## Containers

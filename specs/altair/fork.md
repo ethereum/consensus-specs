@@ -19,10 +19,10 @@ This document describes the process of the first upgrade of the beacon chain: th
 
 ## Configuration
 
-| Name | Value |
-| - | - |
-| `ALTAIR_FORK_VERSION` | `Version('0x01000000')` |
-| `ALTAIR_FORK_EPOCH` | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
+| Name                  | Value                                         |
+| --------------------- | --------------------------------------------- |
+| `ALTAIR_FORK_VERSION` | `Version('0x01000000')`                       |
+| `ALTAIR_FORK_EPOCH`   | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
 
 ## Helper functions
 

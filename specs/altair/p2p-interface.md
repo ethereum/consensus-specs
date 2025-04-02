@@ -70,11 +70,11 @@ The specification around the creation, validation, and dissemination of messages
 The derivation of the `message-id` has changed starting with Altair to incorporate the message `topic` along with the message `data`. These are fields of the `Message` Protobuf, and interpreted as empty byte strings if missing.
 The `message-id` MUST be the following 20 byte value computed from the message:
 
-* If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
+- If `message.data` has a valid snappy decompression, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of the following data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
   the topic byte string, and the snappy decompressed message data:
   i.e. `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
-* Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
+- Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of
   the concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the length of the topic byte string (encoded as little-endian `uint64`),
   the topic byte string, and the raw message data:
   i.e. `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
@@ -87,11 +87,11 @@ for example, `if topic in phase0_topics: return phase0_msg_id_fn(message) else r
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name | Message Type |
-| - | - |
-| `beacon_block` | `SignedBeaconBlock` (modified) |
-| `sync_committee_contribution_and_proof` | `SignedContributionAndProof` |
-| `sync_committee_{subnet_id}` | `SyncCommitteeMessage` |
+| Name                                    | Message Type                   |
+| --------------------------------------- | ------------------------------ |
+| `beacon_block`                          | `SignedBeaconBlock` (modified) |
+| `sync_committee_contribution_and_proof` | `SignedContributionAndProof`   |
+| `sync_committee_{subnet_id}`            | `SyncCommitteeMessage`         |
 
 Definitions of these new types can be found in the [Altair validator guide](./validator.md#containers).
 
@@ -224,7 +224,7 @@ Starting with Altair, and in future forks, SSZ type definitions may change.
 For this common case, we define the `ForkDigest`-context:
 
 A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the chunk:
- `compute_fork_digest(fork_version, genesis_validators_root)`.
+`compute_fork_digest(fork_version, genesis_validators_root)`.
 
 #### Messages
 
@@ -238,10 +238,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`         | Chunk SSZ type             |
+| ---------------------- | -------------------------- |
+| `GENESIS_FORK_VERSION` | `phase0.SignedBeaconBlock` |
+| `ALTAIR_FORK_VERSION`  | `altair.SignedBeaconBlock` |
 
 ##### BeaconBlocksByRoot v2
 
@@ -253,10 +253,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`         | Chunk SSZ type             |
+| ---------------------- | -------------------------- |
+| `GENESIS_FORK_VERSION` | `phase0.SignedBeaconBlock` |
+| `ALTAIR_FORK_VERSION`  | `altair.SignedBeaconBlock` |
 
 ##### GetMetaData v2
 
@@ -298,8 +298,8 @@ An additional bitfield is added to the ENR under the key `syncnets` to facilitat
 The length of this bitfield is `SYNC_COMMITTEE_SUBNET_COUNT` where each bit corresponds to a distinct `subnet_id` for a specific sync committee subnet.
 The `i`th bit is set in this bitfield if the validator is currently subscribed to the `sync_committee_{i}` topic.
 
-| Key          | Value                                            |
-|:-------------|:-------------------------------------------------|
-| `syncnets`    | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]`        |
+| Key        | Value                                        |
+| :--------- | :------------------------------------------- |
+| `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for further details on how the new bits are used.

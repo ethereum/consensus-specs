@@ -41,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
-| `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST` | `40` |
-| `PAYLOAD_REVEAL_BOOST` | `40` |
+| Name                       | Value                         |
+| -------------------------- | ----------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256)       |
+| `INTERVALS_PER_SLOT`       | `4` # [modified in EIP-7732]  |
+| `PROPOSER_SCORE_BOOST`     | `20` # [modified in EIP-7732] |
+| `PAYLOAD_WITHHOLD_BOOST`   | `40`                          |
+| `PAYLOAD_REVEAL_BOOST`     | `40`                          |
 
 ## Containers
 
@@ -600,3 +600,4 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 
 
+```

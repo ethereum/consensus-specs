@@ -22,15 +22,16 @@
 This upgrade updates light client data to include the Electra changes to the [`ExecutionPayload`](../beacon-chain.md) structure and to the generalized indices of surrounding containers. It extends the [Deneb Light Client specifications](../../deneb/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Deneb based deployments to Electra.
 
 Additional documents describes the impact of the upgrade on certain roles:
+
 - [Networking](./p2p-interface.md)
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
-| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+| Name                         | SSZ equivalent                                                      | Description                                                       |
+| ---------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
+| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
 
 ## Constants
 
@@ -38,19 +39,19 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 Existing `GeneralizedIndex` constants are frozen at their [Altair](../../altair/light-client/sync-protocol.md#constants) values.
 
-| Name | Value |
-| - | - |
-| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(altair.BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(altair.BeaconState, 'current_sync_committee')` (= 54) |
-| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(altair.BeaconState, 'next_sync_committee')` (= 55) |
+| Name                            | Value                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(altair.BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(altair.BeaconState, 'current_sync_committee')` (= 54)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(altair.BeaconState, 'next_sync_committee')` (= 55)           |
 
 ### New constants
 
-| Name | Value |
-| - | - |
-| `FINALIZED_ROOT_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86) |
-| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87) |
+| Name                                    | Value                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `FINALIZED_ROOT_GINDEX_ELECTRA`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87)           |
 
 ## Helper functions
 

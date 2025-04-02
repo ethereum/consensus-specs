@@ -1,4 +1,5 @@
 # EIP-7805 -- Fork Choice
+
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -22,8 +23,8 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                   | Value                           |  Unit   | Duration  |
+| ---------------------- | ------------------------------- | :-----: | :-------: |
 | `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
 
 ## Fork choice

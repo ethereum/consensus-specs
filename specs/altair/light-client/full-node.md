@@ -52,6 +52,7 @@ Full nodes are expected to derive light client data from historic blocks and sta
 ### `create_light_client_bootstrap`
 
 To form a `LightClientBootstrap`, the following objects are needed:
+
 - `state`: the post state of any post-Altair block
 - `block`: the corresponding block
 
@@ -82,6 +83,7 @@ Blocks are considered to be epoch boundary blocks if their block root can occur 
 ### `create_light_client_update`
 
 To form a `LightClientUpdate`, the following historical states and blocks are needed:
+
 - `state`: the post state of any block with a post-Altair parent block
 - `block`: the corresponding block
 - `attested_state`: the post state of `attested_block`
