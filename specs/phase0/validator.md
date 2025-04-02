@@ -2,8 +2,6 @@
 
 This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)

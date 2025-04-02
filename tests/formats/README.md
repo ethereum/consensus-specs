@@ -2,8 +2,6 @@
 
 This document defines the YAML format and structure used for consensus spec testing.
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 * [About](#about)

@@ -1,7 +1,5 @@
 # How to add a new feature proposal in consensus-specs
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [A. Make it executable for linter checks](#a-make-it-executable-for-linter-checks)

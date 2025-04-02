@@ -2,8 +2,6 @@
 
 # <FORK_NAME> -- The Beacon Chain
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 <!-- mdformat-toc end -->

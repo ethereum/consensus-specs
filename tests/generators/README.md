@@ -9,8 +9,6 @@ On releases, test generators are run by the release manager. Test-generation of 
 
 An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [How to run generators](#how-to-run-generators)

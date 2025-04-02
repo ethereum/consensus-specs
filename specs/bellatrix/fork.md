@@ -1,7 +1,5 @@
 # Bellatrix -- Fork Logic
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)

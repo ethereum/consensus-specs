@@ -2,8 +2,6 @@
 
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Test case format](#test-case-format)

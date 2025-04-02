@@ -1,7 +1,5 @@
 # Capella Light Client -- Networking
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Networking](#networking)

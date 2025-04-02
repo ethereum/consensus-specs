@@ -1,7 +1,5 @@
 # Phase 0 -- Weak Subjectivity Guide
 
-## Table of contents
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
