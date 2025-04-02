@@ -188,7 +188,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
 
 # Check for mistakes.
 lint: pyspec
-	@$(MDFORMAT_VENV) --number --no-validate --exclude="**/eip7732/beacon-chain.md" $(MARKDOWN_FILES)
+	@$(MDFORMAT_VENV) --number $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
