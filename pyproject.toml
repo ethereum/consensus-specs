@@ -38,6 +38,9 @@ test = [
 lint = [
   "codespell==2.4.1",
   "flake8==7.2.0",
+  "mdformat-gfm-alerts==1.0.1",
+  "mdformat-gfm==0.4.1",
+  "mdformat==0.7.22",
   "mypy==1.15.0",
   "pylint==3.3.6",
 ]

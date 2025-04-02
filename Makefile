@@ -58,6 +58,7 @@ VENV = venv
 PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
+MDFORMAT_VENV = $(VENV)/bin/mdformat
 
 # Make a virtual environment.
 $(VENV):
@@ -203,6 +204,7 @@ _check_toc: $(MARKDOWN_FILES:=.toc)
 
 # Check for mistakes.
 lint: pyspec _check_toc
+	#@$(MDFORMAT_VENV) --number specs
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
