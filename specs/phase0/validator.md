@@ -85,8 +85,8 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name | Value | Unit |
+| - | - | :-: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
 
 ## Containers

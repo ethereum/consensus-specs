@@ -190,8 +190,8 @@ We define the following Python custom types for type hinting and readability:
 
 ### Constants
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name | Value | Unit |
+| - | - | :-: |
 | `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
 ### Configuration
