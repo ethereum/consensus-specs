@@ -2,8 +2,7 @@
 
 ## Table of contents
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [A. Make it executable for linter checks](#a-make-it-executable-for-linter-checks)
   - [1. Create a folder under `./specs/_features`](#1-create-a-folder-under-specs_features)
@@ -22,7 +21,7 @@
   - [Bonus](#bonus)
   - [Need help?](#need-help)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- mdformat-toc end -->
 
 ## A. Make it executable for linter checks
 

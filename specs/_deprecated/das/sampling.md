@@ -4,9 +4,7 @@
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Data Availability Sampling](#data-availability-sampling)
 - [GossipSub](#gossipsub)
@@ -19,8 +17,7 @@
     - [Stage 1: Pulling missing samples from known peers](#stage-1-pulling-missing-samples-from-known-peers)
     - [Stage 2: Pulling missing data from validators with custody.](#stage-2-pulling-missing-data-from-validators-with-custody)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Data Availability Sampling
 

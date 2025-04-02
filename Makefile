@@ -186,25 +186,9 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-# Generate ToC sections & save copy of original if modified.
-%.toc:
-	@cp $* $*.tmp; \
-	doctoc $* > /dev/null; \
-	if diff -q $* $*.tmp > /dev/null; then \
-		echo "Good $*"; \
-		rm $*.tmp; \
-	else \
-		echo "\033[1;33m Bad $*\033[0m"; \
-		echo "\033[1;34m See $*.tmp\033[0m"; \
-	fi
-
-# Check all files and error if any ToC were modified.
-_check_toc: $(MARKDOWN_FILES:=.toc)
-	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
-
 # Check for mistakes.
-lint: pyspec _check_toc
-	#@$(MDFORMAT_VENV) --number specs
+lint: pyspec
+	@$(MDFORMAT_VENV) --number --no-validate --exclude="**/eip7732/beacon-chain.md" $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
 	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)

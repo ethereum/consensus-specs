@@ -4,9 +4,7 @@
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Public Methods](#public-methods)
@@ -49,8 +47,7 @@
   - [`recover_polynomialcoeff`](#recover_polynomialcoeff)
   - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 

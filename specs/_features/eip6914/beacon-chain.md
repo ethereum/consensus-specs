@@ -4,9 +4,7 @@
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Preset](#preset)
@@ -18,8 +16,7 @@
   - [Block processing](#block-processing)
     - [Modified `get_index_for_new_validator`](#modified-get_index_for_new_validator)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 

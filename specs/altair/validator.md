@@ -4,9 +4,7 @@ This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.
 
 ## Table of contents
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
@@ -43,8 +41,7 @@ This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.
       - [Broadcast sync committee contribution](#broadcast-sync-committee-contribution)
 - [Sync committee subnet stability](#sync-committee-subnet-stability)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 

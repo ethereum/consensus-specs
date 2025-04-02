@@ -1,9 +1,7 @@
 # EIP-7805 -- Fork Choice
 
 ## Table of contents
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -16,8 +14,7 @@
       - [Modified `get_proposer_head`](#modified-get_proposer_head)
     - [New `on_inclusion_list`](#new-on_inclusion_list)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 

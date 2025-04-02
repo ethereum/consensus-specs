@@ -2,8 +2,7 @@
 
 This document contains the consensus-layer networking specification for EIP-7805.
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
   - [Configuration](#configuration)
@@ -15,7 +14,7 @@ This document contains the consensus-layer networking specification for EIP-7805
     - [Messages](#messages)
       - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- mdformat-toc end -->
 
 ## Modifications in EIP-7805
 
