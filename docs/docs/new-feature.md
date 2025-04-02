@@ -35,11 +35,6 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
 
 - You can either use [Beacon Chain Spec Template](./templates/beacon-chain-template.md), or make a copy of the latest fork content and then edit it.
 - Tips:
-    - We use [`doctoc`](https://www.npmjs.com/package/doctoc) tool to generate the table of content.
-        ```
-        cd consensus-specs
-        doctoc specs
-        ```
     - The differences between "Constants", "Configurations", and "Presets":
         - Constants: The constant that should never be changed.
         - Configurations: The settings that we may change for different networks.
