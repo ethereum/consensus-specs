@@ -2,30 +2,23 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Constants](#constants)
+  - [Sample counts](#sample-counts)
+- [Helpers](#helpers)
+  - [`get_validator_row_subnets`](#get_validator_row_subnets)
+  - [`get_validator_column_subnets`](#get_validator_column_subnets)
+  - [`reconstruct_polynomial`](#reconstruct_polynomial)
+- [Sample verification](#sample-verification)
+  - [`verify_sample`](#verify_sample)
+- [Validator assignments](#validator-assignments)
+  - [Attesting](#attesting)
+- [Minimum online validator requirement](#minimum-online-validator-requirement)
 
-  - [Introduction](#introduction)
-  - [Prerequisites](#prerequisites)
-  - [Constants](#constants)
-    - [Sample counts](#sample-counts)
-  - [Helpers](#helpers)
-    - [`get_validator_row_subnets`](#get_validator_row_subnets)
-    - [`get_validator_column_subnets`](#get_validator_column_subnets)
-    - [`reconstruct_polynomial`](#reconstruct_polynomial)
-  - [Sample verification](#sample-verification)
-    - [`verify_sample`](#verify_sample)
-- [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Validator assignments](#validator-assignments)
-    - [Attesting](#attesting)
-- [Sample reconstruction](#sample-reconstruction)
-  - [Minimum online validator requirement](#minimum-online-validator-requirement)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -43,10 +36,10 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### Sample counts
 
-| Name | Value |
-| - | - |
-| `VALIDATOR_SAMPLE_ROW_COUNT` | `2` |
-| `VALIDATOR_SAMPLE_COLUMN_COUNT` | `2` |
+| Name                            | Value |
+| ------------------------------- | ----- |
+| `VALIDATOR_SAMPLE_ROW_COUNT`    | `2`   |
+| `VALIDATOR_SAMPLE_COLUMN_COUNT` | `2`   |
 
 ## Helpers
 
@@ -113,7 +106,7 @@ A row or column is *available* for a `slot` if at least half of the total number
 
 If a validator is assigned to an attestation at slot `attestation_slot` and had his previous attestation duty at `previous_attestation_slot`, then they should only attest under the following conditions:
 
- * For all intermediate blocks `block` with `previous_attestation_slot < block.slot <= attestation_slot`: All sample rows and columns assigned to the validator were available.
+- For all intermediate blocks `block` with `previous_attestation_slot < block.slot <= attestation_slot`: All sample rows and columns assigned to the validator were available.
 
 If this condition is not fulfilled, then the validator should instead attest to the last block for which the condition holds.
 
@@ -126,9 +119,9 @@ A validator that has received enough samples of a row or column to mark it as av
 Once they have run the reconstruction function, they should distribute the samples that they reconstructed on all pubsub that
 the local node is subscribed to, if they have not already received that sample on that pubsub. As an example:
 
- * The validator is subscribed to row `2` and column `5`
- * The sample `(row, column) = (2, 5)` is missing in the column `5` pubsub
- * After they have reconstruction of row `2`, the validator should send the sample `(2, 5)` on to the row `2` pubsub (if it was missing) as well as the column `5` pubsub.
+- The validator is subscribed to row `2` and column `5`
+- The sample `(row, column) = (2, 5)` is missing in the column `5` pubsub
+- After they have reconstruction of row `2`, the validator should send the sample `(2, 5)` on to the row `2` pubsub (if it was missing) as well as the column `5` pubsub.
 
 TODO: We need to verify the total complexity of doing this and make sure this does not cause too much load on a validator
 

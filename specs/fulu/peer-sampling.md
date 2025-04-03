@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
@@ -18,8 +14,7 @@
 - [Peer scoring](#peer-scoring)
 - [DAS providers](#das-providers)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -89,9 +84,9 @@ Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT`
 
 For reference, the table below shows the number of samples and the number of allowed missing columns assuming `NUMBER_OF_COLUMNS = 128` and `SAMPLES_PER_SLOT = 16`.
 
-| Allowed missing | 0| 1| 2| 3| 4| 5| 6| 7| 8|
-|-----------------|--|--|--|--|--|--|--|--|--|
-| Sample count    |16|20|24|27|29|32|35|37|40|
+| Allowed missing | 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| --------------- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sample count    | 16  | 20  | 24  | 27  | 29  | 32  | 35  | 37  | 40  |
 
 ### Sample queries
 

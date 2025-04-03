@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -60,8 +56,7 @@
 - [Testing](#testing)
   - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -69,7 +64,7 @@ This is the beacon chain specification of the enshrined proposer builder separat
 
 *Note*: This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
 
-This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the  start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
+This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
 
 At any given slot, the status of the blockchain's head may be either
 
@@ -81,33 +76,33 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Payload status
 
-| Name | Value |
-| - | - |
-| `PAYLOAD_ABSENT` | `uint8(0)` |
-| `PAYLOAD_PRESENT` | `uint8(1)` |
-| `PAYLOAD_WITHHELD` | `uint8(2)` |
+| Name                     | Value      |
+| ------------------------ | ---------- |
+| `PAYLOAD_ABSENT`         | `uint8(0)` |
+| `PAYLOAD_PRESENT`        | `uint8(1)` |
+| `PAYLOAD_WITHHELD`       | `uint8(2)` |
 | `PAYLOAD_INVALID_STATUS` | `uint8(3)` |
 
 ## Preset
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `PTC_SIZE` | `uint64(2**9)` (=512)  # (New in EIP-7732) |
+| Name       | Value                                     |
+| ---------- | ----------------------------------------- |
+| `PTC_SIZE` | `uint64(2**9)` (=512) # (New in EIP-7732) |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
-| `DOMAIN_BEACON_BUILDER`     | `DomainType('0x1B000000')`  # (New in EIP-7732)|
-| `DOMAIN_PTC_ATTESTER`       | `DomainType('0x0C000000')`  # (New in EIP-7732)|
+| Name                    | Value                                          |
+| ----------------------- | ---------------------------------------------- |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` # (New in EIP-7732) |
+| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` # (New in EIP-7732) |
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4)  # (New in EIP-7732) |
+| Name                       | Value                            |
+| -------------------------- | -------------------------------- |
+| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4) # (New in EIP-7732) |
 
 ## Containers
 
@@ -618,6 +613,7 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
 ```
 
 #### Modified `validate_merge_block`
+
 `validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
 
 ```python
@@ -744,3 +740,4 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
     header.blob_kzg_commitments_root = kzgs.hash_tree_root()
 
     return state.latest_execution_payload_header != header
+```

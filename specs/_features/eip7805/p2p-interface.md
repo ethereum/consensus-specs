@@ -2,8 +2,7 @@
 
 This document contains the consensus-layer networking specification for EIP-7805.
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
   - [Configuration](#configuration)
@@ -15,19 +14,19 @@ This document contains the consensus-layer networking specification for EIP-7805
     - [Messages](#messages)
       - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- mdformat-toc end -->
 
 ## Modifications in EIP-7805
 
 ### Configuration
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                   | Value                   |  Unit   | Duration  |
+| ---------------------- | ----------------------- | :-----: | :-------: |
 | `ATTESTATION_DEADLINE` | `SECONDS_PER_SLOT // 3` | seconds | 4 seconds |
 
-| Name | Value | Description |
-| - | - | - |
-| `MAX_REQUEST_INCLUSION_LIST` | `2**4` (= 16) | Maximum number of inclusion list in a single request |
+| Name                           | Value            | Description                                                |
+| ------------------------------ | ---------------- | ---------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
 | `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
 
 ### The gossip domain: gossipsub
@@ -36,8 +35,8 @@ This document contains the consensus-layer networking specification for EIP-7805
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name | Message Type |
-| - | - |
+| Name             | Message Type          |
+| ---------------- | --------------------- |
 | `inclusion_list` | `SignedInclusionList` |
 
 ##### Global topics
@@ -68,10 +67,10 @@ The following validations MUST pass before forwarding the `inclusion_list` on th
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                 |
-|------------------------|--------------------------------|
+| ---------------------- | ------------------------------ |
 | `EIP7805_FORK_VERSION` | `EIP-7805.SignedInclusionList` |
 
 Request Content:
