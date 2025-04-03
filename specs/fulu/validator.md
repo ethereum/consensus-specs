@@ -1,10 +1,6 @@
 # Fulu -- Honest Validator
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
@@ -26,8 +22,7 @@
     - [Sidecar publishing](#sidecar-publishing)
     - [Sidecar retention](#sidecar-retention)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -47,10 +42,10 @@ document and used throughout.
 
 ### Custody setting
 
-| Name | Value | Description |
-| - | - | - |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody |
+| Name                                   | Value              | Description                                                                                                |
+| -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `VALIDATOR_CUSTODY_REQUIREMENT`        | `8`                | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody                               |
 
 ## Helpers
 
