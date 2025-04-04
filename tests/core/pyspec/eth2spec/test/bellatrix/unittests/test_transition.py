@@ -29,7 +29,7 @@ expected_results = [
     (True, True, False, True),
     (True, False, False, True),
     (False, True, True, True),
-    (False, False, False, False)
+    (False, False, False, False),
 ]
 
 
@@ -41,7 +41,7 @@ def test_is_merge_block_and_is_execution_enabled(spec, state):
             with_complete_transition,
             with_execution_payload,
             is_merge_transition_block,
-            is_execution_enabled
+            is_execution_enabled,
         ) = result
         if with_complete_transition:
             state = build_state_with_complete_transition(spec, state)

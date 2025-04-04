@@ -118,22 +118,16 @@ def _generate_randomized_scenarios(block_randomizer):
         slot_transition(penultimate_slot_in_epoch),
     )
     # and produce a block...
-    blocks_set = (
-        transition_with_random_block(block_randomizer),
-    )
+    blocks_set = (transition_with_random_block(block_randomizer),)
 
     rng = random.Random(1447)
     all_skips = list(itertools.product(epochs_set, slots_set))
     randomized_skips = (
-        rng.sample(all_skips, len(all_skips))
-        for _ in range(BLOCK_TRANSITIONS_COUNT)
+        rng.sample(all_skips, len(all_skips)) for _ in range(BLOCK_TRANSITIONS_COUNT)
     )
 
     # build a set of block transitions from combinations of sub-transitions
-    transitions_generator = (
-        itertools.product(prefix, blocks_set)
-        for prefix in randomized_skips
-    )
+    transitions_generator = (itertools.product(prefix, blocks_set) for prefix in randomized_skips)
     block_transitions = zip(*transitions_generator)
 
     # and preface each set of block transitions with the possible leak transitions
@@ -142,8 +136,7 @@ def _generate_randomized_scenarios(block_randomizer):
         transition_to_leaking,
     )
     scenarios = [
-        {"transitions": _flatten(t)}
-        for t in itertools.product(leak_transitions, block_transitions)
+        {"transitions": _flatten(t)} for t in itertools.product(leak_transitions, block_transitions)
     ]
     _normalize_scenarios(scenarios)
     return scenarios
@@ -153,6 +146,7 @@ def _id_from_scenario(test_description):
     """
     Construct a name for the scenario based its data.
     """
+
     def _to_id_part(prefix, x):
         suffix = str(x)
         if isinstance(x, Callable):
@@ -160,11 +154,13 @@ def _id_from_scenario(test_description):
         return f"{prefix}{suffix}"
 
     def _id_from_transition(transition):
-        return ",".join((
-            _to_id_part("epochs:", transition["epochs_to_skip"]),
-            _to_id_part("slots:", transition["slots_to_skip"]),
-            _to_id_part("with-block:", transition["block_producer"])
-        ))
+        return ",".join(
+            (
+                _to_id_part("epochs:", transition["epochs_to_skip"]),
+                _to_id_part("slots:", transition["slots_to_skip"]),
+                _to_id_part("with-block:", transition["block_producer"]),
+            )
+        )
 
     return "|".join(map(_id_from_transition, test_description["transitions"]))
 
@@ -216,9 +212,7 @@ def test_randomized_{index}(spec, state):
 def _to_comment(name, indent_level):
     parts = name.split("|")
     indentation = "    " * indent_level
-    parts = [
-        indentation + "# " + part for part in parts
-    ]
+    parts = [indentation + "# " + part for part in parts]
     return "\n".join(parts)
 
 

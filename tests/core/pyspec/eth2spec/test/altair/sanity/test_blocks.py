@@ -26,12 +26,10 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(45
     selected_indices = rng.sample(range(len(committee)), int(len(committee) * fraction_full))
     sync_committee_bits = [i in selected_indices for i in range(len(committee))]
     participants = [
-        validator_index
-        for i, validator_index in enumerate(committee)
-        if sync_committee_bits[i]
+        validator_index for i, validator_index in enumerate(committee) if sync_committee_bits[i]
     ]
 
-    yield 'pre', state
+    yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -41,12 +39,12 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(45
             state,
             block.slot - 1,
             participants,
-        )
+        ),
     )
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield "blocks", [signed_block]
+    yield "post", state
 
 
 @with_altair_and_later
@@ -99,14 +97,14 @@ def test_inactivity_scores_leaking(spec, state):
 
     previous_inactivity_scores = state.inactivity_scores.copy()
 
-    yield 'pre', state
+    yield "pre", state
 
     # Block transition to next epoch
     block = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield "blocks", [signed_block]
+    yield "post", state
 
     # No participation during a leak so all scores should increase
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):
@@ -125,7 +123,7 @@ def test_inactivity_scores_full_participation_leaking(spec, state):
 
     previous_inactivity_scores = state.inactivity_scores.copy()
 
-    yield 'pre', state
+    yield "pre", state
 
     # Block transition to next epoch
     block = build_empty_block(spec, state, slot=state.slot + spec.SLOTS_PER_EPOCH)
@@ -133,8 +131,8 @@ def test_inactivity_scores_full_participation_leaking(spec, state):
 
     assert spec.is_in_inactivity_leak(state)
 
-    yield 'blocks', [signed_block]
-    yield 'post', state
+    yield "blocks", [signed_block]
+    yield "post", state
 
     # Full participation during a leak so all scores should decrease by 1
     for pre, post in zip(previous_inactivity_scores, state.inactivity_scores):

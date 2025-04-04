@@ -18,9 +18,17 @@ from eth2spec.test.helpers.fork_transition import (
 # PROPOSER_SLASHING
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_proposer_slashing_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_proposer_slashing_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create an attester slashing right *after* the transition
     """
@@ -36,9 +44,16 @@ def test_transition_with_proposer_slashing_right_after_fork(state, fork_epoch, s
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_proposer_slashing_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_proposer_slashing_right_before_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create an attester slashing right *before* the transition
     """
@@ -59,9 +74,16 @@ def test_transition_with_proposer_slashing_right_before_fork(state, fork_epoch, 
 #
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_attester_slashing_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_attester_slashing_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create an attester slashing right *after* the transition
     """
@@ -77,9 +99,16 @@ def test_transition_with_attester_slashing_right_after_fork(state, fork_epoch, s
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_attester_slashing_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_attester_slashing_right_before_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create an attester slashing right *after* the transition
     """
@@ -100,8 +129,15 @@ def test_transition_with_attester_slashing_right_before_fork(state, fork_epoch, 
 #
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_deposit_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_deposit_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a deposit right *after* the transition
     """
@@ -117,8 +153,15 @@ def test_transition_with_deposit_right_after_fork(state, fork_epoch, spec, post_
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2) for pre, post in ALL_PRE_POST_FORKS])
-def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
+def test_transition_with_deposit_right_before_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a deposit right *before* the transition
     """
@@ -139,9 +182,16 @@ def test_transition_with_deposit_right_before_fork(state, fork_epoch, spec, post
 #
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @with_presets([MINIMAL], reason="too slow")
-def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_voluntary_exit_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a voluntary exit right *after* the transition.
     fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
@@ -161,9 +211,16 @@ def test_transition_with_voluntary_exit_right_after_fork(state, fork_epoch, spec
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 @with_presets([MINIMAL], reason="too slow")
-def test_transition_with_voluntary_exit_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_voluntary_exit_right_before_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a voluntary exit right *before* the transition.
     fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.

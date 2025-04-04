@@ -173,13 +173,11 @@ serve_docs: _copy_docs
 # Checks
 ###############################################################################
 
-FLAKE8_CONFIG = $(CURDIR)/flake8.ini
 MYPY_CONFIG = $(CURDIR)/mypy.ini
 PYLINT_CONFIG = $(CURDIR)/pylint.ini
 
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
-TEST_GENERATORS_DIR = ./tests/generators
 MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/*/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*.md) \
@@ -190,8 +188,7 @@ MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
 lint: pyspec
 	@$(MDFORMAT_VENV) --number $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
-	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
+	@$(PYTHON_VENV) -m black $(CURDIR)/tests
 	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
 
