@@ -521,3 +521,131 @@ def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
     assert state.validators[b_index].effective_balance == 64 * spec.EFFECTIVE_BALANCE_INCREMENT
     # Validator B's balance should be less than its effective balance, hysteria
     assert state.balances[b_index] < state.validators[b_index].effective_balance
+
+
+@with_electra_until_eip7732
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_consolidation_requests_when_pending_consolidation_queue_is_full(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Fill up the queue with invalid pending consolidations
+    # Making these legit would be too much work
+    # One less than the limit, to ensure another can be added
+    state.pending_consolidations = [
+        spec.PendingConsolidation(source_index=0x1111, target_index=0x2222)
+    ] * (spec.PENDING_CONSOLIDATIONS_LIMIT - 1)
+
+    # This will consolidate 0->1, 2->3, 4->5, ...
+    consolidation_requests = []
+    for i in range(0, 2 * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD, 2):
+        # Setup the source validator
+        current_epoch = spec.get_current_epoch(state)
+        source_index = spec.get_active_validator_indices(state, current_epoch)[i + 0]
+        source_address = b"\x11" * 20
+        set_eth1_withdrawal_credential_with_balance(
+            spec,
+            state,
+            source_index,
+            address=source_address,
+            effective_balance=spec.MIN_ACTIVATION_BALANCE,
+            balance=spec.MIN_ACTIVATION_BALANCE,
+        )
+        # Setup the target validator
+        target_index = spec.get_active_validator_indices(state, current_epoch)[i + 1]
+        set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+        # Make the consolidaiton request
+        consolidation_requests.append(
+            spec.ConsolidationRequest(
+                source_address=source_address,
+                source_pubkey=state.validators[source_index].pubkey,
+                target_pubkey=state.validators[target_index].pubkey,
+            )
+        )
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.consolidations = consolidation_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Ensure another consolidation was added and the other one was rejected
+    assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
+
+
+@with_electra_until_eip7732
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Fill up the queue with invalid pending consolidations
+    # Making these legit would be too much work
+    #
+    # Note: If a client optimizes the `process_consolidation_request` function to be a single
+    # function with a for-loop, it's possible that they stop processing consolidation requests after
+    # the first switch request. For this reason, the pending consolidations queue in this test
+    # starts off as full and multiple switch requests are made.
+    state.pending_consolidations = [
+        spec.PendingConsolidation(source_index=0x1111, target_index=0x2222)
+    ] * spec.PENDING_CONSOLIDATIONS_LIMIT
+
+    # This will make requests for validator 0, 1, 2, ...
+    consolidation_requests = []
+    for i in range(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
+        # Setup the source validator
+        current_epoch = spec.get_current_epoch(state)
+        source_index = spec.get_active_validator_indices(state, current_epoch)[i]
+        source_address = b"\x11" * 20
+        set_eth1_withdrawal_credential_with_balance(
+            spec,
+            state,
+            source_index,
+            address=source_address,
+            effective_balance=spec.MIN_ACTIVATION_BALANCE,
+            balance=spec.MIN_ACTIVATION_BALANCE,
+        )
+
+        # Make the switch to compounding validator request
+        consolidation_requests.append(
+            spec.ConsolidationRequest(
+                source_address=source_address,
+                source_pubkey=state.validators[source_index].pubkey,
+                target_pubkey=state.validators[source_index].pubkey,
+            )
+        )
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.consolidations = consolidation_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Ensure the pending consolidations queue is still full
+    assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
+    # Ensure the validators have been upgraded to compounding validators
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    for request in consolidation_requests:
+        index = validator_pubkeys.index(request.source_pubkey)
+        assert spec.has_compounding_withdrawal_credential(state.validators[index])
