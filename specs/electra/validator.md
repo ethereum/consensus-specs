@@ -1,6 +1,6 @@
 # Electra -- Honest Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -13,7 +13,7 @@
 - [Helpers](#helpers)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Protocol](#protocol)
@@ -63,7 +63,7 @@ class GetPayloadResponse(object):
 
 ## Containers
 
-### Modified Containers
+### Modified containers
 
 #### `AggregateAndProof`
 

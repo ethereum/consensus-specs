@@ -46,9 +46,9 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 ```python
 @dataclass
 class BlobsBundle(object):
-    commitments: Sequence[KZGCommitment]
-    proofs: Sequence[KZGProof]
-    blobs: Sequence[Blob]
+    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
 ### Modified `GetPayloadResponse`
@@ -177,6 +177,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
 ```
 
 The `subnet_id` for the `blob_sidecar` is calculated with:
+
 - Let `blob_index = blob_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_blob_sidecar(blob_index)`.
 

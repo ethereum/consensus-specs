@@ -1,6 +1,6 @@
 # Fulu -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -27,6 +27,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -202,7 +203,18 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 - _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the block's slot in the context of the current shuffling (defined by `block_header.parent_root`/`block_header.slot`).
   If the `proposer_index` cannot immediately be verified against the expected shuffling, the sidecar MAY be queued for later processing while proposers for the block's branch are calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-*Note:* In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
+*Note*: In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for all the sidecars of the same block, it verifies against the same set of `kzg_commitments` of the given beacon block. Client can choose to cache the result of the arguments tuple `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
+
+###### Distributed Blob Publishing using blobs retrieved from local execution layer client
+
+Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching `kzg_commitments` are retrieved, they should convert the response to data columns, and import the result.
+
+Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish data columns on time.
+
+When clients use the local execution layer to retrieve blob and compute data columns, they MUST behave as if the imported `data_column_sidecar` had been received via gossip. In particular, clients MUST:
+
+* Publish the corresponding `data_column_sidecar` on the `data_column_sidecar_{subnet_id}` topic **if and only if** they are **subscribed** to it, either due to custody requirements or additional sampling.
+* Update gossip rule related data structures (i.e. update the anti-equivocation cache).
 
 ### The Req/Resp domain
 

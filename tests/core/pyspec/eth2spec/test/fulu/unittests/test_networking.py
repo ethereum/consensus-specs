@@ -39,7 +39,7 @@ def compute_data_column_sidecar(spec, state):
     block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)[0]
+    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
 
 
 # Tests for verify_data_column_sidecar

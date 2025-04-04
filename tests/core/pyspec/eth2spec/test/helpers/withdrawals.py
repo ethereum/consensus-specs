@@ -1,4 +1,5 @@
 from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 def get_expected_withdrawals(spec, state):
@@ -28,15 +29,24 @@ def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None
     assert spec.is_fully_withdrawable_validator(validator, state.balances[index], withdrawable_epoch)
 
 
-def set_eth1_withdrawal_credential_with_balance(spec, state, index, balance=None, address=None):
-    if balance is None:
+def set_eth1_withdrawal_credential_with_balance(spec, state, index, effective_balance=None, balance=None, address=None):
+    if balance is None and effective_balance is None:
         balance = spec.MAX_EFFECTIVE_BALANCE
+        effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    elif balance is None:
+        balance = effective_balance
+    elif effective_balance is None:
+        effective_balance = min(
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT,
+            spec.MAX_EFFECTIVE_BALANCE
+        )
+
     if address is None:
         address = b'\x11' * 20
 
     validator = state.validators[index]
     validator.withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + address
-    validator.effective_balance = min(balance, spec.MAX_EFFECTIVE_BALANCE)
+    validator.effective_balance = effective_balance
     state.balances[index] = balance
 
 
@@ -46,7 +56,13 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
         validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         state.balances[index] = validator.effective_balance + excess_balance
     else:
-        set_eth1_withdrawal_credential_with_balance(spec, state, index, spec.MAX_EFFECTIVE_BALANCE + excess_balance)
+        set_eth1_withdrawal_credential_with_balance(
+            spec,
+            state,
+            index,
+            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+            balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance,
+        )
 
     assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
 
@@ -98,10 +114,16 @@ def set_compounding_withdrawal_credential_with_balance(spec, state, index,
                                                        effective_balance=None, balance=None, address=None):
     set_compounding_withdrawal_credential(spec, state, index, address)
 
-    if effective_balance is None:
+    if balance is None and effective_balance is None:
+        balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-    if balance is None:
+    elif balance is None:
         balance = effective_balance
+    elif effective_balance is None:
+        effective_balance = min(
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT,
+            spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
 
     state.validators[index].effective_balance = effective_balance
     state.balances[index] = balance
@@ -202,7 +224,10 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
 
     if not valid:
         try:
-            spec.process_withdrawals(state, execution_payload)
+            if is_post_eip7732(spec):
+                spec.process_withdrawals(state)
+            else:
+                spec.process_withdrawals(state, execution_payload)
             raise AssertionError('expected an assertion error, but got none.')
         except AssertionError:
             pass
@@ -210,7 +235,10 @@ def run_withdrawals_processing(spec, state, execution_payload, num_expected_with
         yield 'post', None
         return
 
-    spec.process_withdrawals(state, execution_payload)
+    if is_post_eip7732(spec):
+        spec.process_withdrawals(state)
+    else:
+        spec.process_withdrawals(state, execution_payload)
 
     yield 'post', state
 

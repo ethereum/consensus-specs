@@ -57,8 +57,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes.
-For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
+The fork is triggered at epoch `DENEB_FORK_EPOCH`.
 
 Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
 

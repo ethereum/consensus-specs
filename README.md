@@ -28,7 +28,7 @@ Features are researched and developed in parallel, and then consolidated into se
 | Seq. | Code Name | Fork Epoch | Specs |
 | - | - | - | - |
 | 5 | **Electra** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[Electra fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [networking](specs/electra/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/electra/validator.md)</li><li>[P2P networking](specs/electra/p2p-interface.md)</li></ul></ul> |
-| 6 | **Fulu** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/fulu/beacon-chain.md)</li><li>[Fulu fork](specs/fulu/fork.md)</li><li>[Data availability sampling core](specs/fulu/das-core.md)</li><li>[Polynomial commitments sampling](specs/fulu/polynomial-commitments-sampling.md)</li><li>[Fork choice changes](specs/fulu/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/fulu/p2p-interface.md)</li><li>[Peer sampling](specs/fulu/peer-sampling.md)</li></ul></ul> |
+| 6 | **Fulu** | TBD | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/fulu/beacon-chain.md)</li><li>[Fulu fork](specs/fulu/fork.md)</li><li>[Data availability sampling core](specs/fulu/das-core.md)</li><li>[Polynomial commitments sampling](specs/fulu/polynomial-commitments-sampling.md)</li><li>[Fork choice changes](specs/fulu/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/fulu/validator.md)</li><li>[P2P networking](specs/fulu/p2p-interface.md)</li><li>[Peer sampling](specs/fulu/peer-sampling.md)</li></ul></ul> |
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -75,15 +75,20 @@ Conformance tests built from the executable python spec are available in the [Et
 
 ## Installation and usage
 
-The consensus-specs repo can be used by running the tests locally or inside a docker container.
+Clone the repository with:
 
-To run the tests locally:
-- Clone the repository with `git clone https://github.com/ethereum/consensus-specs.git`
-- Switch to the directory `cd consensus-specs`
-- Run the tests with `make test`
+```bash
+git clone https://github.com/ethereum/consensus-specs.git
+```
 
-To run the tests inside a docker container:
-- Switch to the directory with `cd scripts`
-- Run the script `./build_run_docker_tests.sh`
-- Find the results in a folder called `./testResults`
-- Find more ways to customize the script with `./build_run_docker_tests.sh --h`
+Switch to the directory:
+
+```bash
+cd consensus-specs
+```
+
+Run the tests:
+
+```bash
+make test
+```

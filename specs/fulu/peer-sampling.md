@@ -1,6 +1,6 @@
 # Fulu -- Peer Sampling
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -50,7 +50,7 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
         return r
 
     def hypergeom_cdf(k: uint64, M: uint64, n: uint64, N: uint64) -> float:
-        # NOTE: It contains float-point computations.
+        # Note: It contains float-point computations.
         # Convert uint64 to Python integers before computations.
         k = int(k)
         M = int(M)

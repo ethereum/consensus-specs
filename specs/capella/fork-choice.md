@@ -12,7 +12,7 @@
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
@@ -49,7 +49,7 @@ def notify_forkchoice_updated(self: ExecutionEngine,
 
 ## Helpers
 
-### Extended `PayloadAttributes`
+### Modified `PayloadAttributes`
 
 `PayloadAttributes` is extended with the `withdrawals` field.
 

@@ -1,6 +1,6 @@
 # Sharding -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -25,7 +25,7 @@
     - [`BuilderBlockBidWithRecipientAddress`](#builderblockbidwithrecipientaddress)
     - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
     - [`ShardSample`](#shardsample)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
     - [`BuilderBlockData`](#builderblockdata)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -98,7 +98,7 @@ With the introduction of builder blocks the number of slots per epoch is doubled
 
 ## Configuration
 
-Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.
+*Note*: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.
 E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
 
 ### Time parameters
@@ -175,7 +175,7 @@ class ShardSample(Container):
     signature: BLSSignature
 ```
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 

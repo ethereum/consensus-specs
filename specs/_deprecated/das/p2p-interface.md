@@ -1,6 +1,6 @@
 # Data Availability Sampling -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -123,7 +123,7 @@ This backbone is based on a pure function of the *node* identity and time:
   assuming the peerstore already has a large enough variety of peers.
 - Nodes can be held accountable for contributing to the backbone:
   peers that participate in DAS but are not active on the appropriate backbone topics can be scored down.
-  *Note: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing*
+  *Note*: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing.
 
 A node should anticipate backbone topics to subscribe to based their own identity.
 These subscriptions rotate slowly, and with different offsets per node identity to avoid sudden network-wide rotations.

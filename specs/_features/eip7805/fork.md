@@ -1,4 +1,4 @@
-# Electra -- Fork Logic
+# EIP-7805 -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -13,8 +13,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [Fork to Electra](#fork-to-electra)
-  - [Fork trigger](#fork-trigger)
+- [Fork to EIP-7805](#fork-to-eip-7805)
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -22,7 +21,7 @@
 
 ## Introduction
 
-This document describes the process of the Electra upgrade.
+This document describes the process of the EIP-7805 upgrade.
 
 ## Configuration
 
@@ -30,8 +29,8 @@ Warning: this configuration is not definitive.
 
 | Name | Value |
 | - | - |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')` |
-| `ELECTRA_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| `EIP7805_FORK_VERSION` | `Version('0x10000000')` |
+| `EIP7805_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -44,6 +43,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
+    if epoch >= EIP7805_FORK_EPOCH:
+        return EIP7805_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -57,29 +58,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to Electra
-
-### Fork trigger
-
-The fork is triggered at epoch `ELECTRA_FORK_EPOCH`.
-
-Note that for the pure Electra networks, we don't apply `upgrade_to_electra` since it starts with Electra version logic.
+## Fork to EIP-7805
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ELECTRA_FORK_EPOCH`,
-an irregular state change is made to upgrade to Electra.
+If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7805_FORK_EPOCH`,
+an irregular state change is made to upgrade to EIP-7805.
 
 ```python
-def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
-    epoch = deneb.get_current_epoch(pre)
-
-    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(pre))
-    for validator in pre.validators:
-        if validator.exit_epoch != FAR_FUTURE_EPOCH:
-            if validator.exit_epoch > earliest_exit_epoch:
-                earliest_exit_epoch = validator.exit_epoch
-    earliest_exit_epoch += Epoch(1)
+def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
+    epoch = electra.get_current_epoch(pre)
 
     post = BeaconState(
         # Versioning
@@ -88,7 +76,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
+            current_version=EIP7805_FORK_VERSION,  # [Modified in EIP-7805]
             epoch=epoch,
         ),
         # History
@@ -127,52 +115,18 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
-        # [New in Electra:EIP6110]
-        deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,
-        # [New in Electra:EIP7251]
-        deposit_balance_to_consume=0,
-        exit_balance_to_consume=0,
-        earliest_exit_epoch=earliest_exit_epoch,
-        consolidation_balance_to_consume=0,
-        earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
-        pending_deposits=[],
-        pending_partial_withdrawals=[],
-        pending_consolidations=[],
+        # On-chain deposits
+        deposit_requests_start_index=pre.deposit_requests_start_index,
+        # Consolidations
+        deposit_balance_to_consume=pre.deposit_balance_to_consume,
+        exit_balance_to_consume=pre.exit_balance_to_consume,
+        earliest_exit_epoch=pre.earliest_exit_epoch,
+        consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
+        earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
+        pending_deposits=pre.pending_deposits,
+        pending_partial_withdrawals=pre.pending_partial_withdrawals,
+        pending_consolidations=pre.pending_consolidations,
     )
-
-    post.exit_balance_to_consume = get_activation_exit_churn_limit(post)
-    post.consolidation_balance_to_consume = get_consolidation_churn_limit(post)
-
-    # [New in Electra:EIP7251]
-    # add validators that are not yet active to pending balance deposits
-    pre_activation = sorted([
-        index for index, validator in enumerate(post.validators)
-        if validator.activation_epoch == FAR_FUTURE_EPOCH
-    ], key=lambda index: (
-        post.validators[index].activation_eligibility_epoch,
-        index
-    ))
-
-    for index in pre_activation:
-        balance = post.balances[index]
-        post.balances[index] = 0
-        validator = post.validators[index]
-        validator.effective_balance = 0
-        validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
-        # and GENESIS_SLOT to distinguish from a pending deposit request
-        post.pending_deposits.append(PendingDeposit(
-            pubkey=validator.pubkey,
-            withdrawal_credentials=validator.withdrawal_credentials,
-            amount=balance,
-            signature=bls.G2_POINT_AT_INFINITY,
-            slot=GENESIS_SLOT,
-        ))
-
-    # Ensure early adopters of compounding credentials go through the activation churn
-    for index, validator in enumerate(post.validators):
-        if has_compounding_withdrawal_credential(validator):
-            queue_excess_active_balance(post, ValidatorIndex(index))
 
     return post
 ```
