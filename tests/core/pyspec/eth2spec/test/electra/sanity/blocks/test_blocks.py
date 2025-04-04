@@ -561,7 +561,7 @@ def test_consolidation_requests_when_pending_consolidation_queue_is_full(spec, s
         target_index = spec.get_active_validator_indices(state, current_epoch)[i + 1]
         set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-        # Make the consolidaiton request
+        # Make the consolidation request
         consolidation_requests.append(
             spec.ConsolidationRequest(
                 source_address=source_address,
