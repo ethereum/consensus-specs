@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import transition_to
 
 
 def run_process_eth1_data_reset(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_eth1_data_reset')
+    yield from run_epoch_processing_with(spec, state, "process_eth1_data_reset")
 
 
 @with_all_phases
@@ -18,9 +18,12 @@ def test_eth1_vote_no_reset(spec, state):
 
     for i in range(state.slot + 1):  # add a vote for each skipped slot.
         state.eth1_data_votes.append(
-            spec.Eth1Data(deposit_root=b'\xaa' * 32,
-                          deposit_count=state.eth1_deposit_index,
-                          block_hash=b'\xbb' * 32))
+            spec.Eth1Data(
+                deposit_root=b"\xaa" * 32,
+                deposit_count=state.eth1_deposit_index,
+                block_hash=b"\xbb" * 32,
+            )
+        )
 
     yield from run_process_eth1_data_reset(spec, state)
 
@@ -34,9 +37,12 @@ def test_eth1_vote_reset(spec, state):
     state.slot = (spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH) - 1
     for i in range(state.slot + 1):  # add a vote for each skipped slot.
         state.eth1_data_votes.append(
-            spec.Eth1Data(deposit_root=b'\xaa' * 32,
-                          deposit_count=state.eth1_deposit_index,
-                          block_hash=b'\xbb' * 32))
+            spec.Eth1Data(
+                deposit_root=b"\xaa" * 32,
+                deposit_count=state.eth1_deposit_index,
+                block_hash=b"\xbb" * 32,
+            )
+        )
 
     yield from run_process_eth1_data_reset(spec, state)
 
