@@ -1,6 +1,6 @@
 # Fulu -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -63,8 +63,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `FULU_FORK_EPOCH`.
+The fork is triggered at epoch `FULU_FORK_EPOCH`.
 
 Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it starts with Fulu version logic.
 

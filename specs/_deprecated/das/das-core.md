@@ -1,6 +1,6 @@
 # Data Availability Sampling -- Core
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -99,7 +99,7 @@ See [Reed-Solomon erasure code recovery in n*log^2(n) time with FFTs](https://et
 Implementations:
 - [Original Python](https://github.com/ethereum/research/blob/master/mimc_stark/recovery.py)
 - [New optimized approach in python](https://github.com/ethereum/research/tree/master/polynomial_reconstruction)
-- [Old approach in Go](https://github.com/protolambda/go-kate/blob/master/recovery.go)
+- [Old approach in Go](https://github.com/protolambda/go-kzg/blob/master/legacy_recovery.go)
 
 ```python
 def recover_data(data: Sequence[Optional[Sequence[Point]]]) -> Sequence[Point]:

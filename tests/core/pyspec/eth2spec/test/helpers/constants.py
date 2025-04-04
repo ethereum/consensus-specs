@@ -36,15 +36,16 @@ ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     ELECTRA,
-    # Experimental patches
     FULU,
+    # Experimental patches
+    EIP7732,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, EIP7441)
+TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, EIP7441, EIP7732)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
-ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441, EIP7732)
+ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
 
 # NOTE: the same definition as in `pysetup/md_doc_paths.py`
 PREVIOUS_FORK_OF = {

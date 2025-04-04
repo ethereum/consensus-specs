@@ -344,7 +344,7 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
     return bytes_to_uint64(hash(signature)[0:8]) % modulo == 0
 ```
 
-*NOTE*: The set of aggregators generally changes every slot; however, the assignments can be computed ahead of time as soon as the committee is known.
+*Note*: The set of aggregators generally changes every slot; however, the assignments can be computed ahead of time as soon as the committee is known.
 
 ##### Construct sync committee contribution
 
