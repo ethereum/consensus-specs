@@ -29,9 +29,7 @@ def test_min_balance_exit(spec, state):
     # Set the balance to consume equal to churn limit
     state.exit_balance_to_consume = churn_limit
 
-    validator_index = spec.get_active_validator_indices(
-        state, spec.get_current_epoch(state)
-    )[0]
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[0]
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     signed_voluntary_exit = sign_voluntary_exit(
         spec,
@@ -64,42 +62,31 @@ def test_min_balance_exits_up_to_churn(spec, state):
 
     # Exit all but 1 validators, all fit in the churn limit
     for i in range(num_to_exit - 1):
-        validator_index = spec.get_active_validator_indices(
-            state, spec.get_current_epoch(state)
-        )[i]
+        validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
         spec.initiate_validator_exit(state, validator_index)
 
-    validator_index = spec.get_active_validator_indices(
-        state, spec.get_current_epoch(state)
-    )[num_to_exit]
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
+        num_to_exit
+    ]
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     signed_voluntary_exit = sign_voluntary_exit(
         spec,
         state,
-        spec.VoluntaryExit(
-            epoch=spec.get_current_epoch(state), validator_index=validator_index
-        ),
+        spec.VoluntaryExit(epoch=spec.get_current_epoch(state), validator_index=validator_index),
         privkey,
     )
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
     # Last validator also fits in the churn limit
-    expected_exit_epoch = spec.compute_activation_exit_epoch(
-        spec.get_current_epoch(state)
-    )
+    expected_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     # Check exit epoch and withdrawable epoch
     assert state.validators[num_to_exit].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[num_to_exit].withdrawable_epoch == expected_withdrawable_epoch
-    )
+    assert state.validators[num_to_exit].withdrawable_epoch == expected_withdrawable_epoch
     # Check exit queue churn is set
-    assert (
-        state.exit_balance_to_consume
-        == churn_limit - single_validator_balance * num_to_exit
-    )
+    assert state.exit_balance_to_consume == churn_limit - single_validator_balance * num_to_exit
     # Check earliest_exit_epoch
     assert state.earliest_exit_epoch == expected_exit_epoch
 
@@ -110,9 +97,7 @@ def test_min_balance_exits_above_churn(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # This state has 64 validators each with 32 ETH
     single_validator_balance = spec.MIN_ACTIVATION_BALANCE
-    expected_exit_epoch = spec.compute_activation_exit_epoch(
-        spec.get_current_epoch(state)
-    )
+    expected_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
@@ -123,32 +108,25 @@ def test_min_balance_exits_above_churn(spec, state):
 
     # Exit all but 1 validators, all fit in the churn limit
     for i in range(num_to_exit):
-        validator_index = spec.get_active_validator_indices(
-            state, spec.get_current_epoch(state)
-        )[i]
+        validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
         spec.initiate_validator_exit(state, validator_index)
 
     # Exit one more validator, not fitting in the churn limit
-    validator_index = spec.get_active_validator_indices(
-        state, spec.get_current_epoch(state)
-    )[num_to_exit]
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
+        num_to_exit
+    ]
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     signed_voluntary_exit = sign_voluntary_exit(
         spec,
         state,
-        spec.VoluntaryExit(
-            epoch=spec.get_current_epoch(state), validator_index=validator_index
-        ),
+        spec.VoluntaryExit(epoch=spec.get_current_epoch(state), validator_index=validator_index),
         privkey,
     )
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
     # Check exit epoch and withdrawable epoch. Last validator exits one epoch later
     assert state.validators[num_to_exit].exit_epoch == expected_exit_epoch + 1
-    assert (
-        state.validators[num_to_exit].withdrawable_epoch
-        == expected_withdrawable_epoch + 1
-    )
+    assert state.validators[num_to_exit].withdrawable_epoch == expected_withdrawable_epoch + 1
     # Check exit balance to consume is set correctly
     remainder = (num_to_exit + 1) * single_validator_balance % churn_limit
     assert state.exit_balance_to_consume == churn_limit - remainder
@@ -182,19 +160,14 @@ def test_max_balance_exit(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
     # Check exit epoch and withdrawable epoch
-    earliest_exit_epoch = spec.compute_activation_exit_epoch(
-        spec.get_current_epoch(state)
-    )
+    earliest_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     additional_epochs = (to_exit - 1) // churn_limit
     expected_exit_epoch = earliest_exit_epoch + additional_epochs
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[validator_index].withdrawable_epoch
-        == expected_withdrawable_epoch
-    )
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
     # Check exit_balance_to_consume
     assert state.exit_balance_to_consume == (additional_epochs + 1) * churn_limit - to_exit
     # Check earliest_exit_epoch
@@ -225,17 +198,12 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
     # Validator consumes churn limit fully in the current epoch
-    expected_exit_epoch = spec.compute_activation_exit_epoch(
-        spec.get_current_epoch(state)
-    )
+    expected_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[validator_index].withdrawable_epoch
-        == expected_withdrawable_epoch
-    )
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
     # Check exit_balance_to_consume
     assert state.exit_balance_to_consume == 0
     # Check earliest_exit_epoch
@@ -268,17 +236,13 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
 
     # Validator consumes churn limit fully in epochs_to_consume epochs
     expected_exit_epoch = (
-        spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
-        + epochs_to_consume - 1
+        spec.compute_activation_exit_epoch(spec.get_current_epoch(state)) + epochs_to_consume - 1
     )
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[validator_index].withdrawable_epoch
-        == expected_withdrawable_epoch
-    )
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
     # Check exit_balance_to_consume
     assert state.exit_balance_to_consume == 0
     # Check earliest_exit_epoch
@@ -322,10 +286,7 @@ def test_exit_existing_churn_and_churn_limit_balance(spec, state):
     )
     # Check exit epoch
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[validator_index].withdrawable_epoch
-        == expected_withdrawable_epoch
-    )
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
     # Check balance consumed in exit epoch is the remainder 1 ETH
     assert state.exit_balance_to_consume == churn_limit - existing_churn
     # check earliest exit epoch
@@ -354,9 +315,7 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
 
     # Set validator effective balance to a multiple of churn_limit
     epochs_to_consume = 3
-    state.validators[validator_index].effective_balance = (
-        epochs_to_consume * churn_limit
-    )
+    state.validators[validator_index].effective_balance = epochs_to_consume * churn_limit
 
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     signed_voluntary_exit = sign_voluntary_exit(
@@ -373,10 +332,7 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert (
-        state.validators[validator_index].withdrawable_epoch
-        == expected_withdrawable_epoch
-    )
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
     # Check exit_balance_to_consume
     assert state.exit_balance_to_consume == churn_limit - existing_churn
     # Check earliest_exit_epoch
@@ -407,6 +363,4 @@ def test_invalid_validator_has_pending_withdrawal(spec, state):
         )
     )
 
-    yield from run_voluntary_exit_processing(
-        spec, state, signed_voluntary_exit, valid=False
-    )
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)

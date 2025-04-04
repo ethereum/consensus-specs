@@ -3,9 +3,12 @@ from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, ELECTRA, 
 
 
 if __name__ == "__main__":
-    bellatrix_mods = {key: 'eth2spec.test.bellatrix.sync.test_' + key for key in [
-        'optimistic',
-    ]}
+    bellatrix_mods = {
+        key: "eth2spec.test.bellatrix.sync.test_" + key
+        for key in [
+            "optimistic",
+        ]
+    }
     capella_mods = bellatrix_mods
     deneb_mods = capella_mods
     electra_mods = deneb_mods

@@ -26,7 +26,7 @@ from eth2spec.test.utils.randomized_block_tests import (
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -40,7 +40,53 @@ def test_randomized_0(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:random_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -52,7 +98,7 @@ def test_randomized_0(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -66,7 +112,53 @@ def test_randomized_1(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -78,7 +170,7 @@ def test_randomized_1(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -92,7 +184,53 @@ def test_randomized_2(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:last_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -104,7 +242,7 @@ def test_randomized_2(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -118,7 +256,53 @@ def test_randomized_3(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:last_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -130,7 +314,7 @@ def test_randomized_3(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -144,7 +328,53 @@ def test_randomized_4(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:penultimate_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -156,7 +386,7 @@ def test_randomized_4(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -170,7 +400,53 @@ def test_randomized_5(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:random_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -182,7 +458,7 @@ def test_randomized_5(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -196,7 +472,53 @@ def test_randomized_6(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:penultimate_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -208,7 +530,7 @@ def test_randomized_6(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -222,7 +544,53 @@ def test_randomized_7(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'validation': 'validate_is_not_leaking', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "validation": "validate_is_not_leaking",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -234,7 +602,7 @@ def test_randomized_7(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -248,7 +616,53 @@ def test_randomized_8(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:random_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -260,7 +674,7 @@ def test_randomized_8(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -274,7 +688,53 @@ def test_randomized_9(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -286,7 +746,7 @@ def test_randomized_9(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -300,7 +760,53 @@ def test_randomized_10(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:last_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -312,7 +818,7 @@ def test_randomized_10(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -326,7 +832,53 @@ def test_randomized_11(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:last_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -338,7 +890,7 @@ def test_randomized_11(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -352,7 +904,53 @@ def test_randomized_12(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:penultimate_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'last_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "last_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -364,7 +962,7 @@ def test_randomized_12(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -378,7 +976,53 @@ def test_randomized_13(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:random_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'random_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "random_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -390,7 +1034,7 @@ def test_randomized_13(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -404,7 +1048,53 @@ def test_randomized_14(spec, state):
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:penultimate_slot_in_epoch,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 0, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 'penultimate_slot_in_epoch', 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": "penultimate_slot_in_epoch",
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -416,7 +1106,7 @@ def test_randomized_14(spec, state):
 @with_phases([ALTAIR])
 @with_custom_state(
     balances_fn=misc_balances_in_default_range_with_many_validators,
-    threshold_fn=zero_activation_threshold
+    threshold_fn=zero_activation_threshold,
 )
 @spec_test
 @single_phase
@@ -430,7 +1120,53 @@ def test_randomized_15(spec, state):
     # epochs:1,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:no_block
     # epochs:0,slots:0,with-block:random_block_altair_with_cycling_sync_committee_participation
-    scenario = {'transitions': [{'epochs_to_skip': 'epochs_until_leak', 'validation': 'validate_is_leaking', 'slots_to_skip': 0, 'block_producer': 'no_block'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}, {'epochs_to_skip': 1, 'slots_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'slots_to_skip': 0, 'epochs_to_skip': 0, 'block_producer': 'no_block', 'validation': 'no_op_validation'}, {'block_producer': 'random_block_altair_with_cycling_sync_committee_participation', 'epochs_to_skip': 0, 'slots_to_skip': 0, 'validation': 'no_op_validation'}], 'state_randomizer': 'randomize_state_altair'}  # noqa: E501
+    scenario = {
+        "transitions": [
+            {
+                "epochs_to_skip": "epochs_until_leak",
+                "validation": "validate_is_leaking",
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+            {
+                "epochs_to_skip": 1,
+                "slots_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "slots_to_skip": 0,
+                "epochs_to_skip": 0,
+                "block_producer": "no_block",
+                "validation": "no_op_validation",
+            },
+            {
+                "block_producer": "random_block_altair_with_cycling_sync_committee_participation",
+                "epochs_to_skip": 0,
+                "slots_to_skip": 0,
+                "validation": "no_op_validation",
+            },
+        ],
+        "state_randomizer": "randomize_state_altair",
+    }  # noqa: E501
     yield from run_generated_randomized_test(
         spec,
         state,
