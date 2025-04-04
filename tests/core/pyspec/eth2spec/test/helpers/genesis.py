@@ -16,7 +16,7 @@ from eth2spec.test.helpers.eip7441 import (
     compute_whisk_initial_k_commitment_cached
 )
 
-from build.lib.eth2spec.test.helpers.forks import is_post_fulu
+from eth2spec.test.helpers.forks import is_post_fulu
 
 
 def build_mock_validator(spec, i: int, balance: int):
