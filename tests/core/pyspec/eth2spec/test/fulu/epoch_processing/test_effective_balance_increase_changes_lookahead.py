@@ -12,8 +12,8 @@ from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 
-from pysetup.constants import ELECTRA, FULU
-from tests.core.pyspec.eth2spec.test.helpers.state import simulate_lookahead
+from eth2spec.test.helpers.constants import ELECTRA, FULU
+from eth2spec.test.helpers.state import simulate_lookahead
 
 
 def run_test_effective_balance_increase_changes_lookahead(
