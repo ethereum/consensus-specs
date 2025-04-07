@@ -10,7 +10,7 @@ from eth2spec.test.bellatrix.fork import test_bellatrix_fork_basic, test_bellatr
 from eth2spec.test.capella.fork import test_capella_fork_basic, test_capella_fork_random
 from eth2spec.test.deneb.fork import test_deneb_fork_basic, test_deneb_fork_random
 from eth2spec.test.electra.fork import test_electra_fork_basic, test_electra_fork_random
-from eth2spec.test.fulu.fork import test_fulu_fork_basic, test_fulu_fork_random
+from eth2spec.test.fulu.fork import test_fulu_fork_basic, test_fulu_fork_random, test_fork_lookahead_consistency
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 
@@ -48,6 +48,7 @@ def _get_fork_tests_providers():
         yield create_provider(test_electra_fork_random, preset, DENEB, ELECTRA)
         yield create_provider(test_fulu_fork_basic, preset, ELECTRA, FULU)
         yield create_provider(test_fulu_fork_random, preset, ELECTRA, FULU)
+        yield create_provider(test_fork_lookahead_consistency, preset, ELECTRA, FULU)
 
 
 if __name__ == "__main__":

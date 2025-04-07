@@ -49,8 +49,12 @@ if __name__ == "__main__":
     _new_electra_mods = {**_new_electra_mods_1, **_new_electra_mods_2}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
-    # No additional Fulu specific epoch processing tests
-    fulu_mods = electra_mods
+    # Fulu specific epoch processing tests
+    _new_fulu_mods = {key: 'eth2spec.test.fulu.epoch_processing.test_' + key for key in [
+        'process_proposer_lookahead',
+        'effective_balance_increase_changes_lookahead'
+    ]}
+    fulu_mods = combine_mods(_new_fulu_mods, electra_mods)
 
     # TODO Custody Game testgen is disabled for now
     # custody_game_mods = {**{key: 'eth2spec.test.custody_game.epoch_processing.test_process_' + key for key in [
