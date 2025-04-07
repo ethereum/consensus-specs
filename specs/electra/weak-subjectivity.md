@@ -1,10 +1,6 @@
 # Electra -- Weak Subjectivity Guide
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
@@ -12,8 +8,7 @@
     - [Modified `compute_weak_subjectivity_period`](#modified-compute_weak_subjectivity_period)
     - [Modified `is_within_weak_subjectivity_period`](#modified-is_within_weak_subjectivity_period)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -47,28 +42,16 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
 ```
 
 A brief reference for what these values look like in practice ([reference
-script](https://gist.github.com/jtraglia/2d7ee278f4ee25df1a3bc46c93b4882a)):
+script](https://gist.github.com/jtraglia/469380e8315d844c78ba1af9e4fd5460)):
 
-| Safety Decay | Avg. Val. Balance (ETH) | Val. Count | Weak Sub. Period (Epochs) |
-| ---- | ---- | ---- | ---- |
-| 10 | 28000000000 | 32768 | 614 |
-| 10 | 28000000000 | 65536 | 972 |
-| 10 | 28000000000 | 131072 | 1689 |
-| 10 | 28000000000 | 262144 | 3123 |
-| 10 | 28000000000 | 524288 | 3532 |
-| 10 | 28000000000 | 1048576 | 3532 |
-| 10 | 32000000000 | 32768 | 665 |
-| 10 | 32000000000 | 65536 | 1075 |
-| 10 | 32000000000 | 131072 | 1894 |
-| 10 | 32000000000 | 262144 | 3532 |
-| 10 | 32000000000 | 524288 | 3532 |
-| 10 | 32000000000 | 1048576 | 3532 |
-| 10 | 36000000000 | 32768 | 716 |
-| 10 | 36000000000 | 65536 | 1177 |
-| 10 | 36000000000 | 131072 | 2099 |
-| 10 | 36000000000 | 262144 | 3532 |
-| 10 | 36000000000 | 524288 | 3532 |
-| 10 | 36000000000 | 1048576 | 3532 |
+| Safety Decay | Total Balance (ETH) | Num. 32 ETH Validators | Weak Sub. Period (Epochs) |
+| -----------: | ------------------: | ---------------------: | ------------------------: |
+|           10 |           1,048,576 |                 32,768 |                       665 |
+|           10 |           2,097,152 |                 65,536 |                     1,075 |
+|           10 |           4,194,304 |                131,072 |                     1,894 |
+|           10 |           8,388,608 |                262,144 |                     3,532 |
+|           10 |          16,777,216 |                524,288 |                     3,532 |
+|           10 |          33,554,432 |              1,048,576 |                     3,532 |
 
 #### Modified `is_within_weak_subjectivity_period`
 
