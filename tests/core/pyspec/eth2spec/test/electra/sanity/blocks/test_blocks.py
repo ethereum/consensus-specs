@@ -600,37 +600,53 @@ def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full
     # Making these legit would be too much work
     #
     # Note: If a client optimizes the `process_consolidation_request` function to be a single
-    # function with a for-loop, it's possible that they stop processing consolidation requests after
-    # the first switch request. For this reason, the pending consolidations queue in this test
-    # starts off as full and multiple switch requests are made.
+    # function with a for-loop, it's possible that they stop processing all consolidation requests
+    # after the consolidation request. For this reason, the pending consolidations queue in this
+    # test starts off as full and consolidations requests are made.
     state.pending_consolidations = [
         spec.PendingConsolidation(source_index=0x1111, target_index=0x2222)
     ] * spec.PENDING_CONSOLIDATIONS_LIMIT
 
-    # This will make requests for validator 0, 1, 2, ...
+    # This will contain two requests:
+    #   1. A regular consolidation request
+    #   2. A switch to compounding request
     consolidation_requests = []
-    for i in range(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
-        # Setup the source validator
-        current_epoch = spec.get_current_epoch(state)
-        source_index = spec.get_active_validator_indices(state, current_epoch)[i]
-        source_address = b"\x11" * 20
-        set_eth1_withdrawal_credential_with_balance(
-            spec,
-            state,
-            source_index,
-            address=source_address,
-            effective_balance=spec.MIN_ACTIVATION_BALANCE,
-            balance=spec.MIN_ACTIVATION_BALANCE,
-        )
 
-        # Make the switch to compounding validator request
-        consolidation_requests.append(
-            spec.ConsolidationRequest(
-                source_address=source_address,
-                source_pubkey=state.validators[source_index].pubkey,
-                target_pubkey=state.validators[source_index].pubkey,
-            )
+    # Setup the source validator
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    source_address = b"\x11" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec,
+        state,
+        source_index,
+        address=source_address,
+        effective_balance=spec.MIN_ACTIVATION_BALANCE,
+        balance=spec.MIN_ACTIVATION_BALANCE,
+    )
+
+    # Setup the target validator
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+    # Make the consolidation request
+    consolidation_requests.append(
+        spec.ConsolidationRequest(
+            source_address=source_address,
+            source_pubkey=state.validators[source_index].pubkey,
+            target_pubkey=state.validators[target_index].pubkey,
         )
+    )
+
+    # Make the switch to compounding validator request
+    # We can reuse the source validator because it wasn't processed
+    consolidation_requests.append(
+        spec.ConsolidationRequest(
+            source_address=source_address,
+            source_pubkey=state.validators[source_index].pubkey,
+            target_pubkey=state.validators[source_index].pubkey,
+        )
+    )
 
     yield "pre", state
 
@@ -645,7 +661,4 @@ def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full
     # Ensure the pending consolidations queue is still full
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
     # Ensure the validators have been upgraded to compounding validators
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    for request in consolidation_requests:
-        index = validator_pubkeys.index(request.source_pubkey)
-        assert spec.has_compounding_withdrawal_credential(state.validators[index])
+    assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
