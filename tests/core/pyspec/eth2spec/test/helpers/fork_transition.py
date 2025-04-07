@@ -76,9 +76,22 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         setattr(obj, key.split(".")[-1], value)
     if is_post_eip7732(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
-            spec, payload, state
+        # Handle EIP-7732 block structure changes
+        header = block.body.signed_execution_payload_header.message
+        payload_withheld = False
+        envelope = spec.ExecutionPayloadEnvelope(
+            payload=payload,
+            builder_index=header.builder_index,
+            beacon_block_root=spec.Root(),  # Will be set later in block processing
+            blob_kzg_commitments=[],  # Empty list for now, can be updated if needed
+            payload_withheld=payload_withheld,
+            state_root=spec.Root(),  # Will be set later in block processing
         )
+        
+        if hasattr(operation_dict, 'execution_requests'):
+            envelope.execution_requests = operation_dict['execution_requests']
+            
+        header.block_hash = compute_el_block_hash(spec, payload, state)
     elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
