@@ -1,5 +1,5 @@
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
+from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block, run_block_processing
 from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7732
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
@@ -116,15 +116,35 @@ def payload_state_transition(spec, store, block):
 
 def state_transition_and_sign_block(spec, state, block, expect_fail=False):
     """
-    State transition via the provided ``block``
-    then package the block with the correct state root and signature.
+    This function makes the state transition, and then signs the block after transitioning.
+    This is like a block transition function but it also computes the state root and signs the block.
+    This is useful for forcing blocks with signed invalid messages for testing of validation.
+    
+    Args:
+        spec: the spec module/functions
+        state: the state to transition
+        block: the signed block to transitate the state via
+        expect_fail: if true, the block transition is expected to fail
     """
-    if expect_fail:
-        expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
-    else:
-        transition_unsigned_block(spec, state, block)
-    block.state_root = state.hash_tree_root()
-    return sign_block(spec, state, block)
+    assert state.latest_block_header.slot < block.slot
+    
+    try:
+        # If block is for a future slot, move the state forward
+        if state.slot < block.slot:
+            spec.process_slots(state, block.slot)
+            
+        # Apply the block to the state
+        run_block_processing(spec, state, block)
+        
+        # Complete the block state root
+        block.state_root = state.hash_tree_root()
+        # Sign the block
+        return sign_block(spec, state, block)
+    except Exception as e:
+        # If not expect_fail, the test is raised
+        if not expect_fail:
+            raise e
+        return sign_block(spec, state, block)
 
 
 #
