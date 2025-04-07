@@ -16,9 +16,7 @@ from eth2spec.test.helpers.constants import ELECTRA, FULU
 from eth2spec.test.helpers.state import simulate_lookahead
 
 
-def run_test_effective_balance_increase_changes_lookahead(
-    spec, state, expect_lookahead_changed
-):
+def run_test_effective_balance_increase_changes_lookahead(spec, state, expect_lookahead_changed):
     # Advance few epochs to adjust the RANDAO
     next_epoch(spec, state)
     next_epoch(spec, state)
@@ -39,12 +37,10 @@ def run_test_effective_balance_increase_changes_lookahead(
 
     # Process 1-epoch worth of blocks with attestations
     for _ in range(spec.SLOTS_PER_EPOCH):
-        _ = state_transition_with_full_block(
-            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
-        )
+        _ = state_transition_with_full_block(spec, state, fill_cur_epoch=True, fill_prev_epoch=True)
 
     # Calculate the actual lookahead
-    actual_lookahead = simulate_lookahead(spec, state)[:spec.SLOTS_PER_EPOCH]
+    actual_lookahead = simulate_lookahead(spec, state)[: spec.SLOTS_PER_EPOCH]
 
     if expect_lookahead_changed:
         assert next_epoch_lookahead != actual_lookahead

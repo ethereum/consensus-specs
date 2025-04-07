@@ -17,7 +17,11 @@ from eth2spec.test.bellatrix.fork import test_bellatrix_fork_basic, test_bellatr
 from eth2spec.test.capella.fork import test_capella_fork_basic, test_capella_fork_random
 from eth2spec.test.deneb.fork import test_deneb_fork_basic, test_deneb_fork_random
 from eth2spec.test.electra.fork import test_electra_fork_basic, test_electra_fork_random
-from eth2spec.test.fulu.fork import test_fulu_fork_basic, test_fulu_fork_random, test_fork_lookahead_consistency
+from eth2spec.test.fulu.fork import (
+    test_fulu_fork_basic,
+    test_fulu_fork_random,
+    test_fork_lookahead_consistency,
+)
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests
 

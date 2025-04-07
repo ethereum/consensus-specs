@@ -14,10 +14,13 @@ def test_next_epoch_proposer_lookahead_shifted_to_front(spec, state):
     initial_lookahead = state.proposer_lookahead.copy()
 
     # Run epoch processing
-    yield from run_epoch_processing_with(spec, state, 'process_proposer_lookahead')
+    yield from run_epoch_processing_with(spec, state, "process_proposer_lookahead")
 
     # Verify lookahead was shifted correctly
-    assert state.proposer_lookahead[:spec.SLOTS_PER_EPOCH] == initial_lookahead[spec.SLOTS_PER_EPOCH:]
+    assert (
+        state.proposer_lookahead[: spec.SLOTS_PER_EPOCH]
+        == initial_lookahead[spec.SLOTS_PER_EPOCH :]
+    )
 
 
 @with_fulu_and_later

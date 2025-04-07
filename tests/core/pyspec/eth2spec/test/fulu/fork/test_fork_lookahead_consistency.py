@@ -5,7 +5,8 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.utils import with_meta_tags
 from eth2spec.test.helpers.constants import (
-    ELECTRA, FULU,
+    ELECTRA,
+    FULU,
 )
 from eth2spec.test.helpers.fulu.fork import (
     FULU_FORK_TEST_META_TAGS,
@@ -23,7 +24,7 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
     Test that lookahead is consistent before/after the Fulu fork.
     """
 
-    # Calculate the current and next epoch lookahead by simulating the state progression 
+    # Calculate the current and next epoch lookahead by simulating the state progression
     # with empty slots and calling `get_beacon_proposer_index` (how it was done pre-Fulu)
     pre_fork_proposers = []
     simulation_state = state.copy()
@@ -35,6 +36,6 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
     # Upgrade to Fulu
     spec = phases[FULU]
     state = yield from run_fork_test(spec, state)
-    
+
     # Check if the pre-fork simulation matches the post-fork `state.proposer_lookahead`
     assert pre_fork_proposers == state.proposer_lookahead

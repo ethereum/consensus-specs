@@ -213,6 +213,7 @@ def advance_finality_to(spec, state, epoch):
     while state.finalized_checkpoint.epoch < epoch:
         next_epoch_with_full_participation(spec, state)
 
+
 def simulate_lookahead(spec, state):
     """
     Simulate the lookahead by advancing the state forward with empty slots and
