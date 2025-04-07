@@ -662,3 +662,68 @@ def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
     # Ensure the validators have been upgraded to compounding validators
     assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
+
+
+@with_electra_until_eip7732
+@spec_state_test
+def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limit(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # We didn't use the `scaled_churn_balances_exceed_activation_exit_churn_limit` state, so this
+    # state shouldn't have enough churn to process any consolidation requests.
+    assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE
+
+    # This will contain two requests:
+    #   1. A regular consolidation request
+    #   2. A switch to compounding request
+    consolidation_requests = []
+
+    # Setup the source validator
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    source_address = b"\x11" * 20
+    set_eth1_withdrawal_credential_with_balance(
+        spec,
+        state,
+        source_index,
+        address=source_address,
+        effective_balance=spec.MIN_ACTIVATION_BALANCE,
+        balance=spec.MIN_ACTIVATION_BALANCE,
+    )
+
+    # Setup the target validator
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+    # Make the consolidation request
+    consolidation_requests.append(
+        spec.ConsolidationRequest(
+            source_address=source_address,
+            source_pubkey=state.validators[source_index].pubkey,
+            target_pubkey=state.validators[target_index].pubkey,
+        )
+    )
+
+    # Make the switch to compounding validator request
+    # We can reuse the source validator because it wasn't processed
+    consolidation_requests.append(
+        spec.ConsolidationRequest(
+            source_address=source_address,
+            source_pubkey=state.validators[source_index].pubkey,
+            target_pubkey=state.validators[source_index].pubkey,
+        )
+    )
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.consolidations = consolidation_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Ensure the validators have been upgraded to compounding validators
+    assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
