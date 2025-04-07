@@ -20,7 +20,7 @@ def test_current_sync_committee_merkle_proof(spec, state):
     yield "proof", {
         "leaf": "0x" + state.current_sync_committee.hash_tree_root().hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in branch]
+        "branch": ["0x" + root.hex() for root in branch],
     }
     assert spec.is_valid_merkle_branch(
         leaf=state.current_sync_committee.hash_tree_root(),
@@ -41,7 +41,7 @@ def test_next_sync_committee_merkle_proof(spec, state):
     yield "proof", {
         "leaf": "0x" + state.next_sync_committee.hash_tree_root().hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in branch]
+        "branch": ["0x" + root.hex() for root in branch],
     }
     assert spec.is_valid_merkle_branch(
         leaf=state.next_sync_committee.hash_tree_root(),
@@ -62,7 +62,7 @@ def test_finality_root_merkle_proof(spec, state):
     yield "proof", {
         "leaf": "0x" + state.finalized_checkpoint.root.hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in branch]
+        "branch": ["0x" + root.hex() for root in branch],
     }
 
     assert spec.is_valid_merkle_branch(

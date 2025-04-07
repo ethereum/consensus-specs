@@ -1,16 +1,14 @@
 # Fulu -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Execution](#execution)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Containers](#containers)
@@ -26,20 +24,23 @@
     - [Modified `process_epoch`](#modified-process_epoch)
     - [New `process_proposer_lookahead`](#new-process_proposer_lookahead)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-*Note:* This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
 
 ## Configuration
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
+| Name                       | Value        | Description                                                                                                   |
+| -------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
 | `MAX_BLOBS_PER_BLOCK_FULU` | `uint64(12)` | *[New in Fulu:EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+
+## Beacon chain state transition function
+
+### Block processing
 
 #### Execution payload
 

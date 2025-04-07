@@ -2,11 +2,7 @@
 
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Test case format](#test-case-format)
   - [`meta.yaml`](#metayaml)
@@ -24,8 +20,7 @@ The aim of the fork choice tests is to provide test coverage of the various comp
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Test case format
 
@@ -148,9 +143,9 @@ value that Execution Layer client mock returns in responses to the following Eng
 * [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1) if `payload.blockHash == payload_info.block_hash`
 * [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_forkchoiceupdatedv1) if `forkchoiceState.headBlockHash == payload_info.block_hash`
 
-*Note:* Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
+*Note*: Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
 
-*Note:* Status of the same payload may be updated for several times throughout the test.
+*Note*: Status of the same payload may be updated for several times throughout the test.
 
 #### Checks step
 

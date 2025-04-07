@@ -1,10 +1,6 @@
 # Capella -- Fork Logic
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -15,8 +11,7 @@
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -24,10 +19,10 @@ This document describes the process of the Capella upgrade.
 
 ## Configuration
 
-| Name | Value |
-| - | - |
-| `CAPELLA_FORK_VERSION` | `Version('0x03000000')` |
-| `CAPELLA_FORK_EPOCH` | `Epoch(194048)` (April 12, 2023, 10:27:35pm UTC) |
+| Name                   | Value                                            |
+| ---------------------- | ------------------------------------------------ |
+| `CAPELLA_FORK_VERSION` | `Version('0x03000000')`                          |
+| `CAPELLA_FORK_EPOCH`   | `Epoch(194048)` (April 12, 2023, 10:27:35pm UTC) |
 
 ## Helper functions
 
