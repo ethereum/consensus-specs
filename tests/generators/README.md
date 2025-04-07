@@ -9,10 +9,7 @@ On releases, test generators are run by the release manager. Test-generation of 
 
 An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.
 
-## Table of contents
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [How to run generators](#how-to-run-generators)
   - [Cleaning](#cleaning)
@@ -22,7 +19,7 @@ An automated nightly tests release system, with a config filter applied, is bein
 - [How to add a new test generator](#how-to-add-a-new-test-generator)
 - [How to remove a test generator](#how-to-remove-a-test-generator)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- mdformat-toc end -->
 
 ## How to run generators
 
@@ -182,9 +179,7 @@ To add a new test generator that builds `New Tests`:
  By adding the base generator to your requirements, you can make a generator really easily. See docs below.
 4. Your generator is called with `-o some/file/path/for_testing/can/be_anything --preset-list mainnet minimal`.
  The base generator helps you handle this; you only have to define test case providers.
-5. Finally, add any linting or testing commands to the
- [circleci config file](../../.circleci/config.yml) if desired to increase code quality.
- Or add it to the [`Makefile`](../../Makefile), if it can be run locally.
+5. Finally, add any linting or testing commands to the [`Makefile`](../../Makefile), if it can be run locally.
 
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.

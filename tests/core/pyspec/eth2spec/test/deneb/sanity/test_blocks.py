@@ -20,9 +20,18 @@ from eth2spec.test.helpers.blob import (
 )
 
 
-def run_block_with_blobs(spec, state, blob_count, tx_count=1, blob_gas_used=1, excess_blob_gas=1,
-                         non_blob_tx_count=0, rng=random.Random(7777), valid=True):
-    yield 'pre', state
+def run_block_with_blobs(
+    spec,
+    state,
+    blob_count,
+    tx_count=1,
+    blob_gas_used=1,
+    excess_blob_gas=1,
+    non_blob_tx_count=0,
+    rng=random.Random(7777),
+    valid=True,
+):
+    yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
     txs = []
@@ -41,15 +50,17 @@ def run_block_with_blobs(spec, state, blob_count, tx_count=1, blob_gas_used=1, e
     block.body.execution_payload.transactions = txs
     block.body.execution_payload.blob_gas_used = blob_gas_used
     block.body.execution_payload.excess_blob_gas = excess_blob_gas
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
 
     if valid:
         signed_block = state_transition_and_sign_block(spec, state, block)
     else:
         signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
-    yield 'blocks', [signed_block]
-    yield 'post', state if valid else None
+    yield "blocks", [signed_block]
+    yield "post", state if valid else None
 
 
 @with_deneb_until_eip7732
@@ -79,7 +90,9 @@ def test_one_blob_max_txs(spec, state):
 @with_deneb_until_eip7732
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=get_max_blob_count(spec) + 1, valid=False)
+    yield from run_block_with_blobs(
+        spec, state, blob_count=1, tx_count=get_max_blob_count(spec) + 1, valid=False
+    )
 
 
 @with_deneb_until_eip7732
@@ -91,13 +104,17 @@ def test_max_blobs_per_block(spec, state):
 @with_deneb_until_eip7732
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec), tx_count=2, valid=False)
+    yield from run_block_with_blobs(
+        spec, state, blob_count=get_max_blob_count(spec), tx_count=2, valid=False
+    )
 
 
 @with_deneb_until_eip7732
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec) + 1, valid=False)
+    yield from run_block_with_blobs(
+        spec, state, blob_count=get_max_blob_count(spec) + 1, valid=False
+    )
 
 
 @with_deneb_until_eip7732

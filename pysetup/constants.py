@@ -31,6 +31,3 @@ OPTIMIZED_BLS_AGGREGATE_PUBKEYS = '''
 def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     return bls.AggregatePKs(pubkeys)
 '''
-
-
-ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"

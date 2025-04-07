@@ -1,21 +1,16 @@
 # Deneb -- Fork Choice
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Containers](#containers)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [`is_data_available`](#is_data_available)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -25,7 +20,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ## Helpers
 
-### Extended `PayloadAttributes`
+### Modified `PayloadAttributes`
 
 `PayloadAttributes` is extended with the parent beacon block root for EIP-4788.
 

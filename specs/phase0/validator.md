@@ -2,11 +2,7 @@
 
 This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
@@ -68,8 +64,7 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
   - [Attester slashing](#attester-slashing)
 - [Protection best practices](#protection-best-practices)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -85,8 +80,8 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                               | Value         |    Unit    |
+| ---------------------------------- | ------------- | :--------: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
 
 ## Containers
@@ -141,8 +136,8 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
 `(bls_withdrawal_privkey, bls_withdrawal_pubkey)` to trigger withdrawals.
 The `withdrawal_credentials` field must be such that:
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+- `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
+- `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
 
 *Note*: The `bls_withdrawal_privkey` is not required for validating and can be kept in cold storage.
 
@@ -154,9 +149,9 @@ The `eth1_withdrawal_address` can be the address of either an externally owned a
 
 The `withdrawal_credentials` field must be such that:
 
-* `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
-* `withdrawal_credentials[1:12] == b'\x00' * 11`
-* `withdrawal_credentials[12:] == eth1_withdrawal_address`
+- `withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX`
+- `withdrawal_credentials[1:12] == b'\x00' * 11`
+- `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
 After the merge of the current Ethereum execution layer into the Beacon Chain,
 withdrawals to `eth1_withdrawal_address` will simply be increases to the account's ETH balance that do **NOT** trigger any EVM execution.
@@ -257,12 +252,12 @@ slot and joining the committee index attestation subnet related to their committ
 
 Specifically a validator should:
 
-* Call `_, committee_index, _ = get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
-* Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
-* Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
-* Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
-    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][subnet_id] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
-    * If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
+- Call `_, committee_index, _ = get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+- Calculate the committees per slot for the next epoch: `committees_per_slot = get_committee_count_per_slot(state, next_epoch)`
+- Calculate the subnet index: `subnet_id = compute_subnet_for_attestation(committees_per_slot, slot, committee_index)`
+- Find peers of the pubsub topic `beacon_attestation_{subnet_id}`.
+  - If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][subnet_id] == True`. Then validate that the peers are still persisted on the desired topic by requesting `GetMetaData` and checking the resulting `attnets` field.
+  - If the validator is assigned to be an aggregator for the slot (see `is_aggregator()`), then subscribe to the topic.
 
 *Note*: If the validator is _not_ assigned to be an aggregator, the validator only needs sufficient number of peers on the topic to be able to publish messages. The validator does not need to _subscribe_ and listen to all messages on the topic.
 
@@ -408,7 +403,7 @@ Up to `MAX_ATTESTATIONS`, aggregate attestations can be included in the `block`.
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](./beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [deposit contract](./deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](./beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`. These [`deposits`](./beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [deposit contract](./deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](./beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.eth1_data` rather than the deposit root at the time the deposit was initially logged from the proof-of-work chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
@@ -466,8 +461,8 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 
 ##### General
 
-* Set `attestation_data.slot = slot` where `slot` is the assigned slot.
-* Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
+- Set `attestation_data.slot = slot` where `slot` is the assigned slot.
+- Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 ##### LMD GHOST vote
 
@@ -645,8 +640,8 @@ If the software crashes at some point within this routine, then when the validat
 
 A validator client should be considered standalone and should consider the beacon node as untrusted. This means that the validator client should protect:
 
-1) Private keys -- private keys should be protected from being exported accidentally or by an attacker.
-2) Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
-3) Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
-4) Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity penalty and potential ejection due to low balance.
-A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.
+1. Private keys -- private keys should be protected from being exported accidentally or by an attacker.
+2. Slashing -- before a validator client signs a message it should validate the data, check it against a local slashing database (do not sign a slashable attestation or block) and update its internal slashing database with the newly signed object.
+3. Recovered validator -- Recovering a validator from a private key will result in an empty local slashing db. Best practice is to import (from a trusted source) that validator's attestation history. See [EIP 3076](https://github.com/ethereum/EIPs/pull/3076/files) for a standard slashing interchange format.
+4. Far future signing requests -- A validator client can be requested to sign a far into the future attestation, resulting in a valid non-slashable request. If the validator client signs this message, it will result in it blocking itself from attesting any other attestation until the beacon-chain reaches that far into the future epoch. This will result in an inactivity penalty and potential ejection due to low balance.
+   A validator client should prevent itself from signing such requests by: a) keeping a local time clock if possible and following best practices to stop time server attacks and b) refusing to sign, by default, any message that has a large (>6h) gap from the current slashing protection database indicated a time "jump" or a long offline event. The administrator can manually override this protection to restart the validator after a genuine long offline event.

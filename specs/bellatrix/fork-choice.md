@@ -1,10 +1,6 @@
 # Bellatrix -- Fork Choice
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -22,8 +18,7 @@
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -33,9 +28,9 @@ This is the modification of the fork choice according to the executable beacon c
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `PayloadId` | `Bytes8` | Identifier of a payload building process |
+| Name        | SSZ equivalent | Description                              |
+| ----------- | -------------- | ---------------------------------------- |
+| `PayloadId` | `Bytes8`       | Identifier of a payload building process |
 
 ## Protocols
 
@@ -49,10 +44,11 @@ The Engine API may be used to implement it with an external execution engine.
 #### `notify_forkchoice_updated`
 
 This function performs three actions *atomically*:
-* Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
-* Updates safe block hash with the value provided by `safe_block_hash` parameter.
-* Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
-and corresponding state, up to and including `finalized_block_hash`.
+
+- Re-organizes the execution payload chain and corresponding state to make `head_block_hash` the head.
+- Updates safe block hash with the value provided by `safe_block_hash` parameter.
+- Applies finality to the execution state: it irreversibly persists the chain of all execution payloads
+  and corresponding state, up to and including `finalized_block_hash`.
 
 Additionally, if `payload_attributes` is provided, this function sets in motion a payload build process on top of
 `head_block_hash` and returns an identifier of initiated process.

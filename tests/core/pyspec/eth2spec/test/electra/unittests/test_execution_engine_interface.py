@@ -22,7 +22,7 @@ def test_noop_execution_engine_notify_new_payload_electra(spec, state):
     result = engine.notify_new_payload(
         execution_payload=payload,
         parent_beacon_block_root=state.latest_block_header.parent_root,
-        execution_requests_list=[]
+        execution_requests_list=[],
     )
     assert result is True
 
@@ -40,7 +40,7 @@ def test_noop_execution_engine_is_valid_block_hash_electra(spec, state):
     result = engine.is_valid_block_hash(
         execution_payload=payload,
         parent_beacon_block_root=state.latest_block_header.parent_root,
-        execution_requests_list=[]
+        execution_requests_list=[],
     )
 
     assert result is True

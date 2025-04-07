@@ -12,7 +12,12 @@ from eth2spec.test.helpers.fork_transition import (
 )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=7) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=7)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
@@ -34,13 +39,20 @@ def test_transition_with_leaking_pre_fork(state, fork_epoch, spec, post_spec, pr
     assert spec.is_in_inactivity_leak(state)
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=6) for pre, post in ALL_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=6)
+        for pre, post in ALL_PRE_POST_FORKS
+    ]
+)
 def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Leaking starts at epoch 6 (MIN_EPOCHS_TO_INACTIVITY_PENALTY + 2).
@@ -62,7 +74,9 @@ def test_transition_with_leaking_at_fork(state, fork_epoch, spec, post_spec, pre
     assert spec.is_in_inactivity_leak(state)
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state

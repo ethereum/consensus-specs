@@ -9,11 +9,13 @@ def valid_test_case(value_fn: Callable[[], View]):
         value = value_fn()
         yield "value", "data", encode(value)
         yield "serialized", "ssz", serialize(value)
-        yield "root", "meta", '0x' + hash_tree_root(value).hex()
+        yield "root", "meta", "0x" + hash_tree_root(value).hex()
+
     return case_fn
 
 
 def invalid_test_case(bytez_fn: Callable[[], bytes]):
     def case_fn():
         yield "serialized", "ssz", bytez_fn()
+
     return case_fn

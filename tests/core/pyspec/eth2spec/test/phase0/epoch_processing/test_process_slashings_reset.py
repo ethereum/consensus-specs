@@ -1,11 +1,9 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with
-)
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_slashings_reset(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_slashings_reset')
+    yield from run_epoch_processing_with(spec, state, "process_slashings_reset")
 
 
 @with_all_phases

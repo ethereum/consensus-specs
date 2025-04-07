@@ -1,19 +1,15 @@
 # Electra -- Honest Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Helpers](#helpers)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Protocol](#protocol)
@@ -33,8 +29,7 @@
 - [Attestation aggregation](#attestation-aggregation)
   - [Construct aggregate](#construct-aggregate)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -63,7 +58,7 @@ class GetPayloadResponse(object):
 
 ## Containers
 
-### Modified Containers
+### Modified containers
 
 #### `AggregateAndProof`
 
