@@ -266,22 +266,22 @@ def get_state_and_beacon_parent_root_at_slot(spec, state, slot):
 def run_block_processing(spec, state, block):
     """
     Process a block, handling both standard and EIP-7732 formats with envelope.
-    
+
     Args:
         spec: The spec module
         state: The current beacon state
         block: The block to process, may include signed_execution_payload_envelope for EIP-7732
-        
+
     Returns:
         None
     """
     from eth2spec.test.helpers.forks import is_post_eip7732
-    
+
     # Handle EIP-7732 case with signed execution payload envelope
     if is_post_eip7732(spec) and hasattr(block, "signed_execution_payload_envelope"):
         # Extract the envelope
         envelope = block.signed_execution_payload_envelope
-        
+
         # Process block with envelope
         spec.process_block_with_envelope(state, block, envelope)
     else:
