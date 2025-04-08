@@ -155,25 +155,27 @@ def get_genesis_forkchoice_store(spec, genesis_state):
 def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    
+
     if is_post_eip7732(spec):
         # For EIP-7732, we need to properly set the signed execution payload header
         header = genesis_block.body.signed_execution_payload_header.message
         header.block_hash = genesis_state.latest_block_hash
         header.parent_block_hash = spec.Hash32()  # Empty at genesis
         # Set gas limit if available in the config, otherwise use default value
-        header.gas_limit = getattr(spec.config, 'GAS_LIMIT', 30000000)  # Default value if not available
+        header.gas_limit = getattr(
+            spec.config, "GAS_LIMIT", 30000000
+        )  # Default value if not available
         header.builder_index = 0  # Genesis block has no builder
         header.slot = spec.GENESIS_SLOT  # Set genesis slot
         header.value = 0  # No value at genesis
         header.blob_kzg_commitments_root = spec.Root()  # Empty root for genesis
-    
+
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
-    
+
     if is_post_eip7732(spec):
         # EIP-7732 requires this additional state tracking
         store.execution_payload_states = store.block_states.copy()
-    
+
     return store, genesis_block
 
 
@@ -208,7 +210,9 @@ def run_on_block(spec, store, signed_block, valid=True):
         try:
             # Handle EIP-7732 case with signed execution payload envelope
             if is_post_eip7732(spec) and hasattr(signed_block, "signed_execution_payload_envelope"):
-                spec.on_block_with_envelope(store, signed_block, signed_block.signed_execution_payload_envelope)
+                spec.on_block_with_envelope(
+                    store, signed_block, signed_block.signed_execution_payload_envelope
+                )
             else:
                 spec.on_block(store, signed_block)
         except AssertionError:
@@ -218,10 +222,12 @@ def run_on_block(spec, store, signed_block, valid=True):
 
     # Handle EIP-7732 case with signed execution payload envelope
     if is_post_eip7732(spec) and hasattr(signed_block, "signed_execution_payload_envelope"):
-        spec.on_block_with_envelope(store, signed_block, signed_block.signed_execution_payload_envelope)
+        spec.on_block_with_envelope(
+            store, signed_block, signed_block.signed_execution_payload_envelope
+        )
     else:
         spec.on_block(store, signed_block)
-        
+
     root = signed_block.message.hash_tree_root()
     assert store.blocks[root] == signed_block.message
 
@@ -252,12 +258,12 @@ def add_block(
         blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
         blobs_root = blobs.hash_tree_root()
         yield get_blobs_file_name(blobs_root=blobs_root), blobs
-        
+
     # Handle signed execution payload envelope for EIP-7732 if exists
     if is_post_eip7732(spec) and hasattr(signed_block, "signed_execution_payload_envelope"):
         # In EIP-7732, we need to pass the envelope separately through the network
         envelope = signed_block.signed_execution_payload_envelope
-        
+
         # Update envelope with proper values if needed
         if envelope.message.beacon_block_root == spec.Root():
             # Update beacon block root
@@ -266,7 +272,7 @@ def add_block(
             previous_state_root = post_state.hash_tree_root()
             post_state.latest_block_header.state_root = previous_state_root
             envelope.message.beacon_block_root = post_state.latest_block_header.hash_tree_root()
-            
+
         if envelope.message.state_root == spec.Root():
             # Set proper state root
             post_state = store.block_states[signed_block.message.parent_root].copy()
@@ -274,7 +280,7 @@ def add_block(
             post_state.latest_block_hash = envelope.message.payload.block_hash
             post_state.latest_full_slot = post_state.slot
             envelope.message.state_root = post_state.hash_tree_root()
-            
+
         # If signature is empty, sign it properly
         if envelope.signature == spec.BLSSignature():
             privkey = spec.privkeys[envelope.message.builder_index]
@@ -283,7 +289,7 @@ def add_block(
                 envelope.message,
                 privkey,
             )
-        
+
         # Yield the envelope data
         yield "envelope_" + get_block_file_name(signed_block), envelope
 
@@ -294,14 +300,14 @@ def add_block(
             "block": get_block_file_name(signed_block),
             "valid": valid,
         }
-        
+
         if is_post_eip7732(spec) and hasattr(signed_block, "signed_execution_payload_envelope"):
             step_data["envelope"] = "envelope_" + get_block_file_name(signed_block)
-            
+
         if is_blob_data_test:
             step_data["blobs"] = get_blobs_file_name(blobs_root=blobs_root)
             step_data["proofs"] = [encode_hex(proof) for proof in blob_data.proofs]
-            
+
         test_steps.append(step_data)
 
     if not valid:
