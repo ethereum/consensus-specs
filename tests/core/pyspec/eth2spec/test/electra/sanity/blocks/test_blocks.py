@@ -727,3 +727,60 @@ def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limi
 
     # Ensure the validators have been upgraded to compounding validators
     assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
+
+
+@with_electra_until_eip7732
+@with_presets([MINIMAL], "Keep the size of the test reasonable")
+@spec_state_test
+def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for withdrawal
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Fill up the queue with invalid pending withdrawals
+    # Making these legit would be too much work
+    # One less than the limit, to ensure another can be added
+    state.pending_partial_withdrawals = [
+        spec.PendingPartialWithdrawal(
+            validator_index=0x1111,
+            amount=spec.Gwei(1),
+            # Withdrawable next epoch, so they aren't processed now
+            withdrawable_epoch=spec.get_current_epoch(state) + 1,
+        )
+    ] * (spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT - 1)
+
+    # Setup a compounding validator with an excess balance
+    index = 0
+    address = b"\x22" * 20
+    balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+    set_compounding_withdrawal_credential_with_balance(spec, state, index, balance, balance, address)
+    assert state.validators[index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    yield "pre", state
+
+    # Setup two withdrawal requests with different amounts
+    withdrawal_request_1 = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=state.validators[index].pubkey,
+        amount=spec.Gwei(1),
+    )
+    withdrawal_request_2 = spec.WithdrawalRequest(
+        source_address=address,
+        validator_pubkey=state.validators[index].pubkey,
+        amount=spec.Gwei(2),
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.withdrawals = [withdrawal_request_1, withdrawal_request_2]
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Ensure the pending withdrawals queue is full
+    assert len(state.pending_partial_withdrawals) == spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT
+    # Ensure the last pending withdrawal is for the first withdrawal request
+    last_withdrawal = state.pending_partial_withdrawals[spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT - 1]
+    assert last_withdrawal.validator_index == index
+    assert last_withdrawal.amount == withdrawal_request_1.amount
+    assert withdrawal_request_1.amount != withdrawal_request_2.amount
