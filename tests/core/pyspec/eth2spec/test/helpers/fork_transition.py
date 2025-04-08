@@ -87,10 +87,10 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
             payload_withheld=payload_withheld,
             state_root=spec.Root(),  # Will be set later in block processing
         )
-        
-        if hasattr(operation_dict, 'execution_requests'):
-            envelope.execution_requests = operation_dict['execution_requests']
-            
+
+        if hasattr(operation_dict, "execution_requests"):
+            envelope.execution_requests = operation_dict["execution_requests"]
+
         header.block_hash = compute_el_block_hash(spec, payload, state)
     elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
