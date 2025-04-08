@@ -42,16 +42,16 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
 ```
 
 A brief reference for what these values look like in practice ([reference
-script](https://gist.github.com/jtraglia/469380e8315d844c78ba1af9e4fd5460)):
+script](https://gist.github.com/jtraglia/457fd9ae7d2080fef1e4034a39b80c46)):
 
-| Safety Decay | Total Balance (ETH) | Num. 32 ETH Validators | Weak Sub. Period (Epochs) |
-| -----------: | ------------------: | ---------------------: | ------------------------: |
-|           10 |           1,048,576 |                 32,768 |                       665 |
-|           10 |           2,097,152 |                 65,536 |                     1,075 |
-|           10 |           4,194,304 |                131,072 |                     1,894 |
-|           10 |           8,388,608 |                262,144 |                     3,532 |
-|           10 |          16,777,216 |                524,288 |                     3,532 |
-|           10 |          33,554,432 |              1,048,576 |                     3,532 |
+| Safety Decay | Total Active Balance (ETH) | Weak Sub. Period (Epochs) |
+| -----------: | -------------------------: | ------------------------: |
+|           10 |                  1,048,576 |                       665 |
+|           10 |                  2,097,152 |                     1,075 |
+|           10 |                  4,194,304 |                     1,894 |
+|           10 |                  8,388,608 |                     3,532 |
+|           10 |                 16,777,216 |                     3,532 |
+|           10 |                 33,554,432 |                     3,532 |
 
 #### Modified `is_within_weak_subjectivity_period`
 
