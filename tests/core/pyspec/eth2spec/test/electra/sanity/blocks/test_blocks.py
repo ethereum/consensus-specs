@@ -752,7 +752,9 @@ def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
     index = 0
     address = b"\x22" * 20
     balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
-    set_compounding_withdrawal_credential_with_balance(spec, state, index, balance, balance, address)
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state, index, balance, balance, address
+    )
     assert state.validators[index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     yield "pre", state
