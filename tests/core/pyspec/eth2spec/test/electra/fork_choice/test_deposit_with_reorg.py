@@ -51,7 +51,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, signed=True
     )
     deposit_block = build_empty_block_for_next_slot(spec, state)
-    
+
     # Handle both pre and post EIP-7732 cases
     if is_post_eip7732(spec):
         # For EIP-7732, execution requests are in the payload envelope
@@ -59,11 +59,11 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
             deposits=[deposit_request],
             withdrawals=[],
         )
-        
+
         # Create execution payload
         payload = build_empty_execution_payload(spec, state)
         header = deposit_block.body.signed_execution_payload_header.message
-        
+
         # Create envelope
         envelope = spec.ExecutionPayloadEnvelope(
             payload=payload,
@@ -74,18 +74,15 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
             payload_withheld=False,
             state_root=spec.Root(),  # Will be updated in sign_execution_payload_envelope
         )
-        
+
         # Set block hash
         header.block_hash = compute_el_block_hash(spec, payload, state)
-        
+
         # Sign the envelope using our helper function
         signed_envelope = sign_execution_payload_envelope(
-            spec,
-            state,
-            envelope,
-            envelope.builder_index
+            spec, state, envelope, envelope.builder_index
         )
-        
+
         # Store for later processing
         deposit_block.signed_execution_payload_envelope = signed_envelope
     else:
@@ -94,10 +91,10 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
             spec, deposit_block
         )
-    
+
     # Transition state to the next slot to match block's slot
     next_slot(spec, state)
-    
+
     signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
 
     pending_deposit = spec.PendingDeposit(
