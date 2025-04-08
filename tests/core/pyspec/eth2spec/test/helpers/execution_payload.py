@@ -406,18 +406,18 @@ def get_random_tx(rng):
 def sign_execution_payload_envelope(spec, state, envelope, builder_index):
     """
     Sign an ExecutionPayloadEnvelope for EIP-7732 tests.
-    
+
     Args:
         spec: The spec module
         state: The current beacon state
         envelope: The ExecutionPayloadEnvelope to sign
         builder_index: The index of the builder whose private key will be used
-        
+
     Returns:
         SignedExecutionPayloadEnvelope: The signed envelope
     """
     from eth2spec.test.helpers.keys import privkeys
-    
+
     # Make sure envelope is properly set up
     if envelope.beacon_block_root == spec.Root():
         # Update beacon block root if not set
@@ -426,24 +426,24 @@ def sign_execution_payload_envelope(spec, state, envelope, builder_index):
         if post_state.latest_block_header.state_root == spec.Root():
             post_state.latest_block_header.state_root = previous_state_root
         envelope.beacon_block_root = post_state.latest_block_header.hash_tree_root()
-        
+
     if envelope.state_root == spec.Root():
         # Set proper state root if not set
         post_state = state.copy()
         post_state.latest_block_hash = envelope.payload.block_hash
         post_state.latest_full_slot = post_state.slot + 1  # Next slot
         envelope.state_root = post_state.hash_tree_root()
-    
+
     # Get the builder's private key
     privkey = privkeys[builder_index]
-    
+
     # Get the signature
     signature = spec.get_execution_payload_envelope_signature(
         state,
         envelope,
         privkey,
     )
-    
+
     # Create and return the signed envelope
     return spec.SignedExecutionPayloadEnvelope(
         message=envelope,
