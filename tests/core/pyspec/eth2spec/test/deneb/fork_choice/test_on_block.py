@@ -39,25 +39,25 @@ def get_block_with_blob(spec, state, rng=None):
 
     blob_count = 1
     tx, opaque_tx, blob_kzg_commitments, blobs = get_sample_blob_tx(spec, blob_count, rng=rng)
-    
+
     if is_post_eip7732(spec):
         # Handle EIP-7732 case
         payload = build_empty_execution_payload(spec, state)
         payload.transactions = [opaque_tx]
         payload.block_hash = compute_el_block_hash(spec, payload, state)
-        
+
         # Set header block hash
         header = block.body.signed_execution_payload_header.message
         header.block_hash = payload.block_hash
-        
+
         # Create blob kzg commitments list
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
-        
+
         # Set commitments root in header
         header.blob_kzg_commitments_root = kzg_list.hash_tree_root()
-        
+
         # Prepare envelope
         envelope = spec.ExecutionPayloadEnvelope(
             payload=payload,
@@ -68,15 +68,12 @@ def get_block_with_blob(spec, state, rng=None):
             payload_withheld=False,
             state_root=spec.Root(),  # Will be updated during signing
         )
-        
+
         # Sign the envelope using our helper function
         signed_envelope = sign_execution_payload_envelope(
-            spec,
-            state,
-            envelope,
-            envelope.builder_index
+            spec, state, envelope, envelope.builder_index
         )
-        
+
         # Store for later testing
         block.signed_execution_payload_envelope = signed_envelope
     else:
@@ -86,7 +83,7 @@ def get_block_with_blob(spec, state, rng=None):
             spec, block.body.execution_payload, state
         )
         block.body.blob_kzg_commitments = blob_kzg_commitments
-    
+
     return block, blobs, blob_kzg_proofs
 
 
