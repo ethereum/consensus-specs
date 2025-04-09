@@ -1,6 +1,6 @@
 # Mainnet preset - Altair
 
-# Updated penalty values
+# Rewards and penalties
 # ---------------------------------------------------------------
 # 3 * 2**24 (= 50,331,648)
 INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648

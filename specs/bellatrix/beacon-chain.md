@@ -5,8 +5,8 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Preset](#preset)
+  - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
-  - [Updated penalty values](#updated-penalty-values)
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
@@ -62,16 +62,7 @@ Additionally, this upgrade introduces the following minor changes:
 
 ## Preset
 
-### Execution
-
-| Name                           | Value                             |
-| ------------------------------ | --------------------------------- |
-| `MAX_BYTES_PER_TRANSACTION`    | `uint64(2**30)` (= 1,073,741,824) |
-| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576)     |
-| `BYTES_PER_LOGS_BLOOM`         | `uint64(2**8)` (= 256)            |
-| `MAX_EXTRA_DATA_BYTES`         | `2**5` (= 32)                     |
-
-### Updated penalty values
+### Rewards and penalties
 
 Bellatrix updates a few configuration values to move penalty parameters to their final, maximum security values.
 
@@ -82,6 +73,15 @@ Bellatrix updates a few configuration values to move penalty parameters to their
 | `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `uint64(2**24)` (= 16,777,216) |
 | `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`    | `uint64(2**5)` (= 32)          |
 | `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)`                    |
+
+### Execution
+
+| Name                           | Value                             |
+| ------------------------------ | --------------------------------- |
+| `MAX_BYTES_PER_TRANSACTION`    | `uint64(2**30)` (= 1,073,741,824) |
+| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576)     |
+| `BYTES_PER_LOGS_BLOOM`         | `uint64(2**8)` (= 256)            |
+| `MAX_EXTRA_DATA_BYTES`         | `2**5` (= 32)                     |
 
 ## Configuration
 

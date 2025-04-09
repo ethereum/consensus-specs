@@ -1,6 +1,6 @@
 # Minimal preset - Bellatrix
 
-# Updated penalty values
+# Rewards and penalties
 # ---------------------------------------------------------------
 # 2**24 (= 16,777,216)
 INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 16777216
