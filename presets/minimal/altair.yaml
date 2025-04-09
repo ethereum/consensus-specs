@@ -11,14 +11,14 @@ PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
 # Sync committee
 # ---------------------------------------------------------------
-# [customized]
+# [customized] 2**5 (= 32) participants
 SYNC_COMMITTEE_SIZE: 32
-# [customized]
+# [customized] 2**3 (= 8) epochs
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 
 # Sync protocol
 # ---------------------------------------------------------------
-# 1
+# 2**0 (= 1) participants
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
-# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8)
+# [customized] SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8) epochs
 UPDATE_TIMEOUT: 64
