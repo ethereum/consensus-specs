@@ -20,8 +20,6 @@ TERMINAL_TOTAL_DIFFICULTY: 58750000000000000000000
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
 
-
-
 # Genesis
 # ---------------------------------------------------------------
 # `2**14` (= 16,384)
@@ -32,7 +30,6 @@ MIN_GENESIS_TIME: 1606824000
 GENESIS_FORK_VERSION: 0x00000000
 # 604800 seconds (7 days)
 GENESIS_DELAY: 604800
-
 
 # Forking
 # ---------------------------------------------------------------
@@ -81,7 +78,6 @@ SHARD_COMMITTEE_PERIOD: 256
 # 2**11 (= 2,048) Eth1 blocks ~8 hours
 ETH1_FOLLOW_DISTANCE: 2048
 
-
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -108,14 +104,12 @@ REORG_PARENT_WEIGHT_THRESHOLD: 160
 # `2` epochs
 REORG_MAX_EPOCHS_SINCE_FINALIZATION: 2
 
-
 # Deposit contract
 # ---------------------------------------------------------------
 # Ethereum PoW Mainnet
 DEPOSIT_CHAIN_ID: 1
 DEPOSIT_NETWORK_ID: 1
 DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
-
 
 # Networking
 # ---------------------------------------------------------------
