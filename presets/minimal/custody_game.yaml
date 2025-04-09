@@ -13,7 +13,6 @@ CUSTODY_PERIOD_TO_RANDAO_PADDING: 8
 # [customize for faster testing]
 MAX_CHUNK_CHALLENGE_DELAY: 64
 
-
 # Max operations
 # ---------------------------------------------------------------
 # 2**8 (= 256)
@@ -26,7 +25,6 @@ MAX_CUSTODY_CHUNK_CHALLENGES: 2
 MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 8
 # 2**0 (= 1)
 MAX_CUSTODY_SLASHINGS: 1
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------

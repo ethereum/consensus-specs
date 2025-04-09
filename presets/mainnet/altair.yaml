@@ -9,14 +9,12 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 # 2
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
-
 # Sync committee
 # ---------------------------------------------------------------
 # 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
 # 2**8 (= 256)
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
-
 
 # Sync protocol
 # ---------------------------------------------------------------

@@ -17,7 +17,6 @@ HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
 
-
 # Gwei values
 # ---------------------------------------------------------------
 # 2**0 * 10**9 (= 1,000,000,000) Gwei
@@ -26,7 +25,6 @@ MIN_DEPOSIT_AMOUNT: 1000000000
 MAX_EFFECTIVE_BALANCE: 32000000000
 # 2**0 * 10**9 (= 1,000,000,000) Gwei
 EFFECTIVE_BALANCE_INCREMENT: 1000000000
-
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -45,7 +43,6 @@ SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**2 (= 4) epochs
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
-
 # State list lengths
 # ---------------------------------------------------------------
 # [customized] smaller state
@@ -56,7 +53,6 @@ EPOCHS_PER_SLASHINGS_VECTOR: 64
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
@@ -72,7 +68,6 @@ INACTIVITY_PENALTY_QUOTIENT: 33554432
 MIN_SLASHING_PENALTY_QUOTIENT: 64
 # [customized] 2 (lower safety margin than Phase 0 genesis but different than mainnet config for testing)
 PROPORTIONAL_SLASHING_MULTIPLIER: 2
-
 
 # Max operations per block
 # ---------------------------------------------------------------
