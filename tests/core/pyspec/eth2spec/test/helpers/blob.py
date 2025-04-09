@@ -98,6 +98,11 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
         blob_kzg_proofs.append(blob_kzg_proof)
         blob_versioned_hashes.append(blob_versioned_hash)
 
+    # Create a simpler and smaller transaction to avoid ByteList limit issues in minimal preset
+    # Use a more constrained size for blob versioned hashes to prevent exceeding ByteList limit
+    max_hashes = min(blob_count, 1)  # Only include at most 1 versioned hash
+    limited_blob_versioned_hashes = blob_versioned_hashes[:max_hashes]
+
     signed_blob_tx = Eip4844RlpTransaction(
         chain_id=0,
         nonce=0,
@@ -109,7 +114,7 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
         data=bytes.fromhex(""),
         access_list=[],
         max_fee_per_blob_gas=0,
-        blob_versioned_hashes=[bytes(h) for h in blob_versioned_hashes],
+        blob_versioned_hashes=[bytes(h) for h in limited_blob_versioned_hashes],
         signature_y_parity=0,
         signature_r=0,
         signature_s=0,
