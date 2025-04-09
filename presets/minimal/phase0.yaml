@@ -2,13 +2,13 @@
 
 # Misc
 # ---------------------------------------------------------------
-# [customized] Just 4 committees for slot for testing purposes
+# [customized] 2**2 (= 4) committees
 MAX_COMMITTEES_PER_SLOT: 4
-# [customized] insecure, but fast
+# [customized] 2**2 (= 4) committees
 TARGET_COMMITTEE_SIZE: 4
-# 2**11 (= 2,048)
+# 2**11 (= 2,048) validators
 MAX_VALIDATORS_PER_COMMITTEE: 2048
-# [customized] Faster, but insecure.
+# [customized]
 SHUFFLE_ROUND_COUNT: 10
 # 4
 HYSTERESIS_QUOTIENT: 4

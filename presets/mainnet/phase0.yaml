@@ -2,11 +2,11 @@
 
 # Misc
 # ---------------------------------------------------------------
-# 2**6 (= 64)
+# 2**6 (= 64) committees
 MAX_COMMITTEES_PER_SLOT: 64
-# 2**7 (= 128)
+# 2**7 (= 128) committees
 TARGET_COMMITTEE_SIZE: 128
-# 2**11 (= 2,048)
+# 2**11 (= 2,048) validators
 MAX_VALIDATORS_PER_COMMITTEE: 2048
 # See issue 563
 SHUFFLE_ROUND_COUNT: 90
