@@ -54,7 +54,7 @@ HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
 
-# Reward and penalty quotients
+# Rewards and penalties
 # ---------------------------------------------------------------
 # 2**6 (= 64)
 BASE_REWARD_FACTOR: 64
