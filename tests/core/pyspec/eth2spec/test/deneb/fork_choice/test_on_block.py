@@ -17,6 +17,7 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     sign_execution_payload_envelope,
+    build_empty_execution_payload,
 )
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
@@ -38,7 +39,9 @@ def get_block_with_blob(spec, state, rng=None):
     block = build_empty_block_for_next_slot(spec, state)
 
     blob_count = 1
-    tx, opaque_tx, blob_kzg_commitments, blobs = get_sample_blob_tx(spec, blob_count, rng=rng)
+    opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
+        spec, blob_count, rng=rng
+    )
 
     if is_post_eip7732(spec):
         # Handle EIP-7732 case
