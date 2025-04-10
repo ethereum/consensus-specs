@@ -580,7 +580,9 @@ def test_incorrect_same_source_target(spec, state):
     # Set source and target to be the same
     target_index = source_index
     source_address = b"\x22" * 20
-    set_compounding_withdrawal_credential_with_balance(spec, state, target_index, address=source_address)
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state, target_index, address=source_address
+    )
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,
         source_pubkey=state.validators[source_index].pubkey,
