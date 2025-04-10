@@ -580,6 +580,8 @@ def test_incorrect_same_source_target(spec, state):
     # Set source and target to be the same
     target_index = source_index
     source_address = b"\x22" * 20
+    # Switch target to compounding credential
+    # to make it a valid consolidation request
     set_compounding_withdrawal_credential_with_balance(
         spec, state, target_index, address=source_address
     )
