@@ -209,6 +209,8 @@ The following validations MUST pass before forwarding the `sidecar: DataColumnSi
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching `kzg_commitments` are retrieved, they should convert the response to data columns, and import the result.
 
+Clients SHOULD assume the execution layer is trusted and skip verification for blobs retrieved from it.
+
 Implementers are encouraged to leverage this method to increase the likelihood of incorporating and attesting to the last block when its proposer is not able to publish data columns on time.
 
 When clients use the local execution layer to retrieve blob and compute data columns, they MUST behave as if the imported `data_column_sidecar` had been received via gossip. In particular, clients MUST:
