@@ -580,7 +580,7 @@ def test_incorrect_same_source_target(spec, state):
     # Set source and target to be the same
     target_index = source_index
     source_address = b"\x22" * 20
-    # Make source/target a compounding validator (0x02) to so the this isn't a
+    # Make source/target a compounding validator (0x02) so this request isn't a
     # valid switch to compounding request. To be a valid switch to compounding
     # request, the source validator must be an eth1 validator (0x01).
     set_compounding_withdrawal_credential_with_balance(
