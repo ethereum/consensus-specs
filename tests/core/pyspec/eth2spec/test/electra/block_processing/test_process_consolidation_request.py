@@ -577,6 +577,7 @@ def test_incorrect_same_source_target(spec, state):
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    # Set source and target to be the same
     target_index = source_index
     source_address = b"\x22" * 20
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index, address=source_address)
