@@ -570,6 +570,39 @@ def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state)
 )
 @spec_test
 @single_phase
+def test_incorrect_same_source_target(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Set up an otherwise correct consolidation
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    # Set source and target to be the same
+    target_index = source_index
+    source_address = b"\x22" * 20
+    # Make source/target a compounding validator (0x02) so this request isn't a
+    # valid switch to compounding request. To be a valid switch to compounding
+    # request, the source validator must be an eth1 validator (0x01).
+    set_compounding_withdrawal_credential_with_balance(
+        spec, state, target_index, address=source_address
+    )
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    yield from run_consolidation_processing(spec, state, consolidation, success=False)
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_incorrect_exceed_pending_consolidations_limit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
