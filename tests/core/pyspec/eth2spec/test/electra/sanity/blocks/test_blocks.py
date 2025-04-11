@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+    transition_unsigned_block,
 )
 from eth2spec.test.context import (
     spec_test,
@@ -423,6 +424,49 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
 
 
 @with_electra_until_eip7732
+@spec_state_test
+def test_deposit_request_max_per_payload(spec, state):
+    # signify the eth1 bridge deprecation
+    state.deposit_requests_start_index = state.eth1_deposit_index
+
+    validator_index = len(state.validators)
+    deposit_requests = []
+    for i in range(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD):
+        deposit_requests.append(
+            prepare_deposit_request(
+                spec,
+                validator_index,
+                spec.EFFECTIVE_BALANCE_INCREMENT,
+                state.eth1_deposit_index + i,
+                signed=True,
+            )
+        )
+
+    # build a block with deposit requests
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.deposits = deposit_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    yield "pre", state
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # check deposit requests are processed correctly
+    assert len(state.pending_deposits) == len(deposit_requests)
+    for i, deposit_request in enumerate(block.body.execution_requests.deposits):
+        assert state.pending_deposits[i] == spec.PendingDeposit(
+            pubkey=deposit_request.pubkey,
+            withdrawal_credentials=deposit_request.withdrawal_credentials,
+            amount=deposit_request.amount,
+            signature=deposit_request.signature,
+            slot=signed_block.message.slot,
+        )
+
+
+@with_electra_until_eip7732
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -786,3 +830,120 @@ def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
     assert last_withdrawal.validator_index == index
     assert last_withdrawal.amount == withdrawal_request_1.amount
     assert withdrawal_request_1.amount != withdrawal_request_2.amount
+
+
+@with_electra_until_eip7732
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_multi_epoch_consolidation_chain(spec, state):
+    """
+    This doesn't work the has I had envisioned, but I guess that's a good reason to keep it. When
+    chaining consolidations like this, the transferred balance is limited by the effective balance
+    of the source validator, which doesn't update until after all consolidations are processed.
+    Given that all validators have the same balance, this is effectively a consolidation from the
+    first validator in the consolidation to the final target validator.
+    """
+
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Check that we're at the first slot of the epoch
+    assert state.slot % spec.SLOTS_PER_EPOCH == 0
+    current_epoch = spec.get_current_epoch(state)
+
+    # This will consolidate 0->1, 1->2, 2->3, ...
+    consolidation_request_count = 0
+    for i in range(spec.SLOTS_PER_EPOCH):
+        consolidation_requests = []
+        for j in range(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
+            # Setup the source validator
+            k = i * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + j
+            source_index = spec.get_active_validator_indices(state, current_epoch)[k]
+            source_address = b"\x11" * 20
+            set_compounding_withdrawal_credential_with_balance(
+                spec,
+                state,
+                source_index,
+                effective_balance=spec.MIN_ACTIVATION_BALANCE,
+                balance=spec.MIN_ACTIVATION_BALANCE,
+                address=source_address,
+            )
+            # Setup the target validator
+            k = i * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + j + 1
+            target_index = spec.get_active_validator_indices(state, current_epoch)[k]
+            set_compounding_withdrawal_credential_with_balance(
+                spec,
+                state,
+                target_index,
+                effective_balance=spec.MIN_ACTIVATION_BALANCE,
+                balance=spec.MIN_ACTIVATION_BALANCE,
+            )
+
+            # Make the consolidation request
+            consolidation_requests.append(
+                spec.ConsolidationRequest(
+                    source_address=source_address,
+                    source_pubkey=state.validators[source_index].pubkey,
+                    target_pubkey=state.validators[target_index].pubkey,
+                )
+            )
+            consolidation_request_count += 1
+
+        block = build_empty_block_for_next_slot(spec, state)
+        block.body.execution_requests.consolidations = consolidation_requests
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+        transition_unsigned_block(spec, state, block)
+
+    # Check that we're in the next epoch
+    assert spec.get_current_epoch(state) == current_epoch + 1
+    # Check that validators at the beginning of the chain are exited
+    assert len(state.pending_consolidations) == consolidation_request_count
+    for i in range(consolidation_request_count):
+        assert state.validators[i].exit_epoch != spec.FAR_FUTURE_EPOCH
+
+    # Remove MIN_VALIDATOR_WITHDRAWABILITY_DELAY to speed things up
+    for i, consolidation in enumerate(state.pending_consolidations):
+        state.validators[consolidation.source_index].withdrawable_epoch = (
+            state.validators[consolidation.source_index].exit_epoch + 1
+        )
+
+    # Get the first slot that consolidations will be processed
+    first_consolidation = state.pending_consolidations[0]
+    first_slot = (
+        state.validators[first_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    )
+    # Get the last slot that consolidations will be processed
+    final_consolidation = state.pending_consolidations[consolidation_request_count - 1]
+    last_slot = (
+        state.validators[final_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    )
+
+    # Transition to the slot/epoch when the first consolidation will be processed
+    transition_to(spec, state, first_slot - 1)
+    # Ensure the none of the pending consolidations were processed
+    assert len(state.pending_consolidations) == consolidation_request_count
+
+    yield "pre", state
+
+    # Process slots until all pending consolidations are processed
+    blocks = []
+    for _ in range(last_slot - first_slot + 1):
+        block = build_empty_block_for_next_slot(spec, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+        blocks.append(state_transition_and_sign_block(spec, state, block))
+
+    yield "blocks", blocks
+    yield "post", state
+
+    # Ensure all pending consolidations have been processed
+    assert len(state.pending_consolidations) == 0
+    # Check that the final target validator's effective balance changed.
+    # The effective balance of the 2nd to last (~32ETH) validator is added to it.
+    final_target_validator = state.validators[final_consolidation.target_index]
+    assert final_target_validator.effective_balance > spec.MIN_ACTIVATION_BALANCE
+    assert final_target_validator.effective_balance <= 2 * spec.MIN_ACTIVATION_BALANCE
