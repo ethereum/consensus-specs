@@ -1,0 +1,4019 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ethereum.github.io/consensus-specs/specs/_deprecated/sharding/polynomial-commitments/">
+      
+      
+        <link rel="prev" href="../p2p-interface/">
+      
+      
+        <link rel="next" href="../validator/">
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.5">
+    
+    
+      
+        <title>Sharding -- Polynomial Commitments - Ethereum Consensus Specs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.7a7fce14.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.a0c5b2b5.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sharding-polynomial-commitments" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="Ethereum Consensus Specs" class="md-header__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ethereum Consensus Specs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sharding -- Polynomial Commitments
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent=""  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+            </label>
+          
+        
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent=""  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../.." class="md-tabs__link">
+        Home
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../phase0/beacon-chain/" class="md-tabs__link md-tabs__link--active">
+        Specs
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../docs/new-feature/" class="md-tabs__link">
+        Docs
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../fork_choice/safe-block/" class="md-tabs__link">
+        Fork choice
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../light-client/" class="md-tabs__link">
+        Light client
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../ssz/merkle-proofs/" class="md-tabs__link">
+        Ssz
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../sync/optimistic/" class="md-tabs__link">
+        Sync
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Ethereum Consensus Specs" class="md-nav__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Ethereum Consensus Specs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        Ethereum Proof-of-Stake Consensus Specifications
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          Specs
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Specs
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+          Phase0
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          Phase0
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/beacon-chain/" class="md-nav__link">
+        Phase 0 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/deposit-contract/" class="md-nav__link">
+        Phase 0 -- Deposit Contract
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/fork-choice/" class="md-nav__link">
+        Phase 0 -- Beacon Chain Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/p2p-interface/" class="md-nav__link">
+        Phase 0 -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/validator/" class="md-nav__link">
+        Phase 0 -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/weak-subjectivity/" class="md-nav__link">
+        Phase 0 -- Weak Subjectivity Guide
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+           deprecated
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_2_2">
+          <span class="md-nav__icon md-icon"></span>
+           deprecated
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_2_1" id="__nav_2_2_1_label" tabindex="0">
+          Custody game
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          Custody game
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../custody_game/beacon-chain/" class="md-nav__link">
+        Custody Game -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../custody_game/validator/" class="md-nav__link">
+        Custody Game -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_2_2" id="__nav_2_2_2_label" tabindex="0">
+          Das
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_2_2">
+          <span class="md-nav__icon md-icon"></span>
+          Das
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../das/das-core/" class="md-nav__link">
+        Data Availability Sampling -- Core
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../das/fork-choice/" class="md-nav__link">
+        Data Availability Sampling -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../das/p2p-interface/" class="md-nav__link">
+        Data Availability Sampling -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../das/sampling/" class="md-nav__link">
+        Data Availability Sampling -- Sampling
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_3" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_2_3" id="__nav_2_2_3_label" tabindex="0">
+          Sharding
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_3_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_2_2_3">
+          <span class="md-nav__icon md-icon"></span>
+          Sharding
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beacon-chain/" class="md-nav__link">
+        Sharding -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../p2p-interface/" class="md-nav__link">
+        Sharding -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Sharding -- Polynomial Commitments
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Sharding -- Polynomial Commitments
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    Introduction
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    Constants
+  </a>
+  
+    <nav class="md-nav" aria-label="Constants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bls-field" class="md-nav__link">
+    BLS Field
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kzg-trusted-setup" class="md-nav__link">
+    KZG Trusted setup
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-types" class="md-nav__link">
+    Custom types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    Helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#next_power_of_two" class="md-nav__link">
+    next_power_of_two
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse_bit_order" class="md-nav__link">
+    reverse_bit_order
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_to_reverse_bit_order" class="md-nav__link">
+    list_to_reverse_bit_order
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-operations" class="md-nav__link">
+    Field operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Field operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generic-field-operations" class="md-nav__link">
+    Generic field operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Generic field operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bls_modular_inverse" class="md-nav__link">
+    bls_modular_inverse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roots_of_unity" class="md-nav__link">
+    roots_of_unity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-helper-functions" class="md-nav__link">
+    Field helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Field helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute_powers" class="md-nav__link">
+    compute_powers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#low_degree_check" class="md-nav__link">
+    low_degree_check
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vector_lincomb" class="md-nav__link">
+    vector_lincomb
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bytes_to_field_elements" class="md-nav__link">
+    bytes_to_field_elements
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#polynomial-operations" class="md-nav__link">
+    Polynomial operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Polynomial operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add_polynomials" class="md-nav__link">
+    add_polynomials
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiply_polynomials" class="md-nav__link">
+    multiply_polynomials
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpolate_polynomial" class="md-nav__link">
+    interpolate_polynomial
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluate_polynomial_in_evaluation_form" class="md-nav__link">
+    evaluate_polynomial_in_evaluation_form
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kzg-operations" class="md-nav__link">
+    KZG Operations
+  </a>
+  
+    <nav class="md-nav" aria-label="KZG Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#elliptic-curve-helper-functions" class="md-nav__link">
+    Elliptic curve helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Elliptic curve helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#elliptic_curve_lincomb" class="md-nav__link">
+    elliptic_curve_lincomb
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hash-to-field" class="md-nav__link">
+    Hash to field
+  </a>
+  
+    <nav class="md-nav" aria-label="Hash to field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hash_to_bls_field" class="md-nav__link">
+    hash_to_bls_field
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kzg-operations_1" class="md-nav__link">
+    KZG operations
+  </a>
+  
+    <nav class="md-nav" aria-label="KZG operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify_kzg_proof" class="md-nav__link">
+    verify_kzg_proof
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_kzg_multiproof" class="md-nav__link">
+    verify_kzg_multiproof
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_degree_proof" class="md-nav__link">
+    verify_degree_proof
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validator/" class="md-nav__link">
+        Sharding -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+          Altair
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_3">
+          <span class="md-nav__icon md-icon"></span>
+          Altair
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/beacon-chain/" class="md-nav__link">
+        Altair -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/bls/" class="md-nav__link">
+        Altair -- BLS extensions
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/fork/" class="md-nav__link">
+        Altair -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/p2p-interface/" class="md-nav__link">
+        Altair -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/validator/" class="md-nav__link">
+        Altair -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_3_6" id="__nav_2_3_6_label" tabindex="0">
+          Light client
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_3_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_3_6">
+          <span class="md-nav__icon md-icon"></span>
+          Light client
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/light-client/full-node/" class="md-nav__link">
+        Altair Light Client -- Full Node
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/light-client/light-client/" class="md-nav__link">
+        Altair Light Client -- Light Client
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/light-client/p2p-interface/" class="md-nav__link">
+        Altair Light Client -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/light-client/sync-protocol/" class="md-nav__link">
+        Altair Light Client -- Sync Protocol
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+          Bellatrix
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_4">
+          <span class="md-nav__icon md-icon"></span>
+          Bellatrix
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/beacon-chain/" class="md-nav__link">
+        Bellatrix -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork-choice/" class="md-nav__link">
+        Bellatrix -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork/" class="md-nav__link">
+        Bellatrix -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/p2p-interface/" class="md-nav__link">
+        Bellatrix -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/validator/" class="md-nav__link">
+        Bellatrix -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+          Capella
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Capella
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/beacon-chain/" class="md-nav__link">
+        Capella -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork-choice/" class="md-nav__link">
+        Capella -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork/" class="md-nav__link">
+        Capella -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/p2p-interface/" class="md-nav__link">
+        Capella -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/validator/" class="md-nav__link">
+        Capella -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_5_6" id="__nav_2_5_6_label" tabindex="0">
+          Light client
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_5_6">
+          <span class="md-nav__icon md-icon"></span>
+          Light client
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/fork/" class="md-nav__link">
+        Capella Light Client -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/full-node/" class="md-nav__link">
+        Capella Light Client -- Full Node
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/p2p-interface/" class="md-nav__link">
+        Capella Light Client -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/sync-protocol/" class="md-nav__link">
+        Capella Light Client -- Sync Protocol
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+          Deneb
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_6">
+          <span class="md-nav__icon md-icon"></span>
+          Deneb
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/beacon-chain/" class="md-nav__link">
+        Deneb -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork-choice/" class="md-nav__link">
+        Deneb -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork/" class="md-nav__link">
+        Deneb -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/p2p-interface/" class="md-nav__link">
+        Deneb -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/polynomial-commitments/" class="md-nav__link">
+        Deneb -- Polynomial Commitments
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/validator/" class="md-nav__link">
+        Deneb -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_6_7" id="__nav_2_6_7_label" tabindex="0">
+          Light client
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_6_7_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_6_7">
+          <span class="md-nav__icon md-icon"></span>
+          Light client
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/fork/" class="md-nav__link">
+        Deneb Light Client -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/full-node/" class="md-nav__link">
+        Deneb Light Client -- Full Node
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/p2p-interface/" class="md-nav__link">
+        Deneb Light Client -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/sync-protocol/" class="md-nav__link">
+        Deneb Light Client -- Sync Protocol
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+          Electra
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_7">
+          <span class="md-nav__icon md-icon"></span>
+          Electra
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/beacon-chain/" class="md-nav__link">
+        Electra -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/fork/" class="md-nav__link">
+        Electra -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/p2p-interface/" class="md-nav__link">
+        Electra -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/validator/" class="md-nav__link">
+        Electra -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/weak-subjectivity/" class="md-nav__link">
+        Electra -- Weak Subjectivity Guide
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_7_6" id="__nav_2_7_6_label" tabindex="0">
+          Light client
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_7_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_7_6">
+          <span class="md-nav__icon md-icon"></span>
+          Light client
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/fork/" class="md-nav__link">
+        Electra Light Client -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/p2p-interface/" class="md-nav__link">
+        Electra Light Client -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/sync-protocol/" class="md-nav__link">
+        Electra Light Client -- Sync Protocol
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+          Fulu
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_8">
+          <span class="md-nav__icon md-icon"></span>
+          Fulu
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/beacon-chain/" class="md-nav__link">
+        Fulu -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/das-core/" class="md-nav__link">
+        Fulu -- Data Availability Sampling Core
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/fork-choice/" class="md-nav__link">
+        Fulu -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/fork/" class="md-nav__link">
+        Fulu -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/p2p-interface/" class="md-nav__link">
+        Fulu -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/peer-sampling/" class="md-nav__link">
+        Fulu -- Peer Sampling
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/polynomial-commitments-sampling/" class="md-nav__link">
+        Fulu -- Polynomial Commitments Sampling
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/validator/" class="md-nav__link">
+        Fulu -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+           features
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9">
+          <span class="md-nav__icon md-icon"></span>
+           features
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9_1" id="__nav_2_9_1_label" tabindex="0">
+          Eip6800
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9_1">
+          <span class="md-nav__icon md-icon"></span>
+          Eip6800
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip6800/beacon-chain/" class="md-nav__link">
+        EIP6800 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip6800/fork/" class="md-nav__link">
+        EIP-6800 -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9_2" id="__nav_2_9_2_label" tabindex="0">
+          Eip6914
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9_2">
+          <span class="md-nav__icon md-icon"></span>
+          Eip6914
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip6914/beacon-chain/" class="md-nav__link">
+        EIP-6914 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip6914/fork-choice/" class="md-nav__link">
+        EIP-6914 -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9_3" id="__nav_2_9_3_label" tabindex="0">
+          Eip7441
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9_3">
+          <span class="md-nav__icon md-icon"></span>
+          Eip7441
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7441/beacon-chain/" class="md-nav__link">
+        EIP-7441 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7441/fork/" class="md-nav__link">
+        EIP-7441 -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9_4" id="__nav_2_9_4_label" tabindex="0">
+          Eip7732
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_4_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9_4">
+          <span class="md-nav__icon md-icon"></span>
+          Eip7732
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/beacon-chain/" class="md-nav__link">
+        EIP-7732 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/builder/" class="md-nav__link">
+        EIP-7732 -- Honest Builder
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/fork-choice/" class="md-nav__link">
+        EIP-7732 -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/fork/" class="md-nav__link">
+        EIP-7732 -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/p2p-interface/" class="md-nav__link">
+        EIP-7732 -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7732/validator/" class="md-nav__link">
+        EIP-7732 -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2_9_5" id="__nav_2_9_5_label" tabindex="0">
+          Eip7805
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_5_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2_9_5">
+          <span class="md-nav__icon md-icon"></span>
+          Eip7805
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7805/beacon-chain/" class="md-nav__link">
+        EIP-7805 -- The Beacon Chain
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7805/fork-choice/" class="md-nav__link">
+        EIP-7805 -- Fork Choice
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7805/fork/" class="md-nav__link">
+        EIP-7805 -- Fork Logic
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7805/p2p-interface/" class="md-nav__link">
+        EIP-7805 -- Networking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../_features/eip7805/validator/" class="md-nav__link">
+        EIP-7805 -- Honest Validator
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          Docs
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Docs
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../docs/new-feature/" class="md-nav__link">
+        How to add a new feature proposal in consensus-specs
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../docs/release/" class="md-nav__link">
+        Release Procedure
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+          Templates
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_3_3">
+          <span class="md-nav__icon md-icon"></span>
+          Templates
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../docs/templates/beacon-chain-template/" class="md-nav__link">
+        `beacon-chain.md` Template
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          Fork choice
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Fork choice
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../fork_choice/safe-block/" class="md-nav__link">
+        Fork Choice -- Safe Block
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          Fork Choice -- Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Fork Choice -- Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/fork-choice" class="md-nav__link">
+        phase0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork-choice" class="md-nav__link">
+        bellatrix
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork-choice" class="md-nav__link">
+        capella
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork-choice" class="md-nav__link">
+        deneb
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          Light client
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Light client
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../light-client/" class="md-nav__link">
+        Index
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../altair/light-client/sync-protocol" class="md-nav__link">
+        Altair
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/sync-protocol" class="md-nav__link">
+        Capella
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/sync-protocol" class="md-nav__link">
+        Deneb
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          Ssz
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_6">
+          <span class="md-nav__icon md-icon"></span>
+          Ssz
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ssz/merkle-proofs/" class="md-nav__link">
+        Merkle proof formats
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ssz/simple-serialize/" class="md-nav__link">
+        SimpleSerialize (SSZ)
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          Sync
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_7">
+          <span class="md-nav__icon md-icon"></span>
+          Sync
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../sync/optimistic/" class="md-nav__link">
+        Optimistic Sync
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    Introduction
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    Constants
+  </a>
+  
+    <nav class="md-nav" aria-label="Constants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bls-field" class="md-nav__link">
+    BLS Field
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kzg-trusted-setup" class="md-nav__link">
+    KZG Trusted setup
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-types" class="md-nav__link">
+    Custom types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    Helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#next_power_of_two" class="md-nav__link">
+    next_power_of_two
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse_bit_order" class="md-nav__link">
+    reverse_bit_order
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_to_reverse_bit_order" class="md-nav__link">
+    list_to_reverse_bit_order
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-operations" class="md-nav__link">
+    Field operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Field operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generic-field-operations" class="md-nav__link">
+    Generic field operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Generic field operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bls_modular_inverse" class="md-nav__link">
+    bls_modular_inverse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roots_of_unity" class="md-nav__link">
+    roots_of_unity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-helper-functions" class="md-nav__link">
+    Field helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Field helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute_powers" class="md-nav__link">
+    compute_powers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#low_degree_check" class="md-nav__link">
+    low_degree_check
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vector_lincomb" class="md-nav__link">
+    vector_lincomb
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bytes_to_field_elements" class="md-nav__link">
+    bytes_to_field_elements
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#polynomial-operations" class="md-nav__link">
+    Polynomial operations
+  </a>
+  
+    <nav class="md-nav" aria-label="Polynomial operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add_polynomials" class="md-nav__link">
+    add_polynomials
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiply_polynomials" class="md-nav__link">
+    multiply_polynomials
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpolate_polynomial" class="md-nav__link">
+    interpolate_polynomial
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluate_polynomial_in_evaluation_form" class="md-nav__link">
+    evaluate_polynomial_in_evaluation_form
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kzg-operations" class="md-nav__link">
+    KZG Operations
+  </a>
+  
+    <nav class="md-nav" aria-label="KZG Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#elliptic-curve-helper-functions" class="md-nav__link">
+    Elliptic curve helper functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Elliptic curve helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#elliptic_curve_lincomb" class="md-nav__link">
+    elliptic_curve_lincomb
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hash-to-field" class="md-nav__link">
+    Hash to field
+  </a>
+  
+    <nav class="md-nav" aria-label="Hash to field">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hash_to_bls_field" class="md-nav__link">
+    hash_to_bls_field
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kzg-operations_1" class="md-nav__link">
+    KZG operations
+  </a>
+  
+    <nav class="md-nav" aria-label="KZG operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify_kzg_proof" class="md-nav__link">
+    verify_kzg_proof
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_kzg_multiproof" class="md-nav__link">
+    verify_kzg_multiproof
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_degree_proof" class="md-nav__link">
+    verify_degree_proof
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="sharding-polynomial-commitments">Sharding -- Polynomial Commitments<a class="headerlink" href="#sharding-polynomial-commitments" title="Permanent link">&para;</a></h1>
+<p><em>Note</em>: This document is a work-in-progress for researchers and implementers.</p>
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#constants">Constants</a></li>
+<li><a href="#bls-field">BLS Field</a></li>
+<li><a href="#kzg-trusted-setup">KZG Trusted setup</a></li>
+<li><a href="#custom-types">Custom types</a></li>
+<li><a href="#helper-functions">Helper functions</a></li>
+<li><a href="#next_power_of_two"><code>next_power_of_two</code></a></li>
+<li><a href="#reverse_bit_order"><code>reverse_bit_order</code></a></li>
+<li><a href="#list_to_reverse_bit_order"><code>list_to_reverse_bit_order</code></a></li>
+<li><a href="#field-operations">Field operations</a></li>
+<li><a href="#generic-field-operations">Generic field operations</a><ul>
+<li><a href="#bls_modular_inverse"><code>bls_modular_inverse</code></a></li>
+<li><a href="#roots_of_unity"><code>roots_of_unity</code></a></li>
+</ul>
+</li>
+<li><a href="#field-helper-functions">Field helper functions</a><ul>
+<li><a href="#compute_powers"><code>compute_powers</code></a></li>
+<li><a href="#low_degree_check"><code>low_degree_check</code></a></li>
+<li><a href="#vector_lincomb"><code>vector_lincomb</code></a></li>
+<li><a href="#bytes_to_field_elements"><code>bytes_to_field_elements</code></a></li>
+</ul>
+</li>
+<li><a href="#polynomial-operations">Polynomial operations</a></li>
+<li><a href="#add_polynomials"><code>add_polynomials</code></a></li>
+<li><a href="#multiply_polynomials"><code>multiply_polynomials</code></a></li>
+<li><a href="#interpolate_polynomial"><code>interpolate_polynomial</code></a></li>
+<li><a href="#evaluate_polynomial_in_evaluation_form"><code>evaluate_polynomial_in_evaluation_form</code></a></li>
+<li><a href="#kzg-operations">KZG Operations</a></li>
+<li><a href="#elliptic-curve-helper-functions">Elliptic curve helper functions</a><ul>
+<li><a href="#elliptic_curve_lincomb"><code>elliptic_curve_lincomb</code></a></li>
+</ul>
+</li>
+<li><a href="#hash-to-field">Hash to field</a><ul>
+<li><a href="#hash_to_bls_field"><code>hash_to_bls_field</code></a></li>
+</ul>
+</li>
+<li><a href="#kzg-operations">KZG operations</a><ul>
+<li><a href="#verify_kzg_proof"><code>verify_kzg_proof</code></a></li>
+<li><a href="#verify_kzg_multiproof"><code>verify_kzg_multiproof</code></a></li>
+<li><a href="#verify_degree_proof"><code>verify_degree_proof</code></a></li>
+</ul>
+</li>
+</ul>
+<!-- mdformat-toc end -->
+
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations, and hints what the best known algorithms for these implementations are included below.</p>
+<h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
+<h3 id="bls-field">BLS Field<a class="headerlink" href="#bls-field" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BLS_MODULUS</code></td>
+<td><code>0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001</code> (curve order of BLS12_381)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PRIMITIVE_ROOT_OF_UNITY</code></td>
+<td><code>7</code></td>
+<td>Primitive root of unity of the BLS12_381 (inner) BLS_MODULUS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="kzg-trusted-setup">KZG Trusted setup<a class="headerlink" href="#kzg-trusted-setup" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>G1_SETUP</code></td>
+<td>Type <code>List[G1]</code>. The G1-side trusted setup <code>[G, G*s, G*s**2....]</code>; note that the first point is the generator.</td>
+</tr>
+<tr>
+<td><code>G2_SETUP</code></td>
+<td>Type <code>List[G2]</code>. The G2-side trusted setup <code>[G, G*s, G*s**2....]</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="custom-types">Custom types<a class="headerlink" href="#custom-types" title="Permanent link">&para;</a></h2>
+<p>We define the following Python custom types for type hinting and readability:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>SSZ equivalent</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KZGCommitment</code></td>
+<td><code>Bytes48</code></td>
+<td>A G1 curve point</td>
+</tr>
+<tr>
+<td><code>BLSFieldElement</code></td>
+<td><code>uint256</code></td>
+<td>A number <code>x</code> in the range <code>0 &lt;= x &lt; BLS_MODULUS</code></td>
+</tr>
+<tr>
+<td><code>BLSPolynomialByCoefficients</code></td>
+<td><code>List[BLSFieldElement]</code></td>
+<td>A polynomial over the BLS field, given in coefficient form</td>
+</tr>
+<tr>
+<td><code>BLSPolynomialByEvaluations</code></td>
+<td><code>List[BLSFieldElement]</code></td>
+<td>A polynomial over the BLS field, given in evaluation form</td>
+</tr>
+</tbody>
+</table>
+<h2 id="helper-functions">Helper functions<a class="headerlink" href="#helper-functions" title="Permanent link">&para;</a></h2>
+<h4 id="next_power_of_two"><code>next_power_of_two</code><a class="headerlink" href="#next_power_of_two" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-3">3</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">next_power_of_two</span><span style="color: #F8F8F2">(x:</span> <span style="color: #F8F8F2">int)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">int:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">&gt;</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a>    <span style="color: #66D9EF">return</span> <span style="color: #AE81FF">2</span> <span style="color: #FF4689">**</span> <span style="color: #F8F8F2">((x</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">bit_length())</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="reverse_bit_order"><code>reverse_bit_order</code><a class="headerlink" href="#reverse_bit_order" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-7">7</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">reverse_bit_order</span><span style="color: #F8F8F2">(n:</span> <span style="color: #F8F8F2">int,</span> <span style="color: #F8F8F2">order:</span> <span style="color: #F8F8F2">int)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">int:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a><span style="color: #E6DB74">    Reverse the bit order of an integer n</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">is_power_of_two(order)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a>    <span style="color: #959077"># Convert n to binary with the same number of bits as &quot;order&quot; - 1, then reverse its bit order</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">int((</span><span style="color: #E6DB74">&#39;{:0&#39;</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">str(order</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">bit_length()</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">+</span> <span style="color: #E6DB74">&#39;b}&#39;</span><span style="color: #F8F8F2">)</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">format(n)[::</span><span style="color: #FF4689">-</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">],</span> <span style="color: #AE81FF">2</span><span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="list_to_reverse_bit_order"><code>list_to_reverse_bit_order</code><a class="headerlink" href="#list_to_reverse_bit_order" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-5">5</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">list_to_reverse_bit_order</span><span style="color: #F8F8F2">(l:</span> <span style="color: #F8F8F2">List[int])</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">List[int]:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3"></a><span style="color: #E6DB74">    Convert a list between normal and reverse bit order. The permutation is an involution (inverts itself)..</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">[l[reverse_bit_order(i,</span> <span style="color: #F8F8F2">len(l))]</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(l))]</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="field-operations">Field operations<a class="headerlink" href="#field-operations" title="Permanent link">&para;</a></h2>
+<h3 id="generic-field-operations">Generic field operations<a class="headerlink" href="#generic-field-operations" title="Permanent link">&para;</a></h3>
+<h4 id="bls_modular_inverse"><code>bls_modular_inverse</code><a class="headerlink" href="#bls_modular_inverse" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-11">11</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">bls_modular_inverse</span><span style="color: #F8F8F2">(x:</span> <span style="color: #F8F8F2">BLSFieldElement)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSFieldElement:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a><span style="color: #E6DB74">    Compute the modular inverse of x, i.e. y such that x * y % BLS_MODULUS == 1 and return 1 for x == 0</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5"></a>    <span style="color: #F8F8F2">lm,</span> <span style="color: #F8F8F2">hm</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6"></a>    <span style="color: #F8F8F2">low,</span> <span style="color: #F8F8F2">high</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS,</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7"></a>    <span style="color: #66D9EF">while</span> <span style="color: #F8F8F2">low</span> <span style="color: #FF4689">&gt;</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">high</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">low</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9"></a>        <span style="color: #F8F8F2">nm,</span> <span style="color: #F8F8F2">new</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hm</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">lm</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">r,</span> <span style="color: #F8F8F2">high</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">low</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">r</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10"></a>        <span style="color: #F8F8F2">lm,</span> <span style="color: #F8F8F2">low,</span> <span style="color: #F8F8F2">hm,</span> <span style="color: #F8F8F2">high</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">nm,</span> <span style="color: #F8F8F2">new,</span> <span style="color: #F8F8F2">lm,</span> <span style="color: #F8F8F2">low</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">lm</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="roots_of_unity"><code>roots_of_unity</code><a class="headerlink" href="#roots_of_unity" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-14">14</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">roots_of_unity</span><span style="color: #F8F8F2">(order:</span> <span style="color: #F8F8F2">uint64)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">List[BLSFieldElement]:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3"></a><span style="color: #E6DB74">    Compute a list of roots of unity for a given order.</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4"></a><span style="color: #E6DB74">    The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(BLS_MODULUS</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">order</span> <span style="color: #FF4689">==</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7"></a>    <span style="color: #F8F8F2">roots</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[]</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8"></a>    <span style="color: #F8F8F2">root_of_unity</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">pow(PRIMITIVE_ROOT_OF_UNITY,</span> <span style="color: #F8F8F2">(BLS_MODULUS</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">order,</span> <span style="color: #F8F8F2">BLS_MODULUS)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10"></a>    <span style="color: #F8F8F2">current_root_of_unity</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(SAMPLES_PER_BLOB</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">FIELD_ELEMENTS_PER_SAMPLE):</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12"></a>        <span style="color: #F8F8F2">roots</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">append(current_root_of_unity)</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13"></a>        <span style="color: #F8F8F2">current_root_of_unity</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">current_root_of_unity</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">root_of_unity</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">roots</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="field-helper-functions">Field helper functions<a class="headerlink" href="#field-helper-functions" title="Permanent link">&para;</a></h3>
+<h4 id="compute_powers"><code>compute_powers</code><a class="headerlink" href="#compute_powers" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-7">7</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">compute_powers</span><span style="color: #F8F8F2">(x:</span> <span style="color: #F8F8F2">BLSFieldElement,</span> <span style="color: #F8F8F2">n:</span> <span style="color: #F8F8F2">uint64)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">List[BLSFieldElement]:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a>    <span style="color: #F8F8F2">current_power</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3"></a>    <span style="color: #F8F8F2">powers</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[]</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">_</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(n):</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5"></a>        <span style="color: #F8F8F2">powers</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">append(BLSFieldElement(current_power))</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6"></a>        <span style="color: #F8F8F2">current_power</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">current_power</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">int(x)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">powers</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="low_degree_check"><code>low_degree_check</code><a class="headerlink" href="#low_degree_check" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-22">22</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-23">23</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-24">24</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-25">25</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-26">26</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-27">27</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-28">28</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-29">29</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-30">30</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-31">31</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-32">32</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-33">33</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-34">34</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-35">35</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-36">36</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-37">37</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-38">38</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-39">39</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-40">40</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">low_degree_check</span><span style="color: #F8F8F2">(commitments:</span> <span style="color: #F8F8F2">List[KZGCommitment]):</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3"></a><span style="color: #E6DB74">    Checks that the commitments are on a low-degree polynomial.</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4"></a><span style="color: #E6DB74">    If there are 2*N commitments, that means they should lie on a polynomial</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5"></a><span style="color: #E6DB74">    of degree d = K - N - 1, where K = next_power_of_two(2*N)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6"></a><span style="color: #E6DB74">    (The remaining positions are filled with 0, this is to make FFTs usable)</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8"></a><span style="color: #E6DB74">    For details see here: https://notes.ethereum.org/@dankrad/barycentric_low_degree_check</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">len(commitments)</span> <span style="color: #FF4689">%</span> <span style="color: #AE81FF">2</span> <span style="color: #FF4689">==</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11"></a>    <span style="color: #F8F8F2">N</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">len(commitments)</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">2</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_to_bls_field(commitments,</span> <span style="color: #AE81FF">0</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13"></a>    <span style="color: #F8F8F2">K</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">next_power_of_two(</span><span style="color: #AE81FF">2</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">N)</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14"></a>    <span style="color: #F8F8F2">d</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">K</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">N</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15"></a>    <span style="color: #F8F8F2">r_to_K</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">pow(r,</span> <span style="color: #F8F8F2">N,</span> <span style="color: #F8F8F2">K)</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16"></a>    <span style="color: #F8F8F2">roots</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">list_to_reverse_bit_order(roots_of_unity(K))</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18"></a>    <span style="color: #959077"># For an efficient implementation, B and Bprime should be precomputed</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19"></a>    <span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">B</span><span style="color: #F8F8F2">(z):</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">w</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">roots[:d</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">]:</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22"></a>            <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(z</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">w)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24"></a>
+<a id="__codelineno-6-25" name="__codelineno-6-25"></a>    <span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">Bprime</span><span style="color: #F8F8F2">(z):</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(d</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">):</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28"></a>            <span style="color: #F8F8F2">m</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29"></a>            <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">w</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">roots[:i]</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">roots[i</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">:d</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">]:</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30"></a>                <span style="color: #F8F8F2">m</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">m</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(z</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">w)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31"></a>            <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">(r</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">m)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-6-32" name="__codelineno-6-32"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+<a id="__codelineno-6-33" name="__codelineno-6-33"></a>
+<a id="__codelineno-6-34" name="__codelineno-6-34"></a>    <span style="color: #F8F8F2">coefs</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[]</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(K):</span>
+<a id="__codelineno-6-36" name="__codelineno-6-36"></a>        <span style="color: #F8F8F2">coefs</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">append(</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">(r_to_K</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">bls_modular_inverse(K</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">roots[i</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(K</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">K]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(r</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">roots[i]))</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS)</span>
+<a id="__codelineno-6-37" name="__codelineno-6-37"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(d</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">):</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38"></a>        <span style="color: #F8F8F2">coefs[i]</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">(coefs[i]</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">B(r)</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">bls_modular_inverse(Bprime(r)</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(r</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">roots[i])))</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-6-39" name="__codelineno-6-39"></a>
+<a id="__codelineno-6-40" name="__codelineno-6-40"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">elliptic_curve_lincomb(commitments,</span> <span style="color: #F8F8F2">coefs)</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">inf_G1()</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="vector_lincomb"><code>vector_lincomb</code><a class="headerlink" href="#vector_lincomb" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-8">8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-9">9</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">vector_lincomb</span><span style="color: #F8F8F2">(vectors:</span> <span style="color: #F8F8F2">List[List[BLSFieldElement]],</span> <span style="color: #F8F8F2">scalars:</span> <span style="color: #F8F8F2">List[BLSFieldElement])</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">List[BLSFieldElement]:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3"></a><span style="color: #E6DB74">    Compute a linear combination of field element vectors.</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span><span style="color: #FF4689">*</span><span style="color: #F8F8F2">len(vectors[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">])</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">v,</span> <span style="color: #F8F8F2">a</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">zip(vectors,</span> <span style="color: #F8F8F2">scalars):</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i,</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(v):</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8"></a>            <span style="color: #F8F8F2">r[i]</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">(r[i]</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">a</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">x)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">[BLSFieldElement(x)</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">r]</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="bytes_to_field_elements"><code>bytes_to_field_elements</code><a class="headerlink" href="#bytes_to_field_elements" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-6">6</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">bytes_to_field_elements</span><span style="color: #F8F8F2">(block:</span> <span style="color: #F8F8F2">bytes)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">List[BLSFieldElement]:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3"></a><span style="color: #E6DB74">    Slices a block into 31-byte chunks that can fit into field elements.</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5"></a>    <span style="color: #F8F8F2">sliced_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[block[i:i</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">31</span><span style="color: #F8F8F2">]</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">,</span> <span style="color: #F8F8F2">len(bytes),</span> <span style="color: #AE81FF">31</span><span style="color: #F8F8F2">)]</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">[BLSFieldElement(int</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">from_bytes(x,</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">))</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">sliced_block]</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="polynomial-operations">Polynomial operations<a class="headerlink" href="#polynomial-operations" title="Permanent link">&para;</a></h2>
+<h4 id="add_polynomials"><code>add_polynomials</code><a class="headerlink" href="#add_polynomials" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-6">6</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">add_polynomials</span><span style="color: #F8F8F2">(a:</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients,</span> <span style="color: #F8F8F2">b:</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3"></a><span style="color: #E6DB74">    Sum the polynomials ``a`` and ``b`` given by their coefficients.</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5"></a>    <span style="color: #F8F8F2">a,</span> <span style="color: #F8F8F2">b</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">(a,</span> <span style="color: #F8F8F2">b)</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">len(a)</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">len(b)</span> <span style="color: #66D9EF">else</span> <span style="color: #F8F8F2">(b,</span> <span style="color: #F8F8F2">a)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">[(a[i]</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">(b[i]</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">&lt;</span> <span style="color: #F8F8F2">len(b)</span> <span style="color: #66D9EF">else</span> <span style="color: #AE81FF">0</span><span style="color: #F8F8F2">))</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(a))]</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="multiply_polynomials"><code>multiply_polynomials</code><a class="headerlink" href="#multiply_polynomials" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-8">8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-9">9</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">multiply_polynomials</span><span style="color: #F8F8F2">(a:</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients,</span> <span style="color: #F8F8F2">b:</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients:</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3"></a><span style="color: #E6DB74">    Multiplies the polynomials `a` and `b` given by their coefficients</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">power,</span> <span style="color: #F8F8F2">coef</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(a):</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7"></a>        <span style="color: #F8F8F2">summand</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">power</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">[coef</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">b]</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">add_polynomials(r,</span> <span style="color: #F8F8F2">summand)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="interpolate_polynomial"><code>interpolate_polynomial</code><a class="headerlink" href="#interpolate_polynomial" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-18">18</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">interpolate_polynomial</span><span style="color: #F8F8F2">(xs:</span> <span style="color: #F8F8F2">List[BLSFieldElement],</span> <span style="color: #F8F8F2">ys:</span> <span style="color: #F8F8F2">List[BLSFieldElement])</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSPolynomialByCoefficients:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3"></a><span style="color: #E6DB74">    Lagrange interpolation</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">len(xs)</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">len(ys)</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7"></a>
+<a id="__codelineno-11-8" name="__codelineno-11-8"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(xs)):</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9"></a>        <span style="color: #F8F8F2">summand</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[ys[i]]</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">j</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(ys)):</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11"></a>            <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">j</span> <span style="color: #FF4689">!=</span> <span style="color: #F8F8F2">i:</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12"></a>                <span style="color: #F8F8F2">weight_adjustment</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">bls_modular_inverse(xs[j]</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">xs[i])</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13"></a>                <span style="color: #F8F8F2">summand</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">multiply_polynomials(</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14"></a>                    <span style="color: #F8F8F2">summand,</span> <span style="color: #F8F8F2">[weight_adjustment,</span> <span style="color: #F8F8F2">((BLS_MODULUS</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">weight_adjustment)</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">xs[i])]</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15"></a>                <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">add_polynomials(r,</span> <span style="color: #F8F8F2">summand)</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17"></a>
+<a id="__codelineno-11-18" name="__codelineno-11-18"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="evaluate_polynomial_in_evaluation_form"><code>evaluate_polynomial_in_evaluation_form</code><a class="headerlink" href="#evaluate_polynomial_in_evaluation_form" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-22">22</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">evaluate_polynomial_in_evaluation_form</span><span style="color: #F8F8F2">(poly:</span> <span style="color: #F8F8F2">BLSPolynomialByEvaluations,</span> <span style="color: #F8F8F2">x:</span> <span style="color: #F8F8F2">BLSFieldElement)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSFieldElement:</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3"></a><span style="color: #E6DB74">    Evaluates a polynomial (in evaluation form) at an arbitrary point</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5"></a>    <span style="color: #F8F8F2">field_elements_per_blob</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">SAMPLES_PER_BLOB</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">FIELD_ELEMENTS_PER_SAMPLE</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6"></a>    <span style="color: #F8F8F2">roots</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">roots_of_unity(field_elements_per_blob)</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8"></a>    <span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">A</span><span style="color: #F8F8F2">(z):</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">w</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">roots:</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11"></a>            <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">(z</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">w)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13"></a>
+<a id="__codelineno-12-14" name="__codelineno-12-14"></a>    <span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">Aprime</span><span style="color: #F8F8F2">(z):</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">field_elements_per_blob</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">pow(z,</span> <span style="color: #F8F8F2">field_elements_per_blob</span> <span style="color: #FF4689">-</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #F8F8F2">BLS_MODULUS)</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16"></a>
+<a id="__codelineno-12-17" name="__codelineno-12-17"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18"></a>    <span style="color: #F8F8F2">inverses</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[bls_modular_inverse(z</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">x)</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">z</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">roots]</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i,</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(inverses):</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">+=</span> <span style="color: #F8F8F2">poly[i]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">bls_modular_inverse(Aprime(roots[i]))</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">x</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">A(x)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="kzg-operations">KZG Operations<a class="headerlink" href="#kzg-operations" title="Permanent link">&para;</a></h2>
+<p>We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).</p>
+<h3 id="elliptic-curve-helper-functions">Elliptic curve helper functions<a class="headerlink" href="#elliptic-curve-helper-functions" title="Permanent link">&para;</a></h3>
+<h4 id="elliptic_curve_lincomb"><code>elliptic_curve_lincomb</code><a class="headerlink" href="#elliptic_curve_lincomb" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-8">8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-9">9</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">elliptic_curve_lincomb</span><span style="color: #F8F8F2">(points:</span> <span style="color: #F8F8F2">List[KZGCommitment],</span> <span style="color: #F8F8F2">scalars:</span> <span style="color: #F8F8F2">List[BLSFieldElement])</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">KZGCommitment:</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3"></a><span style="color: #E6DB74">    BLS multiscalar multiplication. This function can be optimized using Pippenger&#39;s algorithm and variants.</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4"></a><span style="color: #E6DB74">    This is a non-optimized implementation.</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6"></a>    <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">inf_G1()</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">x,</span> <span style="color: #F8F8F2">a</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">zip(points,</span> <span style="color: #F8F8F2">scalars):</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8"></a>        <span style="color: #F8F8F2">r</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">r</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">add(x</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">mult(a))</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">r</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="hash-to-field">Hash to field<a class="headerlink" href="#hash-to-field" title="Permanent link">&para;</a></h3>
+<h4 id="hash_to_bls_field"><code>hash_to_bls_field</code><a class="headerlink" href="#hash_to_bls_field" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-14-8">8</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">hash_to_bls_field</span><span style="color: #F8F8F2">(x:</span> <span style="color: #F8F8F2">Container,</span> <span style="color: #F8F8F2">challenge_number:</span> <span style="color: #F8F8F2">uint64)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSFieldElement:</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3"></a><span style="color: #E6DB74">    This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6"></a>        <span style="color: #F8F8F2">(int</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">from_bytes(hash(hash_tree_root(x)</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">int</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">to_bytes(challenge_number,</span> <span style="color: #AE81FF">32</span><span style="color: #F8F8F2">,</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">)),</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">))</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7"></a>        <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">BLS_MODULUS</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="kzg-operations_1">KZG operations<a class="headerlink" href="#kzg-operations_1" title="Permanent link">&para;</a></h3>
+<h4 id="verify_kzg_proof"><code>verify_kzg_proof</code><a class="headerlink" href="#verify_kzg_proof" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-15-11">11</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">verify_kzg_proof</span><span style="color: #F8F8F2">(commitment:</span> <span style="color: #F8F8F2">KZGCommitment,</span> <span style="color: #F8F8F2">x:</span> <span style="color: #F8F8F2">BLSFieldElement,</span> <span style="color: #F8F8F2">y:</span> <span style="color: #F8F8F2">BLSFieldElement,</span> <span style="color: #F8F8F2">proof:</span> <span style="color: #F8F8F2">KZGCommitment)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3"></a><span style="color: #E6DB74">    Check that `proof` is a valid KZG proof for the polynomial committed to by `commitment` evaluated</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4"></a><span style="color: #E6DB74">    at `x` equals `y`.</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6"></a>    <span style="color: #F8F8F2">zero_poly</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">G2_SETUP[</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">add(G2_SETUP[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">mult(x)</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">neg())</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9"></a>        <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(proof,</span> <span style="color: #F8F8F2">zero_poly)</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10"></a>        <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(commitment</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">add(G1_SETUP[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">mult(y)</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">neg),</span> <span style="color: #F8F8F2">G2_SETUP[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">])</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="verify_kzg_multiproof"><code>verify_kzg_multiproof</code><a class="headerlink" href="#verify_kzg_multiproof" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-16-14">14</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">verify_kzg_multiproof</span><span style="color: #F8F8F2">(commitment:</span> <span style="color: #F8F8F2">KZGCommitment,</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2"></a>                          <span style="color: #F8F8F2">xs:</span> <span style="color: #F8F8F2">List[BLSFieldElement],</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3"></a>                          <span style="color: #F8F8F2">ys:</span> <span style="color: #F8F8F2">List[BLSFieldElement],</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4"></a>                          <span style="color: #F8F8F2">proof:</span> <span style="color: #F8F8F2">KZGCommitment)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6"></a><span style="color: #E6DB74">    Verify a KZG multiproof.</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8"></a>    <span style="color: #F8F8F2">zero_poly</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">elliptic_curve_lincomb(G2_SETUP[:len(xs)],</span> <span style="color: #F8F8F2">interpolate_polynomial(xs,</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">len(ys)))</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9"></a>    <span style="color: #F8F8F2">interpolated_poly</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">elliptic_curve_lincomb(G2_SETUP[:len(xs)],</span> <span style="color: #F8F8F2">interpolate_polynomial(xs,</span> <span style="color: #F8F8F2">ys))</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10"></a>
+<a id="__codelineno-16-11" name="__codelineno-16-11"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12"></a>        <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(proof,</span> <span style="color: #F8F8F2">zero_poly)</span>
+<a id="__codelineno-16-13" name="__codelineno-16-13"></a>        <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(commitment</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">add(interpolated_poly</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">neg()),</span> <span style="color: #F8F8F2">G2_SETUP[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">])</span>
+<a id="__codelineno-16-14" name="__codelineno-16-14"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="verify_degree_proof"><code>verify_degree_proof</code><a class="headerlink" href="#verify_degree_proof" title="Permanent link">&para;</a></h4>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-8">8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-17-9">9</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">verify_degree_proof</span><span style="color: #F8F8F2">(commitment:</span> <span style="color: #F8F8F2">KZGCommitment,</span> <span style="color: #F8F8F2">degree_bound:</span> <span style="color: #F8F8F2">uint64,</span> <span style="color: #F8F8F2">proof:</span> <span style="color: #F8F8F2">KZGCommitment):</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3"></a><span style="color: #E6DB74">    Verifies that the commitment is of polynomial degree &lt; degree_bound.</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7"></a>        <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(proof,</span> <span style="color: #F8F8F2">G2_SETUP[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">])</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8"></a>        <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Pairing(commitment,</span> <span style="color: #F8F8F2">G2_SETUP[</span><span style="color: #FF4689">-</span><span style="color: #F8F8F2">degree_bound])</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ethereum/consensus-specs" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.3.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.tabs", "search"], "search": "../../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.407015b8.min.js"></script>
+      
+    
+  </body>
+</html>
