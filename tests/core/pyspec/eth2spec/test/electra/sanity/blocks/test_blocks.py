@@ -914,13 +914,17 @@ def test_multi_epoch_consolidation_chain(spec, state):
 
     # Get the first slot that consolidations will be processed
     first_consolidation = state.pending_consolidations[0]
-    first_slot = state.validators[first_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    first_slot = (
+        state.validators[first_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    )
     # Get the last slot that consolidations will be processed
     final_consolidation = state.pending_consolidations[consolidation_request_count - 1]
-    last_slot = state.validators[final_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    last_slot = (
+        state.validators[final_consolidation.source_index].withdrawable_epoch * spec.SLOTS_PER_EPOCH
+    )
 
     # Transition to the slot/epoch when the first consolidation will be processed
-    transition_to(spec, state, first_slot-1)
+    transition_to(spec, state, first_slot - 1)
     # Ensure the none of the pending consolidations were processed
     assert len(state.pending_consolidations) == consolidation_request_count
 
