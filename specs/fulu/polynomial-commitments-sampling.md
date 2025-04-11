@@ -9,7 +9,7 @@
 - [Custom types](#custom-types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
-  - [Cells](#cells)
+  - [Blob](#blob)
 - [Helper functions](#helper-functions)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
@@ -33,7 +33,7 @@
   - [Cell cosets](#cell-cosets)
     - [`coset_shift_for_cell`](#coset_shift_for_cell)
     - [`coset_for_cell`](#coset_for_cell)
-- [Cells](#cells-1)
+- [Cells](#cells)
   - [Cell computation](#cell-computation)
     - [`compute_cells`](#compute_cells)
     - [`compute_cells_and_kzg_proofs_polynomialcoeff`](#compute_cells_and_kzg_proofs_polynomialcoeff)
@@ -81,7 +81,7 @@ The following is a list of the public methods:
 
 ## Preset
 
-### Cells
+### Blob
 
 Cells are the smallest unit of blob data that can come with their own KZG proofs. Samples can be constructed from one or several cells (e.g. an individual cell or line).
 
