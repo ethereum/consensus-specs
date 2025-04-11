@@ -423,6 +423,49 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
 
 
 @with_electra_until_eip7732
+@spec_state_test
+def test_deposit_request_max_per_payload(spec, state):
+    # signify the eth1 bridge deprecation
+    state.deposit_requests_start_index = state.eth1_deposit_index
+
+    validator_index = len(state.validators)
+    deposit_requests = []
+    for i in range(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD):
+        deposit_requests.append(
+            prepare_deposit_request(
+                spec,
+                validator_index,
+                spec.EFFECTIVE_BALANCE_INCREMENT,
+                state.eth1_deposit_index + i,
+                signed=True,
+            )
+        )
+
+    # build a block with deposit requests
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.execution_requests.deposits = deposit_requests
+    block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+
+    yield "pre", state
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # check deposit requests are processed correctly
+    assert len(state.pending_deposits) == len(deposit_requests)
+    for i, deposit_request in enumerate(block.body.execution_requests.deposits):
+        assert state.pending_deposits[i] == spec.PendingDeposit(
+            pubkey=deposit_request.pubkey,
+            withdrawal_credentials=deposit_request.withdrawal_credentials,
+            amount=deposit_request.amount,
+            signature=deposit_request.signature,
+            slot=signed_block.message.slot,
+        )
+
+
+@with_electra_until_eip7732
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
