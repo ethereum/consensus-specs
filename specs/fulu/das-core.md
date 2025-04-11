@@ -196,7 +196,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 
 ## Custody sampling
 
-At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count * columns_per_group)` total columns, where `columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS`. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
+At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count * columns_per_group)` total columns, where `columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS`. The corresponding set of columns is selected by `groups = get_custody_groups(node_id, sampling_size // columns_per_group)` and `compute_columns_for_custody_group(group) for group in groups`, so that in particular the subset of columns to custody is consistent with the output of `get_custody_groups(node_id, custody_group_count)`. Sampling is considered successful if the node manages to retrieve all selected columns.
 
 ## Extended data
 
