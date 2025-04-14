@@ -85,7 +85,7 @@ The following are the broad design goals for the Ethereum proof-of-stake consens
 - Utilize crypto and design techniques that allow for a large participation of validators.
 - Minimize hardware requirements such that a consumer laptop can participate.
 
-## Useful external resources
+## Useful resources
 
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 - [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
