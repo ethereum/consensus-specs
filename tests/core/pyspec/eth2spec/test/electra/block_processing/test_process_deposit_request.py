@@ -23,13 +23,13 @@ def test_process_deposit_request_extra_gwei(spec, state):
     """The deposit amount must be at least 1 ETH and must be a multiple of gwei."""
     validator_index = len(state.validators)
     # An amount with some gwei (the +1 at the end)
-    amount = spec.EFFECTIVE_BALANCE_INCREMENT + 1
+    amount = spec.EFFECTIVE_BALANCE_INCREMENT + spec.Gwei(1)
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
 
     # Ensure the deposit amount is not a multiple of ETH
-    assert state.pending_deposits[0].amount % spec.EFFECTIVE_BALANCE_INCREMENT != 0
+    assert state.pending_deposits[0].amount % spec.EFFECTIVE_BALANCE_INCREMENT == spec.Gwei(1)
 
 
 @with_electra_and_later
@@ -93,6 +93,7 @@ def test_process_deposit_request_top_up_still_less_than_min_activation(spec, sta
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     balance = 20 * spec.EFFECTIVE_BALANCE_INCREMENT
+    assert balance < spec.MIN_EFFECTIVE_BALANCE
     state.balances[validator_index] = balance
     state.validators[validator_index].effective_balance = balance
 

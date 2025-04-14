@@ -34,7 +34,7 @@ def test_pending_deposit_extra_gwei(spec, state):
         spec,
         validator_index=index,
         # The deposit amount includes some gwei (the +1 at the end)
-        amount=spec.MIN_ACTIVATION_BALANCE + 1,
+        amount=spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1),
         signed=True,
     )
 
