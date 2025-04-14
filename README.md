@@ -51,7 +51,10 @@ the following repositories:
 
 Reference tests built from the executable Python spec are available in the [Ethereum Proof-of-Stake
 Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repository. Compressed
-tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
+tarballs are available for each specifications release
+[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly reference tests are also
+available
+[here](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml).
 
 ## Contributors
 
@@ -69,10 +72,10 @@ Switch to the directory:
 cd consensus-specs
 ```
 
-Run the tests:
+View the help output:
 
 ```bash
-make test
+make
 ```
 
 ### Design goals
@@ -85,7 +88,7 @@ The following are the broad design goals for the Ethereum proof-of-stake consens
 - Utilize crypto and design techniques that allow for a large participation of validators.
 - Minimize hardware requirements such that a consumer laptop can participate.
 
-## Useful resources
+### Useful resources
 
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 - [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
