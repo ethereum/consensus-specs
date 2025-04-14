@@ -89,7 +89,6 @@ pyspec: $(VENV) setup.py pyproject.toml
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
-# Note: for debugging output to show, print to stderr.
 #
 # To run a specific test, append k=<test>, eg:
 #   make test k=test_verify_kzg_proof
@@ -102,13 +101,16 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 # To run tests with a specific bls library, append bls=<bls>, eg:
 #   make test bls=arkworks
 test: MAYBE_TEST := $(if $(k),-k=$(k))
+# Disable parallelism which running a specific test.
+# Parallelism makes debugging difficult (print doesn't work).
+test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := --preset=$(if $(preset),$(preset),minimal)
 test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
 test: pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
-		-n auto \
+		$(MAYBE_PARALLEL) \
 		--capture=no \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
