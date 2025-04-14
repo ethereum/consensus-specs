@@ -25,15 +25,17 @@ from eth2spec.test.electra.transition import (
 )
 
 
-def create_provider(tests_src, preset_name: str, pre_fork_name: str, post_fork_name: str) -> gen_typing.TestProvider:
+def create_provider(
+    tests_src, preset_name: str, pre_fork_name: str, post_fork_name: str
+) -> gen_typing.TestProvider:
 
     def prepare_fn() -> None:
         return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         return generate_from_tests(
-            runner_name='transition',
-            handler_name='core',
+            runner_name="transition",
+            handler_name="core",
             src=tests_src,
             fork_name=post_fork_name,
             phase=pre_fork_name,
@@ -56,7 +58,10 @@ if __name__ == "__main__":
     )
     for transition_test_module in all_tests:
         for pre_fork, post_fork in ALL_PRE_POST_FORKS:
-            gen_runner.run_generator("transition", [
-                create_provider(transition_test_module, MINIMAL, pre_fork, post_fork),
-                create_provider(transition_test_module, MAINNET, pre_fork, post_fork),
-            ])
+            gen_runner.run_generator(
+                "transition",
+                [
+                    create_provider(transition_test_module, MINIMAL, pre_fork, post_fork),
+                    create_provider(transition_test_module, MAINNET, pre_fork, post_fork),
+                ],
+            )

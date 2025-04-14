@@ -1,12 +1,8 @@
 # Data Availability Sampling -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [DAS Subnets](#das-subnets)
@@ -25,8 +21,7 @@
   - [Messages](#messages)
     - [DASQuery](#dasquery)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -123,7 +118,7 @@ This backbone is based on a pure function of the *node* identity and time:
   assuming the peerstore already has a large enough variety of peers.
 - Nodes can be held accountable for contributing to the backbone:
   peers that participate in DAS but are not active on the appropriate backbone topics can be scored down.
-  *Note: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing*
+  *Note*: This is experimental, DAS should be light enough for all participants to run, but scoring needs to undergo testing.
 
 A node should anticipate backbone topics to subscribe to based their own identity.
 These subscriptions rotate slowly, and with different offsets per node identity to avoid sudden network-wide rotations.
@@ -144,9 +139,10 @@ If the node does not already have connected peers on the topic it needs to sampl
 ### Topics and messages
 
 Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
-| Name                             | Message Type              |
-|----------------------------------|---------------------------|
-| `das_sample_{subnet_index}`      | `DASSample`               |
+
+| Name                        | Message Type |
+| --------------------------- | ------------ |
+| `das_sample_{subnet_index}` | `DASSample`  |
 
 Also see the [Sharding general networking spec](../sharding/p2p-interface.md) for important topics such as that of the shard-blobs and shard-headers.
 
@@ -157,6 +153,7 @@ Extending the regular `shard_blob_{shard}` as [defined in the Sharding networkin
 If participating in DAS, upon receiving a `signed_blob` for the first time with a `slot` not older than `MAX_RESAMPLE_TIME`,
 a subscriber of a `shard_blob_{shard}` SHOULD reconstruct the samples and publish them to vertical subnets.
 Take `blob = signed_blob.blob`:
+
 1. Extend the data: `extended_data = extend_data(blob.data)`
 2. Create samples with proofs: `samples = sample_data(blob.slot, blob.shard, extended_data)`
 3. Fanout-publish the samples to the vertical subnets of its peers (not all vertical subnets may be reached).
@@ -171,12 +168,12 @@ against the commitment to blob polynomial, specific to that `(shard, slot)` key.
 The following validations MUST pass before forwarding the `sample` on the vertical subnet.
 
 - _[IGNORE]_ The commitment for the (`sample.shard`, `sample.slot`, `sample.index`) tuple must be known.
-   If not known, the client MAY queue the sample if it passes formatting conditions.
+  If not known, the client MAY queue the sample if it passes formatting conditions.
 - _[REJECT]_ `sample.shard`, `sample.slot` and `sample.index` are hashed into a `sbunet_index` (TODO: define hash) which MUST match the topic `{subnet_index}` parameter.
 - _[REJECT]_ `sample.shard` must be within valid range: `0 <= sample.shard < get_active_shard_count(state, compute_epoch_at_slot(sample.slot))`.
 - _[REJECT]_ `sample.index` must be within valid range: `0 <= sample.index < sample_count`, where:
-    - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
-    - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
+  - `sample_count = (points_count + POINTS_PER_SAMPLE - 1) // POINTS_PER_SAMPLE`
+  - `points_count` is the length as claimed along with the commitment, which must be smaller than `MAX_SAMPLES_PER_BLOCK`.
 - _[IGNORE]_ The `sample` is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) --
   i.e. validate that `sample.slot <= current_slot`. A client MAY queue future samples for processing at the appropriate slot if it passed formatting conditions.
 - _[IGNORE]_ This is the first received sample with the (`sample.shard`, `sample.slot`, `sample.index`) key tuple.

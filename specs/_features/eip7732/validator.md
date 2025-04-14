@@ -1,12 +1,8 @@
 # EIP-7732 -- Honest Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Validator assignment](#validator-assignment)
@@ -15,14 +11,13 @@
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
-    - [Constructing the new `signed_execution_payload_header` field in  `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header-field-in--beaconblockbody)
-    - [Constructing the new `payload_attestations` field in  `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in--beaconblockbody)
+    - [Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header-field-in-beaconblockbody)
+    - [Constructing the new `payload_attestations` field in `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in-beaconblockbody)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -30,7 +25,7 @@ This document represents the changes and additions to the Honest validator guide
 
 ## Validator assignment
 
-A validator may be a member of the new Payload Timeliness Committee (PTC) for a given slot.  To check for PTC assignments the validator uses the helper `get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
+A validator may be a member of the new Payload Timeliness Committee (PTC) for a given slot. To check for PTC assignments the validator uses the helper `get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
 
 PTC committee selection is only stable within the context of the current and next epoch.
 
@@ -78,32 +73,33 @@ Sync committee duties are not changed for validators, however the submission dea
 
 Validators are still expected to propose `SignedBeaconBlock` at the beginning of any slot during which `is_proposer(state, validator_index)` returns `true`. The mechanism to prepare this beacon block and related sidecars differs from previous forks as follows
 
-#### Constructing the new `signed_execution_payload_header` field in  `BeaconBlockBody`
+#### Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`
 
 To obtain `signed_execution_payload_header`, a block proposer building a block on top of a `state` must take the following actions:
 
-* Listen to the `execution_payload_header` gossip global topic and save an accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain these signed messages by other off-protocol means.
-* The `signed_execution_payload_header` must satisfy the verification conditions found in `process_execution_payload_header`, that is
-    - The header signature must be valid
-    - The builder balance can cover the header value
-    - The header slot is for the proposal block slot
-    - The header parent block hash equals the state's `latest_block_hash`.
-    - The header parent block root equals the current block's `parent_root`.
-* Select one bid and set `body.signed_execution_payload_header = signed_execution_payload_header`
+- Listen to the `execution_payload_header` gossip global topic and save an accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain these signed messages by other off-protocol means.
+- The `signed_execution_payload_header` must satisfy the verification conditions found in `process_execution_payload_header`, that is
+  - The header signature must be valid
+  - The builder balance can cover the header value
+  - The header slot is for the proposal block slot
+  - The header parent block hash equals the state's `latest_block_hash`.
+  - The header parent block root equals the current block's `parent_root`.
+- Select one bid and set `body.signed_execution_payload_header = signed_execution_payload_header`
 
-#### Constructing the new `payload_attestations` field in  `BeaconBlockBody`
+#### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 
 Up to `MAX_PAYLOAD_ATTESTATIONS`, aggregate payload attestations can be included in the block. The validator will have to
 
-* Listen to the `payload_attestation_message` gossip global topic
-* The payload attestations added must satisfy the verification conditions found in payload attestation gossip validation and payload attestation processing. This means
-    - The `data.beacon_block_root` corresponds to `block.parent_root`.
-    - The slot of the parent block is exactly one slot before the proposing slot.
-    - The signature of the payload attestation data message verifies correctly.
-* The proposer needs to aggregate all payload attestations with the same data into a given `PayloadAttestation` object. For this it needs to fill the `aggregation_bits` field by using the relative position of the validator indices with respect to the PTC that is obtained from `get_ptc(state, block_slot - 1)`.
-* The proposer should only include payload attestations that are consistent with the current block they are proposing. That is, if the previous block had a payload, they should only include attestations with `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations that are not-consistent with their view.
+- Listen to the `payload_attestation_message` gossip global topic
+- The payload attestations added must satisfy the verification conditions found in payload attestation gossip validation and payload attestation processing. This means
+  - The `data.beacon_block_root` corresponds to `block.parent_root`.
+  - The slot of the parent block is exactly one slot before the proposing slot.
+  - The signature of the payload attestation data message verifies correctly.
+- The proposer needs to aggregate all payload attestations with the same data into a given `PayloadAttestation` object. For this it needs to fill the `aggregation_bits` field by using the relative position of the validator indices with respect to the PTC that is obtained from `get_ptc(state, block_slot - 1)`.
+- The proposer should only include payload attestations that are consistent with the current block they are proposing. That is, if the previous block had a payload, they should only include attestations with `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations that are not-consistent with their view.
 
 #### Blob sidecars
+
 The blob sidecars are no longer broadcast by the validator, and thus their construction is not necessary. This deprecates the corresponding sections from the honest validator guide in the Electra fork, moving them, albeit with some modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
@@ -115,19 +111,19 @@ A validator should create and broadcast the `payload_attestation_message` to the
 #### Constructing a payload attestation
 
 If a validator is in the payload attestation committee for the current slot (as obtained from `get_ptc_assignment` above) then the validator should prepare a `PayloadAttestationMessage` for the current slot,
-according to the logic in `get_payload_attestation_message` below and broadcast it not after  `SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot, to the global `payload_attestation_message` pubsub topic.
+according to the logic in `get_payload_attestation_message` below and broadcast it not after `SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot, to the global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
-* If the validator has not seen any beacon block for the assigned slot, do not submit a payload attestation. It will be ignored anyway.
-* Set `data.beacon_block_root` be the HTR of the beacon block seen for the assigned slot
-* Set `data.slot` to be the assigned slot.
-* Set `data.payload_status` as follows
-    - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` and the envelope has `payload_withheld = False`,  set to `PAYLOAD_PRESENT`.
-    - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` and the envelope has `payload_withheld = True`,  set to `PAYLOAD_WITHHELD`.
-    - If no `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` set to `PAYLOAD_ABSENT`.
-* Set `payload_attestation_message.validator_index = validator_index` where `validator_index` is the validator chosen to submit. The private key mapping to `state.validators[validator_index].pubkey` is used to sign the payload timeliness attestation.
-* Sign the `payload_attestation_message.data` using the helper `get_payload_attestation_message_signature`.
+- If the validator has not seen any beacon block for the assigned slot, do not submit a payload attestation. It will be ignored anyway.
+- Set `data.beacon_block_root` be the HTR of the beacon block seen for the assigned slot
+- Set `data.slot` to be the assigned slot.
+- Set `data.payload_status` as follows
+  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` and the envelope has `payload_withheld = False`, set to `PAYLOAD_PRESENT`.
+  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` and the envelope has `payload_withheld = True`, set to `PAYLOAD_WITHHELD`.
+  - If no `SignedExecutionPayloadEnvelope` has been seen referencing the block `data.beacon_block_root` set to `PAYLOAD_ABSENT`.
+- Set `payload_attestation_message.validator_index = validator_index` where `validator_index` is the validator chosen to submit. The private key mapping to `state.validators[validator_index].pubkey` is used to sign the payload timeliness attestation.
+- Sign the `payload_attestation_message.data` using the helper `get_payload_attestation_message_signature`.
 
 Notice that the attester only signs the `PayloadAttestationData` and not the `validator_index` field in the message. Proposers need to aggregate these attestations as described above.
 

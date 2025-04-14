@@ -1,12 +1,8 @@
 # EIP-7732 -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Modification in EIP-7732](#modification-in-eip-7732)
@@ -31,8 +27,7 @@
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -47,15 +42,15 @@ The specification of these changes continues in the same format as the network s
 *[Modified in EIP-7732]*
 
 | Name                                           | Value        | Description                                                 |
-|------------------------------------------------|--------------|-------------------------------------------------------------|
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `13` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
+| ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `21` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
 *[New in EIP7732]*
 
 | Name                   | Value          | Description                                                       |
-|------------------------|----------------|-------------------------------------------------------------------|
+| ---------------------- | -------------- | ----------------------------------------------------------------- |
 | `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
 
 ### Containers
@@ -114,16 +109,16 @@ Topics follow the same specification as in prior upgrades.
 The `beacon_block` topic is updated to support the modified type
 
 | Name           | Message Type                               |
-|----------------|--------------------------------------------|
+| -------------- | ------------------------------------------ |
 | `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name                          | Message Type                                         |
-|-------------------------------|------------------------------------------------------|
-| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732] |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732]       |
-| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]            |
+| Name                          | Message Type                                       |
+| ----------------------------- | -------------------------------------------------- |
+| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732]   |
+| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732] |
+| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]      |
 
 ##### Global topics
 
@@ -139,17 +134,17 @@ There are no new validations for this topic. However, all validations with regar
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer -- i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to the slot
-       -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+  -- i.e. `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
 - If `execution_payload` verification of block's parent by an execution node is *not* complete:
-    - [REJECT] The block's parent (defined by `block.parent_root`) passes all validation (excluding execution node verification of the `block.body.execution_payload`).
+  - [REJECT] The block's parent (defined by `block.parent_root`) passes all validation (excluding execution node verification of the `block.body.execution_payload`).
 - otherwise:
-    - [IGNORE] The block's parent (defined by `block.parent_root`) passes all validation (including execution node verification of the `block.body.execution_payload`).
+  - [IGNORE] The block's parent (defined by `block.parent_root`) passes all validation (including execution node verification of the `block.body.execution_payload`).
 - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 And instead the following validations are set in place with the alias `header = signed_execution_payload_header.message`:
 
 - If `execution_payload` verification of block's execution payload parent by an execution node **is complete**:
-    - [REJECT] The block's execution payload parent (defined by `header.parent_block_hash`) passes all validation.
+  - [REJECT] The block's execution payload parent (defined by `header.parent_block_hash`) passes all validation.
 - [REJECT] The block's parent (defined by `block.parent_root`) passes validation.
 
 ###### `execution_payload`
@@ -167,7 +162,7 @@ Let `header` alias `block.body.signed_execution_payload_header.message` (notice 
 - _[REJECT]_ `block` passes validation.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - if `envelope.payload_withheld == False` then
-    - _[REJECT]_ `payload.block_hash == header.block_hash`
+  - _[REJECT]_ `payload.block_hash == header.block_hash`
 - _[REJECT]_ The builder signature, `signed_execution_payload_envelope.signature`, is valid with respect to the builder's public key.
 
 ###### `payload_attestation_message`
@@ -193,9 +188,9 @@ The following validations MUST pass before forwarding the `signed_execution_payl
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the pair of the corresponding slot and the given parent block hash.
 - _[REJECT]_ The signed builder bid, `header.builder_index` is a valid, active, and non-slashed builder index in state.
-- _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than the builder's balance in state.  i.e. `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
+- _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than the builder's balance in state. i.e. `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
 - _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution payload in fork choice.
-_ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon block in fork choice.
+  \_ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon block in fork choice.
 - _[IGNORE]_ `header.slot` is the current slot or the next slot.
 - _[REJECT]_ The builder signature, `signed_execution_payload_header_envelope.signature`, is valid with respect to the `header_envelope.builder_index`.
 
@@ -207,10 +202,10 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -224,10 +219,10 @@ _ _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon 
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -239,12 +234,12 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
-| `DENEB_FORK_VERSION`     | `deneb.BlobSidecar`           |
-| `EIP7732_FORK_VERSION`   | `eip7732.BlobSidecar`         |
+| `fork_version`         | Chunk SSZ type        |
+| ---------------------- | --------------------- |
+| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
+| `EIP7732_FORK_VERSION` | `eip7732.BlobSidecar` |
 
 ##### ExecutionPayloadEnvelopesByRange v1
 
@@ -269,16 +264,16 @@ Response Content:
 )
 ```
 
-Specifications of req\response methods are equivalent to [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference being the response content type.
+Specifications of req\\response methods are equivalent to [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference being the response content type.
 
 For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))` is used to select the fork namespace of the Response type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                           |
-|------------------------|------------------------------------------|
+| ---------------------- | ---------------------------------------- |
 | `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
@@ -287,10 +282,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 The `<context-bytes>` field is calculated as `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`         | Chunk SSZ type                           |
-|------------------------|------------------------------------------|
+| ---------------------- | ---------------------------------------- |
 | `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 Request Content:

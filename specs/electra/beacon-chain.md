@@ -1,12 +1,8 @@
 # Electra -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -34,10 +30,10 @@
     - [`ConsolidationRequest`](#consolidationrequest)
     - [`ExecutionRequests`](#executionrequests)
     - [`SingleAttestation`](#singleattestation)
-  - [Modified Containers](#modified-containers)
+  - [Modified containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers-1)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconState`](#beaconstate)
@@ -110,20 +106,19 @@
         - [New `is_valid_switch_to_compounding_request`](#new-is_valid_switch_to_compounding_request)
         - [New `process_consolidation_request`](#new-process_consolidation_request)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 Electra is a consensus-layer upgrade containing a number of features. Including:
 
-* [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
-* [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
-* [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
-* [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
-* [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
+- [EIP-6110](https://eips.ethereum.org/EIPS/eip-6110): Supply validator deposits on chain
+- [EIP-7002](https://eips.ethereum.org/EIPS/eip-7002): Execution layer triggerable exits
+- [EIP-7251](https://eips.ethereum.org/EIPS/eip-7251): Increase the MAX_EFFECTIVE_BALANCE
+- [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index outside Attestation
+- [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
-*Note:* This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Deneb](../deneb/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -131,89 +126,89 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value | Description |
-| - | - | - |
+| Name                                 | Value               | Description                                                                       |
+| ------------------------------------ | ------------------- | --------------------------------------------------------------------------------- |
 | `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `uint64(2**64 - 1)` | *[New in Electra:EIP6110]* Value which indicates no start index has been assigned |
-| `FULL_EXIT_REQUEST_AMOUNT` | `uint64(0)` | *[New in Electra:EIP7002]* Withdrawal amount used to signal a full validator exit |
+| `FULL_EXIT_REQUEST_AMOUNT`           | `uint64(0)`         | *[New in Electra:EIP7002]* Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 
-| Name | Value | Description |
-| - | - | - |
+| Name                            | Value            | Description                                                                         |
+| ------------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | *[New in Electra:EIP7251]* Withdrawal credential prefix for a compounding validator |
 
 ### Execution layer triggered requests
 
-| Name | Value |
-| - | - |
-| `DEPOSIT_REQUEST_TYPE` | `Bytes1('0x00')` |
-| `WITHDRAWAL_REQUEST_TYPE` | `Bytes1('0x01')` |
+| Name                         | Value            |
+| ---------------------------- | ---------------- |
+| `DEPOSIT_REQUEST_TYPE`       | `Bytes1('0x00')` |
+| `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1('0x01')` |
 | `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
 
 ## Preset
 
 ### Gwei values
 
-| Name | Value | Description |
-| - | - | - |
-| `MIN_ACTIVATION_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) | *[New in Electra:EIP7251]* Minimum balance for a validator to become active |
+| Name                            | Value                                      | Description                                                                      |
+| ------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------- |
+| `MIN_ACTIVATION_BALANCE`        | `Gwei(2**5 * 10**9)` (= 32,000,000,000)    | *[New in Electra:EIP7251]* Minimum balance for a validator to become active      |
 | `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | *[New in Electra:EIP7251]* Maximum effective balance for a compounding validator |
 
 ### Rewards and penalties
 
-| Name | Value |
-| - | - |
+| Name                                    | Value                     |
+| --------------------------------------- | ------------------------- |
 | `MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA` | `uint64(2**12)` (= 4,096) |
 
 ### State list lengths
 
-| Name | Value | Unit |
-| - | - | - |
-| `PENDING_DEPOSITS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending deposits |
+| Name                                | Value                           | Unit                        |
+| ----------------------------------- | ------------------------------- | --------------------------- |
+| `PENDING_DEPOSITS_LIMIT`            | `uint64(2**27)` (= 134,217,728) | pending deposits            |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
-| `PENDING_CONSOLIDATIONS_LIMIT` | `uint64(2**18)` (= 262,144) | pending consolidations |
+| `PENDING_CONSOLIDATIONS_LIMIT`      | `uint64(2**18)` (= 262,144)     | pending consolidations      |
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
+| Name                             | Value        |
+| -------------------------------- | ------------ |
 | `MAX_ATTESTER_SLASHINGS_ELECTRA` | `2**0` (= 1) |
-| `MAX_ATTESTATIONS_ELECTRA` | `2**3` (= 8) |
+| `MAX_ATTESTATIONS_ELECTRA`       | `2**3` (= 8) |
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload |
-| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)| *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload |
-| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2) | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
+| Name                                     | Value                     | Description                                                                                         |
+| ---------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`       | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload       |
+| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)     | *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload    |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2)      | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
-| Name | Value | Description |
-| - | - | - |
-| `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8)| *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
+| Name                                         | Value                | Description                                                                                     |
+| -------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------- |
+| `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | `uint64(2**3)` (= 8) | *[New in Electra:EIP7002]* Maximum number of pending partial withdrawals to process per payload |
 
 ### Pending deposits processing
 
-| Name | Value | Description |
-| - | - | - |
-| `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16)| *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
+| Name                             | Value                 | Description                                                                        |
+| -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16) | *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
 
 ## Configuration
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
+| Name                          | Value       | Description                                                                                                      |
+| ----------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
-| Name | Value |
-| - | - |
-| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA` | `Gwei(2**7 * 10**9)` (= 128,000,000,000) | # Equivalent to 4 32 ETH validators
+| Name                                        | Value                                    |
+| ------------------------------------------- | ---------------------------------------- |
+| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA`         | `Gwei(2**7 * 10**9)` (= 128,000,000,000) |
 | `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
 
 ## Containers
@@ -291,10 +286,6 @@ class ConsolidationRequest(Container):
 
 #### `ExecutionRequests`
 
-*Note*: This container holds requests from the execution layer that are received in [
-`ExecutionPayloadV4`](https://github.com/ethereum/execution-apis/blob/main/src/engine/prague.md#executionpayloadv4) via
-the Engine API. These requests are required for CL state transition (see `BeaconBlockBody`).
-
 ```python
 class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]  # [New in Electra:EIP6110]
@@ -312,7 +303,7 @@ class SingleAttestation(Container):
     signature: BLSSignature
 ```
 
-### Modified Containers
+### Modified containers
 
 #### `AttesterSlashing`
 
@@ -343,7 +334,7 @@ class BeaconBlockBody(Container):
     execution_requests: ExecutionRequests  # [New in Electra]
 ```
 
-### Extended Containers
+### Modified containers
 
 #### `Attestation`
 
@@ -884,6 +875,7 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
 #### New `process_pending_deposits`
 
 Iterating over `pending_deposits` queue this function runs the following checks before applying pending deposit:
+
 1. All Eth1 bridge deposits are processed before the first deposit request gets processed.
 2. Deposit position in the queue is finalized.
 3. Deposit does not exceed the `MAX_PENDING_DEPOSITS_PER_EPOCH` limit.

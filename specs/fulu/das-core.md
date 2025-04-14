@@ -1,12 +1,8 @@
 # Fulu -- Data Availability Sampling Core
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Constants](#constants)
   - [Misc](#misc)
@@ -35,8 +31,7 @@
   - [Why don't we rotate custody over time?](#why-dont-we-rotate-custody-over-time)
   - [Does having a lot of column subnets make the network unstable?](#does-having-a-lot-of-column-subnets-make-the-network-unstable)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Constants
 
@@ -44,33 +39,33 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name          | Value                 |
+| ------------- | --------------------- |
 | `UINT256_MAX` | `uint256(2**256 - 1)` |
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `RowIndex` | `uint64` | Row identifier in the matrix of cells |
-| `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
-| `CustodyIndex` | `uint64` | Custody group identifier in the set of custody groups |
+| Name           | SSZ equivalent | Description                                           |
+| -------------- | -------------- | ----------------------------------------------------- |
+| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
+| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
+| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
 
 ## Configuration
 
 ### Data size
 
-| Name | Value | Description |
-| - | - | - |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
 | `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Custody setting
 
-| Name | Value | Description |
-| - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
-| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody |
-| `CUSTODY_REQUIREMENT` | `4` | Minimum number of custody groups an honest node custodies and serves samples from |
+| Name                       | Value | Description                                                                       |
+| -------------------------- | ----- | --------------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`         | `8`   | Number of `DataColumnSidecar` random samples a node queries per slot              |
+| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ### Containers
 
@@ -233,7 +228,7 @@ In the one-dimension construction, a node samples the peers by requesting the wh
 
 The potential benefits of having row custody could include:
 
-1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column [0, N)  and the latter is req/resp instead of gossiping.
+1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column \[0, N) and the latter is req/resp instead of gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can compute extensions and seed missing samples to the network. This would either need to be able to send individual points on the gossip or would need some sort of req/resp faculty, potentially similar to an `IHAVEPOINTBITFIELD` and `IWANTSAMPLE`.
 
 However, for simplicity, we don't assign row custody assignments to nodes in the current design.

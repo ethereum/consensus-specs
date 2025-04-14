@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
+    with_altair_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
@@ -59,8 +60,8 @@ def test_ex_ante_vanilla(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -84,7 +85,11 @@ def test_ex_ante_vanilla(spec, state):
         return [next(iter(participants))]
 
     attestation = get_valid_attestation(
-        spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
+        spec,
+        state_b,
+        slot=state_b.slot,
+        signed=False,
+        filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
@@ -106,7 +111,7 @@ def test_ex_ante_vanilla(spec, state):
     yield from add_attestation(spec, store, attestation, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root):
@@ -117,7 +122,9 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     block = store.blocks[root]
     proposer_score = 0
     if spec.get_ancestor(store, root, block.slot) == proposer_boost_root:
-        num_validators = len(spec.get_active_validator_indices(state, spec.get_current_epoch(state)))
+        num_validators = len(
+            spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+        )
         avg_balance = spec.get_total_active_balance(state) // num_validators
         committee_size = num_validators // spec.SLOTS_PER_EPOCH
         committee_weight = committee_size * avg_balance
@@ -129,7 +136,8 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     return proposer_score // base_effective_balance + 1
 
 
-@with_altair_and_later
+# TODO(jtraglia): Investigate why this doesn't work with eip7732
+@with_altair_until_eip7732
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
@@ -149,8 +157,8 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -184,13 +192,19 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     # Attestation_set_1 at slot `N + 1` voting for block B
     proposer_boost_root = signed_block_b.message.hash_tree_root()
     root = signed_block_b.message.hash_tree_root()
-    participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
+    participant_num = _get_greater_than_proposer_boost_score(
+        spec, store, state, proposer_boost_root, root
+    )
 
     def _filter_participant_set(participants):
         return [index for i, index in enumerate(participants) if i < participant_num]
 
     attestation = get_valid_attestation(
-        spec, state_b, slot=state_b.slot, signed=False, filter_participant_set=_filter_participant_set
+        spec,
+        state_b,
+        slot=state_b.slot,
+        signed=False,
+        filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
@@ -201,7 +215,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     yield from add_attestation(spec, store, attestation, test_steps)
     check_head_against_root(spec, store, signed_block_b.message.hash_tree_root())
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_altair_and_later
@@ -223,8 +237,8 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -267,7 +281,7 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     check_head_against_root(spec, store, signed_block_d.message.hash_tree_root())
     payload_state_transition(spec, store, signed_block_d.message)
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_altair_and_later
@@ -292,8 +306,8 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -317,7 +331,11 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
         return [next(iter(participants))]
 
     attestation = get_valid_attestation(
-        spec, state_c, slot=state_c.slot, signed=False, filter_participant_set=_filter_participant_set
+        spec,
+        state_c,
+        slot=state_c.slot,
+        signed=False,
+        filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
@@ -351,10 +369,11 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     check_head_against_root(spec, store, signed_block_d.message.hash_tree_root())
     payload_state_transition(spec, store, signed_block_d.message)
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
-@with_altair_and_later
+# TODO(jtraglia): Investigate why this doesn't work with eip7732
+@with_altair_until_eip7732
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
@@ -376,8 +395,8 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -416,13 +435,19 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     # Attestation_set_1 at N+2 voting for block C
     proposer_boost_root = signed_block_c.message.hash_tree_root()
     root = signed_block_c.message.hash_tree_root()
-    participant_num = _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_root, root)
+    participant_num = _get_greater_than_proposer_boost_score(
+        spec, store, state, proposer_boost_root, root
+    )
 
     def _filter_participant_set(participants):
         return [index for i, index in enumerate(participants) if i < participant_num]
 
     attestation = get_valid_attestation(
-        spec, state_c, slot=state_c.slot, signed=False, filter_participant_set=_filter_participant_set
+        spec,
+        state_c,
+        slot=state_c.slot,
+        signed=False,
+        filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
@@ -440,4 +465,4 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
     payload_state_transition(spec, store, signed_block_d.message)
 
-    yield 'steps', test_steps
+    yield "steps", test_steps

@@ -11,9 +11,16 @@ from eth2spec.test.helpers.state import next_epoch
 def test_get_committee_count_delta(spec, state):
     assert spec.get_committee_count_delta(state, 0, 0) == 0
     assert spec.get_committee_count_per_slot(state, 0) != 0
-    assert spec.get_committee_count_delta(state, 0, 1) == spec.get_committee_count_per_slot(state, 0)
-    assert spec.get_committee_count_delta(state, 1, 2) == spec.get_committee_count_per_slot(state, 0)
-    assert spec.get_committee_count_delta(state, 0, 2) == spec.get_committee_count_per_slot(state, 0) * 2
+    assert spec.get_committee_count_delta(state, 0, 1) == spec.get_committee_count_per_slot(
+        state, 0
+    )
+    assert spec.get_committee_count_delta(state, 1, 2) == spec.get_committee_count_per_slot(
+        state, 0
+    )
+    assert (
+        spec.get_committee_count_delta(state, 0, 2)
+        == spec.get_committee_count_per_slot(state, 0) * 2
+    )
     assert spec.get_committee_count_delta(state, 0, spec.SLOTS_PER_EPOCH) == (
         spec.get_committee_count_per_slot(state, 0) * spec.SLOTS_PER_EPOCH
     )

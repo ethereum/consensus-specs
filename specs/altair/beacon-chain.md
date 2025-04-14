@@ -1,10 +1,6 @@
 # Altair -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -14,7 +10,7 @@
   - [Domain types](#domain-types)
   - [Misc](#misc)
 - [Preset](#preset)
-  - [Updated penalty values](#updated-penalty-values)
+  - [Rewards and penalties](#rewards-and-penalties)
   - [Sync committee](#sync-committee)
 - [Configuration](#configuration)
   - [Inactivity penalties](#inactivity-penalties)
@@ -50,93 +46,92 @@
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
     - [Inactivity scores](#inactivity-scores)
-    - [Rewards and penalties](#rewards-and-penalties)
+    - [Rewards and penalties](#rewards-and-penalties-1)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
     - [Sync committee updates](#sync-committee-updates)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 Altair is the first beacon chain hard fork. Its main features are:
 
-* sync committees to support light clients
-* incentive accounting reforms to reduce spec complexity
-* penalty parameter updates towards their planned maximally punitive values
+- sync committees to support light clients
+- incentive accounting reforms to reduce spec complexity
+- penalty parameter updates towards their planned maximally punitive values
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `ParticipationFlags` | `uint8` | a succinct representation of 8 boolean participation flags |
+| Name                 | SSZ equivalent | Description                                                |
+| -------------------- | -------------- | ---------------------------------------------------------- |
+| `ParticipationFlags` | `uint8`        | a succinct representation of 8 boolean participation flags |
 
 ## Constants
 
 ### Participation flag indices
 
-| Name | Value |
-| - | - |
-| `TIMELY_SOURCE_FLAG_INDEX` | `0` |
-| `TIMELY_TARGET_FLAG_INDEX` | `1` |
-| `TIMELY_HEAD_FLAG_INDEX` | `2` |
+| Name                       | Value |
+| -------------------------- | ----- |
+| `TIMELY_SOURCE_FLAG_INDEX` | `0`   |
+| `TIMELY_TARGET_FLAG_INDEX` | `1`   |
+| `TIMELY_HEAD_FLAG_INDEX`   | `2`   |
 
 ### Incentivization weights
 
-| Name | Value |
-| - | - |
+| Name                   | Value        |
+| ---------------------- | ------------ |
 | `TIMELY_SOURCE_WEIGHT` | `uint64(14)` |
 | `TIMELY_TARGET_WEIGHT` | `uint64(26)` |
-| `TIMELY_HEAD_WEIGHT` | `uint64(14)` |
-| `SYNC_REWARD_WEIGHT` | `uint64(2)` |
-| `PROPOSER_WEIGHT` | `uint64(8)` |
-| `WEIGHT_DENOMINATOR` | `uint64(64)` |
+| `TIMELY_HEAD_WEIGHT`   | `uint64(14)` |
+| `SYNC_REWARD_WEIGHT`   | `uint64(2)`  |
+| `PROPOSER_WEIGHT`      | `uint64(8)`  |
+| `WEIGHT_DENOMINATOR`   | `uint64(64)` |
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
 ### Domain types
 
-| Name | Value |
-| - | - |
-| `DOMAIN_SYNC_COMMITTEE` | `DomainType('0x07000000')` |
+| Name                                    | Value                      |
+| --------------------------------------- | -------------------------- |
+| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType('0x07000000')` |
 | `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
-| `DOMAIN_CONTRIBUTION_AND_PROOF` | `DomainType('0x09000000')` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType('0x09000000')` |
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name                         | Value                                                              |
+| ---------------------------- | ------------------------------------------------------------------ |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
 ## Preset
 
-### Updated penalty values
+### Rewards and penalties
 
 This patch updates a few configuration values to move penalty parameters closer to their final, maximum security values.
 
 *Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
 
-| Name | Value |
-| - | - |
-| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR` | `uint64(3 * 2**24)` (= 50,331,648) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` | `uint64(2**6)` (= 64) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)` |
+| Name                                      | Value                              |
+| ----------------------------------------- | ---------------------------------- |
+| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`    | `uint64(2**6)` (= 64)              |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)`                        |
 
 ### Sync committee
 
-| Name | Value | Unit | Duration |
-| - | - | - | - |
-| `SYNC_COMMITTEE_SIZE` | `uint64(2**9)` (= 512) | validators | |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
+| Name                               | Value                  | Unit       | Duration  |
+| ---------------------------------- | ---------------------- | ---------- | --------- |
+| `SYNC_COMMITTEE_SIZE`              | `uint64(2**9)` (= 512) | validators |           |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs     | ~27 hours |
 
 ## Configuration
 
 ### Inactivity penalties
 
-| Name | Value | Description |
-| - | - | - |
-| `INACTIVITY_SCORE_BIAS` | `uint64(2**2)` (= 4) | score points per inactive epoch |
+| Name                             | Value                 | Description                      |
+| -------------------------------- | --------------------- | -------------------------------- |
+| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | score points per inactive epoch  |
 | `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | score points per leak-free epoch |
 
 ## Containers

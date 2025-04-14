@@ -1,12 +1,8 @@
 # EIP-7805 -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -16,8 +12,7 @@
 - [Fork to EIP-7805](#fork-to-eip-7805)
   - [Upgrading the state](#upgrading-the-state)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -27,10 +22,10 @@ This document describes the process of the EIP-7805 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `EIP7805_FORK_VERSION` | `Version('0x10000000')` |
-| `EIP7805_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP7805_FORK_VERSION` | `Version('0x10000000')`               |
+| `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 

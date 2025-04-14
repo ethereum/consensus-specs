@@ -20,7 +20,7 @@ def test_execution_merkle_proof(spec, state):
     yield "proof", {
         "leaf": "0x" + block.message.body.execution_payload.hash_tree_root().hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in branch]
+        "branch": ["0x" + root.hex() for root in branch],
     }
     assert spec.is_valid_merkle_branch(
         leaf=block.message.body.execution_payload.hash_tree_root(),

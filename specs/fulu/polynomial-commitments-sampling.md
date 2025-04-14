@@ -1,19 +1,15 @@
 # Fulu -- Polynomial Commitments Sampling
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Public Methods](#public-methods)
 - [Custom types](#custom-types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
-  - [Cells](#cells)
+  - [Blob](#blob)
 - [Helper functions](#helper-functions)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
@@ -37,7 +33,7 @@
   - [Cell cosets](#cell-cosets)
     - [`coset_shift_for_cell`](#coset_shift_for_cell)
     - [`coset_for_cell`](#coset_for_cell)
-- [Cells](#cells-1)
+- [Cells](#cells)
   - [Cell computation](#cell-computation)
     - [`compute_cells`](#compute_cells)
     - [`compute_cells_and_kzg_proofs_polynomialcoeff`](#compute_cells_and_kzg_proofs_polynomialcoeff)
@@ -49,8 +45,7 @@
   - [`recover_polynomialcoeff`](#recover_polynomialcoeff)
   - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -70,33 +65,33 @@ The following is a list of the public methods:
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Cell` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellIndex` | `uint64` | Validation: `x < CELLS_PER_EXT_BLOB` |
-| `CommitmentIndex` | `uint64` | The type which represents the index of an element in the list of commitments |
+| Name              | SSZ equivalent                                                  | Description                                                                  |
+| ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Cell`            | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof                   |
+| `CellIndex`       | `uint64`                                                        | Validation: `x < CELLS_PER_EXT_BLOB`                                         |
+| `CommitmentIndex` | `uint64`                                                        | The type which represents the index of an element in the list of commitments |
 
 ## Cryptographic types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| [`PolynomialCoeff`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L20-L24) | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | <!-- predefined-type --> A polynomial in coefficient form |
-| [`Coset`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L27-L33) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | <!-- predefined-type --> The evaluation domain of a cell |
-| [`CosetEvals`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L36-L42) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]` | <!-- predefined-type --> A cell's evaluations over its coset |
+| Name                                                                                                                                                    | SSZ equivalent                                       | Description                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
+| [`PolynomialCoeff`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L20-L24) | `List[BLSFieldElement, FIELD_ELEMENTS_PER_EXT_BLOB]` | <!-- predefined-type --> A polynomial in coefficient form    |
+| [`Coset`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L27-L33)           | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]`   | <!-- predefined-type --> The evaluation domain of a cell     |
+| [`CosetEvals`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/eip7594.py#L36-L42)      | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_CELL]`   | <!-- predefined-type --> A cell's evaluations over its coset |
 
 ## Preset
 
-### Cells
+### Blob
 
 Cells are the smallest unit of blob data that can come with their own KZG proofs. Samples can be constructed from one or several cells (e.g. an individual cell or line).
 
-| Name | Value | Description |
-| - | - | - |
-| `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB` | Number of field elements in a Reed-Solomon extended blob |
-| `FIELD_ELEMENTS_PER_CELL` | `uint64(64)` | Number of field elements in a cell |
-| `BYTES_PER_CELL` | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT` | The number of bytes in a cell |
-| `CELLS_PER_EXT_BLOB` | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob |
-| `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'` |
+| Name                                     | Value                                                    | Description                                              |
+| ---------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `FIELD_ELEMENTS_PER_EXT_BLOB`            | `2 * FIELD_ELEMENTS_PER_BLOB`                            | Number of field elements in a Reed-Solomon extended blob |
+| `FIELD_ELEMENTS_PER_CELL`                | `uint64(64)`                                             | Number of field elements in a cell                       |
+| `BYTES_PER_CELL`                         | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT`      | The number of bytes in a cell                            |
+| `CELLS_PER_EXT_BLOB`                     | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
+| `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'`                                    |                                                          |
 
 ## Helper functions
 

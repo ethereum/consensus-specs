@@ -1,12 +1,8 @@
 # Sharding -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -18,8 +14,7 @@
     - [Shard sample subnets](#shard-sample-subnets)
       - [`shard_row_{subnet_id}`](#shard_row_subnet_id)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -41,11 +36,11 @@ The adjustments and additions for Shards are outlined in this document.
 
 Following the same scheme as the [Phase0 gossip topics](../../phase0/p2p-interface.md#topics-and-messages), names and payload types are:
 
-| Name                            | Message Type             |
-|---------------------------------|--------------------------|
-| `shard_row_{subnet_id}`         | `SignedShardSample`      |
-| `shard_column_{subnet_id}`      | `SignedShardSample`      |
-| `builder_block_bid`             | `BuilderBlockBid`        |
+| Name                       | Message Type        |
+| -------------------------- | ------------------- |
+| `shard_row_{subnet_id}`    | `SignedShardSample` |
+| `shard_column_{subnet_id}` | `SignedShardSample` |
+| `builder_block_bid`        | `BuilderBlockBid`   |
 
 The [DAS network specification](../das/das-core.md) defines additional topics.
 
@@ -88,4 +83,3 @@ The following validations MUST pass before forwarding the `sample`.
 - _[REJECT]_ The sample signature, `sample.signature`, is valid for the builder --
   i.e. `bls.Verify(builder_pubkey, sample_signing_root, sample.signature)` OR `sample.signature == Bytes96(b"\0" * 96)` AND
   the sample verification `verify_sample` passes
-

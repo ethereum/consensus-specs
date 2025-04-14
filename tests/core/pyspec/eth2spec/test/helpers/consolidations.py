@@ -1,6 +1,4 @@
-from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance
-)
+from eth2spec.test.helpers.withdrawals import set_eth1_withdrawal_credential_with_balance
 
 
 def prepare_switch_to_compounding_request(spec, state, validator_index, address=None):
