@@ -16,36 +16,36 @@ sequential upgrades when ready.
 
 ### Stable Specifications
 
-| Seq. | Code Name | Fork Epoch | Links |
-| - | - | - | - |
-| 0 | **Phase0** |`0` | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth2spec/test/phase0) |
-| 1 | **Altair** | `74240` | [Specs](specs/altair), [Tests](tests/core/pyspec/eth2spec/test/altair) |
-| 2 | **Bellatrix** | `144896` | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
-| 3 | **Capella** | `194048` | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella) |
-| 4 | **Deneb** | `269568` | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb) |
+| Seq. | Code Name     | Fork Epoch | Links                                                                        |
+| ---- | ------------- | ---------- | ---------------------------------------------------------------------------- |
+| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth2spec/test/phase0)       |
+| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth2spec/test/altair)       |
+| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
+| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
 
 ### In-development Specifications
 
-| Seq. | Code Name | Fork Epoch | Links |
-| - | - | - | - |
-| 5 | **Electra** | TBD | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra) |
-| 6 | **Fulu** | TBD | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
+| Seq. | Code Name   | Fork Epoch | Links                                                                    |
+| ---- | ----------- | ---------- | ------------------------------------------------------------------------ |
+| 5    | **Electra** | TBD        | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra) |
+| 6    | **Fulu**    | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)       |
 
 ### Accompanying documents
 
-* [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
-* [Merkle proof formats](ssz/merkle-proofs.md)
-* [General test format](tests/formats/README.md)
+- [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
+- [Merkle proof formats](ssz/merkle-proofs.md)
+- [General test format](tests/formats/README.md)
 
-### Additional specifications
+### External specifications
 
 Additional specifications and standards outside of requisite client functionality can be found in
 the following repositories:
 
-* [Beacon APIs](https://github.com/ethereum/beacon-apis)
-* [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-* [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
-* [Builder Specs](https://github.com/ethereum/builder-specs)
+- [Beacon APIs](https://github.com/ethereum/beacon-apis)
+- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
+- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
+- [Builder Specs](https://github.com/ethereum/builder-specs)
 
 ### Reference tests
 
@@ -79,18 +79,18 @@ make test
 
 The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
 
-* Minimize complexity, even at the cost of some losses in efficiency.
-* Remain live through major network partitions and when very large portions of nodes go offline.
-* Select components that are quantum secure or easily swappable for quantum-secure alternatives.
-* Utilize crypto and design techniques that allow for a large participation of validators.
-* Minimize hardware requirements such that a consumer laptop can participate.
+- Minimize complexity, even at the cost of some losses in efficiency.
+- Remain live through major network partitions and when very large portions of nodes go offline.
+- Select components that are quantum secure or easily swappable for quantum-secure alternatives.
+- Utilize crypto and design techniques that allow for a large participation of validators.
+- Minimize hardware requirements such that a consumer laptop can participate.
 
 ## Useful external resources
 
-* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
-* [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-* [Online specifications viewer](https://ethereum.github.io/consensus-specs/)
-* [The Eth2 Book](https://eth2book.info)
-* [PySpec Tests](tests/core/pyspec/README.md)
-* [Reference Tests Generators](tests/generators/README.md)
+- [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+- [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+- [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
+- [Online specifications viewer](https://ethereum.github.io/consensus-specs/)
+- [The Eth2 Book](https://eth2book.info)
+- [PySpec Tests](tests/core/pyspec/README.md)
+- [Reference Tests Generators](tests/generators/README.md)

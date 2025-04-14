@@ -180,7 +180,8 @@ PYLINT_CONFIG = $(CURDIR)/pylint.ini
 
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
+MARKDOWN_FILES = $(CURDIR)/README.md \
+                 $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/*/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
