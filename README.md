@@ -1,17 +1,18 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
+[![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
 
-To learn more about proof-of-stake and sharding, see the [PoS documentation](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/), [sharding documentation](https://ethereum.org/en/upgrades/sharding/) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
-
-This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
+This repository hosts the current Ethereum
+[proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/) specifications.
+Discussions about design rationale and proposed changes can be brought up and discussed as issues.
+Solidified, agreed-upon changes to the specifications can be made through pull requests.
 
 ## Specifications
 
-[![GitHub release](https://img.shields.io/github/v/release/ethereum/consensus-specs)](https://github.com/ethereum/consensus-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec) [![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
-
-Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs). These are divided into features.
-Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
+Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs). These are
+divided into features. Features are researched and developed in parallel, and then consolidated into
+sequential upgrades when ready.
 
 ### Stable Specifications
 
@@ -30,50 +31,31 @@ Features are researched and developed in parallel, and then consolidated into se
 | 5 | **Electra** | TBD | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra) |
 | 6 | **Fulu** | TBD | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
 
-### Accompanying documents can be found in [specs](specs) and include:
+### Accompanying documents
 
 * [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
 * [Merkle proof formats](ssz/merkle-proofs.md)
 * [General test format](tests/formats/README.md)
 
-## Additional specifications for client implementers
+### Additional specifications
 
-Additional specifications and standards outside of requisite client functionality can be found in the following repos:
+Additional specifications and standards outside of requisite client functionality can be found in
+the following repositories:
 
 * [Beacon APIs](https://github.com/ethereum/beacon-apis)
 * [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 * [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
+* [Builder Specs](https://github.com/ethereum/builder-specs)
 
-## Design goals
+### Reference tests
 
-The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
-* to minimize complexity, even at the cost of some losses in efficiency
-* to remain live through major network partitions and when very large portions of nodes go offline
-* to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
-* to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
-* to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
+Reference tests built from the executable Python spec are available in the [Ethereum Proof-of-Stake
+Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repository. Compressed
+tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
 
-## Useful external resources
+## Contributors
 
-* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
-* [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-
-## For spec contributors
-
-Documentation on the different components used during spec writing can be found here:
-* [YAML Test Generators](tests/generators/README.md)
-* [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
-
-## Online viewer of the latest release (latest `master` branch)
-
-[Ethereum Consensus Specs](https://ethereum.github.io/consensus-specs/)
-
-## Consensus spec tests
-
-Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
-
-## Installation and usage
+### Installation and usage
 
 Clone the repository with:
 
@@ -92,3 +74,23 @@ Run the tests:
 ```bash
 make test
 ```
+
+### Design goals
+
+The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
+
+* Minimize complexity, even at the cost of some losses in efficiency.
+* Remain live through major network partitions and when very large portions of nodes go offline.
+* Select components that are quantum secure or easily swappable for quantum-secure alternatives.
+* Utilize crypto and design techniques that allow for a large participation of validators.
+* Minimize hardware requirements such that a consumer laptop can participate.
+
+## Useful external resources
+
+* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+* [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
+* [Online specifications viewer](https://ethereum.github.io/consensus-specs/)
+* [The Eth2 Book](https://eth2book.info)
+* [PySpec Tests](tests/core/pyspec/README.md)
+* [Reference Tests Generators](tests/generators/README.md)
