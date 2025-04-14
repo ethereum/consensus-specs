@@ -51,8 +51,8 @@ the following repositories:
 
 Reference tests built from the executable Python spec are available in the [Ethereum Proof-of-Stake
 Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repository. Compressed
-tarballs are available for each specifications release
-[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly reference tests are also
+tarballs are available for each release
+[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly reference tests are
 available
 [here](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml).
 
