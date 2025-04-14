@@ -75,7 +75,7 @@ cd consensus-specs
 View the help output:
 
 ```bash
-make
+make help
 ```
 
 ### Design goals
