@@ -93,7 +93,7 @@ def test_process_deposit_request_top_up_still_less_than_min_activation(spec, sta
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
     balance = 20 * spec.EFFECTIVE_BALANCE_INCREMENT
-    assert balance < spec.MIN_EFFECTIVE_BALANCE
+    assert balance < spec.MIN_ACTIVATION_BALANCE
     state.balances[validator_index] = balance
     state.validators[validator_index].effective_balance = balance
 
