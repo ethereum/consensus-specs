@@ -9,7 +9,6 @@
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
-    - [`is_previous_epoch_justified`](#is_previous_epoch_justified)
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
@@ -131,14 +130,6 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-```
-
-#### `is_previous_epoch_justified`
-
-```python
-def is_previous_epoch_justified(store: Store) -> bool:
-    current_epoch = get_current_store_epoch(store)
-    return store.justified_checkpoint.epoch + 1 == current_epoch
 ```
 
 #### `get_forkchoice_store`
