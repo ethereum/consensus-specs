@@ -28,6 +28,9 @@ from eth2spec.test.helpers.random import (
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
 )
+from eth2spec.test.helpers.withdrawals import (
+    prepare_expected_withdrawals,
+)
 from eth2spec.test.helpers.state import (
     next_slot,
     next_epoch,
@@ -86,7 +89,26 @@ def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fractio
     scenario_state = randomize_state_bellatrix(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
-    # TODO: randomize withdrawals
+    # Randomize withdrawals
+    rng = Random(999)
+    block_count = stats.get("block_count", 0)
+    if block_count > 0:
+        # Scale withdrawals based on block count, but keep numbers reasonable
+        num_full_withdrawals = rng.randint(1, min(10, block_count))
+        num_partial_withdrawals = rng.randint(1, min(10, block_count))
+        
+        fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
+            spec, 
+            state, 
+            rng=rng, 
+            num_full_withdrawals=num_full_withdrawals, 
+            num_partial_withdrawals=num_partial_withdrawals
+        )
+        
+        # Store withdrawal indices in scenario_state for potential later use
+        scenario_state["fully_withdrawable_indices"] = fully_withdrawable_indices
+        scenario_state["partial_withdrawals_indices"] = partial_withdrawals_indices
+    
     return scenario_state
 
 
