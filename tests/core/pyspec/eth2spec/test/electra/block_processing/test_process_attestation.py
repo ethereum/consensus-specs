@@ -174,7 +174,9 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
         aggregate.aggregation_bits[committee_offset + i] = attestation_1.aggregation_bits[i]
 
     # Check that only one committee is presented
-    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(state, attestation_1)
+    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(
+        state, attestation_1
+    )
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 

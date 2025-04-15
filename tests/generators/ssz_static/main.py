@@ -18,31 +18,44 @@ MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10
 
 
-def create_test_case(rng: Random, typ,
-                     mode: random_value.RandomizationMode, chaos: bool) -> Iterable[gen_typing.TestCasePart]:
-    value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
+def create_test_case(
+    rng: Random, typ, mode: random_value.RandomizationMode, chaos: bool
+) -> Iterable[gen_typing.TestCasePart]:
+    value = random_value.get_random_ssz_object(
+        rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos
+    )
     yield "value", "data", encode.encode(value)
     yield "serialized", "ssz", serialize(value)
-    roots_data = {
-        "root": '0x' + hash_tree_root(value).hex()
-    }
+    roots_data = {"root": "0x" + hash_tree_root(value).hex()}
     yield "roots", "data", roots_data
 
 
 def get_spec_ssz_types(spec):
     return [
-        (name, value) for (name, value) in getmembers(spec, isclass)
+        (name, value)
+        for (name, value) in getmembers(spec, isclass)
         if (
             # only the subclasses, not the imported base class
-            issubclass(value, Container) and value != Container
-            or issubclass(value, StableContainer) and value != StableContainer
-            or issubclass(value, Profile) and value != Profile
+            issubclass(value, Container)
+            and value != Container
+            or issubclass(value, StableContainer)
+            and value != StableContainer
+            or issubclass(value, Profile)
+            and value != Profile
         )
     ]
 
 
-def ssz_static_cases(fork_name: str, preset_name: str, seed: int, name, ssz_type,
-                     mode: random_value.RandomizationMode, chaos: bool, count: int):
+def ssz_static_cases(
+    fork_name: str,
+    preset_name: str,
+    seed: int,
+    name,
+    ssz_type,
+    mode: random_value.RandomizationMode,
+    chaos: bool,
+    count: int,
+):
     random_mode_name = mode.to_name()
 
     # Reproducible RNG
@@ -52,16 +65,22 @@ def ssz_static_cases(fork_name: str, preset_name: str, seed: int, name, ssz_type
         yield gen_typing.TestCase(
             fork_name=fork_name,
             preset_name=preset_name,
-            runner_name='ssz_static',
+            runner_name="ssz_static",
             handler_name=name,
             suite_name=f"ssz_{random_mode_name}{'_chaos' if chaos else ''}",
             case_name=f"case_{i}",
-            case_fn=lambda: create_test_case(rng, ssz_type, mode, chaos)
+            case_fn=lambda: create_test_case(rng, ssz_type, mode, chaos),
         )
 
 
-def create_provider(fork_name, preset_name: str, seed: int, mode: random_value.RandomizationMode, chaos: bool,
-                    cases_if_random: int) -> gen_typing.TestProvider:
+def create_provider(
+    fork_name,
+    preset_name: str,
+    seed: int,
+    mode: random_value.RandomizationMode,
+    chaos: bool,
+    cases_if_random: int,
+) -> gen_typing.TestProvider:
     def prepare_fn() -> None:
         return
 
@@ -69,8 +88,10 @@ def create_provider(fork_name, preset_name: str, seed: int, mode: random_value.R
         count = cases_if_random if chaos or mode.is_changing() else 1
         spec = spec_targets[preset_name][fork_name]
 
-        for (i, (name, ssz_type)) in enumerate(get_spec_ssz_types(spec)):
-            yield from ssz_static_cases(fork_name, preset_name, seed * 1000 + i, name, ssz_type, mode, chaos, count)
+        for i, (name, ssz_type) in enumerate(get_spec_ssz_types(spec)):
+            yield from ssz_static_cases(
+                fork_name, preset_name, seed * 1000 + i, name, ssz_type, mode, chaos, count
+            )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
@@ -87,7 +108,10 @@ if __name__ == "__main__":
     settings.append((seed, MAINNET, random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
     for fork in TESTGEN_FORKS:
-        gen_runner.run_generator("ssz_static", [
-            create_provider(fork, preset_name, seed, mode, chaos, cases_if_random)
-            for (seed, preset_name, mode, chaos, cases_if_random) in settings
-        ])
+        gen_runner.run_generator(
+            "ssz_static",
+            [
+                create_provider(fork, preset_name, seed, mode, chaos, cases_if_random)
+                for (seed, preset_name, mode, chaos, cases_if_random) in settings
+            ],
+        )

@@ -1,7 +1,5 @@
 from eth2spec.test import context
-from eth2spec.test.helpers.constants import (
-    ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
-)
+from eth2spec.test.helpers.constants import ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
 from eth2spec.utils import bls as bls_utils
 
 # We import pytest only when it's present, i.e. when we are running tests.
@@ -20,35 +18,49 @@ def module_exists(module_name):
 def fixture(*args, **kwargs):
     if module_exists("pytest"):
         import pytest
+
         return pytest.fixture(*args, **kwargs)
     else:
+
         def ignore():
             pass
+
         return ignore
 
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--preset", action="store", type=str, default="minimal",
-        help="preset: make the pyspec use the specified preset"
+        "--preset",
+        action="store",
+        type=str,
+        default="minimal",
+        help="preset: make the pyspec use the specified preset",
     )
     parser.addoption(
-        "--fork", action="append", type=str,
+        "--fork",
+        action="append",
+        type=str,
         help=(
             "fork: make the pyspec only run with the specified phase."
             " To run multiple phases, e.g., --fork=phase0 --fork=altair"
-        )
+        ),
     )
     parser.addoption(
-        "--disable-bls", action="store_true", default=False,
-        help="bls-default: make tests that are not dependent on BLS run without BLS"
+        "--disable-bls",
+        action="store_true",
+        default=False,
+        help="bls-default: make tests that are not dependent on BLS run without BLS",
     )
     parser.addoption(
-        "--bls-type", action="store", type=str, default="fastest", choices=["py_ecc", "milagro", "arkworks", "fastest"],
+        "--bls-type",
+        action="store",
+        type=str,
+        default="fastest",
+        choices=["py_ecc", "milagro", "arkworks", "fastest"],
         help=(
             "bls-type: use specified BLS implementation;"
             "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
-        )
+        ),
     )
 
 
@@ -57,7 +69,7 @@ def _validate_fork_name(forks):
         if fork not in set(ALLOWED_TEST_RUNNER_FORKS):
             raise ValueError(
                 f'The given --fork argument "{fork}" is not an available fork.'
-                f' The available forks: {ALLOWED_TEST_RUNNER_FORKS}'
+                f" The available forks: {ALLOWED_TEST_RUNNER_FORKS}"
             )
 
 

@@ -2,11 +2,7 @@
 
 This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
@@ -43,8 +39,7 @@ This is an accompanying document to [Altair -- The Beacon Chain](./beacon-chain.
       - [Broadcast sync committee contribution](#broadcast-sync-committee-contribution)
 - [Sync committee subnet stability](#sync-committee-subnet-stability)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -66,10 +61,10 @@ Please see this document before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name | Value | Unit |
-| - | - | :-: |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) | validators |
-| `SYNC_COMMITTEE_SUBNET_COUNT` | `4` | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| Name                                       | Value         |                                       Unit                                       |
+| ------------------------------------------ | ------------- | :------------------------------------------------------------------------------: |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                    validators                                    |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol. |
 
 ## Containers
 
@@ -177,9 +172,9 @@ For this reason, *always* get committee assignments via the fields of the `Beaco
 A validator should plan for future sync committee assignments by noting which sync committee periods they are selected for participation.
 Specifically, a validator should:
 
-* Upon (re)syncing the chain and upon sync committee period boundaries, check for assignments in the current and next sync committee periods.
-* If the validator is in the current sync committee period, then they perform the responsibilities below for sync committee rewards.
-* If the validator is in the next sync committee period, they should wait until the next `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` boundary and then perform the responsibilities throughout that period.
+- Upon (re)syncing the chain and upon sync committee period boundaries, check for assignments in the current and next sync committee periods.
+- If the validator is in the current sync committee period, then they perform the responsibilities below for sync committee rewards.
+- If the validator is in the next sync committee period, they should wait until the next `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` boundary and then perform the responsibilities throughout that period.
 
 ## Beacon chain responsibilities
 
@@ -424,16 +419,16 @@ def get_contribution_and_proof_signature(state: BeaconState,
 The sync committee subnets need special care to ensure stability given the relatively low number of validators involved in the sync committee at any particular time.
 To provide this stability, a validator must do the following:
 
-* Maintain advertisement of the subnet the validator in the sync committee is assigned to in their node's ENR as soon as they have joined the subnet.
-Subnet assignments are known `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs in advance and can be computed with `compute_subnets_for_sync_committee` defined above.
-ENR advertisement is indicated by setting the appropriate bit(s) of the bitfield found under the `syncnets` key in the ENR corresponding to the derived `subnet_id`(s).
-Any bits modified for the sync committee responsibilities are unset in the ENR once the node no longer has any validators in the subcommittee.
+- Maintain advertisement of the subnet the validator in the sync committee is assigned to in their node's ENR as soon as they have joined the subnet.
+  Subnet assignments are known `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` epochs in advance and can be computed with `compute_subnets_for_sync_committee` defined above.
+  ENR advertisement is indicated by setting the appropriate bit(s) of the bitfield found under the `syncnets` key in the ENR corresponding to the derived `subnet_id`(s).
+  Any bits modified for the sync committee responsibilities are unset in the ENR once the node no longer has any validators in the subcommittee.
 
   *Note*: The first sync committee from phase 0 to the Altair fork will not be known until the fork happens, which implies subnet assignments are not known until then.
-Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets.
-Some early sync committee rewards may be missed while the initial subnets form.
+  Early sync committee members should listen for topic subscriptions from peers and employ discovery via the ENR advertisements near the fork boundary to form initial subnets.
+  Some early sync committee rewards may be missed while the initial subnets form.
 
-* To join a sync committee subnet, select a random number of epochs before the end of the current sync committee period between 1 and `SYNC_COMMITTEE_SUBNET_COUNT`, inclusive.
-Validators should join their member subnet at the beginning of the epoch they have randomly selected.
-For example, if the next sync committee period starts at epoch `853,248` and the validator randomly selects an offset of `3`, they should join the subnet at the beginning of epoch `853,245`.
-Validators should leverage the lookahead period on sync committee assignments so that they can join the appropriate subnets ahead of their assigned sync committee period.
+- To join a sync committee subnet, select a random number of epochs before the end of the current sync committee period between 1 and `SYNC_COMMITTEE_SUBNET_COUNT`, inclusive.
+  Validators should join their member subnet at the beginning of the epoch they have randomly selected.
+  For example, if the next sync committee period starts at epoch `853,248` and the validator randomly selects an offset of `3`, they should join the subnet at the beginning of epoch `853,245`.
+  Validators should leverage the lookahead period on sync committee assignments so that they can join the appropriate subnets ahead of their assigned sync committee period.

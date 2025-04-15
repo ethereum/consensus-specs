@@ -1,9 +1,6 @@
 # How to add a new feature proposal in consensus-specs
 
-## Table of contents
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [A. Make it executable for linter checks](#a-make-it-executable-for-linter-checks)
   - [1. Create a folder under `./specs/_features`](#1-create-a-folder-under-specs_features)
@@ -22,7 +19,7 @@
   - [Bonus](#bonus)
   - [Need help?](#need-help)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+<!-- mdformat-toc end -->
 
 ## A. Make it executable for linter checks
 
@@ -38,11 +35,6 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
 
 - You can either use [Beacon Chain Spec Template](./templates/beacon-chain-template.md), or make a copy of the latest fork content and then edit it.
 - Tips:
-    - We use [`doctoc`](https://www.npmjs.com/package/doctoc) tool to generate the table of content.
-        ```
-        cd consensus-specs
-        doctoc specs
-        ```
     - The differences between "Constants", "Configurations", and "Presets":
         - Constants: The constant that should never be changed.
         - Configurations: The settings that we may change for different networks.

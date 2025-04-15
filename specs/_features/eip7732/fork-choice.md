@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -37,8 +33,7 @@
   - [`on_payload_attestation_message`](#on_payload_attestation_message)
   - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -46,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
-| `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST` | `40` |
-| `PAYLOAD_REVEAL_BOOST` | `40` |
+| Name                       | Value                         |
+| -------------------------- | ----------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256)       |
+| `INTERVALS_PER_SLOT`       | `4` # [modified in EIP-7732]  |
+| `PROPOSER_SCORE_BOOST`     | `20` # [modified in EIP-7732] |
+| `PAYLOAD_WITHHOLD_BOOST`   | `40`                          |
+| `PAYLOAD_REVEAL_BOOST`     | `40`                          |
 
 ## Containers
 
@@ -605,3 +600,4 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 
 
+```

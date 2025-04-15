@@ -1,10 +1,6 @@
 # Capella -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -39,18 +35,17 @@
     - [Modified `process_operations`](#modified-process_operations)
     - [New `process_bls_to_execution_change`](#new-process_bls_to_execution_change)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 Capella is a consensus-layer upgrade containing a number of features related
 to validator withdrawals. Including:
 
-* Automatic withdrawals of `withdrawable` validators.
-* Partial withdrawals sweep for validators with 0x01 withdrawal
+- Automatic withdrawals of `withdrawable` validators.
+- Partial withdrawals sweep for validators with 0x01 withdrawal
   credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
-* Operation to change from `BLS_WITHDRAWAL_PREFIX` to
+- Operation to change from `BLS_WITHDRAWAL_PREFIX` to
   `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
 
 Another new feature is the new independent state and block historical accumulators
@@ -62,35 +57,35 @@ beyond the state and the blocks.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
+| Name              | SSZ equivalent | Description                |
+| ----------------- | -------------- | -------------------------- |
+| `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                             | Value                      |
+| -------------------------------- | -------------------------- |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
 ## Preset
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
+| Name                           | Value         |
+| ------------------------------ | ------------- |
 | `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
+| Name                          | Value                 | Description                                           |
+| ----------------------------- | --------------------- | ----------------------------------------------------- |
 | `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
 
 ### Withdrawals processing
 
-| Name | Value |
-| - | - |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
+| Name                                   | Value                |
+| -------------------------------------- | -------------------- |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2\*\*14 ) |
 
 ## Containers
 
