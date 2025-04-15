@@ -14,6 +14,9 @@ The `ssz_generic` tests are split up into different handler, each specialized in
 - List
     - `basic_list` *not supported yet*
     - `complex_list` *not supported yet*
+- ProgressiveList
+    - `basic_progressivelist`
+    - `complex_progressivelist` *not supported yet*
 - Bitfields
     - `bitvector`
     - `bitlist`
@@ -22,6 +25,9 @@ The `ssz_generic` tests are split up into different handler, each specialized in
     - `uints`
 - Containers
     - `containers`
+- StableContainers and Profiles
+    - `stablecontainers`
+    - `profiles`
 
 ## Format
 
@@ -95,6 +101,18 @@ Data:
 {length}: an unsigned integer
 ```
 
+### `basic_progressivelist`
+
+```
+Template:
+
+proglist_{element type}
+
+Data:
+
+{element type}: bool, uint8, uint16, uint32, uint64, uint128, uint256
+```
+
 ### `bitlist`
 
 ```
@@ -150,7 +168,6 @@ Data:
 ```
 
 ```python
-
 class SingleFieldTestStruct(Container):
     A: byte
 
@@ -176,7 +193,7 @@ class ComplexTestStruct(Container):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ByteList[256]
+    D: ProgressiveList[byte]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]
@@ -186,6 +203,181 @@ class BitsStruct(Container):
     A: Bitlist[5]
     B: Bitvector[2]
     C: Bitvector[1]
+    D: Bitlist[6]
+    E: Bitvector[8]
+```
+
+### `stablecontainers`
+
+```
+Template:
+
+{name}
+
+Data:
+
+{name}: Any of the types listed below (excluding the `(StableContainer)` python super type)
+```
+
+```python
+class SingleFieldTestStableStruct(StableContainer[4]):
+    A: Optional[byte]
+
+
+class SmallTestStableStruct(StableContainer[4]):
+    A: Optional[uint16]
+    B: Optional[uint16]
+
+
+class FixedTestStableStruct(StableContainer[4]):
+    A: Optional[uint8]
+    B: Optional[uint64]
+    C: Optional[uint32]
+
+
+class VarTestStableStruct(StableContainer[4]):
+    A: Optional[uint16]
+    B: Optional[List[uint16, 1024]]
+    C: Optional[uint8]
+
+
+class ComplexTestStableStruct(StableContainer[8]):
+    A: Optional[uint16]
+    B: Optional[List[uint16, 128]]
+    C: Optional[uint8]
+    D: Optional[ProgressiveList[byte]]
+    E: Optional[VarTestStableStruct]
+    F: Optional[Vector[FixedTestStableStruct, 4]]
+    G: Optional[Vector[VarTestStableStruct, 2]]
+
+
+class BitsStableStruct(StableContainer[8]):
+    A: Optional[Bitlist[5]]
+    B: Optional[Bitvector[2]]
+    C: Optional[Bitvector[1]]
+    D: Optional[Bitlist[6]]
+    E: Optional[Bitvector[8]]
+```
+
+### `profiles`
+
+```
+Template:
+
+{name}
+
+Data:
+
+{name}: Any of the types listed below (excluding the `(StableContainer)` python super type)
+```
+
+```python
+class SingleFieldTestProfile(Profile[SingleFieldTestStableStruct]):
+    A: byte
+
+
+class SmallTestProfile1(Profile[SmallTestStableStruct]):
+    A: uint16
+    B: uint16
+
+
+class SmallTestProfile2(Profile[SmallTestStableStruct]):
+    A: uint16
+
+
+class SmallTestProfile3(Profile[SmallTestStableStruct]):
+    B: uint16
+
+
+class FixedTestProfile1(Profile[FixedTestStableStruct]):
+    A: uint8
+    B: uint64
+    C: uint32
+
+
+class FixedTestProfile2(Profile[FixedTestStableStruct]):
+    A: uint8
+    B: uint64
+
+
+class FixedTestProfile3(Profile[FixedTestStableStruct]):
+    A: uint8
+    C: uint32
+
+
+class FixedTestProfile4(Profile[FixedTestStableStruct]):
+    C: uint32
+
+
+class VarTestProfile1(Profile[VarTestStableStruct]):
+    A: uint16
+    B: List[uint16, 1024]
+    C: uint8
+
+
+class VarTestProfile2(Profile[VarTestStableStruct]):
+    B: List[uint16, 1024]
+    C: uint8
+
+
+class VarTestProfile3(Profile[VarTestStableStruct]):
+    B: List[uint16, 1024]
+
+
+class ComplexTestProfile1(Profile[ComplexTestStableStruct]):
+    A: uint16
+    B: List[uint16, 128]
+    C: uint8
+    D: ProgressiveList[byte]
+    E: VarTestStableStruct
+    F: Vector[FixedTestStableStruct, 4]
+    G: Vector[VarTestStableStruct, 2]
+
+
+class ComplexTestProfile2(Profile[ComplexTestStableStruct]):
+    A: uint16
+    B: List[uint16, 128]
+    C: uint8
+    D: ProgressiveList[byte]
+    E: VarTestStableStruct
+
+
+class ComplexTestProfile3(Profile[ComplexTestStableStruct]):
+    A: uint16
+    C: uint8
+    E: VarTestStableStruct
+    G: Vector[VarTestStableStruct, 2]
+
+
+class ComplexTestProfile4(Profile[ComplexTestStableStruct]):
+    B: List[uint16, 128]
+    D: ProgressiveList[byte]
+    F: Vector[FixedTestStableStruct, 4]
+
+
+class ComplexTestProfile5(Profile[ComplexTestStableStruct]):
+    E: VarTestStableStruct
+    F: Vector[FixedTestStableStruct, 4]
+    G: Vector[VarTestStableStruct, 2]
+
+
+class BitsProfile1(Profile[BitsStableStruct]):
+    A: Bitlist[5]
+    B: Bitvector[2]
+    C: Bitvector[1]
+    D: Bitlist[6]
+    E: Bitvector[8]
+
+
+class BitsProfile2(Profile[BitsStableStruct]):
+    A: Bitlist[5]
+    B: Bitvector[2]
+    C: Bitvector[1]
+    D: Bitlist[6]
+
+
+class BitsProfile3(Profile[BitsStableStruct]):
+    A: Bitlist[5]
     D: Bitlist[6]
     E: Bitvector[8]
 ```

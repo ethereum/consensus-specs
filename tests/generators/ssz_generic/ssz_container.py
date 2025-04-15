@@ -8,7 +8,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     uint32,
     uint64,
     List,
-    ByteList,
+    ProgressiveList,
     Vector,
     Bitvector,
     Bitlist,
@@ -44,7 +44,7 @@ class ComplexTestStruct(Container):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ByteList[256]
+    D: ProgressiveList[byte]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]

@@ -1,5 +1,6 @@
 from remerkleable.complex import Container, Vector, List
-from remerkleable.stable_container import StableContainer, Profile
+from remerkleable.progressive import ProgressiveList
+from remerkleable.stable_container import Profile, StableContainer
 from remerkleable.union import Union
 from remerkleable.basic import (
     boolean,
@@ -25,7 +26,6 @@ from remerkleable.byte_arrays import (
     ByteList,
 )
 from remerkleable.core import BasicView, View, Path
-from remerkleable.stable_container import Profile, StableContainer
 
 
 Bytes20 = ByteVector[20]  # type: ignore

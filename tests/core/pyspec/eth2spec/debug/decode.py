@@ -11,6 +11,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Union,
     View,
     Profile,
+    ProgressiveList,
     StableContainer,
 )
 
@@ -18,7 +19,7 @@ from eth2spec.utils.ssz.ssz_typing import (
 def decode(data: Any, typ):
     if issubclass(typ, (uint, boolean)):
         return typ(data)
-    elif issubclass(typ, (List, Vector)):
+    elif issubclass(typ, (List, Vector, ProgressiveList)):
         return typ(decode(element, typ.element_cls()) for element in data)
     elif issubclass(typ, ByteVector):
         return typ(bytes.fromhex(data[2:]))

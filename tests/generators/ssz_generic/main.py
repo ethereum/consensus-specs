@@ -1,5 +1,6 @@
 from typing import Iterable
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
+import ssz_basic_progressivelist
 import ssz_basic_vector
 import ssz_bitlist
 import ssz_bitvector
@@ -35,6 +36,12 @@ if __name__ == "__main__":
     gen_runner.run_generator(
         "ssz_generic",
         [
+            create_provider(
+                "basic_progressivelist", "valid", ssz_basic_progressivelist.valid_cases
+            ),
+            create_provider(
+                "basic_progressivelist", "invalid", ssz_basic_progressivelist.invalid_cases
+            ),
             create_provider("basic_vector", "valid", ssz_basic_vector.valid_cases),
             create_provider("basic_vector", "invalid", ssz_basic_vector.invalid_cases),
             create_provider("bitlist", "valid", ssz_bitlist.valid_cases),
@@ -43,11 +50,13 @@ if __name__ == "__main__":
             create_provider("bitvector", "invalid", ssz_bitvector.invalid_cases),
             create_provider("boolean", "valid", ssz_boolean.valid_cases),
             create_provider("boolean", "invalid", ssz_boolean.invalid_cases),
-            create_provider("uints", "valid", ssz_uints.valid_cases),
-            create_provider("uints", "invalid", ssz_uints.invalid_cases),
             create_provider("containers", "valid", ssz_container.valid_cases),
             create_provider("containers", "invalid", ssz_container.invalid_cases),
-            create_provider("stablecontainers", "valid", ssz_stablecontainer.valid_cases),
             create_provider("profiles", "valid", ssz_profile.valid_cases),
+            create_provider("profiles", "invalid", ssz_profile.invalid_cases),
+            create_provider("stablecontainers", "valid", ssz_stablecontainer.valid_cases),
+            create_provider("stablecontainers", "invalid", ssz_stablecontainer.invalid_cases),
+            create_provider("uints", "valid", ssz_uints.valid_cases),
+            create_provider("uints", "invalid", ssz_uints.invalid_cases),
         ],
     )
