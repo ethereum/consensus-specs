@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Preset](#preset)
@@ -18,8 +14,7 @@
   - [Block processing](#block-processing)
     - [Modified `get_index_for_new_validator`](#modified-get_index_for_new_validator)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -31,8 +26,8 @@ This is the beacon chain specification to assign new deposits to existing valida
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | - | - |
+| Name                         | Value                      | Unit   | Duration  |
+| ---------------------------- | -------------------------- | ------ | --------- |
 | `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions

@@ -1,10 +1,6 @@
 # Capella -- Networking
 
-### Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Modifications in Capella](#modifications-in-capella)
@@ -19,8 +15,7 @@
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -40,10 +35,10 @@ Topics follow the same specification as in prior upgrades. All existing topics r
 
 The new topics along with the type of the `data` field of a gossipsub message are given in this table:
 
-| Name | Message Type |
-| - | - |
-| `beacon_block` | `SignedBeaconBlock` (modified) |
-| `bls_to_execution_change` | `SignedBLSToExecutionChange` |
+| Name                      | Message Type                   |
+| ------------------------- | ------------------------------ |
+| `beacon_block`            | `SignedBeaconBlock` (modified) |
+| `bls_to_execution_change` | `SignedBLSToExecutionChange`   |
 
 Note that the `ForkDigestValue` path segment of the topic separates the old and the new `beacon_block` topics.
 
@@ -86,14 +81,14 @@ The Capella fork-digest is introduced to the `context` enum to specify Capella b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
-| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
 ##### BeaconBlocksByRoot v2
 
@@ -103,12 +98,11 @@ The Capella fork-digest is introduced to the `context` enum to specify Capella b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[1]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`           | Chunk SSZ type             |
-| ------------------------ | -------------------------- |
-| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock` |
-| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock` |
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
-| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock` |
-
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |

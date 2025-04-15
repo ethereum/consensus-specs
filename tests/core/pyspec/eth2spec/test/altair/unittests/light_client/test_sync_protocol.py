@@ -155,7 +155,9 @@ def test_process_light_client_update_finality_updated(spec, state):
 
     # Updated finality
     finalized_block = blocks[spec.SLOTS_PER_EPOCH - 1]
-    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(
+        state.finalized_checkpoint.epoch
+    )
     assert finalized_block.message.hash_tree_root() == state.finalized_checkpoint.root
 
     update = create_update(

@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -28,8 +24,7 @@
       - [`process_execution_payload`](#process_execution_payload)
 - [Testing](#testing)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -37,22 +32,22 @@ This upgrade adds transaction execution to the beacon chain as part of the eip68
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `BanderwagonGroupElement` | `Bytes32` | |
-| `BanderwagonFieldElement` | `Bytes32` | |
-| `Stem` | `Bytes31` | |
+| Name                      | SSZ equivalent | Description |
+| ------------------------- | -------------- | ----------- |
+| `BanderwagonGroupElement` | `Bytes32`      |             |
+| `BanderwagonFieldElement` | `Bytes32`      |             |
+| `Stem`                    | `Bytes31`      |             |
 
 ## Preset
 
 ### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_STEMS` | `uint64(2**16)` (= 65,536) |
-| `MAX_COMMITMENTS_PER_STEM` | `uint64(33)` |
-| `VERKLE_WIDTH` | `uint64(2**8)` (= 256) |
-| `IPA_PROOF_DEPTH` | `uint64(2**3)` (= 8) |
+| Name                       | Value                      |
+| -------------------------- | -------------------------- |
+| `MAX_STEMS`                | `uint64(2**16)` (= 65,536) |
+| `MAX_COMMITMENTS_PER_STEM` | `uint64(33)`               |
+| `VERKLE_WIDTH`             | `uint64(2**8)` (= 256)     |
+| `IPA_PROOF_DEPTH`          | `uint64(2**3)` (= 8)       |
 
 ## Containers
 

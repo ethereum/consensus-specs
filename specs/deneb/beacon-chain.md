@@ -1,10 +1,6 @@
 # Deneb -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -44,57 +40,56 @@
   - [Epoch processing](#epoch-processing)
     - [Registry updates](#registry-updates)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 Deneb is a consensus-layer upgrade containing a number of features. Including:
 
-* [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
-* [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
-* [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed Voluntary Exits
-* [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
-* [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
+- [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
+- [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
+- [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed Voluntary Exits
+- [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
+- [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `VersionedHash` | `Bytes32` | *[New in Deneb:EIP4844]* |
-| `BlobIndex` | `uint64` | *[New in Deneb:EIP4844]* |
+| Name            | SSZ equivalent | Description              |
+| --------------- | -------------- | ------------------------ |
+| `VersionedHash` | `Bytes32`      | *[New in Deneb:EIP4844]* |
+| `BlobIndex`     | `uint64`       | *[New in Deneb:EIP4844]* |
 
 ## Constants
 
 ### Blob
 
-| Name | Value |
-| - | - |
+| Name                         | Value            |
+| ---------------------------- | ---------------- |
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
 
 ## Preset
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
+| Name                             | Value                    | Description                                                                                                              |
+| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
 
 ## Configuration
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
-| `MAX_BLOBS_PER_BLOCK`            | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| Name                  | Value       | Description                                                                                                    |
+| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
 and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 ### Validator cycle
 
-| Name | Value |
-| - | - |
+| Name                                   | Value                |
+| -------------------------------------- | -------------------- |
 | `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
 
 ## Containers

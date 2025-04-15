@@ -1,10 +1,14 @@
 from eth2spec.test.context import (
-    spec_state_test, spec_test,
-    with_all_phases, single_phase,
-    with_phases, PHASE0,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    single_phase,
+    with_phases,
+    PHASE0,
     with_custom_state,
     zero_activation_threshold,
-    misc_balances, low_single_balance,
+    misc_balances,
+    low_single_balance,
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
@@ -26,7 +30,7 @@ from random import Random
 
 
 def run_process_rewards_and_penalties(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_rewards_and_penalties')
+    yield from run_epoch_processing_with(spec, state, "process_rewards_and_penalties")
 
 
 def validate_resulting_balances(spec, pre_state, post_state, attestations):
@@ -112,10 +116,10 @@ def test_full_attestations_random_incorrect_fields(spec, state):
     for i, attestation in enumerate(state.previous_epoch_attestations):
         if i % 3 == 0:
             # Mess up some head votes
-            attestation.data.beacon_block_root = b'\x56' * 32
+            attestation.data.beacon_block_root = b"\x56" * 32
         if i % 3 == 1:
             # Message up some target votes
-            attestation.data.target.root = b'\x23' * 32
+            attestation.data.target.root = b"\x23" * 32
         if i % 3 == 2:
             # Keep some votes 100% correct
             pass
@@ -130,7 +134,9 @@ def test_full_attestations_random_incorrect_fields(spec, state):
 
 @with_all_phases
 @spec_test
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2
+)
 @single_phase
 def test_full_attestations_misc_balances(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
@@ -187,7 +193,9 @@ def run_with_participation(spec, state, participation_fn):
         participated.update(att_participants)
         return att_participants
 
-    attestations = prepare_state_with_attestations(spec, state, participation_fn=participation_tracker)
+    attestations = prepare_state_with_attestations(
+        spec, state, participation_fn=participation_tracker
+    )
     pre_state = state.copy()
 
     yield from run_process_rewards_and_penalties(spec, state)
@@ -205,6 +213,7 @@ def test_almost_empty_attestations(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), 1)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -216,6 +225,7 @@ def test_almost_empty_attestations_with_leak(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), 1)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -226,6 +236,7 @@ def test_random_fill_attestations(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), len(comm) // 3)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -237,6 +248,7 @@ def test_random_fill_attestations_with_leak(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), len(comm) // 3)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -247,6 +259,7 @@ def test_almost_full_attestations(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), len(comm) - 1)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -258,6 +271,7 @@ def test_almost_full_attestations_with_leak(spec, state):
 
     def participation_fn(slot, comm_index, comm):
         return rng.sample(sorted(comm), len(comm) - 1)
+
     yield from run_with_participation(spec, state, participation_fn)
 
 
@@ -322,7 +336,7 @@ def test_duplicate_participants_different_attestation_1(spec, state):
     """
     correct_attestation = get_valid_attestation(spec, state, signed=True)
     incorrect_attestation = correct_attestation.copy()
-    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
     indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
@@ -335,7 +349,9 @@ def test_duplicate_participants_different_attestation_1(spec, state):
 
     inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
     add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
-    add_attestations_to_state(spec, dup_state, [correct_attestation, incorrect_attestation], inclusion_slot)
+    add_attestations_to_state(
+        spec, dup_state, [correct_attestation, incorrect_attestation], inclusion_slot
+    )
 
     next_epoch(spec, single_correct_state)
     next_epoch(spec, dup_state)
@@ -362,7 +378,7 @@ def test_duplicate_participants_different_attestation_2(spec, state):
     """
     correct_attestation = get_valid_attestation(spec, state, signed=True)
     incorrect_attestation = correct_attestation.copy()
-    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
     indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
@@ -375,7 +391,9 @@ def test_duplicate_participants_different_attestation_2(spec, state):
 
     inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
     add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
-    add_attestations_to_state(spec, dup_state, [incorrect_attestation, correct_attestation], inclusion_slot)
+    add_attestations_to_state(
+        spec, dup_state, [incorrect_attestation, correct_attestation], inclusion_slot
+    )
 
     next_epoch(spec, single_correct_state)
     next_epoch(spec, dup_state)
@@ -403,7 +421,7 @@ def test_duplicate_participants_different_attestation_3(spec, state):
     """
     correct_attestation = get_valid_attestation(spec, state, signed=True)
     incorrect_attestation = correct_attestation.copy()
-    incorrect_attestation.data.beacon_block_root = b'\x42' * 32
+    incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
     indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
@@ -440,7 +458,9 @@ def test_duplicate_participants_different_attestation_3(spec, state):
 # Case when some eligible attestations are slashed. Modifies attesting_balance and consequently rewards/penalties.
 def test_attestations_some_slashed(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
-    attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
+    attesting_indices_before_slashings = list(
+        spec.get_unslashed_attesting_indices(state, attestations)
+    )
 
     # Slash maximum amount of validators allowed per epoch.
     for i in range(spec.config.MIN_PER_EPOCH_CHURN_LIMIT):
@@ -455,5 +475,8 @@ def test_attestations_some_slashed(spec, state):
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) > 0
-    assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    assert (
+        len(attesting_indices_before_slashings) - len(attesting_indices)
+        == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
+    )
     validate_resulting_balances(spec, pre_state, state, attestations)

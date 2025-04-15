@@ -6,34 +6,40 @@ def for_ops(state, operations, fn) -> None:
 def get_process_calls(spec):
     return {
         # PHASE0
-        'process_block_header':
-            lambda state, block: spec.process_block_header(state, block),
-        'process_randao':
-            lambda state, block: spec.process_randao(state, block.body),
-        'process_eth1_data':
-            lambda state, block: spec.process_eth1_data(state, block.body),
-        'process_proposer_slashing':
-            lambda state, block: for_ops(state, block.body.proposer_slashings, spec.process_proposer_slashing),
-        'process_attester_slashing':
-            lambda state, block: for_ops(state, block.body.attester_slashings, spec.process_attester_slashing),
-        'process_shard_header':
-            lambda state, block: for_ops(state, block.body.shard_headers, spec.process_shard_header),
-        'process_attestation':
-            lambda state, block: for_ops(state, block.body.attestations, spec.process_attestation),
-        'process_deposit':
-            lambda state, block: for_ops(state, block.body.deposits, spec.process_deposit),
-        'process_voluntary_exit':
-            lambda state, block: for_ops(state, block.body.voluntary_exits, spec.process_voluntary_exit),
+        "process_block_header": lambda state, block: spec.process_block_header(state, block),
+        "process_randao": lambda state, block: spec.process_randao(state, block.body),
+        "process_eth1_data": lambda state, block: spec.process_eth1_data(state, block.body),
+        "process_proposer_slashing": lambda state, block: for_ops(
+            state, block.body.proposer_slashings, spec.process_proposer_slashing
+        ),
+        "process_attester_slashing": lambda state, block: for_ops(
+            state, block.body.attester_slashings, spec.process_attester_slashing
+        ),
+        "process_shard_header": lambda state, block: for_ops(
+            state, block.body.shard_headers, spec.process_shard_header
+        ),
+        "process_attestation": lambda state, block: for_ops(
+            state, block.body.attestations, spec.process_attestation
+        ),
+        "process_deposit": lambda state, block: for_ops(
+            state, block.body.deposits, spec.process_deposit
+        ),
+        "process_voluntary_exit": lambda state, block: for_ops(
+            state, block.body.voluntary_exits, spec.process_voluntary_exit
+        ),
         # Altair
-        'process_sync_aggregate':
-            lambda state, block: spec.process_sync_aggregate(state, block.body.sync_aggregate),
+        "process_sync_aggregate": lambda state, block: spec.process_sync_aggregate(
+            state, block.body.sync_aggregate
+        ),
         # Bellatrix
-        'process_application_payload':
-            lambda state, block: spec.process_application_payload(state, block.body),
+        "process_application_payload": lambda state, block: spec.process_application_payload(
+            state, block.body
+        ),
         # TODO: add sharding processing functions when spec stabilizes.
         # Custody Game
-        'process_custody_game_operations':
-            lambda state, block: spec.process_custody_game_operations(state, block.body),
+        "process_custody_game_operations": lambda state, block: spec.process_custody_game_operations(
+            state, block.body
+        ),
     }
 
 

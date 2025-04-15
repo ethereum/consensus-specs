@@ -1,10 +1,6 @@
 # Phase 0 -- Beacon Chain Fork Choice
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
@@ -54,8 +50,7 @@
     - [`on_attestation`](#on_attestation)
     - [`on_attester_slashing`](#on_attester_slashing)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -74,11 +69,11 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 *Notes*:
 
-1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
-2) **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
-3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](./validator.md) should ensure that `state.latest_eth1_data` of the canonical beacon chain remains consistent with the canonical Ethereum proof-of-work chain. If not, emergency manual intervention will be required.
-4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
-5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
+1. **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
+2. **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
+3. **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](./validator.md) should ensure that `state.latest_eth1_data` of the canonical beacon chain remains consistent with the canonical Ethereum proof-of-work chain. If not, emergency manual intervention will be required.
+4. **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
+5. **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
 ### Constant
 
@@ -88,12 +83,12 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Configuration
 
-| Name                                  | Value        |
-| ------------------------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
-| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)` |
-| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
-| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
+| Name                                  | Value         |
+| ------------------------------------- | ------------- |
+| `PROPOSER_SCORE_BOOST`                | `uint64(40)`  |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)`  |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)` |
+| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`    |
 
 - The proposer score boost and re-org weight threshold are percentage
   values that are measured with respect to the weight of a single committee. See
@@ -407,17 +402,20 @@ def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint:
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
 
 ##### `is_head_late`
+
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
 ##### `is_shuffling_stable`
+
 ```python
 def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0

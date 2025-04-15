@@ -2,11 +2,7 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -26,8 +22,7 @@
   - [Deposits](#deposits)
   - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -47,21 +42,21 @@ This document details the beacon chain additions and changes of to support the E
 
 ## Preset
 
-| Name                       | Value                      | Description                                                 |
-| -------------------------- | -------------------------- | ----------------------------------------------------------- |
-| `CURDLEPROOFS_N_BLINDERS`  | `uint64(4)`                | number of blinders for curdleproofs                         |
-| `CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | number of candidate trackers                                |
-| `PROPOSER_TRACKERS_COUNT`  | `uint64(2**13)` (= 8,192)  | number of proposer trackers                                 |
-| `VALIDATORS_PER_SHUFFLE`   | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step              |
-| `MAX_SHUFFLE_PROOF_SIZE`   | `uint64(2**15)`            | max size of a shuffle proof                                 |
-| `MAX_OPENING_PROOF_SIZE`   | `uint64(2**10)`            | max size of an opening proof                                |
+| Name                       | Value                      | Description                                    |
+| -------------------------- | -------------------------- | ---------------------------------------------- |
+| `CURDLEPROOFS_N_BLINDERS`  | `uint64(4)`                | number of blinders for curdleproofs            |
+| `CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | number of candidate trackers                   |
+| `PROPOSER_TRACKERS_COUNT`  | `uint64(2**13)` (= 8,192)  | number of proposer trackers                    |
+| `VALIDATORS_PER_SHUFFLE`   | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step |
+| `MAX_SHUFFLE_PROOF_SIZE`   | `uint64(2**15)`            | max size of a shuffle proof                    |
+| `MAX_OPENING_PROOF_SIZE`   | `uint64(2**10)`            | max size of an opening proof                   |
 
 ## Configuration
 
-| Name                               | Value                      | Description                                                 |
-| ---------------------------------- | -------------------------- | ----------------------------------------------------------- |
-| `EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256)      | epochs per shuffling phase                                  |
-| `PROPOSER_SELECTION_GAP`     | `Epoch(2)`                 | gap between proposer selection and the block proposal phase |
+| Name                         | Value                 | Description                                                 |
+| ---------------------------- | --------------------- | ----------------------------------------------------------- |
+| `EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | epochs per shuffling phase                                  |
+| `PROPOSER_SELECTION_GAP`     | `Epoch(2)`            | gap between proposer selection and the block proposal phase |
 
 ## Cryptography
 
@@ -91,11 +86,11 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element % BLS_MODULUS)
 ```
 
-| Name                  | Value                                                                           |
-| --------------------- | ------------------------------------------------------------------------------- |
-| `BLS_G1_GENERATOR`    | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
-| `BLS_MODULUS`         | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
-| `CURDLEPROOFS_CRS`    | TBD |
+| Name               | Value                                                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `BLS_G1_GENERATOR` | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
+| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513`                                                  |
+| `CURDLEPROOFS_CRS` | TBD                                                                                                                              |
 
 ### Curdleproofs and opening proofs
 

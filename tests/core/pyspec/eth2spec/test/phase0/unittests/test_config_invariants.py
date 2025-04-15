@@ -4,7 +4,9 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import UINT64_MAX
 from eth2spec.test.helpers.forks import (
-    is_post_altair, is_post_bellatrix, is_post_electra,
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_electra,
 )
 
 
@@ -22,15 +24,15 @@ def test_validators(spec, state):
 
     # Note: can be less if you assume stricters bounds on validator set based on total ETH supply
     maximum_validators_per_committee = (
-        spec.VALIDATOR_REGISTRY_LIMIT
-        // spec.SLOTS_PER_EPOCH
-        // spec.MAX_COMMITTEES_PER_SLOT
+        spec.VALIDATOR_REGISTRY_LIMIT // spec.SLOTS_PER_EPOCH // spec.MAX_COMMITTEES_PER_SLOT
     )
     check_bound(spec.MAX_VALIDATORS_PER_COMMITTEE, 1, maximum_validators_per_committee)
     check_bound(spec.config.MIN_PER_EPOCH_CHURN_LIMIT, 1, spec.VALIDATOR_REGISTRY_LIMIT)
     check_bound(spec.config.CHURN_LIMIT_QUOTIENT, 1, spec.VALIDATOR_REGISTRY_LIMIT)
 
-    check_bound(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT, spec.TARGET_COMMITTEE_SIZE, UINT64_MAX)
+    check_bound(
+        spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT, spec.TARGET_COMMITTEE_SIZE, UINT64_MAX
+    )
 
 
 @with_all_phases
@@ -59,7 +61,9 @@ def test_incentives(spec, state):
     elif is_post_altair(spec):
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     elif is_post_electra(spec):
-        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
+        assert (
+            spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
+        )
     else:
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
 
@@ -81,7 +85,8 @@ def test_networking(spec, state):
         spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + spec.config.CHURN_LIMIT_QUOTIENT // 2
     )
     assert spec.config.ATTESTATION_SUBNET_PREFIX_BITS == (
-        spec.ceillog2(spec.config.ATTESTATION_SUBNET_COUNT) + spec.config.ATTESTATION_SUBNET_EXTRA_BITS
+        spec.ceillog2(spec.config.ATTESTATION_SUBNET_COUNT)
+        + spec.config.ATTESTATION_SUBNET_EXTRA_BITS
     )
     assert spec.config.SUBNETS_PER_NODE <= spec.config.ATTESTATION_SUBNET_COUNT
     node_id_length = spec.NodeID(1).type_byte_length()  # in bytes

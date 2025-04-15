@@ -1,10 +1,6 @@
 # Merkle proof formats
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Helper functions](#helper-functions)
 - [Generalized Merkle tree index](#generalized-merkle-tree-index)
@@ -18,8 +14,7 @@
     - [`generalized_index_parent`](#generalized_index_parent)
 - [Merkle multiproofs](#merkle-multiproofs)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Helper functions
 

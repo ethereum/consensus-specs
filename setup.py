@@ -11,7 +11,7 @@ from collections import OrderedDict
 from distutils import dir_util
 from distutils.util import convert_path
 from functools import lru_cache
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.block import Heading, FencedCode, HTMLBlock, BlankLine
 from marko.ext.gfm import gfm
 from marko.ext.gfm.elements import Table
 from marko.inline import CodeSpan
@@ -26,7 +26,6 @@ sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
     PHASE0,
-    ETH2_SPEC_COMMENT_PREFIX,
 )
 from pysetup.helpers import (
     combine_spec_objects,
@@ -147,17 +146,6 @@ ALL_CURDLEPROOFS_CRS = {
     'minimal': _load_curdleproofs_crs('minimal'),
     'mainnet': _load_curdleproofs_crs('mainnet'),
 }
-
-
-@lru_cache(maxsize=None)
-def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
-    title = child.title
-    if not (title[0] == "(" and title[len(title)-1] == ")"):
-        return None
-    title = title[1:len(title)-1]
-    if not title.startswith(ETH2_SPEC_COMMENT_PREFIX):
-        return None
-    return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
 
 
 @lru_cache(maxsize=None)
@@ -324,9 +312,8 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                         else:
                             constant_vars[name] = value_def
 
-        elif isinstance(child, LinkRefDef):
-            comment = _get_eth2_spec_comment(child)
-            if comment == "skip":
+        elif isinstance(child, HTMLBlock):
+            if child.body.strip() == "<!-- eth2spec: skip -->":
                 should_skip = True
 
     # Load KZG trusted setup from files

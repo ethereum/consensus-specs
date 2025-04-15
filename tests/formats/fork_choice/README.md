@@ -2,11 +2,7 @@
 
 The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Test case format](#test-case-format)
   - [`meta.yaml`](#metayaml)
@@ -24,8 +20,7 @@ The aim of the fork choice tests is to provide test coverage of the various comp
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Test case format
 
