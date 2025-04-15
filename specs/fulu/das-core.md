@@ -63,7 +63,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name                       | Value | Description                                                                       |
 | -------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `8`   | Number of `DataColumnSidecar` random samples a node queries per slot              |
+| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of custody groups an honest node samples from                      |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
@@ -196,7 +196,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 
 ## Custody sampling
 
-At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count)` custody groups, selected by `groups = get_custody_groups(node_id, sampling_size)`, to which correspond the columns `compute_columns_for_custody_group(group) for group in groups`. The custody groups to custody, selected by `get_custody_groups(node_id, custody_group_count)`, are then in particular  a subset of those to sample. Sampling is considered successful if the node manages to retrieve all selected columns.
+At each slot, a node advertising `custody_group_count` downloads a minimum of `sampling_size = max(SAMPLES_PER_SLOT, custody_group_count)` custody groups, selected by `groups = get_custody_groups(node_id, sampling_size)`, to which correspond the columns `compute_columns_for_custody_group(group) for group in groups`. The custody groups to custody, selected by `get_custody_groups(node_id, custody_group_count)`, are then in particular a subset of those to sample. Sampling is considered successful if the node manages to retrieve all selected columns.
 
 ## Extended data
 
