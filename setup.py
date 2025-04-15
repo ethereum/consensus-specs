@@ -11,7 +11,7 @@ from collections import OrderedDict
 from distutils import dir_util
 from distutils.util import convert_path
 from functools import lru_cache
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.block import Heading, FencedCode, HTMLBlock, BlankLine
 from marko.ext.gfm import gfm
 from marko.ext.gfm.elements import Table
 from marko.inline import CodeSpan
@@ -26,7 +26,6 @@ sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
     PHASE0,
-    ETH2_SPEC_COMMENT_PREFIX,
 )
 from pysetup.helpers import (
     combine_spec_objects,
@@ -150,17 +149,6 @@ ALL_CURDLEPROOFS_CRS = {
 
 
 @lru_cache(maxsize=None)
-def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
-    _, _, title = child._parse_info
-    if not (title[0] == "(" and title[len(title)-1] == ")"):
-        return None
-    title = title[1:len(title)-1]
-    if not title.startswith(ETH2_SPEC_COMMENT_PREFIX):
-        return None
-    return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
-
-
-@lru_cache(maxsize=None)
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -175,12 +163,33 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
     return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
 
 
-def _update_constant_vars_with_kzg_setups(constant_vars, preset_name):
+def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G1_MONOMIAL'].value, str(kzg_setups[0]), comment, None)
-    constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(constant_vars['KZG_SETUP_G1_LAGRANGE'].value, str(kzg_setups[1]), comment, None)
-    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(constant_vars['KZG_SETUP_G2_MONOMIAL'].value, str(kzg_setups[2]), comment, None)
+    preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(
+        preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'].value,
+        str(kzg_setups[0]),
+        comment, None
+    )
+    preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(
+        preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'].value,
+        str(kzg_setups[1]),
+        comment, None
+    )
+    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(
+        constant_vars['KZG_SETUP_G2_MONOMIAL'].value,
+        str(kzg_setups[2]),
+        comment, None
+    )
+
+
+def _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_constant_vars, preset_name):
+    comment = "noqa: E501"
+    constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
+        None,
+        'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
+        comment, None
+    )
 
 
 @lru_cache(maxsize=None)
@@ -192,13 +201,14 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
     constant_vars: Dict[str, VariableDefinition] = {}
+    preset_dep_constant_vars: Dict[str, VariableDefinition] = {}
     preset_vars: Dict[str, VariableDefinition] = {}
     config_vars: Dict[str, VariableDefinition] = {}
     ssz_dep_constants: Dict[str, str] = {}
     func_dep_presets: Dict[str, str] = {}
     ssz_objects: Dict[str, str] = {}
     dataclasses: Dict[str, str] = {}
-    custom_types: Dict[str, str] = {}
+    all_custom_types: Dict[str, str] = {}
 
     with open(file_name) as source_file:
         document = parse_markdown(source_file.read())
@@ -278,7 +288,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                     if not _is_constant_id(name):
                         # Check for short type declarations
                         if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
-                            custom_types[name] = value
+                            all_custom_types[name] = value
                         continue
 
                     if value.startswith("get_generalized_index"):
@@ -297,29 +307,37 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                         if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
                             # Deal with mypy Literal typing check
                             value_def = _parse_value(name, value, type_hint='Final')
-                        constant_vars[name] = value_def
+                        if any(k in value for k in preset) or any(k in value for k in preset_dep_constant_vars):
+                            preset_dep_constant_vars[name] = value_def
+                        else:
+                            constant_vars[name] = value_def
 
-        elif isinstance(child, LinkRefDef):
-            comment = _get_eth2_spec_comment(child)
-            if comment == "skip":
+        elif isinstance(child, HTMLBlock):
+            if child.body.strip() == "<!-- eth2spec: skip -->":
                 should_skip = True
 
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):
-        _update_constant_vars_with_kzg_setups(constant_vars, preset_name)
+        _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name)
 
     if any('CURDLEPROOFS_CRS' in name for name in constant_vars):
-        constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
-            None,
-            'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
-            "noqa: E501", None
-        )
+        _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_constant_vars, preset_name)
+
+    custom_types: Dict[str, str] = {}
+    preset_dep_custom_types: Dict[str, str] = {}
+    for name, value in all_custom_types.items():
+        if any(k in value for k in preset) or any(k in value for k in preset_dep_constant_vars):
+            preset_dep_custom_types[name] = value
+        else:
+            custom_types[name] = value
 
     return SpecObject(
         functions=functions,
         protocols=protocols,
         custom_types=custom_types,
+        preset_dep_custom_types=preset_dep_custom_types,
         constant_vars=constant_vars,
+        preset_dep_constant_vars=preset_dep_constant_vars,
         preset_vars=preset_vars,
         config_vars=config_vars,
         ssz_dep_constants=ssz_dep_constants,
@@ -332,7 +350,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 @lru_cache(maxsize=None)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
-    Loads the a directory of preset files, merges the result into one preset.
+    Loads a directory of preset files, merges the result into one preset.
     """
     preset = {}
     for fork_file in preset_files:
@@ -377,7 +395,10 @@ def build_spec(fork: str,
     new_objects = {}
     while OrderedDict(new_objects) != OrderedDict(class_objects):
         new_objects = copy.deepcopy(class_objects)
-        dependency_order_class_objects(class_objects, spec_object.custom_types)
+        dependency_order_class_objects(
+            class_objects,
+            spec_object.custom_types | spec_object.preset_dep_custom_types,
+        )
 
     return objects_to_spec(preset_name, spec_object, fork, class_objects)
 

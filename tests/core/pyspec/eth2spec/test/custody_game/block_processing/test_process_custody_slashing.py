@@ -19,7 +19,9 @@ from eth2spec.test.context import (
     disable_process_reveal_deadlines,
     with_presets,
 )
-from eth2spec.test.phase0.block_processing.test_process_attestation import run_attestation_processing
+from eth2spec.test.phase0.block_processing.test_process_attestation import (
+    run_attestation_processing,
+)
 
 
 def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, correct=True):
@@ -30,12 +32,12 @@ def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, c
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    yield 'pre', state
-    yield 'custody_slashing', custody_slashing
+    yield "pre", state
+    yield "custody_slashing", custody_slashing
 
     if not valid:
         expect_assertion_error(lambda: spec.process_custody_slashing(state, custody_slashing))
-        yield 'post', None
+        yield "post", None
         return
 
     if correct:
@@ -50,24 +52,28 @@ def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, c
         assert get_balance(state, custody_slashing.message.malefactor_index) < pre_slashed_balance
     else:
         slashed_validator = state.validators[custody_slashing.message.whistleblower_index]
-        assert get_balance(state, custody_slashing.message.whistleblower_index) < pre_slashed_balance
+        assert (
+            get_balance(state, custody_slashing.message.whistleblower_index) < pre_slashed_balance
+        )
 
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
 
-    yield 'post', state
+    yield "post", state
 
 
-def run_standard_custody_slashing_test(spec,
-                                       state,
-                                       shard_lateness=None,
-                                       shard=None,
-                                       validator_index=None,
-                                       block_lengths=None,
-                                       slashing_message_data=None,
-                                       correct=True,
-                                       valid=True):
+def run_standard_custody_slashing_test(
+    spec,
+    state,
+    shard_lateness=None,
+    shard=None,
+    validator_index=None,
+    block_lengths=None,
+    slashing_message_data=None,
+    correct=True,
+    valid=True,
+):
     transition_to(spec, state, state.slot + 1)  # Make len(offset_slots) == 1
     if shard_lateness is None:
         shard_lateness = spec.SLOTS_PER_EPOCH
@@ -96,17 +102,21 @@ def run_standard_custody_slashing_test(spec,
         slashable=correct,
     )
 
-    attestation = get_valid_attestation(spec, state, index=shard, signed=True,
-                                        shard_transition=shard_transition)
+    attestation = get_valid_attestation(
+        spec, state, index=shard, signed=True, shard_transition=shard_transition
+    )
 
     transition_to(spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1))
+    transition_to(
+        spec, state, state.slot + spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1)
+    )
 
-    slashing = get_valid_custody_slashing(spec, state, attestation, shard_transition,
-                                          custody_secret, slashable_test_vector)
+    slashing = get_valid_custody_slashing(
+        spec, state, attestation, shard_transition, custody_secret, slashable_test_vector
+    )
 
     if slashing_message_data is not None:
         slashing.message.data = slashing_message_data
@@ -135,7 +145,9 @@ def test_incorrect_custody_slashing(spec, state):
 @disable_process_reveal_deadlines
 @with_presets([MINIMAL], reason="too slow")
 def test_multiple_epochs_custody(spec, state):
-    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3)
+    yield from run_standard_custody_slashing_test(
+        spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 3
+    )
 
 
 @with_phases([CUSTODY_GAME])
@@ -143,7 +155,9 @@ def test_multiple_epochs_custody(spec, state):
 @disable_process_reveal_deadlines
 @with_presets([MINIMAL], reason="too slow")
 def test_many_epochs_custody(spec, state):
-    yield from run_standard_custody_slashing_test(spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5)
+    yield from run_standard_custody_slashing_test(
+        spec, state, shard_lateness=spec.SLOTS_PER_EPOCH * 5
+    )
 
 
 @with_phases([CUSTODY_GAME])

@@ -1,8 +1,16 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import (
+    spec_state_test,
+    expect_assertion_error,
+    always_bls,
+    with_all_phases,
+)
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing, check_proposer_slashing_effect
+from eth2spec.test.helpers.proposer_slashings import (
+    get_valid_proposer_slashing,
+    check_proposer_slashing_effect,
+)
 from eth2spec.test.helpers.state import next_epoch
 
 
@@ -17,16 +25,16 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
 
     pre_state = state.copy()
 
-    yield 'pre', state
-    yield 'proposer_slashing', proposer_slashing
+    yield "pre", state
+    yield "proposer_slashing", proposer_slashing
 
     if not valid:
         expect_assertion_error(lambda: spec.process_proposer_slashing(state, proposer_slashing))
-        yield 'post', None
+        yield "post", None
         return
 
     spec.process_proposer_slashing(state, proposer_slashing)
-    yield 'post', state
+    yield "post", state
 
     slashed_proposer_index = proposer_slashing.signed_header_1.message.proposer_index
     check_proposer_slashing_effect(spec, pre_state, state, slashed_proposer_index)
@@ -48,9 +56,9 @@ def test_slashed_and_proposer_index_the_same(spec, state):
     proposer_index = block.proposer_index
 
     # Create slashing for same proposer
-    proposer_slashing = get_valid_proposer_slashing(spec, state,
-                                                    slashed_index=proposer_index,
-                                                    signed_1=True, signed_2=True)
+    proposer_slashing = get_valid_proposer_slashing(
+        spec, state, slashed_index=proposer_index, signed_1=True, signed_2=True
+    )
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
 
@@ -58,7 +66,9 @@ def test_slashed_and_proposer_index_the_same(spec, state):
 @with_all_phases
 @spec_state_test
 def test_block_header_from_future(spec, state):
-    proposer_slashing = get_valid_proposer_slashing(spec, state, slot=state.slot + 5, signed_1=True, signed_2=True)
+    proposer_slashing = get_valid_proposer_slashing(
+        spec, state, slot=state.slot + 5, signed_1=True, signed_2=True
+    )
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
 
@@ -123,7 +133,9 @@ def test_invalid_different_proposer_indices(spec, state):
     active_indices = [i for i in active_indices if i != header_1.proposer_index]
 
     header_2.proposer_index = active_indices[0]
-    proposer_slashing.signed_header_2 = sign_block_header(spec, state, header_2, privkeys[header_2.proposer_index])
+    proposer_slashing.signed_header_2 = sign_block_header(
+        spec, state, header_2, privkeys[header_2.proposer_index]
+    )
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, valid=False)
 
@@ -137,7 +149,9 @@ def test_invalid_slots_of_different_epochs(spec, state):
     header_2 = proposer_slashing.signed_header_2.message
     proposer_index = header_2.proposer_index
     header_2.slot += spec.SLOTS_PER_EPOCH
-    proposer_slashing.signed_header_2 = sign_block_header(spec, state, header_2, privkeys[proposer_index])
+    proposer_slashing.signed_header_2 = sign_block_header(
+        spec, state, header_2, privkeys[proposer_index]
+    )
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, valid=False)
 
@@ -161,9 +175,13 @@ def test_invalid_headers_are_same_sigs_are_different(spec, state):
     # set headers to be the same
     proposer_slashing.signed_header_2 = proposer_slashing.signed_header_1.copy()
     # but signatures to be different
-    proposer_slashing.signed_header_2.signature = proposer_slashing.signed_header_2.signature[:-1] + b'\x00'
+    proposer_slashing.signed_header_2.signature = (
+        proposer_slashing.signed_header_2.signature[:-1] + b"\x00"
+    )
 
-    assert proposer_slashing.signed_header_1.signature != proposer_slashing.signed_header_2.signature
+    assert (
+        proposer_slashing.signed_header_1.signature != proposer_slashing.signed_header_2.signature
+    )
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, valid=False)
 

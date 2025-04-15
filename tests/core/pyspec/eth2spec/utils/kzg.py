@@ -22,7 +22,9 @@ from eth2spec.utils.bls import (
 PRIMITIVE_ROOT_OF_UNITY = 7
 
 
-def generate_setup(generator: Optimized_Point3D, secret: int, length: int) -> Tuple[Optimized_Point3D]:
+def generate_setup(
+    generator: Optimized_Point3D, secret: int, length: int
+) -> Tuple[Optimized_Point3D]:
     """
     Generate trusted setup of ``generator`` in ``length``.
     """
@@ -32,7 +34,9 @@ def generate_setup(generator: Optimized_Point3D, secret: int, length: int) -> Tu
     return tuple(result)
 
 
-def fft(vals: Sequence[Optimized_Point3D], modulus: int, domain: int) -> Sequence[Optimized_Point3D]:
+def fft(
+    vals: Sequence[Optimized_Point3D], modulus: int, domain: int
+) -> Sequence[Optimized_Point3D]:
     """
     FFT for group elements
     """
@@ -83,10 +87,14 @@ def get_lagrange(setup: Sequence[Optimized_Point3D]) -> Tuple[bytes]:
     # TODO: introduce an IFFT function for simplicity
     fft_output = fft(setup, BLS_MODULUS, domain)
     inv_length = pow(len(setup), BLS_MODULUS - 2, BLS_MODULUS)
-    return tuple(bls.G1_to_bytes48(bls.multiply(fft_output[-i], inv_length)) for i in range(len(fft_output)))
+    return tuple(
+        bls.G1_to_bytes48(bls.multiply(fft_output[-i], inv_length)) for i in range(len(fft_output))
+    )
 
 
-def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, output_dir: str) -> None:
+def dump_kzg_trusted_setup_files(
+    secret: int, g1_length: int, g2_length: int, output_dir: str
+) -> None:
     bls.use_fastest()
 
     setup_g1 = generate_setup(bls.G1(), secret, g1_length)
@@ -94,7 +102,7 @@ def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, ou
     setup_g1_lagrange = get_lagrange(setup_g1)
     roots_of_unity = compute_roots_of_unity(g1_length)
 
-    serailized_setup_g1 = [encode_hex(bls.G1_to_bytes48(p)) for p in setup_g1]
+    serialized_setup_g1 = [encode_hex(bls.G1_to_bytes48(p)) for p in setup_g1]
     serialized_setup_g2 = [encode_hex(bls.G2_to_bytes96(p)) for p in setup_g2]
     serialized_setup_g1_lagrange = [encode_hex(x) for x in setup_g1_lagrange]
 
@@ -104,15 +112,17 @@ def dump_kzg_trusted_setup_files(secret: int, g1_length: int, g2_length: int, ou
         os.makedirs(output_dir_path)
         print("Created directory: ", output_dir_path)
 
-    file_path = output_dir_path / 'testing_trusted_setups.json'
+    file_path = output_dir_path / "testing_trusted_setups.json"
 
-    with open(file_path, 'w+') as f:
+    with open(file_path, "w+") as f:
         json.dump(
             {
-                "setup_G1": serailized_setup_g1,
+                "setup_G1": serialized_setup_g1,
                 "setup_G2": serialized_setup_g2,
                 "setup_G1_lagrange": serialized_setup_g1_lagrange,
                 "roots_of_unity": roots_of_unity,
-            }, f)
+            },
+            f,
+        )
 
-    print(f'Generated trusted setup file: {file_path}\n')
+    print(f"Generated trusted setup file: {file_path}\n")

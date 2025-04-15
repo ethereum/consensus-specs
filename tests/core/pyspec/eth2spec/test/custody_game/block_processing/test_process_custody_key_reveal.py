@@ -16,27 +16,29 @@ def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=Tru
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    yield 'pre', state
-    yield 'custody_key_reveal', custody_key_reveal
+    yield "pre", state
+    yield "custody_key_reveal", custody_key_reveal
 
     if not valid:
         expect_assertion_error(lambda: spec.process_custody_key_reveal(state, custody_key_reveal))
-        yield 'post', None
+        yield "post", None
         return
 
     revealer_index = custody_key_reveal.revealer_index
 
-    pre_next_custody_secret_to_reveal = \
-        state.validators[revealer_index].next_custody_secret_to_reveal
+    pre_next_custody_secret_to_reveal = state.validators[
+        revealer_index
+    ].next_custody_secret_to_reveal
 
     spec.process_custody_key_reveal(state, custody_key_reveal)
 
-    post_next_custody_secret_to_reveal = \
-        state.validators[revealer_index].next_custody_secret_to_reveal
+    post_next_custody_secret_to_reveal = state.validators[
+        revealer_index
+    ].next_custody_secret_to_reveal
 
     assert post_next_custody_secret_to_reveal == pre_next_custody_secret_to_reveal + 1
 
-    yield 'post', state
+    yield "post", state
 
 
 @with_phases([CUSTODY_GAME])

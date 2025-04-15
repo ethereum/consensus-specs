@@ -2,17 +2,31 @@ from typing import NamedTuple, Sequence, Any
 
 from eth_utils import encode_hex
 from eth2spec.test.exceptions import BlockNotFoundException
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+from eth2spec.test.helpers.state import (
+    payload_state_transition,
+    payload_state_transition_no_store,
+)
+
+
+def check_head_against_root(spec, store, root):
+    head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        assert head.root == root
+    else:
+        assert head == root
 
 
 class BlobData(NamedTuple):
     """
     The return values of ``retrieve_blobs_and_proofs`` helper.
     """
+
     blobs: Sequence[Any]
     proofs: Sequence[bytes]
 
@@ -22,14 +36,16 @@ def with_blob_data(spec, blob_data, func):
     This helper runs the given ``func`` with monkeypatched ``retrieve_blobs_and_proofs``
     that returns ``blob_data.blobs, blob_data.proofs``.
     """
+
     def retrieve_blobs_and_proofs(beacon_block_root):
         return blob_data.blobs, blob_data.proofs
 
     retrieve_blobs_and_proofs_backup = spec.retrieve_blobs_and_proofs
     spec.retrieve_blobs_and_proofs = retrieve_blobs_and_proofs
 
-    class AtomicBoolean():
+    class AtomicBoolean:
         value = False
+
     is_called = AtomicBoolean()
 
     def wrap(flag: AtomicBoolean):
@@ -50,20 +66,34 @@ def get_anchor_root(spec, state):
     return spec.hash_tree_root(anchor_block_header)
 
 
-def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
-                       merge_block=False, block_not_found=False, is_optimistic=False,
-                       blob_data=None):
-    pre_state = store.block_states[signed_block.message.parent_root]
+def tick_and_add_block(
+    spec,
+    store,
+    signed_block,
+    test_steps,
+    valid=True,
+    merge_block=False,
+    block_not_found=False,
+    is_optimistic=False,
+    blob_data=None,
+):
+    pre_state = get_store_full_state(spec, store, signed_block.message.parent_root)
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
     block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
     while store.time < block_time:
-        time = pre_state.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
+        time = (
+            pre_state.genesis_time
+            + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
+        )
         on_tick_and_append_step(spec, store, time, test_steps)
 
     post_state = yield from add_block(
-        spec, store, signed_block, test_steps,
+        spec,
+        store,
+        signed_block,
+        test_steps,
         valid=valid,
         block_not_found=block_not_found,
         is_optimistic=is_optimistic,
@@ -75,7 +105,9 @@ def tick_and_add_block(spec, store, signed_block, test_steps, valid=True,
 
 def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data, valid=True):
     def run_func():
-        yield from tick_and_add_block(spec, store, signed_block, test_steps, blob_data=blob_data, valid=valid)
+        yield from tick_and_add_block(
+            spec, store, signed_block, test_steps, blob_data=blob_data, valid=valid
+        )
 
     yield from with_blob_data(spec, blob_data, run_func)
 
@@ -83,12 +115,14 @@ def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_dat
 def add_attestation(spec, store, attestation, test_steps, is_from_block=False):
     spec.on_attestation(store, attestation, is_from_block=is_from_block)
     yield get_attestation_file_name(attestation), attestation
-    test_steps.append({'attestation': get_attestation_file_name(attestation)})
+    test_steps.append({"attestation": get_attestation_file_name(attestation)})
 
 
 def add_attestations(spec, store, attestations, test_steps, is_from_block=False):
     for attestation in attestations:
-        yield from add_attestation(spec, store, attestation, test_steps, is_from_block=is_from_block)
+        yield from add_attestation(
+            spec, store, attestation, test_steps, is_from_block=is_from_block
+        )
 
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
@@ -96,7 +130,7 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
     min_time_to_include = (attestation.data.slot + 1) * spec.config.SECONDS_PER_SLOT
     if store.time < min_time_to_include:
         spec.on_tick(store, min_time_to_include)
-        test_steps.append({'tick': int(min_time_to_include)})
+        test_steps.append({"tick": int(min_time_to_include)})
 
     yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
@@ -121,7 +155,14 @@ def get_genesis_forkchoice_store(spec, genesis_state):
 def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    return spec.get_forkchoice_store(genesis_state, genesis_block), genesis_block
+    if is_post_eip7732(spec):
+        genesis_block.body.signed_execution_payload_header.message.block_hash = (
+            genesis_state.latest_block_hash
+        )
+    store = spec.get_forkchoice_store(genesis_state, genesis_block)
+    if is_post_eip7732(spec):
+        store.execution_payload_states = store.block_states.copy()
+    return store, genesis_block
 
 
 def get_block_file_name(block):
@@ -146,7 +187,7 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
 def on_tick_and_append_step(spec, store, time, test_steps):
     assert time >= store.time
     spec.on_tick(store, time)
-    test_steps.append({'tick': int(time)})
+    test_steps.append({"tick": int(time)})
     output_store_checks(spec, store, test_steps)
 
 
@@ -160,17 +201,26 @@ def run_on_block(spec, store, signed_block, valid=True):
             assert False
 
     spec.on_block(store, signed_block)
-    assert store.blocks[signed_block.message.hash_tree_root()] == signed_block.message
+    root = signed_block.message.hash_tree_root()
+    assert store.blocks[root] == signed_block.message
 
 
-def add_block(spec,
-              store,
-              signed_block,
-              test_steps,
-              valid=True,
-              block_not_found=False,
-              is_optimistic=False,
-              blob_data=None):
+def get_store_full_state(spec, store, root):
+    if is_post_eip7732(spec):
+        return store.execution_payload_states[root]
+    return store.block_states[root]
+
+
+def add_block(
+    spec,
+    store,
+    signed_block,
+    test_steps,
+    valid=True,
+    block_not_found=False,
+    is_optimistic=False,
+    blob_data=None,
+):
     """
     Run on_block and on_attestation
     """
@@ -186,17 +236,21 @@ def add_block(spec,
 
     def _append_step(is_blob_data_test, valid=True):
         if is_blob_data_test:
-            test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'blobs': get_blobs_file_name(blobs_root=blobs_root),
-                'proofs': [encode_hex(proof) for proof in blob_data.proofs],
-                'valid': valid,
-            })
+            test_steps.append(
+                {
+                    "block": get_block_file_name(signed_block),
+                    "blobs": get_blobs_file_name(blobs_root=blobs_root),
+                    "proofs": [encode_hex(proof) for proof in blob_data.proofs],
+                    "valid": valid,
+                }
+            )
         else:
-            test_steps.append({
-                'block': get_block_file_name(signed_block),
-                'valid': valid,
-            })
+            test_steps.append(
+                {
+                    "block": get_block_file_name(signed_block),
+                    "valid": valid,
+                }
+            )
 
     if not valid:
         if is_optimistic:
@@ -253,95 +307,114 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
         try:
             run_on_attester_slashing(spec, store, attester_slashing)
         except AssertionError:
-            test_steps.append({
-                'attester_slashing': slashing_file_name,
-                'valid': False,
-            })
+            test_steps.append(
+                {
+                    "attester_slashing": slashing_file_name,
+                    "valid": False,
+                }
+            )
             return
         else:
             assert False
 
     run_on_attester_slashing(spec, store, attester_slashing)
-    test_steps.append({'attester_slashing': slashing_file_name})
+    test_steps.append({"attester_slashing": slashing_file_name})
 
 
 def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
+    if is_post_eip7732(spec):
+        return {
+            "slot": int(head.slot),
+            "root": encode_hex(head.root),
+        }
+
     slot = store.blocks[head].slot
     return {
-        'slot': int(slot),
-        'root': encode_hex(head),
+        "slot": int(slot),
+        "root": encode_hex(head),
     }
 
 
 def output_head_check(spec, store, test_steps):
-    test_steps.append({
-        'checks': {
-            'head': get_formatted_head_output(spec, store),
+    test_steps.append(
+        {
+            "checks": {
+                "head": get_formatted_head_output(spec, store),
+            }
         }
-    })
+    )
 
 
 def output_store_checks(spec, store, test_steps):
-    test_steps.append({
-        'checks': {
-            'time': int(store.time),
-            'head': get_formatted_head_output(spec, store),
-            'justified_checkpoint': {
-                'epoch': int(store.justified_checkpoint.epoch),
-                'root': encode_hex(store.justified_checkpoint.root),
-            },
-            'finalized_checkpoint': {
-                'epoch': int(store.finalized_checkpoint.epoch),
-                'root': encode_hex(store.finalized_checkpoint.root),
-            },
-            'proposer_boost_root': encode_hex(store.proposer_boost_root),
+    test_steps.append(
+        {
+            "checks": {
+                "time": int(store.time),
+                "head": get_formatted_head_output(spec, store),
+                "justified_checkpoint": {
+                    "epoch": int(store.justified_checkpoint.epoch),
+                    "root": encode_hex(store.justified_checkpoint.root),
+                },
+                "finalized_checkpoint": {
+                    "epoch": int(store.finalized_checkpoint.epoch),
+                    "root": encode_hex(store.finalized_checkpoint.root),
+                },
+                "proposer_boost_root": encode_hex(store.proposer_boost_root),
+            }
         }
-    })
+    )
 
 
-def apply_next_epoch_with_attestations(spec,
-                                       state,
-                                       store,
-                                       fill_cur_epoch,
-                                       fill_prev_epoch,
-                                       participation_fn=None,
-                                       test_steps=None):
+def apply_next_epoch_with_attestations(
+    spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None
+):
     if test_steps is None:
         test_steps = []
 
     _, new_signed_blocks, post_state = next_epoch_with_attestations(
-        spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
+        spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn
+    )
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    if is_post_eip7732(spec):
+        assert (
+            store.execution_payload_states[block_root].hash_tree_root()
+            == post_state.hash_tree_root()
+        )
+    else:
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
 
-def apply_next_slots_with_attestations(spec,
-                                       state,
-                                       store,
-                                       slots,
-                                       fill_cur_epoch,
-                                       fill_prev_epoch,
-                                       test_steps,
-                                       participation_fn=None):
+def apply_next_slots_with_attestations(
+    spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=None
+):
     _, new_signed_blocks, post_state = next_slots_with_attestations(
-        spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn)
+        spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn
+    )
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    if is_post_eip7732(spec):
+        assert (
+            store.execution_payload_states[block_root].hash_tree_root()
+            == post_state.hash_tree_root()
+        )
+    else:
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -355,11 +428,7 @@ def is_ready_to_justify(spec, state):
     return temp_state.current_justified_checkpoint.epoch > state.current_justified_checkpoint.epoch
 
 
-def find_next_justifying_slot(spec,
-                              state,
-                              fill_cur_epoch,
-                              fill_prev_epoch,
-                              participation_fn=None):
+def find_next_justifying_slot(spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None):
     temp_state = state.copy()
 
     signed_blocks = []
@@ -373,6 +442,8 @@ def find_next_justifying_slot(spec,
             participation_fn,
         )
         signed_blocks.append(signed_block)
+        payload_state_transition_no_store(spec, temp_state, signed_block.message)
+
         if is_ready_to_justify(spec, temp_state):
             justifying_slot = temp_state.slot
 
@@ -385,4 +456,4 @@ def get_pow_block_file_name(pow_block):
 
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
-    test_steps.append({'pow_block': get_pow_block_file_name(pow_block)})
+    test_steps.append({"pow_block": get_pow_block_file_name(pow_block)})

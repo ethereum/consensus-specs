@@ -1,12 +1,8 @@
 # EIP-7732 -- Fork Choice
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -35,9 +31,9 @@
   - [`seconds_into_slot`](#seconds_into_slot)
   - [Modified `on_tick_per_slot`](#modified-on_tick_per_slot)
   - [`on_payload_attestation_message`](#on_payload_attestation_message)
+  - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -45,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE / 2` (=`uint64(256)`) |
-| `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
-| `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST` | `40` |
-| `PAYLOAD_REVEAL_BOOST` | `40` |
+| Name                       | Value                         |
+| -------------------------- | ----------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256)       |
+| `INTERVALS_PER_SLOT`       | `4` # [modified in EIP-7732]  |
+| `PROPOSER_SCORE_BOOST`     | `20` # [modified in EIP-7732] |
+| `PAYLOAD_WITHHOLD_BOOST`   | `40`                          |
+| `PAYLOAD_REVEAL_BOOST`     | `40`                          |
 
 ## Containers
 
@@ -70,7 +66,7 @@ class ChildNode(Container):
 
 ### Modified `LatestMessage`
 
-**Note:** The class is modified to keep track of the slot instead of the epoch.
+*Note*: The class is modified to keep track of the slot instead of the epoch.
 
 ```python
 @dataclass(eq=True, frozen=True)
@@ -81,7 +77,7 @@ class LatestMessage(object):
 
 ### Modified `update_latest_messages`
 
-**Note:** the function `update_latest_messages` is updated to use the attestation slot instead of target. Notice that this function is only called on validated attestations and validators cannot attest twice in the same epoch without equivocating. Notice also that target epoch number and slot number are validated on `validate_on_attestation`.
+*Note*: the function `update_latest_messages` is updated to use the attestation slot instead of target. Notice that this function is only called on validated attestations and validators cannot attest twice in the same epoch without equivocating. Notice also that target epoch number and slot number are validated on `validate_on_attestation`.
 
 ```python
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
@@ -95,7 +91,7 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 
 ### Modified `Store`
 
-**Note:** `Store` is modified to track the intermediate states of "empty" consensus blocks, that is, those consensus blocks for which the corresponding execution payload has not been revealed or has not been included on chain.
+*Note*: `Store` is modified to track the intermediate states of "empty" consensus blocks, that is, those consensus blocks for which the corresponding execution payload has not been revealed or has not been included on chain.
 
 ```python
 @dataclass
@@ -201,7 +197,7 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
 
 ### Modified `get_ancestor`
 
-**Note:** `get_ancestor` is modified to return whether the chain is based on an *empty* or *full* block.
+*Note*: `get_ancestor` is modified to return whether the chain is based on an *empty* or *full* block.
 
 ```python
 def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
@@ -222,7 +218,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
 
 ### Modified `get_checkpoint_block`
 
-**Note:** `get_checkpoint_block` is modified to use the new `get_ancestor`
+*Note*: `get_checkpoint_block` is modified to use the new `get_ancestor`
 
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
@@ -314,7 +310,7 @@ def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> G
 
 ### Modified `get_weight`
 
-**Note:** `get_weight` is modified to only count votes for descending chains that support the status of a triple `Root, Slot, bool`, where the `bool` indicates if the block was full or not. `Slot` is needed for a correct implementation of `(Block, Slot)` voting.
+*Note*: `get_weight` is modified to only count votes for descending chains that support the status of a triple `Root, Slot, bool`, where the `bool` indicates if the block was full or not. `Slot` is needed for a correct implementation of `(Block, Slot)` voting.
 
 ```python
 def get_weight(store: Store, node: ChildNode) -> Gwei:
@@ -340,7 +336,7 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
 ### Modified `get_head`
 
-**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponidng to the head block.
+*Note*: `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ChildNode:
@@ -572,4 +568,36 @@ def on_payload_attestation_message(
         block = store.blocks[data.beacon_block_root]
         store.payload_withhold_boost_root = block.parent_root
         store.payload_withhold_boost_full = is_parent_node_full(store, block)
+```
+
+### Modified `validate_merge_block`
+
+The function `validate_merge_block` is modified for test purposes
+
+```python
+def validate_merge_block(block: BeaconBlock) -> None:
+    """
+    Check the parent PoW block of execution payload is a valid terminal PoW block.
+
+    Note: Unavailable PoW block(s) may later become available,
+    and a client software MAY delay a call to ``validate_merge_block``
+    until the PoW block(s) become available.
+    """
+    if TERMINAL_BLOCK_HASH != Hash32():
+        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
+        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
+        return
+
+    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
+    # Check if `pow_block` is available
+    assert pow_block is not None
+    pow_parent = get_pow_block(pow_block.parent_hash)
+    # Check if `pow_parent` is available
+    assert pow_parent is not None
+    # Check if `pow_block` is a valid terminal PoW block
+    assert is_valid_terminal_pow_block(pow_block, pow_parent)
+
+
+
 ```

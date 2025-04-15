@@ -1,0 +1,16 @@
+# Mainnet preset - EIP7441
+
+# Misc
+# ---------------------------------------------------------------
+# `uint64(4)`
+CURDLEPROOFS_N_BLINDERS: 4
+# `uint64(2**14)`
+CANDIDATE_TRACKERS_COUNT: 16384
+# `uint64(2**13)` must be < CANDIDATE_TRACKERS_COUNT
+PROPOSER_TRACKERS_COUNT: 8192
+# `uint64(2**7 - CURDLEPROOFS_N_BLINDERS)`
+VALIDATORS_PER_SHUFFLE: 124
+# `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
+MAX_SHUFFLE_PROOF_SIZE: 32768
+# `uint64(2**10)` TODO: will be replaced by a fix format once there's a serialized format
+MAX_OPENING_PROOF_SIZE: 1024

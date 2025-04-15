@@ -16,17 +16,15 @@ from eth2spec.test.helpers.forks import (
 )
 
 
-def get_execution_payload_header(spec, execution_payload):
+def get_execution_payload_header(spec, state, execution_payload):
     if is_post_eip7732(spec):
         return spec.ExecutionPayloadHeader(
             parent_block_hash=execution_payload.parent_hash,
-            parent_block_root=spec.Root(),  # TODO: Fix this
+            parent_block_root=state.latest_block_header.hash_tree_root(),
             block_hash=execution_payload.block_hash,
             gas_limit=execution_payload.gas_limit,
-            builder_index=spec.ValidatorIndex(0),  # TODO: Fix this
-            slot=spec.Slot(0),  # TODO: Fix this
-            value=spec.Gwei(0),  # TODO: Fix this
-            blob_kzg_commitments_root=spec.Root()  # TODO: Fix this
+            slot=state.slot,
+            blob_kzg_commitments_root=state.latest_execution_payload_header.blob_kzg_commitments_root,
         )
 
     payload_header = spec.ExecutionPayloadHeader(
@@ -43,7 +41,7 @@ def get_execution_payload_header(spec, execution_payload):
         extra_data=execution_payload.extra_data,
         base_fee_per_gas=execution_payload.base_fee_per_gas,
         block_hash=execution_payload.block_hash,
-        transactions_root=spec.hash_tree_root(execution_payload.transactions)
+        transactions_root=spec.hash_tree_root(execution_payload.transactions),
     )
     if is_post_capella(spec):
         payload_header.withdrawals_root = spec.hash_tree_root(execution_payload.withdrawals)
@@ -76,12 +74,14 @@ def compute_requests_hash(block_requests):
 
 # https://eips.ethereum.org/EIPS/eip-4895
 # https://eips.ethereum.org/EIPS/eip-4844
-def compute_el_header_block_hash(spec,
-                                 payload_header,
-                                 transactions_trie_root,
-                                 withdrawals_trie_root=None,
-                                 parent_beacon_block_root=None,
-                                 requests_hash=None):
+def compute_el_header_block_hash(
+    spec,
+    payload_header,
+    transactions_trie_root,
+    withdrawals_trie_root=None,
+    parent_beacon_block_root=None,
+    requests_hash=None,
+):
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
@@ -92,7 +92,10 @@ def compute_el_header_block_hash(spec,
         # parent_hash
         (Binary(32, 32), payload_header.parent_hash),
         # ommers_hash
-        (Binary(32, 32), bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
+        (
+            Binary(32, 32),
+            bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+        ),
         # coinbase
         (Binary(20, 20), payload_header.fee_recipient),
         # state_root
@@ -224,7 +227,7 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
 
-    payload_header = get_execution_payload_header(spec, payload)
+    payload_header = get_execution_payload_header(spec, spec.BeaconState(), payload)
 
     return compute_el_header_block_hash(
         spec,
@@ -249,7 +252,8 @@ def compute_el_block_hash(spec, payload, pre_state):
         requests_hash = compute_requests_hash([])
 
     return compute_el_block_hash_with_new_fields(
-        spec, payload, parent_beacon_block_root, requests_hash)
+        spec, payload, parent_beacon_block_root, requests_hash
+    )
 
 
 def compute_el_block_hash_for_block(spec, block):
@@ -260,22 +264,30 @@ def compute_el_block_hash_for_block(spec, block):
         requests_hash = compute_requests_hash(requests_list)
 
     return compute_el_block_hash_with_new_fields(
-        spec, block.body.execution_payload, block.parent_root, requests_hash)
+        spec, block.body.execution_payload, block.parent_root, requests_hash
+    )
 
 
 def build_empty_post_eip7732_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
+    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    epoch = spec.get_current_epoch(state)
+    builder_index = None
+    for index in spec.get_active_validator_indices(state, epoch):
+        if not state.validators[index].slashed:
+            builder_index = index
+    assert builder_index is not None
     return spec.ExecutionPayloadHeader(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
         block_hash=spec.Hash32(),
         gas_limit=spec.uint64(0),
-        builder_index=spec.ValidatorIndex(0),
+        builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=spec.Root()
+        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
     )
 
 
@@ -283,7 +295,7 @@ def build_empty_signed_execution_payload_header(spec, state):
     if not is_post_eip7732(spec):
         return
     message = build_empty_post_eip7732_execution_payload_header(spec, state)
-    privkey = privkeys[0]
+    privkey = privkeys[message.builder_index]
     signature = spec.get_execution_payload_header_signature(state, message, privkey)
     return spec.SignedExecutionPayloadHeader(
         message=message,
@@ -305,10 +317,15 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     payload = spec.ExecutionPayload(
         parent_hash=latest.block_hash,
         fee_recipient=spec.ExecutionAddress(),
-        receipts_root=spec.Bytes32(bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")),
-        logs_bloom=spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](),  # TODO: zeroed logs bloom for empty logs ok?
+        receipts_root=spec.Bytes32(
+            bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
+        ),
+        logs_bloom=spec.ByteVector[
+            spec.BYTES_PER_LOGS_BLOOM
+        ](),  # TODO: zeroed logs bloom for empty logs ok?
         prev_randao=randao_mix,
         gas_used=0,  # empty block, 0 gas
+        gas_limit=latest.gas_limit,
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
         transactions=empty_txs,
@@ -347,10 +364,7 @@ def build_randomized_execution_payload(spec, state, rng):
     execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
 
     num_transactions = rng.randint(0, 100)
-    execution_payload.transactions = [
-        get_random_tx(rng)
-        for _ in range(num_transactions)
-    ]
+    execution_payload.transactions = [get_random_tx(rng) for _ in range(num_transactions)]
 
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
@@ -358,7 +372,12 @@ def build_randomized_execution_payload(spec, state, rng):
 
 
 def build_state_with_incomplete_transition(spec, state):
-    state = build_state_with_execution_payload_header(spec, state, spec.ExecutionPayloadHeader())
+    header = spec.ExecutionPayloadHeader()
+    if is_post_eip7732(spec):
+        kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    state = build_state_with_execution_payload_header(spec, state, header)
     assert not spec.is_merge_transition_complete(state)
 
     return state
@@ -366,7 +385,7 @@ def build_state_with_incomplete_transition(spec, state):
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
-    payload_header = get_execution_payload_header(spec, pre_state_payload)
+    payload_header = get_execution_payload_header(spec, state, pre_state_payload)
 
     state = build_state_with_execution_payload_header(spec, state, payload_header)
     assert spec.is_merge_transition_complete(state)
@@ -377,7 +396,6 @@ def build_state_with_complete_transition(spec, state):
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):
     pre_state = state.copy()
     pre_state.latest_execution_payload_header = execution_payload_header
-
     return pre_state
 
 

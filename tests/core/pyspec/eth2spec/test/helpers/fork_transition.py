@@ -33,6 +33,7 @@ from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
     is_post_bellatrix,
     is_post_electra,
+    is_post_eip7732,
 )
 from eth2spec.test.helpers.state import (
     next_slot,
@@ -48,6 +49,10 @@ from eth2spec.test.helpers.withdrawals import (
 from eth2spec.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash,
+)
 
 
 class OperationType(Enum):
@@ -61,21 +66,24 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-def _set_operations_by_dict(spec, block, operation_dict):
+# TODO(jtraglia): Pretty sure this doesn't play well with eip7732. Needs some work.
+def _set_operations_by_dict(spec, block, operation_dict, state):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
         obj = block.body
-        for attr in key.split('.')[:-1]:
+        for attr in key.split(".")[:-1]:
             obj = getattr(obj, attr)
-        setattr(obj, key.split('.')[-1], value)
-    if is_post_bellatrix(spec):
+        setattr(obj, key.split(".")[-1], value)
+    if is_post_eip7732(spec):
+        payload = build_empty_execution_payload(spec, state)
+        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+            spec, payload, state
+        )
+    elif is_post_bellatrix(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
 
-def _state_transition_and_sign_block_at_slot(spec,
-                                             state,
-                                             sync_aggregate=None,
-                                             operation_dict=None):
+def _state_transition_and_sign_block_at_slot(spec, state, sync_aggregate=None, operation_dict=None):
     """
     Cribbed from ``transition_unsigned_block`` helper
     where the early parts of the state transition have already
@@ -93,7 +101,7 @@ def _state_transition_and_sign_block_at_slot(spec,
         block.body.sync_aggregate = sync_aggregate
 
     if operation_dict:
-        _set_operations_by_dict(spec, block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict, state)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -111,8 +119,10 @@ def skip_slots(*slots):
     Skip making a block if its slot is
     passed as an argument to this filter
     """
+
     def f(state_at_prior_slot):
         return state_at_prior_slot.slot + 1 not in slots
+
     return f
 
 
@@ -124,8 +134,10 @@ def only_at(slot):
     """
     Only produce a block if its slot is ``slot``.
     """
+
     def f(state_at_prior_slot):
         return state_at_prior_slot.slot + 1 == slot
+
     return f
 
 
@@ -141,11 +153,9 @@ def state_transition_across_slots(spec, state, to_slot, block_filter=_all_blocks
             next_slot(spec, state)
 
 
-def state_transition_across_slots_with_ignoring_proposers(spec,
-                                                          state,
-                                                          to_slot,
-                                                          ignoring_proposers,
-                                                          only_last_block=False):
+def state_transition_across_slots_with_ignoring_proposers(
+    spec, state, to_slot, ignoring_proposers, only_last_block=False
+):
     """
     The slashed validators can't be proposers. Here we ignore the given `ignoring_proposers`
     and ensure that the result state was computed with a block with slot >= to_slot.
@@ -183,7 +193,9 @@ def get_upgrade_fn(spec, fork):
         raise ValueError(f"Unknown fork: {fork}")
 
 
-def do_fork(state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None):
+def do_fork(
+    state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None
+):
     spec.process_slots(state, state.slot + 1)
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
@@ -224,7 +236,9 @@ def _transition_until_fork_minus_one(spec, state, fork_epoch):
     transition_to(spec, state, to_slot)
 
 
-def transition_across_forks(spec, state, to_slot, phases=None, with_block=False, sync_aggregate=None):
+def transition_across_forks(
+    spec, state, to_slot, phases=None, with_block=False, sync_aggregate=None
+):
     assert to_slot > state.slot
     state = state.copy()
     block = None
@@ -237,14 +251,17 @@ def transition_across_forks(spec, state, to_slot, phases=None, with_block=False,
             if with_block and (to_slot == state.slot + 1):
                 transition_to(spec, state, to_slot - 1)
                 block = state_transition_with_full_block(
-                    spec, state, True, True,
-                    sync_aggregate=sync_aggregate)
+                    spec, state, True, True, sync_aggregate=sync_aggregate
+                )
             else:
                 transition_to(spec, state, to_slot)
         else:
             transition_until_fork(spec, state, fork_epoch)
             state, block = do_fork(
-                state, spec, post_spec, fork_epoch,
+                state,
+                spec,
+                post_spec,
+                fork_epoch,
                 with_block=with_block and (to_slot == state.slot + 1),
                 sync_aggregate=sync_aggregate,
             )
@@ -252,12 +269,9 @@ def transition_across_forks(spec, state, to_slot, phases=None, with_block=False,
     return spec, state, block
 
 
-def transition_to_next_epoch_and_append_blocks(spec,
-                                               state,
-                                               post_tag,
-                                               blocks,
-                                               only_last_block=False,
-                                               ignoring_proposers=None):
+def transition_to_next_epoch_and_append_blocks(
+    spec, state, post_tag, blocks, only_last_block=False, ignoring_proposers=None
+):
     to_slot = spec.SLOTS_PER_EPOCH + state.slot
 
     if only_last_block:
@@ -266,7 +280,9 @@ def transition_to_next_epoch_and_append_blocks(spec,
         block_filter = _all_blocks
 
     if ignoring_proposers is None:
-        result_blocks = state_transition_across_slots(spec, state, to_slot, block_filter=block_filter)
+        result_blocks = state_transition_across_slots(
+            spec, state, to_slot, block_filter=block_filter
+        )
     else:
         result_blocks = state_transition_across_slots_with_ignoring_proposers(
             spec,
@@ -276,20 +292,12 @@ def transition_to_next_epoch_and_append_blocks(spec,
             only_last_block=only_last_block,
         )
 
-    blocks.extend([
-        post_tag(block) for block in
-        result_blocks
-    ])
+    blocks.extend([post_tag(block) for block in result_blocks])
 
 
-def run_transition_with_operation(state,
-                                  fork_epoch,
-                                  spec,
-                                  post_spec,
-                                  pre_tag,
-                                  post_tag,
-                                  operation_type,
-                                  operation_at_slot):
+def run_transition_with_operation(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag, operation_type, operation_at_slot
+):
     """
     Generate `operation_type` operation with the spec before fork.
     The operation would be included into the block at `operation_at_slot`.
@@ -303,7 +311,10 @@ def run_transition_with_operation(state,
     elif is_right_before_fork:
         _transition_until_fork_minus_one(spec, state, fork_epoch)
 
-    is_slashing_operation = operation_type in (OperationType.PROPOSER_SLASHING, OperationType.ATTESTER_SLASHING)
+    is_slashing_operation = operation_type in (
+        OperationType.PROPOSER_SLASHING,
+        OperationType.ATTESTER_SLASHING,
+    )
     # prepare operation
     selected_validator_index = None
     if is_slashing_operation:
@@ -314,8 +325,9 @@ def run_transition_with_operation(state,
         selected_validator_index = (proposer_index + 1) % len(state.validators)
         if operation_type == OperationType.PROPOSER_SLASHING:
             proposer_slashing = get_valid_proposer_slashing(
-                spec, state, slashed_index=selected_validator_index, signed_1=True, signed_2=True)
-            operation_dict = {'proposer_slashings': [proposer_slashing]}
+                spec, state, slashed_index=selected_validator_index, signed_1=True, signed_2=True
+            )
+            operation_dict = {"proposer_slashings": [proposer_slashing]}
         else:
             # operation_type == OperationType.ATTESTER_SLASHING:
             if is_at_fork and spec.fork == DENEB:
@@ -329,44 +341,57 @@ def run_transition_with_operation(state,
                 target_state = state
 
             attester_slashing = get_valid_attester_slashing_by_indices(
-                target_spec, target_state,
+                target_spec,
+                target_state,
                 [selected_validator_index],
-                signed_1=True, signed_2=True,
+                signed_1=True,
+                signed_2=True,
             )
-            operation_dict = {'attester_slashings': [attester_slashing]}
+            operation_dict = {"attester_slashings": [attester_slashing]}
     elif operation_type == OperationType.DEPOSIT:
         # create a new deposit
         selected_validator_index = len(state.validators)
         amount = spec.MAX_EFFECTIVE_BALANCE
-        deposit = prepare_state_and_deposit(spec, state, selected_validator_index, amount, signed=True)
-        operation_dict = {'deposits': [deposit]}
+        deposit = prepare_state_and_deposit(
+            spec, state, selected_validator_index, amount, signed=True
+        )
+        operation_dict = {"deposits": [deposit]}
     elif operation_type == OperationType.VOLUNTARY_EXIT:
         selected_validator_index = 0
         signed_exits = prepare_signed_exits(spec, state, [selected_validator_index])
-        operation_dict = {'voluntary_exits': signed_exits}
+        operation_dict = {"voluntary_exits": signed_exits}
     elif operation_type == OperationType.BLS_TO_EXECUTION_CHANGE:
         selected_validator_index = 0
-        bls_to_execution_changes = [get_signed_address_change(spec, state, selected_validator_index)]
-        operation_dict = {'bls_to_execution_changes': bls_to_execution_changes}
+        bls_to_execution_changes = [
+            get_signed_address_change(spec, state, selected_validator_index)
+        ]
+        operation_dict = {"bls_to_execution_changes": bls_to_execution_changes}
     elif operation_type == OperationType.DEPOSIT_REQUEST:
         # create a new deposit request
         selected_validator_index = len(state.validators)
         amount = post_spec.MIN_ACTIVATION_BALANCE
-        deposit_request = prepare_deposit_request(post_spec, selected_validator_index, amount, signed=True)
-        operation_dict = {'execution_requests.deposits': [deposit_request]}
+        deposit_request = prepare_deposit_request(
+            post_spec, selected_validator_index, amount, signed=True
+        )
+        operation_dict = {"execution_requests.deposits": [deposit_request]}
     elif operation_type == OperationType.WITHDRAWAL_REQUEST:
         selected_validator_index = 0
         withdrawal_request = prepare_withdrawal_request(
-            post_spec, state, selected_validator_index, amount=post_spec.FULL_EXIT_REQUEST_AMOUNT)
-        operation_dict = {'execution_requests.withdrawals': [withdrawal_request]}
+            post_spec, state, selected_validator_index, amount=post_spec.FULL_EXIT_REQUEST_AMOUNT
+        )
+        operation_dict = {"execution_requests.withdrawals": [withdrawal_request]}
     elif operation_type == OperationType.CONSOLIDATION_REQUEST:
         selected_validator_index = 0
-        consolidation_request = prepare_switch_to_compounding_request(post_spec, state, selected_validator_index)
-        operation_dict = {'execution_requests.consolidations': [consolidation_request]}
+        consolidation_request = prepare_switch_to_compounding_request(
+            post_spec, state, selected_validator_index
+        )
+        operation_dict = {"execution_requests.consolidations": [consolidation_request]}
 
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
-            slashed_proposer = state.validators[proposer_slashing.signed_header_1.message.proposer_index]
+            slashed_proposer = state.validators[
+                proposer_slashing.signed_header_1.message.proposer_index
+            ]
             assert slashed_proposer.slashed
         elif operation_type == OperationType.ATTESTER_SLASHING:
             indices = set(attester_slashing.attestation_1.attesting_indices).intersection(
@@ -378,8 +403,7 @@ def run_transition_with_operation(state,
                 assert state.validators[validator_index].slashed
         elif operation_type == OperationType.DEPOSIT:
             assert not post_spec.is_active_validator(
-                state.validators[selected_validator_index],
-                post_spec.get_current_epoch(state)
+                state.validators[selected_validator_index], post_spec.get_current_epoch(state)
             )
         elif operation_type == OperationType.VOLUNTARY_EXIT:
             validator = state.validators[selected_validator_index]
@@ -388,13 +412,15 @@ def run_transition_with_operation(state,
             validator = state.validators[selected_validator_index]
             assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
         elif operation_type == OperationType.DEPOSIT_REQUEST:
-            assert state.pending_deposits == [post_spec.PendingDeposit(
-                pubkey=deposit_request.pubkey,
-                withdrawal_credentials=deposit_request.withdrawal_credentials,
-                amount=deposit_request.amount,
-                signature=deposit_request.signature,
-                slot=state.slot,
-            )]
+            assert state.pending_deposits == [
+                post_spec.PendingDeposit(
+                    pubkey=deposit_request.pubkey,
+                    withdrawal_credentials=deposit_request.withdrawal_credentials,
+                    amount=deposit_request.amount,
+                    signature=deposit_request.signature,
+                    slot=state.slot,
+                )
+            ]
         elif operation_type == OperationType.WITHDRAWAL_REQUEST:
             validator = state.validators[selected_validator_index]
             assert validator.exit_epoch < post_spec.FAR_FUTURE_EPOCH
@@ -409,7 +435,7 @@ def run_transition_with_operation(state,
     if is_right_before_fork:
         # add a block with operation.
         block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(spec, block, operation_dict)
+        _set_operations_by_dict(spec, block, operation_dict, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(pre_tag(signed_block))
 
@@ -425,7 +451,9 @@ def run_transition_with_operation(state,
 
     # after the fork
     if operation_type == OperationType.DEPOSIT:
-        state = _transition_until_active(post_spec, state, post_tag, blocks, selected_validator_index)
+        state = _transition_until_active(
+            post_spec, state, post_tag, blocks, selected_validator_index
+        )
     else:
         # avoid using the slashed validators as block proposers
         ignoring_proposers = [selected_validator_index] if is_slashing_operation else None
@@ -461,18 +489,29 @@ def _transition_until_active(post_spec, state, post_tag, blocks, validator_index
         fill_prev_epoch=True,
     )
     blocks.extend([post_tag(block) for block in blocks_in_epoch])
-    assert state.finalized_checkpoint.epoch >= state.validators[validator_index].activation_eligibility_epoch
+    assert (
+        state.finalized_checkpoint.epoch
+        >= state.validators[validator_index].activation_eligibility_epoch
+    )
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     assert state.validators[validator_index].activation_epoch < post_spec.FAR_FUTURE_EPOCH
 
     to_slot = state.validators[validator_index].activation_epoch * post_spec.SLOTS_PER_EPOCH
-    blocks.extend([
-        post_tag(block) for block in
-        state_transition_across_slots(post_spec, state, to_slot, block_filter=only_at(to_slot))
-    ])
-    assert post_spec.is_active_validator(state.validators[validator_index], post_spec.get_current_epoch(state))
+    blocks.extend(
+        [
+            post_tag(block)
+            for block in state_transition_across_slots(
+                post_spec, state, to_slot, block_filter=only_at(to_slot)
+            )
+        ]
+    )
+    assert post_spec.is_active_validator(
+        state.validators[validator_index], post_spec.get_current_epoch(state)
+    )
 
     return state

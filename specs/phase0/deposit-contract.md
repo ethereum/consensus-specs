@@ -1,10 +1,6 @@
 # Phase 0 -- Deposit Contract
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -16,8 +12,7 @@
     - [`DepositEvent` log](#depositevent-log)
 - [Solidity code](#solidity-code)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -27,8 +22,8 @@ This document represents the specification for the beacon chain deposit contract
 
 The following values are (non-configurable) constants used throughout the specification.
 
-| Name | Value |
-| - | - |
+| Name                          | Value         |
+| ----------------------------- | ------------- |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ## Configuration
@@ -37,10 +32,10 @@ The following values are (non-configurable) constants used throughout the specif
 The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory.
 These configurations are updated for releases and may be out of sync during `dev` changes.
 
-| Name | Value |
-| - | - |
-| `DEPOSIT_CHAIN_ID` | `1` |
-| `DEPOSIT_NETWORK_ID` | `1` |
+| Name                       | Value                                        |
+| -------------------------- | -------------------------------------------- |
+| `DEPOSIT_CHAIN_ID`         | `1`                                          |
+| `DEPOSIT_NETWORK_ID`       | `1`                                          |
 | `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
 ## Staking deposit contract
@@ -51,7 +46,7 @@ _Note_: See [here](https://chainid.network/) for a comprehensive list of public 
 
 ### `deposit` function
 
-The deposit contract has a public `deposit` function to make deposits. It takes as arguments `bytes calldata pubkey, bytes calldata withdrawal_credentials, bytes calldata signature, bytes32 deposit_data_root`. The first three arguments populate a [`DepositData`](./beacon-chain.md#depositdata) object, and `deposit_data_root` is the expected `DepositData` root as a protection against malformatted calldata.
+The deposit contract has a public `deposit` function to make deposits. It takes as arguments `bytes calldata pubkey, bytes calldata withdrawal_credentials, bytes calldata signature, bytes32 deposit_data_root`. The first three arguments populate a [`DepositData`](./beacon-chain.md#depositdata) object, and `deposit_data_root` is the expected `DepositData` root as a protection against malformed calldata.
 
 #### Deposit amount
 

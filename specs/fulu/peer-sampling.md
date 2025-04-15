@@ -1,12 +1,8 @@
 # Fulu -- Peer Sampling
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
@@ -18,8 +14,7 @@
 - [Peer scoring](#peer-scoring)
 - [DAS providers](#das-providers)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -50,7 +45,7 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
         return r
 
     def hypergeom_cdf(k: uint64, M: uint64, n: uint64, N: uint64) -> float:
-        # NOTE: It contains float-point computations.
+        # Note: It contains float-point computations.
         # Convert uint64 to Python integers before computations.
         k = int(k)
         M = int(M)
@@ -73,7 +68,7 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
 
 At each slot, a node needs to be able to readily sample from *any* set of columns. To this end, a node SHOULD find and maintain a set of diverse and reliable peers that can regularly satisfy their sampling demands.
 
-A node runs a background peer discovery process, maintaining peers of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible. The peer set should cover the whole column space, with some redundancy. The number of peers, or at least the redundancy implied by the custody distributions over the the peer set, should be tuned upward in the event of failed sampling.
+A node runs a background peer discovery process, maintaining peers of various custody distributions (both `custody_size` and column assignments). The combination of advertised `custody_size` size and public node-id make this readily and publicly accessible. The peer set should cover the whole column space, with some redundancy. The number of peers, or at least the redundancy implied by the custody distributions over the peer set, should be tuned upward in the event of failed sampling.
 
 *Note*: while high-capacity and super-full nodes are high value with respect to satisfying sampling requirements, a node SHOULD maintain a distribution across node capacities as to not centralize the p2p graph too much (in the extreme becomes hub/spoke) and to distribute sampling load better across all nodes.
 
@@ -89,9 +84,9 @@ Alternatively, a node MAY use a method that selects more than `SAMPLES_PER_SLOT`
 
 For reference, the table below shows the number of samples and the number of allowed missing columns assuming `NUMBER_OF_COLUMNS = 128` and `SAMPLES_PER_SLOT = 16`.
 
-| Allowed missing | 0| 1| 2| 3| 4| 5| 6| 7| 8|
-|-----------------|--|--|--|--|--|--|--|--|--|
-| Sample count    |16|20|24|27|29|32|35|37|40|
+| Allowed missing | 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
+| --------------- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sample count    | 16  | 20  | 24  | 27  | 29  | 32  | 35  | 37  | 40  |
 
 ### Sample queries
 

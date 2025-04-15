@@ -1,12 +1,8 @@
 # Fulu -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -17,8 +13,7 @@
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -28,10 +23,10 @@ This document describes the process of Fulu upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `FULU_FORK_VERSION` | `Version('0x06000000')` |
-| `FULU_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                | Value                                 |
+| ------------------- | ------------------------------------- |
+| `FULU_FORK_VERSION` | `Version('0x06000000')`               |
+| `FULU_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -63,8 +58,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes, the EIP may be combined with other consensus-layer upgrade.
-For now, we assume the condition will be triggered at epoch `FULU_FORK_EPOCH`.
+The fork is triggered at epoch `FULU_FORK_EPOCH`.
 
 Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it starts with Fulu version logic.
 

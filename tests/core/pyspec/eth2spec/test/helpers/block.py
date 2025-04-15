@@ -1,7 +1,12 @@
 from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 from eth2spec.test.helpers.execution_payload import build_empty_signed_execution_payload_header
-from eth2spec.test.helpers.forks import is_post_whisk, is_post_altair, is_post_bellatrix, is_post_eip7732, \
-    is_post_electra
+from eth2spec.test.helpers.forks import (
+    is_post_eip7441,
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_eip7732,
+    is_post_electra,
+)
 from eth2spec.test.helpers.keys import privkeys, whisk_ks_initial, whisk_ks_final
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
@@ -17,10 +22,10 @@ from py_ecc.bls.g2_primitives import (
     G1_to_pubkey as py_ecc_G1_to_bytes48,
     pubkey_to_G1 as py_ecc_bytes48_to_G1,
 )
-from eth2spec.test.helpers.whisk import (
+from eth2spec.test.helpers.eip7441 import (
     compute_whisk_tracker_and_commitment,
     is_first_proposal,
-    resolve_known_tracker
+    resolve_known_tracker,
 )
 from py_arkworks_bls12381 import Scalar
 
@@ -34,8 +39,10 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
             if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(slot):
-                print("warning: block slot far away, and no proposer index manually given."
-                      " Signing block is slow due to transition for proposer index calculation.")
+                print(
+                    "warning: block slot far away, and no proposer index manually given."
+                    " Signing block is slow due to transition for proposer index calculation."
+                )
             # use stub state to get proposer index of future slot
             stub_state = state.copy()
             if stub_state.slot < slot:
@@ -62,7 +69,9 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
 
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
+    domain = spec.get_domain(
+        state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot)
+    )
     signing_root = spec.compute_signing_root(block, domain)
 
     signed_block.signature = bls.Sign(privkey, signing_root)
@@ -75,10 +84,14 @@ def sign_block(spec, state, block, proposer_index=None):
 
 
 def transition_unsigned_block(spec, state, block):
-    assert state.slot < block.slot  # Preserve assertion from state transition to avoid strange pre-states from testing
+    assert (
+        state.slot < block.slot
+    )  # Preserve assertion from state transition to avoid strange pre-states from testing
     if state.slot < block.slot:
         spec.process_slots(state, block.slot)
-    assert state.latest_block_header.slot < block.slot  # There may not already be a block in this slot or past it.
+    assert (
+        state.latest_block_header.slot < block.slot
+    )  # There may not already be a block in this slot or past it.
     assert state.slot == block.slot  # The block must be for this slot
     spec.process_block(state, block)
     return block
@@ -132,7 +145,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_requests.withdrawals = []
         empty_block.body.execution_requests.consolidations = []
 
-    if is_post_whisk(spec):
+    if is_post_eip7441(spec):
         # Whisk opening proof
         #######
 
@@ -144,13 +157,17 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         proposer_k_commitment = state.whisk_k_commitments[proposer_index]
         k_commitment = py_ecc_G1_to_bytes48(multiply(G1, int(k_initial)))
         if proposer_k_commitment != k_commitment:
-            raise Exception("k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment)
+            raise Exception(
+                "k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment
+            )
 
-        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
         if not is_whisk_proposer(proposer_tracker, k_initial):
             raise Exception("k proposer_index does not match proposer_tracker")
 
-        empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(proposer_tracker, Scalar(k_initial))
+        empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(
+            proposer_tracker, Scalar(k_initial)
+        )
 
         # Whisk shuffle proof
         #######
@@ -158,7 +175,9 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         shuffle_indices = spec.get_shuffle_indices(empty_block.body.randao_reveal)
         pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
 
-        post_trackers, shuffle_proof = GenerateWhiskShuffleProof(spec.CURDLEPROOFS_CRS, pre_shuffle_trackers)
+        post_trackers, shuffle_proof = GenerateWhiskShuffleProof(
+            spec.CURDLEPROOFS_CRS, pre_shuffle_trackers
+        )
         empty_block.body.whisk_post_shuffle_trackers = post_trackers
         empty_block.body.whisk_shuffle_proof = shuffle_proof
 
@@ -172,7 +191,9 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
             # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
             r = 2
             tracker, k_commitment = compute_whisk_tracker_and_commitment(k_final, r)
-            empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(tracker, Scalar(k_final))
+            empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(
+                tracker, Scalar(k_final)
+            )
             empty_block.body.whisk_tracker = tracker
             empty_block.body.whisk_k_commitment = k_commitment
 
@@ -190,7 +211,7 @@ def is_whisk_proposer(tracker: WhiskTracker, k: int) -> bool:
 
 
 def get_beacon_proposer_to_build(spec, state, proposer_index=None):
-    if is_post_whisk(spec):
+    if is_post_eip7441(spec):
         if proposer_index is None:
             return find_whisk_proposer(spec, state)
         else:
@@ -200,10 +221,10 @@ def get_beacon_proposer_to_build(spec, state, proposer_index=None):
 
 
 def find_whisk_proposer(spec, state):
-    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.WHISK_PROPOSER_TRACKERS_COUNT]
+    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
 
     # Check record of known trackers
-    # During the first shuffling phase (epoch < WHISK_EPOCHS_PER_SHUFFLING_PHASE)
+    # During the first shuffling phase (epoch < EPOCHS_PER_SHUFFLING_PHASE)
     # proposer trackers are those inserted on the genesis state, and have not gone
     # through any shuffling. We cache those initial trackers and use `resolve_known_tracker`
     # to check if the tracker is known, and skip the need to actually find the matching tracker

@@ -26,15 +26,11 @@ def test_process_deposit_request_max_effective_balance_compounding(spec, state):
     amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX
-        + b'\x00' * 11  # specified 0s
-        + b'\x59' * 20  # a 20-byte eth1 address
+        + b"\x00" * 11  # specified 0s
+        + b"\x59" * 20  # a 20-byte eth1 address
     )
     deposit_request = prepare_deposit_request(
-        spec,
-        validator_index,
-        amount,
-        signed=True,
-        withdrawal_credentials=withdrawal_credentials
+        spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
@@ -60,8 +56,8 @@ def test_process_deposit_request_top_up_max_effective_balance_compounding(spec, 
     amount = spec.MIN_ACTIVATION_BALANCE // 4
     withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX
-        + b'\x00' * 11  # specified 0s
-        + b'\x59' * 20  # a 20-byte eth1 address
+        + b"\x00" * 11  # specified 0s
+        + b"\x59" * 20  # a 20-byte eth1 address
     )
 
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
@@ -69,11 +65,7 @@ def test_process_deposit_request_top_up_max_effective_balance_compounding(spec, 
     state.validators[validator_index].withdrawal_credentials = withdrawal_credentials
 
     deposit_request = prepare_deposit_request(
-        spec,
-        validator_index,
-        amount,
-        signed=True,
-        withdrawal_credentials=withdrawal_credentials
+        spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )
 
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)

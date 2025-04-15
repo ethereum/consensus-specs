@@ -1,12 +1,8 @@
 # EIP-7732 -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -57,19 +53,21 @@
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
+- [Testing](#testing)
+  - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 This is the beacon chain specification of the enshrined proposer builder separation feature.
 
-*Note:* This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
 
-This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the  start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
+This feature adds new staked consensus participants called *Builders* and new honest validators duties called *payload timeliness attestations*. The slot is divided in **four** intervals. Honest validators gather *signed bids* (a `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks (a `SignedBeaconBlock`) including these bids at the beginning of the slot. At the start of the second interval, honest validators submit attestations just as they do previous to this feature). At the start of the third interval, aggregators aggregate these attestations and the builder broadcasts either a full payload or a message indicating that they are withholding the payload (a `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some validators selected to be members of the new **Payload Timeliness Committee** (PTC) attest to the presence and timeliness of the builder's payload.
 
 At any given slot, the status of the blockchain's head may be either
+
 - A block from a previous slot (e.g. the current slot's proposer did not submit its block).
 - An *empty* block from the current slot (e.g. the proposer submitted a timely block, but the builder did not reveal the payload on time).
 - A full block for the current slot (both the proposer and the builder revealed on time).
@@ -78,33 +76,33 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Payload status
 
-| Name | Value |
-| - | - |
-| `PAYLOAD_ABSENT` | `uint8(0)` |
-| `PAYLOAD_PRESENT` | `uint8(1)` |
-| `PAYLOAD_WITHHELD` | `uint8(2)` |
+| Name                     | Value      |
+| ------------------------ | ---------- |
+| `PAYLOAD_ABSENT`         | `uint8(0)` |
+| `PAYLOAD_PRESENT`        | `uint8(1)` |
+| `PAYLOAD_WITHHELD`       | `uint8(2)` |
 | `PAYLOAD_INVALID_STATUS` | `uint8(3)` |
 
 ## Preset
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `PTC_SIZE` | `uint64(2**9)` (=512)  # (New in EIP-7732) |
+| Name       | Value                                     |
+| ---------- | ----------------------------------------- |
+| `PTC_SIZE` | `uint64(2**9)` (=512) # (New in EIP-7732) |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
-| `DOMAIN_BEACON_BUILDER`     | `DomainType('0x1B000000')`  # (New in EIP-7732)|
-| `DOMAIN_PTC_ATTESTER`       | `DomainType('0x0C000000')`  # (New in EIP-7732)|
+| Name                    | Value                                          |
+| ----------------------- | ---------------------------------------------- |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` # (New in EIP-7732) |
+| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` # (New in EIP-7732) |
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4)  # (New in EIP-7732) |
+| Name                       | Value                            |
+| -------------------------- | -------------------------------- |
+| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4) # (New in EIP-7732) |
 
 ## Containers
 
@@ -179,7 +177,7 @@ class SignedExecutionPayloadEnvelope(Container):
 
 #### `BeaconBlockBody`
 
-**Note:** The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope.
+*Note*: The Beacon Block body is modified to contain a `Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is removed from the beacon block body and moved into the signed execution payload envelope.
 
 ```python
 class BeaconBlockBody(Container):
@@ -205,7 +203,7 @@ class BeaconBlockBody(Container):
 
 #### `ExecutionPayloadHeader`
 
-**Note:** The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs.
+*Note*: The `ExecutionPayloadHeader` is modified to only contain the block hash of the committed `ExecutionPayload` in addition to the builder's payment information, gas limit and KZG commitments root to verify the inclusion proofs.
 
 ```python
 class ExecutionPayloadHeader(Container):
@@ -444,7 +442,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### Modified `process_withdrawals`
 
-**Note:** This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances.
+*Note*: This is modified to take only the `state` as parameter. Withdrawals are deterministic given the beacon state, any execution payload that has the corresponding block as parent beacon block is required to honor these withdrawals in the execution layer. This function must be called before `process_execution_payload_header` as this latter function affects validator balances.
 
 ```python
 def process_withdrawals(state: BeaconState) -> None:
@@ -526,7 +524,7 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
 
 ##### Modified `process_operations`
 
-**Note:** `process_operations` is modified to process PTC attestations
+*Note*: `process_operations` is modified to process PTC attestations
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
@@ -615,6 +613,7 @@ def is_merge_transition_complete(state: BeaconState) -> bool:
 ```
 
 #### Modified `validate_merge_block`
+
 `validate_merge_block` is modified to use the new `signed_execution_payload_header` message in the Beacon Block Body
 
 ```python
@@ -715,9 +714,9 @@ def process_execution_payload(state: BeaconState,
             for operation in operations:
                 fn(state, operation)
 
-        for_ops(requests.deposit_requests, process_deposit_request)
-        for_ops(requests.withdrawal_requests, process_withdrawal_request)
-        for_ops(requests.consolidation_requests, process_consolidation_request)
+        for_ops(requests.deposits, process_deposit_request)
+        for_ops(requests.withdrawals, process_withdrawal_request)
+        for_ops(requests.consolidations, process_consolidation_request)
 
         # Cache the execution payload header and proposer
         state.latest_block_hash = payload.block_hash
@@ -726,4 +725,19 @@ def process_execution_payload(state: BeaconState,
     # Verify the state root
     if verify:
         assert envelope.state_root == hash_tree_root(state)
+```
+
+## Testing
+
+### Modified `is_merge_transition_complete`
+
+The function `is_merge_transition_complete` is modified for test purposes only to include the hash tree root of the empty KZG commitment list
+
+```python
+def is_merge_transition_complete(state: BeaconState) -> bool:
+    header = ExecutionPayloadHeader()
+    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
+
+    return state.latest_execution_payload_header != header
 ```

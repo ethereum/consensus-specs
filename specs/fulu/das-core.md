@@ -1,12 +1,8 @@
 # Fulu -- Data Availability Sampling Core
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Constants](#constants)
   - [Misc](#misc)
@@ -22,10 +18,8 @@
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
-  - [`get_data_column_sidecars`](#get_data_column_sidecars)
 - [Custody](#custody)
   - [Custody requirement](#custody-requirement)
-  - [Validator custody](#validator-custody)
   - [Public, deterministic selection](#public-deterministic-selection)
 - [Custody sampling](#custody-sampling)
 - [Extended data](#extended-data)
@@ -37,8 +31,7 @@
   - [Why don't we rotate custody over time?](#why-dont-we-rotate-custody-over-time)
   - [Does having a lot of column subnets make the network unstable?](#does-having-a-lot-of-column-subnets-make-the-network-unstable)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Constants
 
@@ -46,35 +39,33 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name          | Value                 |
+| ------------- | --------------------- |
 | `UINT256_MAX` | `uint256(2**256 - 1)` |
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `RowIndex` | `uint64` | Row identifier in the matrix of cells |
-| `ColumnIndex` | `uint64` | Column identifier in the matrix of cells |
-| `CustodyIndex` | `uint64` | Custody group identifier in the set of custody groups |
+| Name           | SSZ equivalent | Description                                           |
+| -------------- | -------------- | ----------------------------------------------------- |
+| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
+| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
+| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
 
 ## Configuration
 
 ### Data size
 
-| Name | Value | Description |
-| - | - | - |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
 | `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Custody setting
 
-| Name | Value | Description |
-| - | - | - |
-| `SAMPLES_PER_SLOT` | `8` | Number of `DataColumnSidecar` random samples a node queries per slot |
-| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody |
-| `CUSTODY_REQUIREMENT` | `4` | Minimum number of custody groups an honest node custodies and serves samples from |
-| `VALIDATOR_CUSTODY_REQUIREMENT` | `8` | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Balance increment corresponding to one additional group to custody |
+| Name                       | Value | Description                                                                       |
+| -------------------------- | ----- | --------------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`         | `8`   | Number of `DataColumnSidecar` random samples a node queries per slot              |
+| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ### Containers
 
@@ -187,42 +178,6 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) ->
     return matrix
 ```
 
-### `get_data_column_sidecars`
-
-```python
-def get_data_column_sidecars(signed_block: SignedBeaconBlock,
-                             cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]]]) -> Sequence[DataColumnSidecar]:
-    """
-    Given a signed block and the cells/proofs associated with each blob in the
-    block, assemble the sidecars which can be distributed to peers.
-    """
-    blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
-    assert len(cells_and_kzg_proofs) == len(blob_kzg_commitments)
-    signed_block_header = compute_signed_block_header(signed_block)
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
-    )
-
-    sidecars = []
-    for column_index in range(NUMBER_OF_COLUMNS):
-        column_cells, column_proofs = [], []
-        for cells, proofs in cells_and_kzg_proofs:
-            column_cells.append(cells[column_index])
-            column_proofs.append(proofs[column_index])
-        sidecars.append(DataColumnSidecar(
-            index=column_index,
-            column=column_cells,
-            kzg_commitments=blob_kzg_commitments,
-            kzg_proofs=column_proofs,
-            signed_block_header=signed_block_header,
-            kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
-        ))
-    return sidecars
-```
-
 ## Custody
 
 ### Custody requirement
@@ -232,19 +187,6 @@ Columns are grouped into custody groups. Nodes custodying a custody group MUST c
 A node *may* choose to custody and serve more than the minimum honesty requirement. Such a node explicitly advertises a number greater than `CUSTODY_REQUIREMENT` through the peer discovery mechanism, specifically by setting a higher value in the `custody_group_count` field within its ENR. This value can be increased up to `NUMBER_OF_CUSTODY_GROUPS`, indicating a super-full node.
 
 A node stores the custodied columns for the duration of the pruning period and responds to peer requests for samples on those columns.
-
-### Validator custody
-
-A node with validators attached downloads and custodies a higher minimum of custody groups per slot, determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the current `BeaconState` and `validator_indices` is the list of indices corresponding to validators attached to the node. Any node with at least one validator attached, and with the sum of the balances of all attached validators being `total_node_balance`, downloads and custodies `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`.
-
-```python
-def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
-    total_node_balance = sum(state.balances[index] for index in validator_indices)
-    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
-    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
-```
-
-This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count` and in the node's ENR by setting a higher `cgc`. As with the regular custody requirement, a node with validators *may* still choose to custody, advertise and serve more than this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In addition, when the validator custody requirement increases, due to an increase in the total balance of the attached validators, a node MUST backfill columns from the new custody groups. However, a node *may* wait to advertise a higher custody in its Metadata and ENR until backfilling is complete.
 
 ### Public, deterministic selection
 
@@ -263,8 +205,6 @@ In this construction, we extend the blobs using a one-dimensional erasure coding
 ## Column gossip
 
 ### Parameters
-
-For each column -- use `data_column_sidecar_{subnet_id}` subnets, where `subnet_id` can be computed with the `compute_subnet_for_data_column_sidecar(column_index: ColumnIndex)` helper. The sidecars can be computed with `cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then `get_data_column_sidecars(signed_block, cells_and_kzg_proofs)`.
 
 Verifiable samples from their respective column are distributed on the assigned subnet. To custody columns in a particular custody group, a node joins the respective gossipsub subnets. If a node fails to get columns on the column subnets, a node can also utilize the Req/Resp protocol to query the missing columns from other peers.
 
@@ -288,7 +228,7 @@ In the one-dimension construction, a node samples the peers by requesting the wh
 
 The potential benefits of having row custody could include:
 
-1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column [0, N)  and the latter is req/resp instead of gossiping.
+1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column \[0, N) and the latter is req/resp instead of gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can compute extensions and seed missing samples to the network. This would either need to be able to send individual points on the gossip or would need some sort of req/resp faculty, potentially similar to an `IHAVEPOINTBITFIELD` and `IWANTSAMPLE`.
 
 However, for simplicity, we don't assign row custody assignments to nodes in the current design.

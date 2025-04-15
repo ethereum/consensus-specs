@@ -7,9 +7,15 @@ from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA,
+    PHASE0,
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
     FULU,
-    WHISK,
+    EIP7441,
+    EIP7732,
     MINIMAL,
     ALL_PHASES,
     POST_FORK_OF,
@@ -49,25 +55,30 @@ class ForkMeta:
     fork_epoch: int
 
 
-def _prepare_state(balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int],
-                   spec: Spec, phases: SpecForks):
+def _prepare_state(
+    balances_fn: Callable[[Any], Sequence[int]],
+    threshold_fn: Callable[[Any], int],
+    spec: Spec,
+    phases: SpecForks,
+):
     balances = balances_fn(spec)
     activation_threshold = threshold_fn(spec)
-    state = create_genesis_state(spec=spec, validator_balances=balances,
-                                 activation_threshold=activation_threshold)
+    state = create_genesis_state(
+        spec=spec, validator_balances=balances, activation_threshold=activation_threshold
+    )
     return state
 
 
 _custom_state_cache_dict = LRU(size=10)
 
 
-def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
-                      threshold_fn: Callable[[Any], int]):
+def with_custom_state(
+    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
+):
     def deco(fn):
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
             key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
-            global _custom_state_cache_dict
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
                 _custom_state_cache_dict[key] = state.get_backing()
@@ -75,9 +86,11 @@ def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
             # Take an entry out of the LRU.
             # No copy is necessary, as we wrap the immutable backing with a new view.
             state = spec.BeaconState(backing=_custom_state_cache_dict[key])
-            kw['state'] = state
+            kw["state"] = state
             return fn(*args, spec=spec, phases=phases, **kw)
+
         return entry
+
     return deco
 
 
@@ -137,7 +150,9 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     Helper method to create enough validators to scale the churn limit.
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
+        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -147,7 +162,9 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
+    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
+        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
+    )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -158,9 +175,11 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     num_validators = (
-        2 * spec.config.CHURN_LIMIT_QUOTIENT
+        2
+        * spec.config.CHURN_LIMIT_QUOTIENT
         * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
-        // spec.MIN_ACTIVATION_BALANCE)
+        // spec.MIN_ACTIVATION_BALANCE
+    )
     return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
 
@@ -174,7 +193,7 @@ def low_balances(spec: Spec):
     """
     num_validators = spec.SLOTS_PER_EPOCH * 8
     # Technically the balances cannot be this low starting from genesis, but it is useful for testing
-    low_balance = 18 * 10 ** 9
+    low_balance = 18 * 10**9
     return [low_balance] * num_validators
 
 
@@ -199,7 +218,9 @@ def misc_balances_electra(spec: Spec):
         return misc_balances(spec)
 
     num_validators = spec.SLOTS_PER_EPOCH * 8
-    balances = [spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)]
+    balances = [
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)
+    ]
     rng = Random(1234)
     rng.shuffle(balances)
     return balances
@@ -214,7 +235,8 @@ def misc_balances_in_default_range_with_many_validators(spec: Spec):
     num_validators = spec.SLOTS_PER_EPOCH * 8 * 2
     floor = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     balances = [
-        max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor) for i in range(num_validators)
+        max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor)
+        for i in range(num_validators)
     ]
     rng = Random(1234)
     rng.shuffle(balances)
@@ -234,7 +256,9 @@ def large_validator_set(spec: Spec):
     Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = 2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
+    num_validators = (
+        2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
+    )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -244,10 +268,12 @@ def single_phase(fn):
     most state tests only focus on behavior of a single phase (the "spec").
     This decorator is applied as part of spec_state_test(fn).
     """
+
     def entry(*args, **kw):
-        if 'phases' in kw:
-            kw.pop('phases')
+        if "phases" in kw:
+            kw.pop("phases")
         return fn(*args, **kw)
+
     return entry
 
 
@@ -275,7 +301,8 @@ def dump_skipping_message(reason: str) -> None:
 
 def description(case_description: str):
     def entry(fn):
-        return with_meta_tags({'description': case_description})(fn)
+        return with_meta_tags({"description": case_description})(fn)
+
     return entry
 
 
@@ -284,7 +311,7 @@ def spec_test(fn):
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
     # A test may apply BLS overrides such as @always_bls,
     #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
-    #  This is why @alway_bls has its own bls switch, since the override is beyond the reach of the outer switch.
+    #  This is why @always_bls has its own bls switch, since the override is beyond the reach of the outer switch.
     return vector_test()(bls_switch(fn))
 
 
@@ -298,11 +325,12 @@ def spec_configured_state_test(conf):
 
     def decorator(fn):
         return spec_test(overrides(with_state(single_phase(fn))))
+
     return decorator
 
 
 def _check_current_version(spec, state, version_name):
-    fork_version_field = version_name.upper() + '_FORK_VERSION'
+    fork_version_field = version_name.upper() + "_FORK_VERSION"
     try:
         fork_version = getattr(spec.config, fork_version_field)
     except Exception:
@@ -320,17 +348,19 @@ def config_fork_epoch_overrides(spec, state):
             overrides = {}
             for f in ALL_PHASES:
                 if f != PHASE0 and is_post_fork(fork, f):
-                    overrides[f.upper() + '_FORK_EPOCH'] = spec.GENESIS_EPOCH
+                    overrides[f.upper() + "_FORK_EPOCH"] = spec.GENESIS_EPOCH
             return overrides
 
 
 def with_matching_spec_config(emitted_fork=None):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            overrides = config_fork_epoch_overrides(spec, kw['state'])
+            overrides = config_fork_epoch_overrides(spec, kw["state"])
             deco = with_config_overrides(overrides, emitted_fork)
             return deco(fn)(*args, spec=spec, **kw)
+
         return wrapper
+
     return decorator
 
 
@@ -349,7 +379,7 @@ def expect_assertion_error(fn):
         # Index errors are special; the spec is not explicit on bound checking, an IndexError is like a failed assert.
         pass
     if bad:
-        raise AssertionError('expected an assertion error, but got none.')
+        raise AssertionError("expected an assertion error, but got none.")
 
 
 def never_bls(fn):
@@ -358,11 +388,13 @@ def never_bls(fn):
     This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
      as the yielding needs to complete before setting back the BLS setting.
     """
+
     def entry(*args, **kw):
         # override bls setting
-        kw['bls_active'] = False
+        kw["bls_active"] = False
         return bls_switch(fn)(*args, **kw)
-    return with_meta_tags({'bls_setting': 2})(entry)
+
+    return with_meta_tags({"bls_setting": 2})(entry)
 
 
 def always_bls(fn):
@@ -371,11 +403,13 @@ def always_bls(fn):
     This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
      as the yielding needs to complete before setting back the BLS setting.
     """
+
     def entry(*args, **kw):
         # override bls setting
-        kw['bls_active'] = True
+        kw["bls_active"] = True
         return bls_switch(fn)(*args, **kw)
-    return with_meta_tags({'bls_setting': 1})(entry)
+
+    return with_meta_tags({"bls_setting": 1})(entry)
 
 
 def bls_switch(fn):
@@ -385,13 +419,15 @@ def bls_switch(fn):
     This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
      as the yielding needs to complete before setting back the BLS setting.
     """
+
     def entry(*args, **kw):
         old_state = bls.bls_active
-        bls.bls_active = kw.pop('bls_active', DEFAULT_BLS_ACTIVE)
+        bls.bls_active = kw.pop("bls_active", DEFAULT_BLS_ACTIVE)
         res = fn(*args, **kw)
         if res is not None:
             yield from res
         bls.bls_active = old_state
+
     return entry
 
 
@@ -400,17 +436,18 @@ def disable_process_reveal_deadlines(fn):
     Decorator to make a function execute with `process_reveal_deadlines` OFF.
     This is for testing long-range epochs transition without considering the reveal-deadline slashing effect.
     """
+
     def entry(*args, spec: Spec, **kw):
-        if hasattr(spec, 'process_reveal_deadlines'):
+        if hasattr(spec, "process_reveal_deadlines"):
             old_state = spec.process_reveal_deadlines
             spec.process_reveal_deadlines = lambda state: None
 
         yield from fn(*args, spec=spec, **kw)
 
-        if hasattr(spec, 'process_reveal_deadlines'):
+        if hasattr(spec, "process_reveal_deadlines"):
             spec.process_reveal_deadlines = old_state
 
-    return with_meta_tags({'reveal_deadlines_setting': 1})(entry)
+    return with_meta_tags({"reveal_deadlines_setting": 1})(entry)
 
 
 def with_all_phases(fn):
@@ -422,10 +459,15 @@ def with_all_phases(fn):
 
 def with_all_phases_from(earliest_phase, all_phases=ALL_PHASES):
     """
-    A decorator factory for running a tests with every phase except the ones listed
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    excluding the ones listed.
     """
+
     def decorator(fn):
-        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(fn)
+        return with_phases([phase for phase in all_phases if is_post_fork(phase, earliest_phase)])(
+            fn
+        )
+
     return decorator
 
 
@@ -433,7 +475,9 @@ def with_all_phases_from_except(earliest_phase, except_phases=None):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
-    return with_all_phases_from(earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases])
+    return with_all_phases_from(
+        earliest_phase, [phase for phase in ALL_PHASES if phase not in except_phases]
+    )
 
 
 def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=ALL_PHASES):
@@ -441,30 +485,57 @@ def with_all_phases_from_to(from_phase, to_phase, other_phases=None, all_phases=
     A decorator factory for running a tests with every phase
     from a given start phase up to and excluding a given end phase
     """
+
     def decorator(fn):
         return with_phases(
-            [phase for phase in all_phases if (
-                phase != to_phase and is_post_fork(to_phase, phase)
-                and is_post_fork(phase, from_phase)
-            )],
+            [
+                phase
+                for phase in all_phases
+                if (
+                    phase != to_phase
+                    and is_post_fork(to_phase, phase)
+                    and is_post_fork(phase, from_phase)
+                )
+            ],
             other_phases=other_phases,
         )(fn)
+
     return decorator
+
+
+def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=None):
+    """
+    A decorator factory for running a tests with every phase starting at `earliest_phase`
+    and ending at `latest_phase` excluding the ones listed.
+    """
+
+    def decorator(fn):
+        return with_phases(
+            [
+                phase
+                for phase in ALL_PHASES
+                if phase not in except_phases
+                and is_post_fork(phase, earliest_phase)
+                and not is_post_fork(phase, latest_phase)
+            ]
+        )(fn)
 
 
 def with_all_phases_except(exclusion_phases):
     """
     A decorator factory for running a tests with every phase except the ones listed
     """
+
     def decorator(fn):
         return with_phases([phase for phase in ALL_PHASES if phase not in exclusion_phases])(fn)
+
     return decorator
 
 
 def _get_preset_targets(kw):
     preset_name = DEFAULT_TEST_PRESET
-    if 'preset' in kw:
-        preset_name = kw.pop('preset')
+    if "preset" in kw:
+        preset_name = kw.pop("preset")
     return spec_targets[preset_name]
 
 
@@ -472,9 +543,9 @@ def _get_run_phases(phases, kw):
     """
     Return the fork names for the base `spec` in test cases
     """
-    if 'phase' in kw:
+    if "phase" in kw:
         # Limit phases if one explicitly specified
-        phase = kw.pop('phase')
+        phase = kw.pop("phase")
         if phase not in phases:
             dump_skipping_message(f"doesn't support this fork: {phase}")
             return None
@@ -526,26 +597,33 @@ def with_phases(phases, other_phases=None):
     Decorator factory that returns a decorator that runs a test for the appropriate phases.
     Additional phases that do not initially run, but are made available through the test, are optional.
     """
+
     def decorator(fn):
         def wrapper(*args, **kw):
-            if 'fork_metas' in kw:
-                fork_metas = kw.pop('fork_metas')
-                if 'phase' in kw:
+            if "fork_metas" in kw:
+                fork_metas = kw.pop("fork_metas")
+                if "phase" in kw:
                     # When running test generator, it sets specific `phase`
-                    phase = kw['phase']
+                    phase = kw["phase"]
                     _phases = [phase]
                     _other_phases = [POST_FORK_OF[phase]]
-                    ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
+                    ret = _run_test_case_with_phases(
+                        fn, _phases, _other_phases, kw, args, is_fork_transition=True
+                    )
                 else:
                     # When running pytest, go through `fork_metas` instead of using `phases`
                     for fork_meta in fork_metas:
                         _phases = [fork_meta.pre_fork_name]
                         _other_phases = [fork_meta.post_fork_name]
-                        ret = _run_test_case_with_phases(fn, _phases, _other_phases, kw, args, is_fork_transition=True)
+                        ret = _run_test_case_with_phases(
+                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
+                        )
             else:
                 ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
             return ret
+
         return wrapper
+
     return decorator
 
 
@@ -562,7 +640,9 @@ def with_presets(preset_bases, reason=None):
                 return None
 
             return fn(*args, spec=spec, **kw)
+
         return wrapper
+
     return decorator
 
 
@@ -573,8 +653,14 @@ with_bellatrix_and_later = with_all_phases_from(BELLATRIX)
 with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
-with_whisk_and_later = with_all_phases_from(WHISK, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+with_altair_until_eip7732 = with_all_phases_from_to(ALTAIR, EIP7732)
+with_bellatrix_until_eip7732 = with_all_phases_from_to(BELLATRIX, EIP7732)
+with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
+with_deneb_until_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
+with_electra_until_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
 
 
 class quoted_str(str):
@@ -635,24 +721,28 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 
     This is a decorator that applies a dict of config value overrides to the spec during execution.
     """
+
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
+            spec, output_config = spec_with_config_overrides(
+                get_copy_of_spec(spec), config_overrides
+            )
 
             # Apply config overrides to additional phases, if present
-            if 'phases' in kw:
+            if "phases" in kw:
                 phases = {}
-                for fork in kw['phases']:
+                for fork in kw["phases"]:
                     phases[fork], output = spec_with_config_overrides(
-                        get_copy_of_spec(kw['phases'][fork]), config_overrides)
+                        get_copy_of_spec(kw["phases"][fork]), config_overrides
+                    )
                     if emitted_fork == fork:
                         output_config = output
-                kw['phases'] = phases
+                kw["phases"] = phases
 
             # Emit requested spec (with overrides)
             if emit:
-                yield 'config', 'cfg', output_config
+                yield "config", "cfg", output_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
@@ -661,7 +751,9 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
             # it's generating things, and we need to complete it before setting back the config.
             if out is not None:
                 yield from out
+
         return wrapper
+
     return decorator
 
 
@@ -672,7 +764,9 @@ def only_generator(reason):
                 dump_skipping_message(reason)
                 return None
             return inner(*args, **kwargs)
+
         return _wrapper
+
     return _decorator
 
 
@@ -680,6 +774,7 @@ def with_test_suite_name(suite_name: str):
     def _decorator(inner):
         inner.suite_name = suite_name
         return inner
+
     return _decorator
 
 
@@ -692,7 +787,9 @@ def set_fork_metas(fork_metas: Sequence[ForkMeta]):
     def decorator(fn):
         def wrapper(*args, **kwargs):
             return fn(*args, fork_metas=fork_metas, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -725,6 +822,7 @@ def with_fork_metas(fork_metas: Sequence[ForkMeta]):
 
     def decorator(fn):
         return run_set_fork_metas(run_with_phases(spec_test(with_state(run_yield_fork_meta(fn)))))
+
     return decorator
 
 
@@ -732,9 +830,10 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
     """
     Yield meta fields to `meta.yaml` and pass post spec and meta fields to `fn`.
     """
+
     def decorator(fn):
         def wrapper(*args, **kw):
-            phases = kw.pop('phases')
+            phases = kw.pop("phases")
             spec = kw["spec"]
             try:
                 fork_meta = next(filter(lambda m: m.pre_fork_name == spec.fork, fork_metas))
@@ -780,4 +879,5 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
                 yield "fork_block", "meta", pre_fork_counter - 1
 
         return wrapper
+
     return decorator

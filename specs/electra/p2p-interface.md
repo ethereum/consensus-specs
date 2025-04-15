@@ -1,12 +1,8 @@
 # Electra -- Networking
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Modifications in Electra](#modifications-in-electra)
@@ -26,8 +22,7 @@
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -42,7 +37,7 @@ The specification of these changes continues in the same format as the network s
 *[New in Electra:EIP7691]*
 
 | Name                                | Value                                                    | Description                                                       |
-|-------------------------------------|----------------------------------------------------------|-------------------------------------------------------------------|
+| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
 | `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
 | `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
 
@@ -76,11 +71,13 @@ The derivation of the `message-id` remains stable.
 ###### `beacon_aggregate_and_proof`
 
 The following convenience variables are re-defined
+
 - `index = get_committee_indices(aggregate.committee_bits)[0]`
 
 The following validations are added:
-* [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
-* [REJECT] `aggregate.data.index == 0`
+
+- [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
+- [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`
 
@@ -88,7 +85,7 @@ The following validations are added:
 
 The existing validations all apply as given from previous forks, with the following exceptions:
 
-* Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with `MAX_BLOBS_PER_BLOCK_ELECTRA`.
+- Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
 ##### Attestation subnets
 
@@ -97,14 +94,17 @@ The existing validations all apply as given from previous forks, with the follow
 The topic is updated to propagate `SingleAttestation` objects.
 
 The following convenience variables are re-defined:
+
 - `index = attestation.committee_index`
 
 The following validations are added:
+
 - _[REJECT]_ `attestation.data.index == 0`
 - _[REJECT]_ The attester is a member of the committee -- i.e.
   `attestation.attester_index in get_beacon_committee(state, attestation.data.slot, index)`.
 
 The following validations are removed:
+
 - _[REJECT]_ The attestation is unaggregated --
   that is, it has exactly one participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
@@ -122,10 +122,10 @@ The Electra fork-digest is introduced to the `context` enum to specify Electra b
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
@@ -139,10 +139,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
-|--------------------------|-------------------------------|
+| ------------------------ | ----------------------------- |
 | `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |

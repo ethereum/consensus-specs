@@ -10,9 +10,10 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	deneb     \
 	electra   \
 	fulu      \
-	whisk     \
 	eip6800   \
-	eip7732
+	eip7441   \
+	eip7732   \
+  eip7805
 
 # A list of fake targets.
 .PHONY: \
@@ -57,6 +58,7 @@ VENV = venv
 PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
+MDFORMAT_VENV = $(VENV)/bin/mdformat
 
 # Make a virtual environment.
 $(VENV):
@@ -73,10 +75,12 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
 pyspec: $(VENV) setup.py pyproject.toml
-	@echo "Building eth2spec"
 	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
-	@echo "Building all pyspecs"
-	@$(PYTHON_VENV) setup.py pyspecdev
+	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
+	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
+	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
+	    cp "./build/lib/eth2spec/$$dir/minimal.py" "./tests/core/pyspec/eth2spec/$$dir/minimal.py"; \
+	done
 
 ###############################################################################
 # Testing
@@ -169,40 +173,22 @@ serve_docs: _copy_docs
 # Checks
 ###############################################################################
 
-FLAKE8_CONFIG = $(CURDIR)/flake8.ini
 MYPY_CONFIG = $(CURDIR)/mypy.ini
 PYLINT_CONFIG = $(CURDIR)/pylint.ini
 
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
-TEST_GENERATORS_DIR = ./tests/generators
 MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/*/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
                  $(wildcard $(SSZ_DIR)/*.md)
 
-# Generate ToC sections & save copy of original if modified.
-%.toc:
-	@cp $* $*.tmp; \
-	doctoc $* > /dev/null; \
-	if diff -q $* $*.tmp > /dev/null; then \
-		echo "Good $*"; \
-		rm $*.tmp; \
-	else \
-		echo "\033[1;33m Bad $*\033[0m"; \
-		echo "\033[1;34m See $*.tmp\033[0m"; \
-	fi
-
-# Check all files and error if any ToC were modified.
-_check_toc: $(MARKDOWN_FILES:=.toc)
-	@[ "$$(find . -name '*.md.tmp' -print -quit)" ] && exit 1 || exit 0
-
 # Check for mistakes.
-lint: pyspec _check_toc
+lint: pyspec
+	@$(MDFORMAT_VENV) --number $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(PYSPEC_DIR)/eth2spec
-	@$(PYTHON_VENV) -m flake8 --config $(FLAKE8_CONFIG) $(TEST_GENERATORS_DIR)
+	@$(PYTHON_VENV) -m black $(CURDIR)/tests
 	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
 
@@ -240,12 +226,16 @@ gen_all: $(GENERATOR_TARGETS)
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
-	@find $(TEST_VECTOR_DIR) -name "INCOMPLETE"
+	@incomplete_files=$$(find $(TEST_VECTOR_DIR) -name "INCOMPLETE"); \
+	if [ -n "$$incomplete_files" ]; then \
+		echo "[ERROR] incomplete detected"; \
+		exit 1; \
+	fi
 	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
 		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
-	else \
-		echo "[PASSED] error log file does not exist"; \
+		exit 1; \
 	fi
+	@echo "[PASSED] no errors detected"
 
 # Generate KZG trusted setups for testing.
 kzg_setups: pyspec

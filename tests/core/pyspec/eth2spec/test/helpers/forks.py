@@ -1,6 +1,13 @@
 from .constants import (
-    PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB,
-    ELECTRA, FULU, WHISK, EIP7732,
+    PHASE0,
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
+    FULU,
+    EIP7441,
+    EIP7732,
     PREVIOUS_FORK_OF,
 )
 
@@ -45,8 +52,8 @@ def is_post_fulu(spec):
     return is_post_fork(spec.fork, FULU)
 
 
-def is_post_whisk(spec):
-    return is_post_fork(spec.fork, WHISK)
+def is_post_eip7441(spec):
+    return is_post_fork(spec.fork, EIP7441)
 
 
 def is_post_eip7732(spec):
@@ -58,9 +65,9 @@ def get_spec_for_fork_version(spec, fork_version, phases):
         return spec
     for fork in [fork for fork in phases if is_post_fork(spec.fork, fork)]:
         if fork == PHASE0:
-            fork_version_field = 'GENESIS_FORK_VERSION'
+            fork_version_field = "GENESIS_FORK_VERSION"
         else:
-            fork_version_field = fork.upper() + '_FORK_VERSION'
+            fork_version_field = fork.upper() + "_FORK_VERSION"
         if fork_version == getattr(spec.config, fork_version_field):
             return phases[fork]
     raise ValueError("Unknown fork version %s" % fork_version)
@@ -71,7 +78,7 @@ def get_next_fork_transition(spec, epoch, phases):
         return None, None
     for fork in [fork for fork in phases if PREVIOUS_FORK_OF[fork] == spec.fork]:
         assert fork != PHASE0  # PHASE0 does not have previous fork
-        fork_epoch = getattr(phases[fork].config, fork.upper() + '_FORK_EPOCH')
+        fork_epoch = getattr(phases[fork].config, fork.upper() + "_FORK_EPOCH")
         assert fork_epoch > epoch  # Forks through given epoch already applied
         return phases[fork], fork_epoch
     return None, None  # Already at latest fork

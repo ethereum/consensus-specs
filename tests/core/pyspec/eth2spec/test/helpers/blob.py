@@ -10,23 +10,30 @@ from eth2spec.test.helpers.forks import (
 
 class Eip4844RlpTransaction(Serializable):
     fields = (
-        ('chain_id', big_endian_int),
-        ('nonce', big_endian_int),
-        ('max_priority_fee_per_gas', big_endian_int),
-        ('max_fee_per_gas', big_endian_int),
-        ('gas_limit', big_endian_int),
-        ('to', Binary(20, 20)),
-        ('value', big_endian_int),
-        ('data', binary),
-        ('access_list', CountableList(RLPList([
-            Binary(20, 20),
-            CountableList(Binary(32, 32)),
-        ]))),
-        ('max_fee_per_blob_gas', big_endian_int),
-        ('blob_versioned_hashes', CountableList(Binary(32, 32))),
-        ('signature_y_parity', big_endian_int),
-        ('signature_r', big_endian_int),
-        ('signature_s', big_endian_int),
+        ("chain_id", big_endian_int),
+        ("nonce", big_endian_int),
+        ("max_priority_fee_per_gas", big_endian_int),
+        ("max_fee_per_gas", big_endian_int),
+        ("gas_limit", big_endian_int),
+        ("to", Binary(20, 20)),
+        ("value", big_endian_int),
+        ("data", binary),
+        (
+            "access_list",
+            CountableList(
+                RLPList(
+                    [
+                        Binary(20, 20),
+                        CountableList(Binary(32, 32)),
+                    ]
+                )
+            ),
+        ),
+        ("max_fee_per_blob_gas", big_endian_int),
+        ("blob_versioned_hashes", CountableList(Binary(32, 32))),
+        ("signature_y_parity", big_endian_int),
+        ("signature_r", big_endian_int),
+        ("signature_s", big_endian_int),
     )
 
 
@@ -60,8 +67,13 @@ def get_poly_in_both_forms(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
-    coeffs = [spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    roots_of_unity_brp = spec.bit_reversal_permutation(
+        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+    )
+    coeffs = [
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
     evals = [eval_poly_in_coeff_form(spec, coeffs, z) for z in roots_of_unity_brp]
 
     return coeffs, evals

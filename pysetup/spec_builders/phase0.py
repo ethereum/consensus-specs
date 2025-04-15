@@ -49,7 +49,6 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
 
     def wrapper(*args, **kw):  # type: ignore
         key = key_fn(*args, **kw)
-        nonlocal cache_dict
         if key not in cache_dict:
             cache_dict[key] = value_fn(*args, **kw)
         return cache_dict[key]

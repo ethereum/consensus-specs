@@ -23,7 +23,7 @@ def test_invariants(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_polynomical_commitments_sampling(spec):
+def test_polynomial_commitments_sampling(spec):
     assert spec.FIELD_ELEMENTS_PER_EXT_BLOB == 2 * spec.FIELD_ELEMENTS_PER_BLOB
 
 

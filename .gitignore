@@ -24,9 +24,10 @@ tests/core/pyspec/eth2spec/capella/
 tests/core/pyspec/eth2spec/deneb/
 tests/core/pyspec/eth2spec/electra/
 tests/core/pyspec/eth2spec/fulu/
-tests/core/pyspec/eth2spec/whisk/
 tests/core/pyspec/eth2spec/eip6800/
+tests/core/pyspec/eth2spec/eip7441/
 tests/core/pyspec/eth2spec/eip7732/
+tests/core/pyspec/eth2spec/eip7805/
 
 # coverage reports
 .htmlcov

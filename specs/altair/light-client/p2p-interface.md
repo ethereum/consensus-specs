@@ -1,10 +1,6 @@
 # Altair Light Client -- Networking
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Networking](#networking)
   - [Configuration](#configuration)
@@ -24,8 +20,7 @@
   - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Sync committee](#sync-committee)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Networking
 
@@ -33,8 +28,8 @@ This section extends the [networking specification for Altair](../p2p-interface.
 
 ### Configuration
 
-| Name | Value | Description |
-| - | - | - |
+| Name                               | Value          | Description                                                         |
+| ---------------------------------- | -------------- | ------------------------------------------------------------------- |
 | `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `2**7` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
 
 ### The gossip domain: gossipsub
@@ -45,9 +40,9 @@ Gossip meshes are added to allow light clients to stay in sync with the network.
 
 New global topics are added to provide light clients with the latest updates.
 
-| name | Message Type |
-| - | - |
-| `light_client_finality_update` | `LightClientFinalityUpdate` |
+| name                             | Message Type                  |
+| -------------------------------- | ----------------------------- |
+| `light_client_finality_update`   | `LightClientFinalityUpdate`   |
 | `light_client_optimistic_update` | `LightClientOptimisticUpdate` |
 
 ##### Global topics
@@ -57,13 +52,16 @@ New global topics are added to provide light clients with the latest updates.
 This topic is used to propagate the latest `LightClientFinalityUpdate` to light clients, allowing them to keep track of the latest `finalized_header`.
 
 The following validations MUST pass before forwarding the `finality_update` on the network.
+
 - _[IGNORE]_ The `finalized_header.beacon.slot` is greater than that of all previously forwarded `finality_update`s, or it matches the highest previously forwarded slot and also has a `sync_aggregate` indicating supermajority (> 2/3) sync committee participation while the previously forwarded `finality_update` for that slot did not indicate supermajority
 - _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `finality_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
+
 - _[IGNORE]_ The received `finality_update` matches the locally computed one exactly (as defined in [`create_light_client_finality_update`](./full-node.md#create_light_client_finality_update))
 
 For light clients, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
+
 - _[REJECT]_ The `finality_update` is valid -- i.e. validate that `process_light_client_finality_update` does not indicate errors
 - _[IGNORE]_ The `finality_update` advances the `finalized_header` of the local `LightClientStore` -- i.e. validate that processing `finality_update` increases `store.finalized_header.beacon.slot`
 
@@ -73,25 +71,28 @@ The gossip `ForkDigestValue` is determined based on `compute_fork_version(comput
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`                  | Message SSZ type                     |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate`   |
+| `fork_version`                  | Message SSZ type                   |
+| ------------------------------- | ---------------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                                |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate` |
 
 ###### `light_client_optimistic_update`
 
 This topic is used to propagate the latest `LightClientOptimisticUpdate` to light clients, allowing them to keep track of the latest `optimistic_header`.
 
 The following validations MUST pass before forwarding the `optimistic_update` on the network.
+
 - _[IGNORE]_ The `attested_header.beacon.slot` is greater than that of all previously forwarded `optimistic_update`s
 - _[IGNORE]_ The `optimistic_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `optimistic_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
 
 For full nodes, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
+
 - _[IGNORE]_ The received `optimistic_update` matches the locally computed one exactly (as defined in [`create_light_client_optimistic_update`](./full-node.md#create_light_client_optimistic_update))
 
 For light clients, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
+
 - _[REJECT]_ The `optimistic_update` is valid -- i.e. validate that `process_light_client_optimistic_update` does not indicate errors
 - _[IGNORE]_ The `optimistic_update` either matches corresponding fields of the most recently forwarded `LightClientFinalityUpdate` (if any), or it advances the `optimistic_header` of the local `LightClientStore` -- i.e. validate that processing `optimistic_update` increases `store.optimistic_header.beacon.slot`
 
@@ -101,7 +102,7 @@ The gossip `ForkDigestValue` is determined based on `compute_fork_version(comput
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Message SSZ type                     |
 | ------------------------------- | ------------------------------------ |
@@ -144,12 +145,12 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(boot
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`                  | Response SSZ type                    |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientBootstrap`        |
+| `fork_version`                  | Response SSZ type             |
+| ------------------------------- | ----------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                           |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientBootstrap` |
 
 ##### LightClientUpdatesByRange
 
@@ -184,12 +185,12 @@ For each `response_chunk`, a `ForkDigest`-context based on `compute_fork_version
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`                  | Response chunk SSZ type              |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientUpdate`           |
+| `fork_version`                  | Response chunk SSZ type    |
+| ------------------------------- | -------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                        |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientUpdate` |
 
 ##### GetLightClientFinalityUpdate
 
@@ -215,12 +216,12 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(fina
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
-| `fork_version`                  | Response SSZ type                    |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_FORK_VERSION`          | n/a                                  |
-| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate`   |
+| `fork_version`                  | Response SSZ type                  |
+| ------------------------------- | ---------------------------------- |
+| `GENESIS_FORK_VERSION`          | n/a                                |
+| `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate` |
 
 ##### GetLightClientOptimisticUpdate
 
@@ -246,7 +247,7 @@ A `ForkDigest`-context based on `compute_fork_version(compute_epoch_at_slot(opti
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
-[0]: # (eth2spec: skip)
+<!-- eth2spec: skip -->
 
 | `fork_version`                  | Response SSZ type                    |
 | ------------------------------- | ------------------------------------ |

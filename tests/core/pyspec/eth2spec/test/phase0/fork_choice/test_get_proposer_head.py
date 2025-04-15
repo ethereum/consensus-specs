@@ -1,7 +1,7 @@
 from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
-    with_altair_and_later,
+    with_altair_until_eip7732,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_at_slot,
@@ -25,14 +25,14 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_altair_and_later
+@with_altair_until_eip7732
 @spec_state_test
 def test_basic_is_head_root(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -56,34 +56,39 @@ def test_basic_is_head_root(spec, state):
     assert proposer_head == head_root
 
     output_store_checks(spec, store, test_steps)
-    test_steps.append({
-        'checks': {
-            'get_proposer_head': encode_hex(proposer_head),
+    test_steps.append(
+        {
+            "checks": {
+                "get_proposer_head": encode_hex(proposer_head),
+            }
         }
-    })
+    )
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
-@with_altair_and_later
+@with_altair_until_eip7732
 @spec_state_test
 def test_basic_is_parent_root(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(
+        spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps
+    )
 
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps)
+            spec, state, store, True, True, test_steps=test_steps
+        )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -96,7 +101,8 @@ def test_basic_is_parent_root(spec, state):
 
     # Fill a slot (parent)
     state, store, signed_parent_block = yield from apply_next_slots_with_attestations(
-        spec, state, store, 1, True, True, test_steps)
+        spec, state, store, 1, True, True, test_steps
+    )
 
     # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
@@ -156,10 +162,12 @@ def test_basic_is_parent_root(spec, state):
     assert proposer_head == parent_root
 
     output_store_checks(spec, store, test_steps)
-    test_steps.append({
-        'checks': {
-            'get_proposer_head': encode_hex(proposer_head),
+    test_steps.append(
+        {
+            "checks": {
+                "get_proposer_head": encode_hex(proposer_head),
+            }
         }
-    })
+    )
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
