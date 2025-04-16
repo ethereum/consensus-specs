@@ -217,11 +217,13 @@ gen_list:
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
+gen_%: MAYBE_TEST := $(if $(k),-k=$(k))
 gen_%: pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
-		$(MAYBE_MODCHECK)
+		$(MAYBE_MODCHECK) \
+		$(MAYBE_TEST)
 
 # Run all generators then check for errors.
 gen_all: $(GENERATOR_TARGETS)
