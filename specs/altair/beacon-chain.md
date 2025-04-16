@@ -10,7 +10,7 @@
   - [Domain types](#domain-types)
   - [Misc](#misc)
 - [Preset](#preset)
-  - [Updated penalty values](#updated-penalty-values)
+  - [Rewards and penalties](#rewards-and-penalties)
   - [Sync committee](#sync-committee)
 - [Configuration](#configuration)
   - [Inactivity penalties](#inactivity-penalties)
@@ -46,7 +46,7 @@
   - [Epoch processing](#epoch-processing)
     - [Justification and finalization](#justification-and-finalization)
     - [Inactivity scores](#inactivity-scores)
-    - [Rewards and penalties](#rewards-and-penalties)
+    - [Rewards and penalties](#rewards-and-penalties-1)
     - [Slashings](#slashings)
     - [Participation flags updates](#participation-flags-updates)
     - [Sync committee updates](#sync-committee-updates)
@@ -106,7 +106,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 ## Preset
 
-### Updated penalty values
+### Rewards and penalties
 
 This patch updates a few configuration values to move penalty parameters closer to their final, maximum security values.
 

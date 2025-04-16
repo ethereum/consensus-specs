@@ -1,9 +1,8 @@
 # Mainnet preset - Capella
 
-# Misc
 # Max operations per block
 # ---------------------------------------------------------------
-# 2**4 (= 16)
+# 2**4 (= 16) credential changes
 MAX_BLS_TO_EXECUTION_CHANGES: 16
 
 # Execution
