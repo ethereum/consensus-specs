@@ -10,6 +10,7 @@
 - [Configuration](#configuration)
   - [Data size](#data-size)
   - [Custody setting](#custody-setting)
+  - [Blob schedule](#blob-schedule)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
@@ -66,6 +67,20 @@ The following values are (non-configurable) constants used throughout the specif
 | `SAMPLES_PER_SLOT`         | `8`   | Number of `DataColumnSidecar` random samples a node queries per slot              |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+
+### Blob schedule
+
+*[New in EIP7594]* This schedule defines the maximum blobs per block limit for a given epoch.
+
+<!-- list-of-records:blob_schedule -->
+
+| Epoch                                  | Max Blobs Per Block | Description                                                               |
+| -------------------------------------- | ------------------- | ------------------------------------------------------------------------- |
+| `Epoch(269568)` **Deneb**              | `uint64(6)`         | Starting at epoch `269568`, the limit is `6` blobs                        |
+| `Epoch(364032)` **Electra**            | `uint64(9)`         | Starting at epoch `364032`, the limit is `9` blobs                        |
+| `Epoch(18446744073709551615)` **BPO1** | `uint64(18)`        | Starting at epoch `18446744073709551615` **TBD**, the limit is `18` blobs |
+| `Epoch(18446744073709551615)` **BPO2** | `uint64(36)`        | Starting at epoch `18446744073709551615` **TBD**, the limit is `36` blobs |
+| `Epoch(18446744073709551615)` **BPO3** | `uint64(72)`        | Starting at epoch `18446744073709551615` **TBD**, the limit is `72` blobs |
 
 ### Containers
 

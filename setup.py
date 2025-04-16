@@ -3,6 +3,7 @@ import copy
 import json
 import logging
 import os
+import re
 import string
 import sys
 import warnings
@@ -215,6 +216,8 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
     current_name = None
     should_skip = False
+    list_of_records = None
+    list_of_records_name = None
     for child in document.children:
         if isinstance(child, BlankLine):
             continue
@@ -256,7 +259,27 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
             else:
                 raise Exception("unrecognized python code element: " + source)
         elif isinstance(child, Table):
-            for row in child.children:
+            list_of_records_header = None
+            for i, row in enumerate(child.children):
+                # This will start as an empty list when there is a <!-- list-of-records --> comment,
+                # which indicates that the next table is a list-of-records. After we're done parsing
+                # the table, we will reset this to None.
+                if list_of_records is not None:
+                    if i == 0:
+                        # Save the table header, this will be used for field names.
+                        # Skip the last item, which is the description.
+                        list_of_records_header = [
+                            # Convert the title to SNAKE_CASE
+                            re.sub(r'\s+', '_', value.children[0].children.upper())
+                            for value in row.children[:-1]
+                        ]
+                        continue
+                    list_of_records.append({
+                        list_of_records_header[i]: value.children[0].children
+                        for i, value in enumerate(row.children[:-1])
+                    })
+                    continue
+
                 cells = row.children
                 if len(cells) >= 2:
                     name_cell = cells[0]
@@ -311,10 +334,23 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                             preset_dep_constant_vars[name] = value_def
                         else:
                             constant_vars[name] = value_def
+            # After processing the list of records table, set this to None so
+            # that the next table is processed appropriately
+            if list_of_records is not None:
+                config_vars[list_of_records_name] = list_of_records
+                list_of_records = None
 
         elif isinstance(child, HTMLBlock):
             if child.body.strip() == "<!-- eth2spec: skip -->":
                 should_skip = True
+            # Handle list-of-records tables
+            match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", child.body.strip())
+            if match:
+                # Initialize list-of-records, in the next iteration this will indicate that the
+                # table is a list-of-records and must be parsed differently.
+                list_of_records = []
+                # Use regex to extract the desired configuration list name
+                list_of_records_name = match.group(1).upper()
 
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):

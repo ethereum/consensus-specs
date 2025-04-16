@@ -87,8 +87,21 @@ def objects_to_spec(preset_name: str,
     for name in spec_object.config_vars.keys():
         functions_spec = re.sub(r"\b%s\b" % name, 'config.' + name, functions_spec)
 
-    def format_config_var(name: str, vardef: VariableDefinition) -> str:
-        if vardef.type_name is None:
+    def format_config_var(name: str, vardef) -> str:
+        if isinstance(vardef, list):
+            # A special case for list of records.
+            # TODO(jtraglia): make this better.
+            indent = " " * 4
+            lines = [f"{name}=("]
+            for d in vardef:
+                line = indent*2 + "frozendict({\n"
+                for k, v in d.items():
+                    line += indent * 3 + f'"{k}": {v},\n'
+                line += indent*2 + "}),"
+                lines.append(line)
+            lines.append(indent + "),")
+            return "\n".join(lines)
+        elif vardef.type_name is None:
             out = f'{name}={vardef.value},'
         else:
             out = f'{name}={vardef.type_name}({vardef.value}),'
@@ -96,10 +109,16 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
+    def format_config_var_param(value):
+        if isinstance(value, list):
+            # A special case for list of records.
+            return "tuple[frozendict[str, Any], ...]"
+        elif isinstance(value, VariableDefinition):
+            return value.type_name if value.type_name is not None else "int"
+
     config_spec = 'class Configuration(NamedTuple):\n'
     config_spec += '    PRESET_BASE: str\n'
-    config_spec += '\n'.join(f'    {k}: {v.type_name if v.type_name is not None else "int"}'
-                             for k, v in spec_object.config_vars.items())
+    config_spec += '\n'.join(f'    {k}: {format_config_var_param(v)}' for k, v in spec_object.config_vars.items())
     config_spec += '\n\n\nconfig = Configuration(\n'
     config_spec += f'    PRESET_BASE="{preset_name}",\n'
     config_spec += '\n'.join('    ' + format_config_var(k, v) for k, v in spec_object.config_vars.items())
