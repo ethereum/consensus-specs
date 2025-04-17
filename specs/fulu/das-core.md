@@ -16,6 +16,7 @@
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
   - [`get_custody_groups`](#get_custody_groups)
+  - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
@@ -131,6 +132,15 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 
     assert len(custody_groups) == len(set(custody_groups))
     return sorted(custody_groups)
+```
+
+### `get_max_blobs_per_block`
+
+```python
+def get_max_blobs_per_block(epoch: Epoch) -> int:
+    for entry in reversed(sorted(BLOB_SCHEDULE, key=lambda e: e['EPOCH'])):        
+        if entry["EPOCH"] < epoch:
+            return entry["MAX_BLOBS_PER_BLOCK"]
 ```
 
 ### `compute_columns_for_custody_group`
