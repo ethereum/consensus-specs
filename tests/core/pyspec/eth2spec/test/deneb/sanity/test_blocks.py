@@ -84,7 +84,9 @@ def test_one_blob_two_txs(spec, state):
 @with_deneb_until_eip7732
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state))
+    yield from run_block_with_blobs(
+        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state)
+    )
 
 
 @with_deneb_until_eip7732

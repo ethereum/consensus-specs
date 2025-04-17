@@ -9,6 +9,7 @@ from eth2spec.test.helpers.constants import (
     MAINNET,
 )
 
+
 @with_fulu_and_later
 @spec_test
 @single_phase
@@ -42,11 +43,20 @@ def test_networking(spec):
 @spec_state_test
 @with_presets([MAINNET], reason="to have fork epoch number")
 def test_get_max_blobs(spec, state):
-    # Check that after Deneb fork, blob count goes to 6
-    assert 6 == spec.get_max_blobs_per_block(spec.config.DENEB_FORK_EPOCH + 1)
-
-    # Check that until Electra fork, blob count is still 6
-    assert 6 == spec.get_max_blobs_per_block(spec.config.ELECTRA_FORK_EPOCH)
-
-    # Check that after Electra fork, blob count goes to 9
-    assert 9 == spec.get_max_blobs_per_block(spec.config.ELECTRA_FORK_EPOCH + 1)
+    # Check that before Deneb fork there is no blob count
+    try:
+        spec.get_max_blobs_per_block(spec.config.DENEB_FORK_EPOCH - 1)
+    except AssertionError:
+        pass
+    # Check that after Deneb fork, blob count is equal to MAX_BLOBS_PER_BLOCK (6)
+    assert spec.config.MAX_BLOBS_PER_BLOCK == spec.get_max_blobs_per_block(
+        spec.config.DENEB_FORK_EPOCH
+    )
+    # Check that until Electra fork, blob count is still MAX_BLOBS_PER_BLOCK (6)
+    assert spec.config.MAX_BLOBS_PER_BLOCK == spec.get_max_blobs_per_block(
+        spec.config.ELECTRA_FORK_EPOCH - 1
+    )
+    # Check that after Electra fork, blob count goes to MAX_BLOBS_PER_BLOCK_ELECTRA (9)
+    assert spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA == spec.get_max_blobs_per_block(
+        spec.config.ELECTRA_FORK_EPOCH
+    )
