@@ -82,10 +82,9 @@ def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
-    blob_count = 2
     rng = random.Random(2222)
     yield from _run_blob_kzg_commitments_merkle_proof_test(
-        spec, state, rng=rng, blob_count=blob_count
+        spec, state, rng=rng, blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)) // 2
     )
 
 
@@ -93,8 +92,7 @@ def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__max_blobs(spec, state):
-    max_blobs = max(e["MAX_BLOBS_PER_BLOCK"] for e in spec.config.BLOB_SCHEDULE)
     rng = random.Random(3333)
     yield from _run_blob_kzg_commitments_merkle_proof_test(
-        spec, state, rng=rng, blob_count=max_blobs
+        spec, state, rng=rng, blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state))
     )
