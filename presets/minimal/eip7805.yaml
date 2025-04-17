@@ -1,0 +1,7 @@
+# Minimal preset - EIP7805
+
+# Inclusion list committee
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+INCLUSION_LIST_COMMITTEE_SIZE: 16
+DOMAIN_INCLUSION_LIST_COMMITTEE: 0x0C000000
