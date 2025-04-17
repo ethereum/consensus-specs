@@ -410,9 +410,8 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec, state) + 1
-    )
+    max_blobs = max(e["MAX_BLOBS_PER_BLOCK"] for e in spec.config.BLOB_SCHEDULE)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=max_blobs + 1)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)

@@ -337,6 +337,23 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
             # After processing the list of records table, set this to None so
             # that the next table is processed appropriately
             if list_of_records is not None:
+                if list_of_records_name == "BLOB_SCHEDULE":
+                    # A bit of a hack. Check that the blob schedule in the config matches
+                    # the blob schedule in the specs. For minimal, overwrite the values.
+                    blob_schedule_from_config = [
+                        {
+                            "EPOCH": f'Epoch({entry["EPOCH"]})',
+                            "MAX_BLOBS_PER_BLOCK": f'uint64({entry["MAX_BLOBS_PER_BLOCK"]})'
+                        }
+                        for entry in config["BLOB_SCHEDULE"]
+                    ]
+                    if preset_name == "mainnet":
+                        assert list_of_records == blob_schedule_from_config, \
+                            f"blob schedule mismatch: {list_of_records} vs {blob_schedule_from_config}"
+                    elif preset_name == "minimal":
+                        list_of_records = blob_schedule_from_config
+
+                # Set the config variable and reset the global variable
                 config_vars[list_of_records_name] = list_of_records
                 list_of_records = None
 
