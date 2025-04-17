@@ -17,7 +17,6 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
-    - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_beacon_proposer_index`](#modified-get_beacon_proposer_index)
   - [Epoch processing](#epoch-processing)
@@ -169,23 +168,6 @@ def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[Validator
     seeds = [hash(epoch_seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
     indices = get_active_validator_indices(state, epoch)
     return [compute_proposer_index(state, indices, seed) for seed in seeds]
-```
-
-#### New `initialize_proposer_lookahead`
-
-```python
-def initialize_proposer_lookahead(
-    state: BeaconState
-) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
-    """
-    Return the proposer indices for the full available lookahead starting from current epoch.
-    Used to initialize the `proposer_lookahead` field in the beacon state at genesis and after forks.
-    """
-    current_epoch = get_current_epoch(state)
-    lookahead = []
-    for i in range(MIN_SEED_LOOKAHEAD + 1):
-        lookahead.extend(compute_proposer_indices(state, Epoch(current_epoch + i)))
-    return lookahead
 ```
 
 ### Beacon state accessors
