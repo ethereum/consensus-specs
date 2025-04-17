@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-  - [Execution](#execution)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -19,12 +18,6 @@
 *Note*: This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
 
 ## Configuration
-
-### Execution
-
-| Name                       | Value        | Description                                                                                                   |
-| -------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK_FULU` | `uint64(12)` | *[New in Fulu:EIP7594]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ## Beacon chain state transition function
 
@@ -45,7 +38,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_FULU  # [Modified in Fulu:EIP7594]
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(

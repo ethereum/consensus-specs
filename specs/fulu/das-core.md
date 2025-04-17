@@ -138,9 +138,11 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 
 ```python
 def get_max_blobs_per_block(epoch: Epoch) -> int:
-    for entry in reversed(sorted(BLOB_SCHEDULE, key=lambda e: e['EPOCH'])):        
+    assert epoch >= DENEB_FORK_EPOCH
+    for entry in reversed(sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"])):        
         if entry["EPOCH"] < epoch:
             return entry["MAX_BLOBS_PER_BLOCK"]
+    return 0
 ```
 
 ### `compute_columns_for_custody_group`

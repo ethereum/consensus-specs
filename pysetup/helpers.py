@@ -291,17 +291,16 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, Dict[str, st
     """
     out: Dict[str, Union[str, Dict[str, str]]] = dict()
     for k, v in conf.items():
-        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
+        if isinstance(v, str) and (v.startswith("0x") or k == "PRESET_BASE" or k == "CONFIG_NAME"):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
-            if k == 'BLOB_SCHEDULE':
+            if k == "BLOB_SCHEDULE":
                 blob_schedule = {}
                 for BPO in v:
-                    blob_schedule[BPO['EPOCH']] = {"MAX_BLOBS_PER_BLOCK": BPO['MAX_BLOBS_PER_BLOCK']}
+                    blob_schedule[BPO["EPOCH"]] = {"MAX_BLOBS_PER_BLOCK": BPO["MAX_BLOBS_PER_BLOCK"]}
                 out[k] = blob_schedule
-
             else:
                 out[k] = str(int(v))
     return out
