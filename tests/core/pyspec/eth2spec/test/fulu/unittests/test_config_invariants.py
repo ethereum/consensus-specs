@@ -1,10 +1,13 @@
 from eth2spec.test.context import (
     single_phase,
     spec_test,
+    with_presets,
     with_fulu_and_later,
 )
 from eth2spec.test.context import spec_state_test
-
+from eth2spec.test.helpers.constants import (
+    MAINNET,
+)
 
 @with_fulu_and_later
 @spec_test
@@ -37,10 +40,13 @@ def test_networking(spec):
 
 @with_fulu_and_later
 @spec_state_test
+@with_presets([MAINNET], reason="to have fork epoch number")
 def test_get_max_blobs(spec, state):
-    max_blobs = spec.get_max_blobs_per_block(0)
-    assert max_blobs == 0
-    max_blobs = spec.get_max_blobs_per_block(269568 + 1)
-    assert max_blobs == 6
-    max_blobs = spec.get_max_blobs_per_block(364032 + 1)
-    assert max_blobs == 9
+    # Check that after Deneb fork, blob count goes to 6
+    assert 6 == spec.get_max_blobs_per_block(spec.config.DENEB_FORK_EPOCH + 1)
+
+    # Check that until Electra fork, blob count is still 6
+    assert 6 == spec.get_max_blobs_per_block(spec.config.ELECTRA_FORK_EPOCH)
+
+    # Check that after Electra fork, blob count goes to 9
+    assert 9 == spec.get_max_blobs_per_block(spec.config.ELECTRA_FORK_EPOCH + 1)

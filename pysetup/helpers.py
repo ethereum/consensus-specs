@@ -1,5 +1,5 @@
 import re
-from typing import TypeVar, Dict, Union
+from typing import TypeVar, Dict, Union, List
 import textwrap
 from functools import reduce
 
@@ -84,13 +84,13 @@ def objects_to_spec(preset_name: str,
     functions_spec = '\n\n\n'.join(functions.values())
 
     # Access global dict of config vars for runtime configurables
+    # Ignore variable between quotes and doubles quotes
     for name in spec_object.config_vars.keys():
-        functions_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, 'config.' + name, functions_spec)
+        functions_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, functions_spec)
 
     def format_config_var(name: str, vardef) -> str:
         if isinstance(vardef, list):
             # A special case for list of records.
-            # TODO(jtraglia): make this better.
             indent = " " * 4
             lines = [f"{name}=("]
             for d in vardef:
@@ -285,7 +285,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     )
 
 
-def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, Dict[str, str]]]:
+def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, List[Dict[str, str]]]]:
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
@@ -296,11 +296,10 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, Dict[str, st
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
-            if k == "BLOB_SCHEDULE":
-                blob_schedule = {}
-                for BPO in v:
-                    blob_schedule[BPO["EPOCH"]] = {"MAX_BLOBS_PER_BLOCK": BPO["MAX_BLOBS_PER_BLOCK"]}
-                out[k] = blob_schedule
+            if isinstance(v, list):
+                # A special case for list of records
+                for entry in v:
+                    out[k] = v
             else:
                 out[k] = str(int(v))
     return out

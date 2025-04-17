@@ -84,28 +84,28 @@ def test_one_blob_two_txs(spec, state):
 @with_deneb_until_eip7732
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=get_max_blob_count(spec))
+    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state))
 
 
 @with_deneb_until_eip7732
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=1, tx_count=get_max_blob_count(spec) + 1, valid=False
+        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state) + 1, valid=False
     )
 
 
 @with_deneb_until_eip7732
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec))
+    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec, state))
 
 
 @with_deneb_until_eip7732
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec), tx_count=2, valid=False
+        spec, state, blob_count=get_max_blob_count(spec, state), tx_count=2, valid=False
     )
 
 
@@ -113,7 +113,7 @@ def test_invalid_max_blobs_per_block_two_txs(spec, state):
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec) + 1, valid=False
+        spec, state, blob_count=get_max_blob_count(spec, state) + 1, valid=False
     )
 
 

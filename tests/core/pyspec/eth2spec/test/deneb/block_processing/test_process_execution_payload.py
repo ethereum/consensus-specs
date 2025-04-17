@@ -411,7 +411,7 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec) + 1
+        spec, blob_count=get_max_blob_count(spec, state) + 1
     )
 
     execution_payload.transactions = [opaque_tx]
