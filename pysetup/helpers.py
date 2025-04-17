@@ -1,5 +1,5 @@
 import re
-from typing import TypeVar, Dict
+from typing import TypeVar, Dict, Union
 import textwrap
 from functools import reduce
 
@@ -285,16 +285,23 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     )
 
 
-def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
+def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, Dict[str, str]]]:
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: Dict[str, str] = dict()
+    out: Dict[str, Union[str, Dict[str, str]]] = dict()
     for k, v in conf.items():
         if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"
         else:
-            out[k] = str(int(v))
+            if k == 'BLOB_SCHEDULE':
+                blob_schedule = {}
+                for BPO in v:
+                    blob_schedule[BPO['EPOCH']] = {"MAX_BLOBS_PER_BLOCK": BPO['MAX_BLOBS_PER_BLOCK']}
+                out[k] = blob_schedule
+
+            else:
+                out[k] = str(int(v))
     return out
