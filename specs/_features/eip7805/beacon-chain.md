@@ -3,8 +3,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Constants](#constants)
   - [Domain types](#domain-types)
+- [Preset](#preset)
   - [Inclusion List Committee](#inclusion-list-committee)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -34,13 +35,15 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
   *Note*: This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
 
-## Preset
+## Constants
 
 ### Domain types
 
 | Name                              | Value                      |
 | --------------------------------- | -------------------------- |
 | `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0C000000')` |
+
+## Preset
 
 ### Inclusion List Committee
 
