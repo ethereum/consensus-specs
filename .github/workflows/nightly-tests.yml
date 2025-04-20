@@ -1,0 +1,43 @@
+name: Nightly mainnet tests
+
+defaults:
+  run:
+    shell: zsh {0}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The branch, tag or SHA to checkout and build from
+        default: dev
+        type: string
+        required: true
+  schedule:
+    # Every day at 00:00 UTC
+    - cron: '0 0 * * *'
+
+jobs:
+  tests:
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    strategy:
+      fail-fast: false
+      matrix:
+        fork:
+          - phase0
+          - altair
+          - bellatrix
+          - capella
+          - deneb
+          - electra
+          - fulu
+          - eip7441
+          - eip7732
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Python
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        with:
+          python-version: '3.13'
+      - name: test-${{ matrix.fork }}
+        run: make test preset=mainnet fork=${{ matrix.fork }}
