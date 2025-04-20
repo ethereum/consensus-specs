@@ -13,11 +13,9 @@ jobs:
   lint:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
-      - &checkout-step
-        name: Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - &setup-python-step
-        name: Setup python
+      - name: Setup python
         uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.13'
@@ -30,7 +28,8 @@ jobs:
   whitespace:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
-      - *checkout-step
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Check for trailing whitespace
         run: |
           if git grep -n '[[:blank:]]$'; then
@@ -41,8 +40,13 @@ jobs:
   modcheck:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
-      - *checkout-step
-      - *setup-python-step
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup python
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        with:
+          python-version: '3.13'
+          cache: 'pip'
       - name: Run generators with --modcheck
         run: make gen_all modcheck=true 2>&1 | tee consensustestgen.log
       - name: Check for errors
@@ -68,7 +72,12 @@ jobs:
           - eip7441
           - eip7732
     steps:
-      - *checkout-step
-      - *setup-python-step
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup python
+        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        with:
+          python-version: '3.13'
+          cache: 'pip'
       - name: Run pyspec tests for ${{ matrix.fork }}
         run: make test preset=minimal fork=${{ matrix.fork }}
