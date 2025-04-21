@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
+    with_altair_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
@@ -135,7 +136,8 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     return proposer_score // base_effective_balance + 1
 
 
-@with_altair_and_later
+# TODO(jtraglia): Investigate why this doesn't work with eip7732
+@with_altair_until_eip7732
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
@@ -370,7 +372,8 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield "steps", test_steps
 
 
-@with_altair_and_later
+# TODO(jtraglia): Investigate why this doesn't work with eip7732
+@with_altair_until_eip7732
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):

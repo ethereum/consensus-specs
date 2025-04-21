@@ -43,7 +43,7 @@ The specification of these changes continues in the same format as the network s
 
 | Name                                           | Value        | Description                                                 |
 | ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `13` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `21` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
