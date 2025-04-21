@@ -33,7 +33,7 @@ This is the beacon chain specification to add EIP-7805 / fork-choice enforced, c
 
 - [Fork-Choice enforced Inclusion Lists (FOCIL): A simple committee-based inclusion list proposal](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
-  *Note*: This specification is built upon [Electra](../../electra/beacon_chain.md) and is under active development.
+  *Note*: This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
 
 ## Constants
 
