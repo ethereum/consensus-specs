@@ -1136,7 +1136,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     for _ in range(bound):
         validator = state.validators[validator_index]
         # [Modified in Electra:EIP7251]
-        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index)
+        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
         balance = state.balances[validator_index] - total_withdrawn
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(Withdrawal(
