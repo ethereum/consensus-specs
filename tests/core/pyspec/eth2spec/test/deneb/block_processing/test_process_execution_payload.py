@@ -124,6 +124,7 @@ def test_incorrect_blob_tx_type(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
