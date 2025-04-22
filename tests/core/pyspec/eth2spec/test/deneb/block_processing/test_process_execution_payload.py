@@ -148,6 +148,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -170,6 +171,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -192,6 +194,7 @@ def test_incorrect_transaction_length_empty(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -214,6 +217,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -236,6 +240,7 @@ def test_no_transactions_with_commitments(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -257,6 +262,7 @@ def test_incorrect_commitment(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -279,6 +285,7 @@ def test_no_commitments_for_transactions(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
@@ -301,6 +308,7 @@ def test_incorrect_commitments_order(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
@@ -323,6 +331,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     # the blob transaction is invalid, because the EL verifies that the tx contains at least one blob
@@ -345,6 +354,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_block_hash(spec, state):
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -367,6 +377,7 @@ def test_zeroed_commitment(spec, state):
     """
     The blob is invalid, but the commitment is in correct form.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
@@ -391,6 +402,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     """
     The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
     """
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -409,6 +421,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
+    state.slot += spec.config.DENEB_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
