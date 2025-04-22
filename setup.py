@@ -57,7 +57,7 @@ class PyspecFilter(logging.Filter):
 logging.getLogger().addFilter(PyspecFilter())
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=256)
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
     last_child = heading.children[-1]
     if isinstance(last_child, CodeSpan):
@@ -65,18 +65,18 @@ def _get_name_from_heading(heading: Heading) -> Optional[str]:
     return None
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=1024)
 def _get_source_from_code_block(block: FencedCode) -> str:
     return block.children[0].children.strip()
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=1024)
 def _get_function_name_from_source(source: str) -> str:
     fn = ast.parse(source).body[0]
     return fn.name
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=1024)
 def _get_self_type_from_source(source: str) -> Optional[str]:
     fn = ast.parse(source).body[0]
     args = fn.args.args
@@ -89,7 +89,7 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
     return args[0].annotation.id
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=1024)
 def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     class_def = ast.parse(source).body[0]
     base = class_def.bases[0]
@@ -105,14 +105,14 @@ def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
     return class_def.name, parent_class
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=128)
 def _is_constant_id(name: str) -> bool:
     if name[0] not in string.ascii_uppercase + '_':
         return False
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=16)
 def _load_kzg_trusted_setups(preset_name):
     trusted_setups_file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
 
@@ -124,7 +124,7 @@ def _load_kzg_trusted_setups(preset_name):
 
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=16)
 def _load_curdleproofs_crs(preset_name):
     """
     NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
@@ -148,7 +148,7 @@ ALL_CURDLEPROOFS_CRS = {
 }
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=1024)
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -192,12 +192,12 @@ def _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_consta
     )
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=256)
 def parse_markdown(content: str):
     return gfm.parse(content)
 
 
-def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
+def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name: str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
     constant_vars: Dict[str, VariableDefinition] = {}
@@ -347,7 +347,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
     )
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=32)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
     Loads a directory of preset files, merges the result into one preset.
@@ -366,7 +366,7 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     return parse_config_vars(preset)
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=32)
 def load_config(config_path: Path) -> Dict[str, str]:
     """
     Loads the given configuration file.
