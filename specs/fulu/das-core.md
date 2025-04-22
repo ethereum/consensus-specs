@@ -75,10 +75,10 @@ The following values are (non-configurable) constants used throughout the specif
 
 <!-- list-of-records:blob_schedule -->
 
-| Epoch                         | Max Blobs Per Block | Description                       |
-| ----------------------------- | ------------------- | --------------------------------- |
-| `Epoch(269568)` **Deneb**     | `uint64(6)`         | The limit is set to `6` blobs     |
-| `Epoch(364032)` **Electra**   | `uint64(9)`         | The limit is raised to `9` blobs  |
+| Epoch                       | Max Blobs Per Block | Description                      |
+| --------------------------- | ------------------- | -------------------------------- |
+| `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
+| `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
 
 ### Containers
 
