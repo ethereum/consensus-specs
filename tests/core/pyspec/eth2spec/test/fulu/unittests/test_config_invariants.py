@@ -40,27 +40,6 @@ def test_polynomial_commitments_sampling(spec):
 def test_blob_schedule(spec):
     for entry in spec.config.BLOB_SCHEDULE:
         # Check that all epochs are post-Deneb
-        assert entry["EPOCH"] >= spec.config.DENEB_FORK_EPOCH
+        assert entry["EPOCH"] >= spec.config.FULU_FORK_EPOCH
         # Check that all blob counts are less than the limit
         assert entry["MAX_BLOBS_PER_BLOCK"] <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-@with_presets([MAINNET], reason="to have fork epoch number")
-def test_get_max_blobs(spec):
-    # Check that before Deneb fork there is no blob count
-    assert 0 == spec.get_max_blobs_per_block(spec.config.DENEB_FORK_EPOCH - 1)
-    # Check that at the Deneb fork, blob count is equal to MAX_BLOBS_PER_BLOCK
-    assert spec.config.MAX_BLOBS_PER_BLOCK == spec.get_max_blobs_per_block(
-        spec.config.DENEB_FORK_EPOCH
-    )
-    # Check that until Electra fork, blob count is still MAX_BLOBS_PER_BLOCK
-    assert spec.config.MAX_BLOBS_PER_BLOCK == spec.get_max_blobs_per_block(
-        spec.config.ELECTRA_FORK_EPOCH - 1
-    )
-    # Check that at the Electra fork, blob count goes to MAX_BLOBS_PER_BLOCK_ELECTRA
-    assert spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA == spec.get_max_blobs_per_block(
-        spec.config.ELECTRA_FORK_EPOCH
-    )

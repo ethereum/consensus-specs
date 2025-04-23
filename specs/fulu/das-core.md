@@ -71,14 +71,15 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Blob schedule
 
-*[New in EIP7594]* This schedule defines the maximum blobs per block limit for a given epoch.
+*[New in EIP7594]* This schedule defines the maximum blobs per block limit for a given epoch. For epoch values before those defined in the table, the default blob limit is `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
 <!-- list-of-records:blob_schedule -->
 
-| Epoch                       | Max Blobs Per Block | Description                      |
-| --------------------------- | ------------------- | -------------------------------- |
-| `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
-| `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
+| Epoch                         | Max Blobs Per Block | Description                       |
+| ----------------------------- | ------------------- | --------------------------------- |
+| `Epoch(18446744073709551615)` | `uint64(10)`        | The limit is raised to `10` blobs |
+| `Epoch(18446744073709551615)` | `uint64(11)`        | The limit is raised to `11` blobs |
+| `Epoch(18446744073709551615)` | `uint64(12)`        | The limit is raised to `12` blobs |
 
 ### Containers
 
@@ -138,7 +139,7 @@ def get_max_blobs_per_block(epoch: Epoch) -> uint64:
     for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
         if epoch >= entry["EPOCH"]:
             return entry["MAX_BLOBS_PER_BLOCK"]
-    return uint64(0)
+    return MAX_BLOBS_PER_BLOCK_ELECTRA
 ```
 
 ### `compute_columns_for_custody_group`
