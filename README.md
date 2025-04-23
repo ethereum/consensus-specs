@@ -23,13 +23,13 @@ sequential upgrades when ready.
 | 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
 | 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
 | 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
+| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
 
 ### In-development Specifications
 
-| Seq. | Code Name   | Fork Epoch | Links                                                                    |
-| ---- | ----------- | ---------- | ------------------------------------------------------------------------ |
-| 5    | **Electra** | TBD        | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra) |
-| 6    | **Fulu**    | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)       |
+| Seq. | Code Name | Fork Epoch | Links                                                              |
+| ---- | --------- | ---------- | ------------------------------------------------------------------ |
+| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
 
 ### Accompanying documents
 

@@ -1,7 +1,5 @@
 # Electra -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -1441,7 +1439,7 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
 
 ###### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to to use the modified `apply_deposit`.
+*Note*: The function `process_deposit` is modified to use the modified `apply_deposit`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:

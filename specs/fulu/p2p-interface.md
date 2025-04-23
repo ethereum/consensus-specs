@@ -326,7 +326,7 @@ Response Content:
 )
 ```
 
-Requests data column sidecars by block root and column index.
+Requests data column sidecars by block root and column indices.
 The response is a list of `DataColumnSidecar` whose length is less than or equal to `requested_columns_count`, where `requested_columns_count = sum(len(r.columns) for r in request)`.
 It may be less in the case that the responding peer is missing blocks or sidecars.
 
