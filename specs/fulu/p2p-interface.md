@@ -9,7 +9,7 @@
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`DataColumnIdentifier`](#datacolumnidentifier)
+    - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
@@ -61,12 +61,12 @@ The specification of these changes continues in the same format as the network s
 
 ### Containers
 
-#### `DataColumnIdentifier`
+#### `DataColumnsByRootIdentifier`
 
 ```python
-class DataColumnIdentifier(Container):
+class DataColumnsByRootIdentifier(Container):
     block_root: Root
-    index: ColumnIndex
+    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 ```
 
 ### Helpers
@@ -314,7 +314,7 @@ Request Content:
 
 ```
 (
-  List[DataColumnIdentifier, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
 )
 ```
 
@@ -326,8 +326,8 @@ Response Content:
 )
 ```
 
-Requests sidecars by block root and index.
-The response is a list of `DataColumnIdentifier` whose length is less than or equal to the number of requests.
+Requests data column sidecars by block root and column index.
+The response is a list of `DataColumnSidecar` whose length is less than or equal to `requested_columns_count`, where `requested_columns_count = sum(len(r.columns) for r in request)`.
 It may be less in the case that the responding peer is missing blocks or sidecars.
 
 Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
