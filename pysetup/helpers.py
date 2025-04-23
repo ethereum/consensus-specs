@@ -82,11 +82,13 @@ def objects_to_spec(preset_name: str,
 
     functions = reduce(lambda fns, builder: builder.implement_optimizations(fns), builders, spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
+    ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
 
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
     for name in spec_object.config_vars.keys():
         functions_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, functions_spec)
+        ordered_class_objects_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, ordered_class_objects_spec)
 
     def format_config_var(name: str, vardef) -> str:
         if isinstance(vardef, list):
@@ -159,7 +161,6 @@ def objects_to_spec(preset_name: str,
     constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_dep_constant_vars_spec = '# Preset computed constants\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_dep_constant_vars.items())
     preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
-    ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), filtered_ssz_dep_constants))
     func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), filtered_hardcoded_func_dep_presets))
