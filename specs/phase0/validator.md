@@ -8,6 +8,7 @@ This is an accompanying document to [Phase 0 -- The Beacon Chain](./beacon-chain
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Presets](#presets)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
   - [`AggregateAndProof`](#aggregateandproof)
@@ -83,6 +84,13 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | Name                               | Value         |    Unit    |
 | ---------------------------------- | ------------- | :--------: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+
+## Presets
+
+| Name                  | Value       |
+| --------------------- | ----------- |
+| `ATTESTATION_DUE_MS`  | `4000`      |
+| `AGGREGATE_DUE_MS`    | `8000`      |
 
 ## Containers
 
@@ -448,7 +456,7 @@ def get_block_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) `1 / INTERVALS_PER_SLOT` of the `slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of `slot`) -- whichever comes _first_.
+A validator should create and broadcast the `attestation` to the associated attestation subnet when either (a) the validator has received a valid block from the expected block proposer for the assigned `slot` or (b) `ATTESTATION_DUE_MS` milliseconds after the start of `slot` has transpired -- whichever comes _first_.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded, and should be made.
 
@@ -574,7 +582,7 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 #### Broadcast aggregate
 
-If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `2 / INTERVALS_PER_SLOT` of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds after the start of `slot`.
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate as a `SignedAggregateAndProof` to the global aggregate channel (`beacon_aggregate_and_proof`) `AGGREGATE_DUE_MS` milliseconds after the start of `slot` has transpired.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip channel that the validator has been selected as an aggregator.
 
