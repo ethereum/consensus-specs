@@ -29,6 +29,8 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [GetMetaData v3](#getmetadata-v3)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody group count](#custody-group-count)
@@ -361,6 +363,26 @@ Response Content:
 ```
 
 Requests the MetaData of a peer, using the new `MetaData` definition given above that is extended from Altair. Other conditions for the `GetMetaData` protocol are unchanged from the Altair p2p networking document.
+
+#### BlobSidecarsByRange v1
+
+`/eth2/beacon_chain/req/blob_sidecars_by_range/1/` is deprecated as of `FULU_FORK_EPOCH + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`.
+
+During the deprecation transition period:
+
+- Clients MUST respond with a list of blob sidecars from the range `[min(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, FULU_FORK_EPOCH), FULU_FORK_EPOCH)` if the requested range includes any epochs in this interval.
+- Clients MAY respond with an empty list if the requested range lies entirely at or after `FULU_FORK_EPOCH`.
+- Clients SHOULD NOT penalize peers for requesting blob sidecars from `FULU_FORK_EPOCH`.
+
+#### BlobSidecarsByRoot v1
+
+`/eth2/beacon_chain/req/blob_sidecars_by_root/1/` is deprecated as of `FULU_FORK_EPOCH + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`.
+
+During the deprecation transition period:
+
+- Clients MUST respond with blob sidecars corresponding to block roots from the range `[min(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, FULU_FORK_EPOCH), FULU_FORK_EPOCH)` if any of the requested roots correspond to blocks in this interval.
+- Clients MAY respond with an empty list if all requested roots correspond to blocks at or after `FULU_FORK_EPOCH`.
+- Clients SHOULD NOT penalize peers for requesting blob sidecars from `FULU_FORK_EPOCH`.
 
 ### The discovery domain: discv5
 
