@@ -213,7 +213,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="check generator modules, do not run any tests.",
     )
     parser.add_argument(
-        "-k",
+        "--case-list",
         dest="case_list",
         nargs="*",
         type=str,
