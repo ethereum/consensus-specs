@@ -1,7 +1,5 @@
 # Electra -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -1114,10 +1112,12 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 
         validator = state.validators[withdrawal.validator_index]
         has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        has_excess_balance = state.balances[withdrawal.validator_index] > MIN_ACTIVATION_BALANCE
+        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index)
+        balance = state.balances[withdrawal.validator_index] - total_withdrawn
+        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
         if validator.exit_epoch == FAR_FUTURE_EPOCH and has_sufficient_effective_balance and has_excess_balance:
             withdrawable_balance = min(
-                state.balances[withdrawal.validator_index] - MIN_ACTIVATION_BALANCE,
+                balance - MIN_ACTIVATION_BALANCE,
                 withdrawal.amount)
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -1134,9 +1134,8 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     for _ in range(bound):
         validator = state.validators[validator_index]
         # [Modified in Electra:EIP7251]
-        partially_withdrawn_balance = sum(
-            withdrawal.amount for withdrawal in withdrawals if withdrawal.validator_index == validator_index)
-        balance = state.balances[validator_index] - partially_withdrawn_balance
+        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
+        balance = state.balances[validator_index] - total_withdrawn
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(Withdrawal(
                 index=withdrawal_index,
@@ -1440,7 +1439,7 @@ def is_valid_deposit_signature(pubkey: BLSPubkey,
 
 ###### Modified `process_deposit`
 
-*Note*: The function `process_deposit` is modified to to use the modified `apply_deposit`.
+*Note*: The function `process_deposit` is modified to use the modified `apply_deposit`.
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
