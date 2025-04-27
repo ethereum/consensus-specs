@@ -218,7 +218,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         nargs="*",
         type=str,
         required=False,
-        help="specify test cases to run with. Allows all if no test case names are specified."
+        help="specify test cases to run with. Allows all if no test case names are specified.",
     )
     args = parser.parse_args()
 
@@ -281,7 +281,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 continue
 
             # If cases list is assigned, filter by cases.
-            if len(cases) != 0 and test_case.case_name not in cases:    
+            if len(cases) != 0 and test_case.case_name not in cases:
                 continue
 
             case_dir = get_test_case_dir(test_case, output_dir)
