@@ -15,7 +15,7 @@ An automated nightly tests release system, with a config filter applied, is bein
   - [Cleaning](#cleaning)
   - [Running all test generators](#running-all-test-generators)
   - [Running a single generator](#running-a-single-generator)
-  - [Running a generator for specific tests](#running-a-generator-for-specific-tests)
+  - [Running generators for specific tests](#running-generators-for-specific-tests)
 - [Developing a generator](#developing-a-generator)
 - [How to add a new test generator](#how-to-add-a-new-test-generator)
 - [How to remove a test generator](#how-to-remove-a-test-generator)
@@ -55,7 +55,7 @@ The makefile auto-detects generators in the `tests/generators` directory and pro
 make gen_ssz_static
 ```
 
-### Running a generator for specific tests
+### Running generators for specific tests
 
 Arguments can be appended to configure exactly what tests should be generated (`k=<test>`), on which forks (`fork=<fork>`), and which presets (`preset=<preset>`). The arguments can be used individually or altogether. See examples:
 
@@ -79,6 +79,12 @@ The arguments also accept comma-separated lists to specify multiple values.
 
 ```bash
 make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
+```
+
+The arguments can also be used for when running all test generators.
+
+```bash
+make gen_all fork=fulu
 ```
 
 ## Developing a generator
