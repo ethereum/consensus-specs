@@ -250,13 +250,16 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if forks is None:
         forks = []
 
-    if len(presets) != 0:
+    if len(forks) != 0:
         print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
     # case_list arg
     cases = args.case_list
     if cases is None:
         cases = []
+
+    if len(cases) != 0:
+        print(f"Filtering test-generator runs to only include test cases: {', '.join(cases)}")
 
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
