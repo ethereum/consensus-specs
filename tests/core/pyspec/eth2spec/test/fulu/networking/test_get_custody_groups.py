@@ -68,7 +68,7 @@ def test_get_custody_groups_max_node_id_max_custody_group_count(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups_max_node_id_max_custody_group_count_minus_1(spec):
+def test_get_custody_groups_max_node_id_minus_1_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(
         spec,
