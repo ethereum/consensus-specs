@@ -124,10 +124,10 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[ColumnIndex]:
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
-    return sorted([
+    return [
         ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
         for i in range(columns_per_group)
-    ])
+    ]
 ```
 
 ### `compute_matrix`
