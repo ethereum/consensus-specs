@@ -224,7 +224,7 @@ gen_list:
 # To run the generator for a specific preset, append preset=<preset>, eg:
 #   make gen_operations preset=mainnet
 # To run the generator for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
-#	make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
+#   make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
 # Or all at the same time, eg:
 #   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
