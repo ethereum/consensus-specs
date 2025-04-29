@@ -205,6 +205,7 @@ SCRIPTS_DIR = $(CURDIR)/scripts
 GENERATOR_ERROR_LOG_FILE = $(TEST_VECTOR_DIR)/testgen_error_log.txt
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
+COMMA:= ,
 
 # List available generators.
 gen_list:
@@ -216,12 +217,28 @@ gen_list:
 # This will forcibly rebuild pyspec just in case.
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
+# To run the generator for a specific test, append k=<test>, eg:
+#   make gen_operations k=invalid_committee_index
+# To run the generator for a specific fork, append fork=<fork>, eg:
+#   make gen_operations fork=fulu
+# To run the generator for a specific preset, append preset=<preset>, eg:
+#   make gen_operations preset=mainnet
+# To run the generator for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
+#   make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
+# Or all at the same time, eg:
+#   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
+gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
+gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
+gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
 gen_%: pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
-		$(MAYBE_MODCHECK)
+		$(MAYBE_MODCHECK) \
+		$(MAYBE_TESTS) \
+		$(MAYBE_FORKS) \
+		$(MAYBE_PRESETS)
 
 # Run all generators then check for errors.
 gen_all: $(GENERATOR_TARGETS)
