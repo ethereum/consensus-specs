@@ -194,12 +194,9 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE:
-  # Placeholder BPO1
-  - EPOCH: 18446744073709551615
-    MAX_BLOBS_PER_BLOCK: 10
-  # Placeholder BPO2
-  - EPOCH: 18446744073709551615
-    MAX_BLOBS_PER_BLOCK: 11
-  # Placeholder BPO3
-  - EPOCH: 18446744073709551615
-    MAX_BLOBS_PER_BLOCK: 12
+  # Deneb
+  - EPOCH: 269568
+    MAX_BLOBS_PER_BLOCK: 6
+  # Electra
+  - EPOCH: 364032
+    MAX_BLOBS_PER_BLOCK: 9
