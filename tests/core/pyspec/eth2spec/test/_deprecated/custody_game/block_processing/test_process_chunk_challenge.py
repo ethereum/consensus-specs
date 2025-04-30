@@ -9,7 +9,7 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
-from eth2spec.test.helpers.state import transition_to, transition_to_valid_shard_slot
+from eth2spec.test._deprecated.helpers.state import transition_to, transition_to_valid_shard_slot
 from eth2spec.test.context import (
     expect_assertion_error,
     disable_process_reveal_deadlines,

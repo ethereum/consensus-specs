@@ -7,7 +7,7 @@ from eth2spec.test._deprecated.helpers.custody import (
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth2spec.test.helpers.state import (
+from eth2spec.test._deprecated.helpers.state import (
     next_epoch_via_block,
     transition_to,
     transition_to_valid_shard_slot,

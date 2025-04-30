@@ -2,8 +2,9 @@ from eth2spec.test.context import (
     with_phases,
     spec_state_test,
 )
-from eth2spec.test.helpers.constants import SHARDING
 from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.typing import SpecForkName
+SHARDING = SpecForkName("sharding")
 
 
 @with_phases([SHARDING])

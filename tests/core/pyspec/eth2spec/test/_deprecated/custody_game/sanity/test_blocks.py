@@ -25,7 +25,7 @@ from eth2spec.test.helpers.shard_block import (
     get_sample_shard_block_body,
     get_shard_transitions,
 )
-from eth2spec.test.helpers.state import (
+from eth2spec.test._deprecated.helpers.state import (
     state_transition_and_sign_block,
     transition_to_valid_shard_slot,
     transition_to,
