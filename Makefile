@@ -116,6 +116,7 @@ test: pyspec
 		$(MAYBE_FORK) \
 		$(PRESET) \
 		$(BLS) \
+		--ignore=$(PYSPEC_DIR)/eth2spec/test/_deprecated/* \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		$(PYSPEC_DIR)/eth2spec
 
