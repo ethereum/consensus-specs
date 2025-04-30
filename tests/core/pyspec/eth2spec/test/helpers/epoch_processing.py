@@ -39,7 +39,6 @@ def get_process_calls(spec):
             else ("process_participation_record_updates")
         ),
         "process_sync_committee_updates",  # altair
-        # TODO: add sharding processing functions when spec stabilizes.
     ]
 
 
