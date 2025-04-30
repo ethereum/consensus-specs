@@ -3,12 +3,13 @@ from eth2spec.test.context import (
     spec_state_test,
     always_bls,
 )
-from eth2spec.test.helpers.constants import CUSTODY_GAME
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.attestations import (
     run_attestation_processing,
     get_valid_attestation,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 @with_phases([CUSTODY_GAME])

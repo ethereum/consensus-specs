@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.custody import (
+from eth2spec.test._deprecated.helpers.custody import (
     get_valid_custody_key_reveal,
 )
 from eth2spec.test.helpers.state import transition_to
@@ -8,13 +8,14 @@ from eth2spec.test.context import (
     spec_state_test,
 )
 from eth2spec.test.helpers.constants import (
-    CUSTODY_GAME,
     MINIMAL,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
-from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal import (
+from eth2spec.test._deprecated.custody_game.block_processing.test_process_custody_key_reveal import (
     run_custody_key_reveal_processing,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 def run_process_challenge_deadlines(spec, state):

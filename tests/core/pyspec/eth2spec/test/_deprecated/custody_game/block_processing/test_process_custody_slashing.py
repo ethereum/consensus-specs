@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.custody import (
+from eth2spec.test._deprecated.helpers.custody import (
     get_valid_custody_slashing,
     get_custody_slashable_shard_transition,
 )
@@ -6,7 +6,6 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth2spec.test.helpers.constants import (
-    CUSTODY_GAME,
     MINIMAL,
 )
 from eth2spec.test.helpers.keys import privkeys
@@ -22,6 +21,8 @@ from eth2spec.test.context import (
 from eth2spec.test.phase0.block_processing.test_process_attestation import (
     run_attestation_processing,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 def run_custody_slashing_processing(spec, state, custody_slashing, valid=True, correct=True):

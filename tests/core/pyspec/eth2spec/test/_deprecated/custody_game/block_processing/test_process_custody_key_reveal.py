@@ -1,11 +1,12 @@
-from eth2spec.test.helpers.constants import CUSTODY_GAME
-from eth2spec.test.helpers.custody import get_valid_custody_key_reveal
+from eth2spec.test._deprecated.helpers.custody import get_valid_custody_key_reveal
 from eth2spec.test.context import (
     with_phases,
     spec_state_test,
     expect_assertion_error,
     always_bls,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 def run_custody_key_reveal_processing(spec, state, custody_key_reveal, valid=True):

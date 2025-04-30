@@ -15,7 +15,6 @@ ELECTRA = SpecForkName("electra")
 
 # Experimental phases (not included in default "ALL_PHASES"):
 SHARDING = SpecForkName("sharding")
-CUSTODY_GAME = SpecForkName("custody_game")
 DAS = SpecForkName("das")
 FULU = SpecForkName("fulu")
 EIP7441 = SpecForkName("eip7441")

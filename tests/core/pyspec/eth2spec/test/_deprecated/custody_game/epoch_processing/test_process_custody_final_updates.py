@@ -1,7 +1,4 @@
-from eth2spec.test.helpers.constants import (
-    CUSTODY_GAME,
-)
-from eth2spec.test.helpers.custody import (
+from eth2spec.test._deprecated.helpers.custody import (
     get_valid_chunk_challenge,
     get_valid_custody_chunk_response,
     get_valid_custody_key_reveal,
@@ -24,13 +21,15 @@ from eth2spec.test.phase0.block_processing.test_process_attestation import (
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
-from eth2spec.test.custody_game.block_processing.test_process_chunk_challenge import (
+from eth2spec.test._deprecated.custody_game.block_processing.test_process_chunk_challenge import (
     run_chunk_challenge_processing,
     run_custody_chunk_response_processing,
 )
-from eth2spec.test.custody_game.block_processing.test_process_custody_key_reveal import (
+from eth2spec.test._deprecated.custody_game.block_processing.test_process_custody_key_reveal import (
     run_custody_key_reveal_processing,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 def run_process_custody_final_updates(spec, state):

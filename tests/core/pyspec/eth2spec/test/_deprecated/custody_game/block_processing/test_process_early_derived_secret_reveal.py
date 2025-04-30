@@ -1,5 +1,4 @@
-from eth2spec.test.helpers.constants import CUSTODY_GAME
-from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
+from eth2spec.test._deprecated.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.helpers.state import next_epoch_via_block, get_balance
 from eth2spec.test.context import (
     with_phases,
@@ -8,7 +7,8 @@ from eth2spec.test.context import (
     always_bls,
     never_bls,
 )
-
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, valid=True):
     """

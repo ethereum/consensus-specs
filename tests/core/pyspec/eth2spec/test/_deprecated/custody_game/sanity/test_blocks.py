@@ -8,10 +8,9 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.constants import (
-    CUSTODY_GAME,
     MINIMAL,
 )
-from eth2spec.test.helpers.custody import (
+from eth2spec.test._deprecated.helpers.custody import (
     get_custody_slashable_test_vector,
     get_valid_chunk_challenge,
     get_valid_custody_chunk_response,
@@ -31,6 +30,8 @@ from eth2spec.test.helpers.state import (
     transition_to_valid_shard_slot,
     transition_to,
 )
+from eth2spec.test.helpers.typing import SpecForkName
+CUSTODY_GAME = SpecForkName("custody_game")
 
 
 def run_beacon_block(spec, state, block, valid=True):
