@@ -23,6 +23,7 @@ from eth2spec.test._deprecated.custody_game.block_processing.test_process_chunk_
     run_chunk_challenge_processing,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 

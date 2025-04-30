@@ -31,6 +31,7 @@ from eth2spec.test._deprecated.helpers.state import (
     transition_to,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 

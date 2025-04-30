@@ -1007,7 +1007,6 @@ def test_duplicate_attestation_same_block(spec, state):
         )
 
 
-
 @with_all_phases
 @spec_state_test
 def test_voluntary_exit(spec, state):

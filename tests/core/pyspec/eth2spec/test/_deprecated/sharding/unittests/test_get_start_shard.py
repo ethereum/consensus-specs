@@ -4,6 +4,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.typing import SpecForkName
+
 SHARDING = SpecForkName("sharding")
 
 

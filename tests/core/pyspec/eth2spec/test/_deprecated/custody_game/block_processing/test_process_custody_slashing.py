@@ -22,6 +22,7 @@ from eth2spec.test.phase0.block_processing.test_process_attestation import (
     run_attestation_processing,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 

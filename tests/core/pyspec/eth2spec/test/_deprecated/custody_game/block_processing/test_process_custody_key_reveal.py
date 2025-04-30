@@ -6,6 +6,7 @@ from eth2spec.test.context import (
     always_bls,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 

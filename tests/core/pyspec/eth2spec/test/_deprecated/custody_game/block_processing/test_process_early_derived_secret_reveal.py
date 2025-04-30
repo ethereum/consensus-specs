@@ -8,7 +8,9 @@ from eth2spec.test.context import (
     never_bls,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
+
 
 def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, valid=True):
     """

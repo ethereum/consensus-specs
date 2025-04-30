@@ -9,6 +9,7 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 

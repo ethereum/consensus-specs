@@ -22,7 +22,9 @@ from eth2spec.test.phase0.block_processing.test_process_attestation import (
 )
 
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
+
 
 def run_chunk_challenge_processing(spec, state, custody_chunk_challenge, valid=True):
     """

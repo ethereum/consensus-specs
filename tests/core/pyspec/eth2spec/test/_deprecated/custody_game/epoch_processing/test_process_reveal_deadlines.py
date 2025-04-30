@@ -15,6 +15,7 @@ from eth2spec.test._deprecated.custody_game.block_processing.test_process_custod
     run_custody_key_reveal_processing,
 )
 from eth2spec.test.helpers.typing import SpecForkName
+
 CUSTODY_GAME = SpecForkName("custody_game")
 
 
