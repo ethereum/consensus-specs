@@ -74,13 +74,6 @@ if __name__ == "__main__":
     # No additional Fulu specific epoch processing tests
     fulu_mods = electra_mods
 
-    # TODO Custody Game testgen is disabled for now
-    # custody_game_mods = {**{key: 'eth2spec.test._deprecated.custody_game.epoch_processing.test_process_' + key for key in [
-    #     'reveal_deadlines',
-    #     'challenge_deadlines',
-    #     'custody_final_updates',
-    # ]}, **phase_0_mods}  # also run the previous phase 0 tests (but against custody game spec)
-
     all_mods = {
         PHASE0: phase_0_mods,
         ALTAIR: altair_mods,

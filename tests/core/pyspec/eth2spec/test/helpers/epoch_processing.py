@@ -14,12 +14,7 @@ def get_process_calls(spec):
         "process_inactivity_updates",  # altair
         "process_rewards_and_penalties",
         "process_registry_updates",
-        "process_reveal_deadlines",  # custody game
-        "process_challenge_deadlines",  # custody game
         "process_slashings",
-        "process_pending_header.",  # sharding
-        "charge_confirmed_header_fees",  # sharding
-        "reset_pending_headers",  # sharding
         "process_eth1_data_reset",
         "process_pending_deposits",  # electra
         "process_pending_consolidations",  # electra

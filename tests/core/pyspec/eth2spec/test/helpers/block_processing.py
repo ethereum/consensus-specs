@@ -35,10 +35,6 @@ def get_process_calls(spec):
         "process_application_payload": lambda state, block: spec.process_application_payload(
             state, block.body
         ),
-        # Custody Game
-        "process_custody_game_operations": lambda state, block: spec.process_custody_game_operations(
-            state, block.body
-        ),
     }
 
 
