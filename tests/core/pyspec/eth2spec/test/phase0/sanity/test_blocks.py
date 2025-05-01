@@ -640,9 +640,6 @@ def test_invalid_duplicate_attester_slashing_same_block(spec, state):
     yield "post", None
 
 
-# TODO All AttesterSlashing tests should be adopted for SHARDING and later but helper support is not yet there
-
-
 @with_all_phases
 @spec_state_test
 def test_multiple_attester_slashings_no_overlap(spec, state):
@@ -919,8 +916,6 @@ def test_attestation(spec, state):
     )
 
     index = 0
-    # if spec.fork == SHARDING:
-    #     TODO add shard data to block to vote on
 
     attestation = get_valid_attestation(spec, state, index=index, signed=True)
 
@@ -1010,12 +1005,6 @@ def test_duplicate_attestation_same_block(spec, state):
             spec.hash_tree_root(state.previous_epoch_participation)
             == pre_current_epoch_participation_root
         )
-
-
-# After SHARDING is enabled, a committee is computed for SHARD_COMMITTEE_PERIOD slots ago,
-# exceeding the minimal-config randao mixes memory size.
-# Applies to all voluntary-exit sanity block tests.
-# TODO: when integrating SHARDING tests, voluntary-exit tests may need to change.
 
 
 @with_all_phases

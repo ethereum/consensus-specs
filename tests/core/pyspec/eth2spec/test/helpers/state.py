@@ -42,15 +42,6 @@ def transition_to_slot_via_block(spec, state, slot):
     assert state.slot == slot
 
 
-def transition_to_valid_shard_slot(spec, state):
-    """
-    Transition to slot `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH) + 1`
-    and fork at `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)`.
-    """
-    transition_to(spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH))
-    next_slot(spec, state)
-
-
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
