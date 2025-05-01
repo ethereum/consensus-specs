@@ -75,10 +75,10 @@ The following values are (non-configurable) constants used throughout the specif
 
 <!-- list-of-records:blob_schedule -->
 
-| Epoch           | Max Blobs Per Block | Description                      |
-| --------------- | ------------------- | -------------------------------- |
-| `Epoch(269568)` | `uint64(6)`         | The limit is set to `6` blobs    |
-| `Epoch(364032)` | `uint64(9)`         | The limit is raised to `9` blobs |
+| Epoch                       | Max Blobs Per Block | Description                      |
+| --------------------------- | ------------------- | -------------------------------- |
+| `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
+| `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
 
 ### Containers
 
@@ -136,19 +136,13 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 ```python
 def get_max_blobs_per_block(epoch: Epoch) -> uint64:
     """
-    Return the maximum number of blobs that can be included in a block for the current epoch.
+    Return the maximum number of blobs that can be included in a block for a given epoch.
     """
-    # This is a temporary block of code which is only necessary for testing. The testing
-    # infrastructure uses states where the current epoch is zero but the current version
-    # is whichever fork is being tested. This does not play well with a getter function
-    # which uses the current epoch to determine the appropriate return value.
-    if epoch < FULU_FORK_EPOCH:
-        return BLOB_SCHEDULE[-1]["MAX_BLOBS_PER_BLOCK"]
-
+    assert len(BLOB_SCHEDULE) > 0
     for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
         if epoch >= entry["EPOCH"]:
             return entry["MAX_BLOBS_PER_BLOCK"]
-    return uint64(0)
+    return min(entry["MAX_BLOBS_PER_BLOCK"] for entry in BLOB_SCHEDULE)
 ```
 
 ### `compute_columns_for_custody_group`
