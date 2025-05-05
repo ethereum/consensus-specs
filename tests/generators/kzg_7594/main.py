@@ -105,14 +105,12 @@ def case_compute_cells_and_kzg_proofs():
         ]
 
     # Valid cases
-    for blob in VALID_BLOBS:
-        identifier = make_id(blob)
-        yield f"compute_cells_and_kzg_proofs_case_valid_{identifier}", lambda: run_test_case(blob)
+    for index, blob in enumerate(VALID_BLOBS):
+        yield f"compute_cells_and_kzg_proofs_case_valid_{index}", lambda: run_test_case(blob)
 
     # Edge case: Invalid blobs
-    for blob in INVALID_BLOBS:
-        identifier = make_id(blob)
-        yield f"compute_cells_and_kzg_proofs_case_invalid_blob_{identifier}", lambda: run_test_case(
+    for index, blob in enumerate(INVALID_BLOBS):
+        yield f"compute_cells_and_kzg_proofs_case_invalid_blob_{index}", lambda: run_test_case(
             blob
         )
 
@@ -146,20 +144,18 @@ def case_verify_cell_kzg_proof_batch():
         ]
 
     # Valid cases
-    for blob in VALID_BLOBS:
+    for index, blob in enumerate(VALID_BLOBS):
         cells, proofs = cached_compute_cells_and_kzg_proofs(blob)
         commitments = [cached_blob_to_kzg_commitment(blob) for _ in cells]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_valid_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_valid_{index}", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
     # Valid: zero cells
     if True:
         cells, commitments, cell_indices, proofs = [], [], [], []
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_valid_zero_cells_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_valid_zero_cells", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -174,8 +170,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = [0, 0]
         cells = [cells0[0], cells1[0]]
         proofs = [proofs0[0], proofs1[0]]
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_valid_multiple_blobs_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_valid_multiple_blobs}", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -186,8 +181,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = [0] * num_duplicates
         cells = [cached_compute_cells_and_kzg_proofs[VALID_BLOBS[3]][0][0]] * num_duplicates
         proofs = [cached_compute_cells_and_kzg_proofs[VALID_BLOBS[3]][1][0]] * num_duplicates
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_valid_same_cell_multiple_times_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_valid_same_cell_multiple_times", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -198,8 +192,7 @@ def case_verify_cell_kzg_proof_batch():
         # Use the wrong commitment
         commitments = [bls_add_one(cached_blob_to_kzg_commitment[VALID_BLOBS[5]])]
         cell_indices = list(range(len(cells)))
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_incorrect_commitment_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_incorrect_commitment", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -211,8 +204,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Change last cell so it's wrong
         cells[-1] = CELL_RANDOM_VALID2
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_incorrect_cell_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_incorrect_cell", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -224,21 +216,18 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Change last proof so it's wrong
         proofs[-1] = bls_add_one(proofs[-1])
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_incorrect_proof_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_incorrect_proof", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
     # Edge case: Invalid commitment
-    for i, commitment in enumerate(INVALID_G1_POINTS):
-        cells, proofs = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[i % len(INVALID_G1_POINTS)]]
+    for index, commitment in enumerate(INVALID_G1_POINTS):
+        cells, proofs = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[index % len(INVALID_G1_POINTS)]]
         cells, proofs = cells[:1], proofs[:1]
         # Set commitments to the invalid commitment
         commitments = [commitment]
         cell_indices = list(range(len(cells)))
-        expect_exception(spec.verify_cell_kzg_proof_batch, commitments, cell_indices, cells, proofs)
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_commitment_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_commitment_{index}", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -250,38 +239,35 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Set first cell index to an invalid value
         cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_cell_index_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_cell_index", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
     # Edge case: Invalid cell
-    for i, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
+    for index, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
         cells, proofs = cached_compute_cells_and_kzg_proofs[
-            VALID_BLOBS[i % len(INVALID_INDIVIDUAL_CELL_BYTES)]
+            VALID_BLOBS[index % len(INVALID_INDIVIDUAL_CELL_BYTES)]
         ]
         cells, proofs = cells[:1], proofs[:1]
         commitments = [
-            cached_blob_to_kzg_commitment[VALID_BLOBS[i % len(INVALID_INDIVIDUAL_CELL_BYTES)]]
+            cached_blob_to_kzg_commitment[VALID_BLOBS[index % len(INVALID_INDIVIDUAL_CELL_BYTES)]]
         ]
         cell_indices = list(range(len(cells)))
         # Set first cell to the invalid cell
         cells[0] = cell
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_cell_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_cell_{index}", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
     # Edge case: Invalid proof
-    for i, proof in enumerate(INVALID_G1_POINTS):
-        cells, proofs = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[i % len(INVALID_G1_POINTS)]]
+    for index, proof in enumerate(INVALID_G1_POINTS):
+        cells, proofs = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[index % len(INVALID_G1_POINTS)]]
         cells, proofs = cells[:1], proofs[:1]
-        commitments = [cached_blob_to_kzg_commitment[VALID_BLOBS[i % len(INVALID_G1_POINTS)]]]
+        commitments = [cached_blob_to_kzg_commitment[VALID_BLOBS[index % len(INVALID_G1_POINTS)]]]
         cell_indices = list(range(len(cells)))
         # Set first proof to the invalid proof
         proofs[0] = proof
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_proof_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_proof_{index}", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -292,8 +278,7 @@ def case_verify_cell_kzg_proof_batch():
         # Do not include the second commitment
         commitments = [cached_blob_to_kzg_commitment[VALID_BLOBS[0]]]
         cell_indices = list(range(len(cells)))
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_commitment_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_commitment", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -307,8 +292,7 @@ def case_verify_cell_kzg_proof_batch():
         ]
         # Leave off one of the cell indices
         cell_indices = list(range(len(cells) - 1))
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell_index_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell_index", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -323,8 +307,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Remove the last proof
         cells = cells[:-1]
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_cell", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -339,8 +322,7 @@ def case_verify_cell_kzg_proof_batch():
         cell_indices = list(range(len(cells)))
         # Remove the last proof
         proofs = proofs[:-1]
-        identifier = make_id(commitments, cell_indices, cells, proofs)
-        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_proof_{identifier}", run_test_case(
+        yield f"verify_cell_kzg_proof_batch_case_invalid_missing_proof", run_test_case(
             commitments, cell_indices, cells, proofs
         )
 
@@ -382,8 +364,7 @@ def case_recover_cells_and_kzg_proofs():
     if True:
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[0]]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-        identifier = make_id(cell_indices, cells)
-        yield f"recover_cells_and_kzg_proofs_case_valid_no_missing_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_valid_no_missing", run_test_case(
             cell_indices, cells
         )
 
@@ -392,8 +373,7 @@ def case_recover_cells_and_kzg_proofs():
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[1]]
         cell_indices = list(range(0, spec.CELLS_PER_EXT_BLOB, 2))
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell", run_test_case(
             cell_indices, cells
         )
 
@@ -402,8 +382,7 @@ def case_recover_cells_and_kzg_proofs():
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[2]]
         cell_indices = list(range(0, spec.CELLS_PER_EXT_BLOB // 2))
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_first_half_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_first_half", run_test_case(
             cell_indices, cells
         )
 
@@ -412,16 +391,14 @@ def case_recover_cells_and_kzg_proofs():
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[3]]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2, spec.CELLS_PER_EXT_BLOB))
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_second_half_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_valid_half_missing_second_half", run_test_case(
             cell_indices, cells
         )
 
     # Edge case: All cells are missing
     if True:
         cell_indices, partial_cells = [], []
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_all_cells_are_missing_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_all_cells_are_missing", run_test_case(
             cell_indices, cells
         )
 
@@ -430,8 +407,7 @@ def case_recover_cells_and_kzg_proofs():
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[4]]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2 - 1))
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_more_than_half_missing_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_more_than_half_missing", run_test_case(
             cell_indices, cells
         )
 
@@ -440,8 +416,7 @@ def case_recover_cells_and_kzg_proofs():
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[5]]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB)) + [0]
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext_blob_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext_blob", run_test_case(
             cell_indices, cells
         )
 
@@ -452,20 +427,18 @@ def case_recover_cells_and_kzg_proofs():
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
         # Replace first cell_index with an invalid value
         cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_cell_index_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_cell_index", run_test_case(
             cell_indices, cells
         )
 
     # Edge case: Invalid cell
-    for cell in INVALID_INDIVIDUAL_CELL_BYTES:
+    for index, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
         cells, _ = cached_compute_cells_and_kzg_proofs[VALID_BLOBS[6]]
         cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2))
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
         # Replace first cell with an invalid value
         partial_cells[0] = cell
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_cell_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_cell_{index}", run_test_case(
             cell_indices, cells
         )
 
@@ -476,8 +449,7 @@ def case_recover_cells_and_kzg_proofs():
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
         # Add another cell_index
         cell_indices.append(int(spec.CELLS_PER_EXT_BLOB - 1))
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells", run_test_case(
             cell_indices, cells
         )
 
@@ -488,8 +460,7 @@ def case_recover_cells_and_kzg_proofs():
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
         # Add another cell
         partial_cells.append(CELL_RANDOM_VALID1)
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_indices_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_indices", run_test_case(
             cell_indices, cells
         )
 
@@ -505,8 +476,7 @@ def case_recover_cells_and_kzg_proofs():
         partial_cells = [cells[cell_index] for cell_index in cell_indices]
         # Replace first cell_index with the second cell_index
         cell_indices[0] = cell_indices[1]
-        identifier = make_id(cell_indices, partial_cells)
-        yield f"recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index_{identifier}", run_test_case(
+        yield f"recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index", run_test_case(
             cell_indices, cells
         )
 
