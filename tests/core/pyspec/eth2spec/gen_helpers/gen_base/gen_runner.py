@@ -281,7 +281,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 continue
 
             # If cases list is assigned, filter by cases.
-            if len(cases) != 0 and test_case.case_name not in cases:
+            if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
                 continue
 
             case_dir = get_test_case_dir(test_case, output_dir)
