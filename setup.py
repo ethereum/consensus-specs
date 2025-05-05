@@ -206,22 +206,18 @@ def check_yaml_matches_spec(var_name, yaml, value_def):
         # This is just Hash32() in the specs, that's fine
         return
 
+    # We use a var in the definition of a new var, replace usages
+    # Reverse sort so that overridden values come first
+    updated_value = value_def.value
+    for var in sorted(yaml.keys(), reverse=True):
+        if var in updated_value:
+            updated_value = updated_value.replace(var, yaml[var])
     try:
-        assert yaml[var_name] == repr(eval(value_def.value)), \
-            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(value_def.value)}"
+        assert yaml[var_name] == repr(eval(updated_value)), \
+            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
     except NameError:
-        # We use a var in the definition of a new var, replace usages
-        # Reverse sort so that overridden values come first
-        updated_value = value_def.value
-        for var in sorted(yaml.keys(), reverse=True):
-            if var in updated_value:
-                updated_value = updated_value.replace(var, yaml[var])
-        try:
-            assert yaml[var_name] == repr(eval(updated_value)), \
-                f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
-        except NameError:
-            # Okay it's probably something more serious, let's ignore
-            pass
+        # Okay it's probably something more serious, let's ignore
+        pass
 
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
