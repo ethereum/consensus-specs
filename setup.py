@@ -197,6 +197,33 @@ def parse_markdown(content: str):
     return gfm.parse(content)
 
 
+def check_yaml_matches_spec(var_name, yaml, value_def):
+    """
+    This function performs a sanity check for presets & configs. To a certain degree, it ensures
+    that the values in the specifications match those in the yaml files.
+    """
+    if var_name == "TERMINAL_BLOCK_HASH":
+        # This is just Hash32() in the specs, that's fine
+        return
+
+    try:
+        assert yaml[var_name] == repr(eval(value_def.value)), \
+            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(value_def.value)}"
+    except NameError:
+        # We use a var in the definition of a new var, replace usages
+        # Reverse sort so that overridden values come first
+        updated_value = value_def.value
+        for var in sorted(yaml.keys(), reverse=True):
+            if var in updated_value:
+                updated_value = updated_value.replace(var, yaml[var])
+        try:
+            assert yaml[var_name] == repr(eval(updated_value)), \
+                f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
+        except NameError:
+            # Okay it's probably something more serious, let's ignore
+            pass
+
+
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
@@ -300,8 +327,12 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
                     value_def = _parse_value(name, value)
                     if name in preset:
+                        if preset_name == "mainnet":
+                            check_yaml_matches_spec(name, preset, value_def)
                         preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
                     elif name in config:
+                        if preset_name == "mainnet":
+                            check_yaml_matches_spec(name, config, value_def)
                         config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
                         if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
