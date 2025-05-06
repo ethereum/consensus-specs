@@ -2,6 +2,7 @@
 KZG test vectors generator for EIP-4844
 """
 
+from functools import lru_cache
 from typing import Tuple, Iterable, Any, Callable, Dict
 
 from eth_utils import encode_hex
@@ -26,6 +27,22 @@ from eth2spec.test.utils.kzg_tests import (
 from eth2spec.utils import bls
 
 
+
+###############################################################################
+# Test helpers
+###############################################################################
+
+
+@lru_cache(maxsize=None)
+def cached_blob_to_kzg_commitment(blob):
+    return spec.blob_to_kzg_commitment(blob)
+
+
+@lru_cache(maxsize=None)
+def cached_compute_blob_kzg_proof(blob, commitment):
+    return spec.compute_blob_kzg_proof(blob, commitment)
+
+
 ###############################################################################
 # Test cases for blob_to_kzg_commitment
 ###############################################################################
@@ -36,7 +53,7 @@ def case01_blob_to_kzg_commitment():
         def _runner():
             try:
                 commitment = None
-                commitment = spec.blob_to_kzg_commitment(blob)
+                commitment = cached_blob_to_kzg_commitment(blob)
             except:
                 pass
             return [
@@ -71,7 +88,7 @@ def case02_compute_kzg_proof():
         def _runner():
             try:
                 proof, y = None, None
-                proof, y = spec.blob_to_kzg_commitment(blob)
+                proof, y = cached_blob_to_kzg_commitment(blob)
             except:
                 pass
             return [
@@ -144,7 +161,7 @@ def case03_verify_kzg_proof():
 
             def get_inputs():
                 proof, y = spec.compute_kzg_proof(blob, z)
-                commitment = spec.blob_to_kzg_commitment(blob)
+                commitment = cached_blob_to_kzg_commitment(blob)
                 return commitment, z, y, proof
 
             yield f"verify_kzg_proof_case_correct_proof_{i}_{j}", get_test_runner(get_inputs)
@@ -156,7 +173,7 @@ def case03_verify_kzg_proof():
             def get_inputs():
                 proof_orig, y = spec.compute_kzg_proof(blob, z)
                 proof = bls_add_one(proof_orig)
-                commitment = spec.blob_to_kzg_commitment(blob)
+                commitment = cached_blob_to_kzg_commitment(blob)
                 return commitment, z, y, proof
 
             yield f"verify_kzg_proof_case_incorrect_proof_{i}_{j}", get_test_runner(get_inputs)
@@ -167,7 +184,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob = BLOB_RANDOM_VALID1
             _, y = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
@@ -181,7 +198,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob = BLOB_ALL_ZEROS
             _, y = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
@@ -195,7 +212,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob = BLOB_ALL_TWOS
             _, y = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
@@ -219,7 +236,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
             proof, y = spec.compute_kzg_proof(blob, validz)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             return commitment, z, y, proof
 
         yield f"verify_kzg_proof_case_invalid_z_{index}", get_test_runner(get_inputs)
@@ -230,7 +247,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
             proof, _ = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             return commitment, z, y, proof
 
         yield f"verify_kzg_proof_case_invalid_y_{index}", get_test_runner(get_inputs)
@@ -241,7 +258,7 @@ def case03_verify_kzg_proof():
         def get_inputs():
             blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
             _, y = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             return commitment, z, y, proof
 
         yield f"verify_kzg_proof_case_invalid_proof_{index}", get_test_runner(get_inputs)
@@ -258,7 +275,7 @@ def case04_compute_blob_kzg_proof():
             blob, commitment = input_getter()
             try:
                 proof = None
-                proof = spec.compute_blob_kzg_proof(blob, commitment)
+                proof = cached_compute_blob_kzg_proof(blob, commitment)
             except:
                 pass
             return [
@@ -270,7 +287,7 @@ def case04_compute_blob_kzg_proof():
                             "blob": encode_hex(blob),
                             "commitment": encode_hex(commitment),
                         },
-                        "output": proof if proof is not None else None,
+                        "output": encode_hex(proof) if proof is not None else None,
                     },
                 )
             ]
@@ -281,7 +298,7 @@ def case04_compute_blob_kzg_proof():
     for index, blob in enumerate(VALID_BLOBS):
 
         def get_inputs():
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             return blob, commitment
 
         yield f"compute_blob_kzg_proof_case_valid_blob_{index}", get_test_runner(get_inputs)
@@ -340,8 +357,8 @@ def case05_verify_blob_kzg_proof():
     for index, blob in enumerate(VALID_BLOBS):
 
         def get_inputs():
-            commitment = spec.blob_to_kzg_commitment(blob)
-            proof = spec.compute_blob_kzg_proof(blob, commitment)
+            commitment = cached_blob_to_kzg_commitment(blob)
+            proof = cached_compute_blob_kzg_proof(blob, commitment)
             return blob, commitment, proof
 
         yield f"verify_blob_kzg_proof_case_correct_proof_{index}", get_test_runner(get_inputs)
@@ -350,8 +367,8 @@ def case05_verify_blob_kzg_proof():
     for index, blob in enumerate(VALID_BLOBS):
 
         def get_inputs():
-            commitment = spec.blob_to_kzg_commitment(blob)
-            proof = bls_add_one(spec.compute_blob_kzg_proof(blob, commitment))
+            commitment = cached_blob_to_kzg_commitment(blob)
+            proof = bls_add_one(cached_compute_blob_kzg_proof(blob, commitment))
             return blob, commitment, proof
 
         yield f"verify_blob_kzg_proof_case_incorrect_proof_{index}", get_test_runner(get_inputs)
@@ -361,7 +378,7 @@ def case05_verify_blob_kzg_proof():
 
         def get_inputs():
             blob = BLOB_RANDOM_VALID1
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
@@ -374,7 +391,7 @@ def case05_verify_blob_kzg_proof():
 
         def get_inputs():
             blob = BLOB_ALL_ZEROS
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
@@ -387,7 +404,7 @@ def case05_verify_blob_kzg_proof():
 
         def get_inputs():
             blob = BLOB_ALL_TWOS
-            commitment = spec.blob_to_kzg_commitment(blob)
+            commitment = cached_blob_to_kzg_commitment(blob)
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
@@ -462,9 +479,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS[:length]
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             return blobs, commitments, proofs
 
@@ -475,9 +492,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Add one to the first proof, so that it's incorrect
             proofs = [bls_add_one(proofs[0])] + proofs[1:]
@@ -492,7 +509,7 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = [BLOB_RANDOM_VALID1]
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             # Use the wrong proof
             proofs = [spec.G1_POINT_AT_INFINITY]
             return blobs, commitments, proofs
@@ -506,9 +523,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Insert an invalid blob into the middle
             blobs = VALID_BLOBS[:4] + [blob] + VALID_BLOBS[5:]
@@ -521,9 +538,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Replace first commitment with an invalid commitment
             commitments = [commitment] + commitments[1:]
@@ -538,9 +555,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS[:length]
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Replace first proof with an invalid proof
             proofs = [proof] + proofs[1:]
@@ -553,9 +570,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Delete the last blob
             blobs = blobs[:-1]
@@ -568,9 +585,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Delete the last commitment
             commitments = commitments[:-1]
@@ -585,9 +602,9 @@ def case06_verify_blob_kzg_proof_batch():
 
         def get_inputs():
             blobs = VALID_BLOBS
-            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
-                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+                cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
             ]
             # Delete the last proof
             proofs = proofs[:-1]
