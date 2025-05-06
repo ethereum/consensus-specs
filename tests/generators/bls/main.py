@@ -79,7 +79,7 @@ def case_sign():
                 sig = None
                 sig = bls.Sign(privkey, message)
             except:
-                expect_exception(milagro_bls.Sign, privkey, message)
+                expect_exception(milagro_bls.Sign, to_bytes(privkey), message)
             if sig is not None:
                 assert sig == milagro_bls.Sign(to_bytes(privkey), message)
             return [
@@ -88,10 +88,10 @@ def case_sign():
                     "data",
                     {
                         "input": {
-                            "privkey": int_to_hex(privkey),
+                            "privkey": int_to_hex(privkey, 32),
                             "message": encode_hex(message),
                         },
-                        "output": encode_hex(sig),
+                        "output": encode_hex(sig) if sig is not None else None,
                     },
                 )
             ]
@@ -104,7 +104,7 @@ def case_sign():
             yield f"sign_case_{i}_{j}", get_test_runner(privkey, message)
 
     # Edge case: privkey == 0
-    yield "sign_case_zero_privkey", get_test_runner(privkey, message)
+    yield "sign_case_zero_privkey", get_test_runner(ZERO_PRIVKEY, MESSAGES[-1])
 
 
 def case_verify():
