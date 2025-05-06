@@ -44,7 +44,6 @@ def generate_from_tests(
     if phase is None:
         phase = fork_name
 
-    print("generating test vectors from tests source: %s" % src.__name__)
     for name in fn_names:
         tfn = getattr(src, name)
 
