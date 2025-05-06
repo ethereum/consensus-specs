@@ -253,17 +253,17 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
             if len(presets) != 0 and test_case.preset_name not in presets:
-                print(f"Skipped: {get_test_identifier(test_case)}")
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
             # If fork list is assigned, filter by forks.
             if len(forks) != 0 and test_case.fork_name not in forks:
-                print(f"Skipped: {get_test_identifier(test_case)}")
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
             # If cases list is assigned, filter by cases.
-            if len(cases) != 0 and test_case.case_name not in cases:
-                print(f"Skipped: {get_test_identifier(test_case)}")
+            if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
             print(f"Collected: {get_test_identifier(test_case)}")

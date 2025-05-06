@@ -144,10 +144,6 @@ INVALID_BLOBS = [
     BLOB_INVALID_LENGTH_MINUS_ONE,
 ]
 
-# Commitments
-
-VALID_COMMITMENTS = [spec.blob_to_kzg_commitment(blob) for blob in VALID_BLOBS]
-
 # Points
 
 G1 = bls.G1_to_bytes48(bls.G1())
