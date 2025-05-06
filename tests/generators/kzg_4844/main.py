@@ -27,7 +27,6 @@ from eth2spec.test.utils.kzg_tests import (
 from eth2spec.utils import bls
 
 
-
 ###############################################################################
 # Test helpers
 ###############################################################################
@@ -48,7 +47,7 @@ def cached_compute_blob_kzg_proof(blob, commitment):
 ###############################################################################
 
 
-def case01_blob_to_kzg_commitment():
+def case_blob_to_kzg_commitment():
     def get_test_runner(blob):
         def _runner():
             try:
@@ -83,7 +82,7 @@ def case01_blob_to_kzg_commitment():
 ###############################################################################
 
 
-def case02_compute_kzg_proof():
+def case_compute_kzg_proof():
     def get_test_runner(blob, z):
         def _runner():
             try:
@@ -118,7 +117,7 @@ def case02_compute_kzg_proof():
         yield f"compute_kzg_proof_case_invalid_blob_{index}", get_test_runner(blob, z)
 
     # Edge case: Invalid z
-    for z in INVALID_FIELD_ELEMENTS:
+    for index, z in enumerate(INVALID_FIELD_ELEMENTS):
         blob = VALID_BLOBS[4]
         yield f"compute_kzg_proof_case_invalid_z_{index}", get_test_runner(blob, z)
 
@@ -128,7 +127,7 @@ def case02_compute_kzg_proof():
 ###############################################################################
 
 
-def case03_verify_kzg_proof():
+def case_verify_kzg_proof():
     def get_test_runner(input_getter):
         def _runner():
             commitment, z, y, proof = input_getter()
@@ -269,7 +268,7 @@ def case03_verify_kzg_proof():
 ###############################################################################
 
 
-def case04_compute_blob_kzg_proof():
+def case_compute_blob_kzg_proof():
     def get_test_runner(input_getter):
         def _runner():
             blob, commitment = input_getter()
@@ -327,7 +326,7 @@ def case04_compute_blob_kzg_proof():
 ###############################################################################
 
 
-def case05_verify_blob_kzg_proof():
+def case_verify_blob_kzg_proof():
     def get_test_runner(input_getter):
         def _runner():
             blob, commitment, proof = input_getter()
@@ -448,7 +447,7 @@ def case05_verify_blob_kzg_proof():
 ###############################################################################
 
 
-def case06_verify_blob_kzg_proof_batch():
+def case_verify_blob_kzg_proof_batch():
     def get_test_runner(input_getter):
         def _runner():
             blobs, commitments, proofs = input_getter()
@@ -649,13 +648,11 @@ if __name__ == "__main__":
     gen_runner.run_generator(
         "kzg",
         [
-            create_provider(DENEB, "blob_to_kzg_commitment", case01_blob_to_kzg_commitment),
-            create_provider(DENEB, "compute_kzg_proof", case02_compute_kzg_proof),
-            create_provider(DENEB, "verify_kzg_proof", case03_verify_kzg_proof),
-            create_provider(DENEB, "compute_blob_kzg_proof", case04_compute_blob_kzg_proof),
-            create_provider(DENEB, "verify_blob_kzg_proof", case05_verify_blob_kzg_proof),
-            create_provider(
-                DENEB, "verify_blob_kzg_proof_batch", case06_verify_blob_kzg_proof_batch
-            ),
+            create_provider(DENEB, "blob_to_kzg_commitment", case_blob_to_kzg_commitment),
+            create_provider(DENEB, "compute_kzg_proof", case_compute_kzg_proof),
+            create_provider(DENEB, "verify_kzg_proof", case_verify_kzg_proof),
+            create_provider(DENEB, "compute_blob_kzg_proof", case_compute_blob_kzg_proof),
+            create_provider(DENEB, "verify_blob_kzg_proof", case_verify_blob_kzg_proof),
+            create_provider(DENEB, "verify_blob_kzg_proof_batch", case_verify_blob_kzg_proof_batch),
         ],
     )
