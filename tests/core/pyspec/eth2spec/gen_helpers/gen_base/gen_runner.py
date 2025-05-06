@@ -140,26 +140,6 @@ def get_incomplete_tag_file(case_dir):
     return case_dir / "INCOMPLETE"
 
 
-def should_skip_case_dir(case_dir, is_force, diagnostics_obj):
-    is_skip = False
-    incomplete_tag_file = get_incomplete_tag_file(case_dir)
-
-    if case_dir.exists():
-        if not is_force and not incomplete_tag_file.exists():
-            diagnostics_obj.skipped_test_count += 1
-            print(f"Skipping already existing test: {case_dir}")
-            is_skip = True
-        else:
-            print(
-                f"Warning, output directory {case_dir} already exist, "
-                " old files will be deleted and it will generate test vector files with the latest version"
-            )
-            # Clear the existing case_dir folder
-            shutil.rmtree(case_dir)
-
-    return is_skip, diagnostics_obj
-
-
 def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     """
     Implementation for a general test generator.
@@ -173,7 +153,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
-        description=f"Generate YAML test suite files for {generator_name}",
+        description=f"Generate YAML test suite files for {generator_name}.",
     )
     parser.add_argument(
         "-o",
@@ -181,14 +161,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         dest="output_dir",
         required=True,
         type=validate_output_dir,
-        help="directory into which the generated YAML files will be dumped",
-    )
-    parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="if set re-generate and overwrite test files if they already exist",
+        help="Directory into which the generated YAML files will be dumped.",
     )
     parser.add_argument(
         "--preset-list",
@@ -196,7 +169,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         nargs="*",
         type=str,
         required=False,
-        help="specify presets to run with. Allows all if no preset names are specified.",
+        help="Specify presets to run with. Allows all if no preset names are specified.",
     )
     parser.add_argument(
         "--fork-list",
@@ -204,13 +177,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         nargs="*",
         type=str,
         required=False,
-        help="specify forks to run with. Allows all if no fork names are specified.",
+        help="Specify forks to run with. Allows all if no fork names are specified.",
     )
     parser.add_argument(
         "--modcheck",
         action="store_true",
         default=False,
-        help="check generator modules, do not run any tests.",
+        help="Check generator modules, do not run any tests.",
     )
     parser.add_argument(
         "--case-list",
@@ -218,7 +191,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         nargs="*",
         type=str,
         required=False,
-        help="specify test cases to run with. Allows all if no test case names are specified.",
+        help="Specify test cases to run with. Allows all if no test case names are specified.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Print more information to the console.",
     )
     args = parser.parse_args()
 
@@ -227,15 +206,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         return
 
     output_dir = args.output_dir
-    if not args.force:
-        file_mode = "x"
-    else:
-        file_mode = "w"
-
+    file_mode = "w"
     log_file = Path(output_dir) / "testgen_error_log.txt"
 
-    print(f"Generating tests into {output_dir}")
-    print(f"Error log file: {log_file}")
+    def debug_print(msg):
+        if args.verbose:
+            print(msg)
+
+    debug_print(f"Generating tests into {output_dir}")
+    debug_print(f"Error log file: {log_file}")
 
     # preset_list arg
     presets = args.preset_list
@@ -243,7 +222,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         presets = []
 
     if len(presets) != 0:
-        print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
+        debug_print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
 
     # fork_list arg
     forks = args.fork_list
@@ -251,7 +230,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         forks = []
 
     if len(forks) != 0:
-        print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
+        debug_print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
 
     # case_list arg
     cases = args.case_list
@@ -259,7 +238,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         cases = []
 
     if len(cases) != 0:
-        print(f"Filtering test-generator runs to only include test cases: {', '.join(cases)}")
+        debug_print(f"Filtering test-generator runs to only include test cases: {', '.join(cases)}")
 
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
@@ -274,26 +253,36 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
             if len(presets) != 0 and test_case.preset_name not in presets:
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
             # If fork list is assigned, filter by forks.
             if len(forks) != 0 and test_case.fork_name not in forks:
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
             # If cases list is assigned, filter by cases.
-            if len(cases) != 0 and test_case.case_name not in cases:
+            if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
+                debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
-            case_dir = get_test_case_dir(test_case, output_dir)
-            print(f"Collected test at: {case_dir}")
+            print(f"Collected: {get_test_identifier(test_case)}")
             diagnostics_obj.collected_test_count += 1
 
-            is_skip, diagnostics_obj = should_skip_case_dir(case_dir, args.force, diagnostics_obj)
-            if is_skip:
-                continue
+            case_dir = get_test_case_dir(test_case, output_dir)
+            if case_dir.exists():
+                # Clear the existing case_dir folder
+                shutil.rmtree(case_dir)
 
             if GENERATOR_MODE == MODE_SINGLE_PROCESS:
-                result = generate_test_vector(test_case, case_dir, log_file, file_mode)
+                result, info = generate_test_vector(test_case, case_dir, log_file, file_mode)
+                if isinstance(result, int):
+                    # Skipped or error
+                    debug_print(info)
+                elif isinstance(result, str):
+                    # Success
+                    if info > TIME_THRESHOLD_TO_PRINT:
+                        debug_print(f"^^^ Slow test, took {info} seconds ^^^")
                 write_result_into_diagnostics_obj(result, diagnostics_obj)
             elif GENERATOR_MODE == MODE_MULTIPROCESSING:
                 item = TestCaseParams(test_case, case_dir, log_file, file_mode)
@@ -304,16 +293,16 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             results = pool.map(worker_function, iter(all_test_case_params))
 
         for result in results:
-            write_result_into_diagnostics_obj(result, diagnostics_obj)
+            write_result_into_diagnostics_obj(result[0], diagnostics_obj)
 
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
 
-    summary_message = f"completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
+    summary_message = f"Completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
     summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
     if span > TIME_THRESHOLD_TO_PRINT:
         summary_message += f" in {span} seconds"
-    print(summary_message)
+    debug_print(summary_message)
 
     diagnostics_output = {
         "collected_test_count": diagnostics_obj.collected_test_count,
@@ -336,7 +325,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     existing_diagnostics[k] += v
             with open(diagnostics_path, "w+") as f:
                 json.dump(existing_diagnostics, f)
-        print(f"wrote diagnostics_obj to {diagnostics_path}")
+        debug_print(f"Wrote diagnostics_obj to {diagnostics_path}")
 
 
 def generate_test_vector(test_case, case_dir, log_file, file_mode):
@@ -345,7 +334,6 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
 
     written_part = False
 
-    print(f"Generating test: {case_dir}")
     test_start = time.time()
 
     # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
@@ -363,9 +351,8 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
             )
         except SkippedTest as e:
             result = 0  # 0 means skipped
-            print(e)
             shutil.rmtree(case_dir)
-            return result
+            return result, e
 
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
@@ -396,10 +383,7 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
             os.remove(incomplete_tag_file)
     test_end = time.time()
     span = round(test_end - test_start, 2)
-    if span > TIME_THRESHOLD_TO_PRINT:
-        print(f"- generated in {span} seconds")
-
-    return result
+    return result, span
 
 
 def write_result_into_diagnostics_obj(result, diagnostics_obj):

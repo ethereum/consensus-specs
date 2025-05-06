@@ -215,6 +215,8 @@ gen_list:
 
 # Run one generator.
 # This will forcibly rebuild pyspec just in case.
+# To print more details, append verbose=true, eg:
+#   make gen_bls verbose=true
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
 # To run the generator for a specific test, append k=<test>, eg:
@@ -227,6 +229,7 @@ gen_list:
 #   make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
 # Or all at the same time, eg:
 #   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
+gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
 gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
 gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
@@ -235,6 +238,7 @@ gen_%: pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
+		$(MAYBE_VERBOSE) \
 		$(MAYBE_MODCHECK) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \
