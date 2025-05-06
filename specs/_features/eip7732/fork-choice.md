@@ -41,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                       | Value                         |
-| -------------------------- | ----------------------------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256)       |
-| `INTERVALS_PER_SLOT`       | `4` # [modified in EIP-7732]  |
-| `PROPOSER_SCORE_BOOST`     | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST`   | `40`                          |
-| `PAYLOAD_REVEAL_BOOST`     | `40`                          |
+| Name                           | Value                         |
+| ------------------------------ | ----------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256)       |
+| `INTERVALS_PER_SLOT`           | `4` # [modified in EIP-7732]  |
+| `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
+| `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
+| `PAYLOAD_REVEAL_BOOST`         | `40`                          |
 
 ## Containers
 
@@ -266,7 +266,7 @@ def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) ->
     if (node.slot < proposer_boost_slot) and (ancestor.is_payload_present != node.is_payload_present):
         return Gwei(0)
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    return (committee_weight * PROPOSER_SCORE_BOOST_EIP7732) // 100
 ```
 
 ### New `compute_withhold_boost`
