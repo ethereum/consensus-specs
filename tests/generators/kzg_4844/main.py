@@ -22,9 +22,6 @@ from eth2spec.test.utils.kzg_tests import (
     VALID_FIELD_ELEMENTS,
     bls_add_one,
     encode_hex_list,
-    expect_exception,
-    field_element_bytes,
-    hash,
 )
 from eth2spec.utils import bls
 
@@ -35,25 +32,33 @@ from eth2spec.utils import bls
 
 
 def case01_blob_to_kzg_commitment():
+    def get_test_runner(blob):
+        def _runner():
+            try:
+                commitment = None
+                commitment = spec.blob_to_kzg_commitment(blob)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {"blob": encode_hex(blob)},
+                        "output": encode_hex(commitment) if commitment is not None else None,
+                    },
+                )
+            ]
+
+        return _runner
+
     # Valid cases
-    for blob in VALID_BLOBS:
-        commitment = spec.blob_to_kzg_commitment(blob)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'blob_to_kzg_commitment_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-            },
-            "output": encode_hex(commitment),
-        }
+    for index, blob in enumerate(VALID_BLOBS):
+        yield f"blob_to_kzg_commitment_case_valid_blob_{index}", get_test_runner(blob)
 
     # Edge case: Invalid blobs
-    for blob in INVALID_BLOBS:
-        identifier = f"{encode_hex(hash(blob))}"
-        expect_exception(spec.blob_to_kzg_commitment, blob)
-        yield f'blob_to_kzg_commitment_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {"blob": encode_hex(blob)},
-            "output": None,
-        }
+    for index, blob in enumerate(INVALID_BLOBS):
+        yield f"blob_to_kzg_commitment_case_invalid_blob_{index}", get_test_runner(blob)
 
 
 ###############################################################################
@@ -62,44 +67,43 @@ def case01_blob_to_kzg_commitment():
 
 
 def case02_compute_kzg_proof():
+    def get_test_runner(blob, z):
+        def _runner():
+            try:
+                proof, y = None, None
+                proof, y = spec.blob_to_kzg_commitment(blob)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "blob": encode_hex(blob),
+                            "z": encode_hex(z),
+                        },
+                        "output": (encode_hex(proof), encode_hex(y)) if proof is not None else None,
+                    },
+                )
+            ]
+
+        return _runner
+
     # Valid cases
-    for blob in VALID_BLOBS:
-        for z in VALID_FIELD_ELEMENTS:
-            proof, y = spec.compute_kzg_proof(blob, z)
-            identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-            yield f'compute_kzg_proof_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "z": encode_hex(z),
-                },
-                "output": (encode_hex(proof), encode_hex(y)),
-            }
+    for i, blob in enumerate(VALID_BLOBS):
+        for j, z in enumerate(VALID_FIELD_ELEMENTS):
+            yield f"compute_kzg_proof_case_valid_blob_{i}_{j}", get_test_runner(blob, z)
 
     # Edge case: Invalid blobs
-    for blob in INVALID_BLOBS:
+    for index, blob in enumerate(INVALID_BLOBS):
         z = VALID_FIELD_ELEMENTS[0]
-        expect_exception(spec.compute_kzg_proof, blob, z)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'compute_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "z": encode_hex(z),
-            },
-            "output": None,
-        }
+        yield f"compute_kzg_proof_case_invalid_blob_{index}", get_test_runner(blob, z)
 
     # Edge case: Invalid z
     for z in INVALID_FIELD_ELEMENTS:
         blob = VALID_BLOBS[4]
-        expect_exception(spec.compute_kzg_proof, blob, z)
-        identifier = f"{encode_hex(hash(z))}"
-        yield f'compute_kzg_proof_case_invalid_z_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "z": encode_hex(z),
-            },
-            "output": None,
-        }
+        yield f"compute_kzg_proof_case_invalid_z_{index}", get_test_runner(blob, z)
 
 
 ###############################################################################
@@ -108,165 +112,139 @@ def case02_compute_kzg_proof():
 
 
 def case03_verify_kzg_proof():
+    def get_test_runner(input_getter):
+        def _runner():
+            commitment, z, y, proof = input_getter()
+            try:
+                ok = None
+                ok = spec.verify_kzg_proof(commitment, z, y, proof)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "commitment": encode_hex(commitment),
+                            "z": encode_hex(z),
+                            "y": encode_hex(y),
+                            "proof": encode_hex(proof),
+                        },
+                        "output": ok if ok is not None else None,
+                    },
+                )
+            ]
+
+        return _runner
+
     # Valid cases
-    for blob in VALID_BLOBS:
-        for z in VALID_FIELD_ELEMENTS:
-            proof, y = spec.compute_kzg_proof(blob, z)
-            commitment = spec.blob_to_kzg_commitment(blob)
-            assert spec.verify_kzg_proof(commitment, z, y, proof)
-            identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-            yield f'verify_kzg_proof_case_correct_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
-            }
+    for i, blob in enumerate(VALID_BLOBS):
+        for j, z in enumerate(VALID_FIELD_ELEMENTS):
+
+            def get_inputs():
+                proof, y = spec.compute_kzg_proof(blob, z)
+                commitment = spec.blob_to_kzg_commitment(blob)
+                return commitment, z, y, proof
+
+            yield f"verify_kzg_proof_case_correct_proof_{i}_{j}", get_test_runner(get_inputs)
 
     # Incorrect proofs
-    for blob in VALID_BLOBS:
-        for z in VALID_FIELD_ELEMENTS:
-            proof_orig, y = spec.compute_kzg_proof(blob, z)
-            proof = bls_add_one(proof_orig)
-            commitment = spec.blob_to_kzg_commitment(blob)
-            assert not spec.verify_kzg_proof(commitment, z, y, proof)
-            identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-            yield f'verify_kzg_proof_case_incorrect_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": False,
-            }
+    for i, blob in enumerate(VALID_BLOBS):
+        for j, z in enumerate(VALID_FIELD_ELEMENTS):
+
+            def get_inputs():
+                proof_orig, y = spec.compute_kzg_proof(blob, z)
+                proof = bls_add_one(proof_orig)
+                commitment = spec.blob_to_kzg_commitment(blob)
+                return commitment, z, y, proof
+
+            yield f"verify_kzg_proof_case_incorrect_proof_{i}_{j}", get_test_runner(get_inputs)
 
     # Incorrect `G1_POINT_AT_INFINITY` proof
-    blob = BLOB_RANDOM_VALID1
-    for z in VALID_FIELD_ELEMENTS:
-        _, y = spec.compute_kzg_proof(blob, z)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
-        assert not spec.verify_kzg_proof(commitment, z, y, proof)
-        prefix = "verify_kzg_proof_case_incorrect_proof_point_at_infinity"
-        identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": False,
-        }
+    for index, z in enumerate(VALID_FIELD_ELEMENTS):
+
+        def get_inputs():
+            blob = BLOB_RANDOM_VALID1
+            _, y = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_incorrect_proof_point_at_infinity_{index}", get_test_runner(
+            get_inputs
+        )
 
     # Correct `G1_POINT_AT_INFINITY` proof for zero poly
-    blob = BLOB_ALL_ZEROS
-    for z in VALID_FIELD_ELEMENTS:
-        _, y = spec.compute_kzg_proof(blob, z)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
-        assert spec.verify_kzg_proof(commitment, z, y, proof)
-        prefix = "verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly"
-        identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": True,
-        }
+    for index, z in enumerate(VALID_FIELD_ELEMENTS):
+
+        def get_inputs():
+            blob = BLOB_ALL_ZEROS
+            _, y = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly_{index}", get_test_runner(
+            get_inputs
+        )
 
     # Correct `G1_POINT_AT_INFINITY` proof for poly of all twos
-    blob = BLOB_ALL_TWOS
-    for z in VALID_FIELD_ELEMENTS:
-        _, y = spec.compute_kzg_proof(blob, z)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
-        assert spec.verify_kzg_proof(commitment, z, y, proof)
-        assert y == field_element_bytes(2)
-        prefix = "verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly"
-        identifier = f"{encode_hex(hash(blob))}_{encode_hex(z)}"
-        yield f'{prefix}_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": True,
-        }
+    for index, z in enumerate(VALID_FIELD_ELEMENTS):
+
+        def get_inputs():
+            blob = BLOB_ALL_TWOS
+            _, y = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly_{index}", get_test_runner(
+            get_inputs
+        )
 
     # Edge case: Invalid commitment
-    for commitment in INVALID_G1_POINTS:
-        blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
-        proof, y = spec.compute_kzg_proof(blob, z)
-        expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
-        identifier = f"{encode_hex(commitment)}"
-        yield f'verify_kzg_proof_case_invalid_commitment_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, commitment in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
+            proof, y = spec.compute_kzg_proof(blob, z)
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_invalid_commitment_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid z
-    for z in INVALID_FIELD_ELEMENTS:
-        blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
-        proof, y = spec.compute_kzg_proof(blob, validz)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
-        identifier = f"{encode_hex(z)}"
-        yield f'verify_kzg_proof_case_invalid_z_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, z in enumerate(INVALID_FIELD_ELEMENTS):
+
+        def get_inputs():
+            blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
+            proof, y = spec.compute_kzg_proof(blob, validz)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_invalid_z_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid y
-    for y in INVALID_FIELD_ELEMENTS:
-        blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
-        proof, _ = spec.compute_kzg_proof(blob, z)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
-        identifier = f"{encode_hex(y)}"
-        yield f'verify_kzg_proof_case_invalid_y_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, y in enumerate(INVALID_FIELD_ELEMENTS):
+
+        def get_inputs():
+            blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
+            proof, _ = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_invalid_y_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid proof
-    for proof in INVALID_G1_POINTS:
-        blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
-        _, y = spec.compute_kzg_proof(blob, z)
-        commitment = spec.blob_to_kzg_commitment(blob)
-        expect_exception(spec.verify_kzg_proof, commitment, z, y, proof)
-        identifier = f"{encode_hex(proof)}"
-        yield f'verify_kzg_proof_case_invalid_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "commitment": encode_hex(commitment),
-                "z": encode_hex(z),
-                "y": encode_hex(y),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, proof in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
+            _, y = spec.compute_kzg_proof(blob, z)
+            commitment = spec.blob_to_kzg_commitment(blob)
+            return commitment, z, y, proof
+
+        yield f"verify_kzg_proof_case_invalid_proof_{index}", get_test_runner(get_inputs)
 
 
 ###############################################################################
@@ -275,44 +253,56 @@ def case03_verify_kzg_proof():
 
 
 def case04_compute_blob_kzg_proof():
+    def get_test_runner(input_getter):
+        def _runner():
+            blob, commitment = input_getter()
+            try:
+                proof = None
+                proof = spec.compute_blob_kzg_proof(blob, commitment)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "blob": encode_hex(blob),
+                            "commitment": encode_hex(commitment),
+                        },
+                        "output": proof if proof is not None else None,
+                    },
+                )
+            ]
+
+        return _runner
+
     # Valid cases
-    for blob in VALID_BLOBS:
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.compute_blob_kzg_proof(blob, commitment)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'compute_blob_kzg_proof_case_valid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-            },
-            "output": encode_hex(proof),
-        }
+    for index, blob in enumerate(VALID_BLOBS):
+
+        def get_inputs():
+            commitment = spec.blob_to_kzg_commitment(blob)
+            return blob, commitment
+
+        yield f"compute_blob_kzg_proof_case_valid_blob_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid blob
-    for blob in INVALID_BLOBS:
-        commitment = G1
-        expect_exception(spec.compute_blob_kzg_proof, blob, commitment)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'compute_blob_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-            },
-            "output": None,
-        }
+    for index, blob in enumerate(INVALID_BLOBS):
+
+        def get_inputs():
+            commitment = G1
+            return blob, commitment
+
+        yield f"compute_blob_kzg_proof_case_invalid_blob_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid commitment
-    for commitment in INVALID_G1_POINTS:
-        blob = VALID_BLOBS[1]
-        expect_exception(spec.compute_blob_kzg_proof, blob, commitment)
-        identifier = f"{encode_hex(hash(commitment))}"
-        yield f'compute_blob_kzg_proof_case_invalid_commitment_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-            },
-            "output": None,
-        }
+    for index, commitment in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blob = VALID_BLOBS[1]
+            return blob, commitment
+
+        yield f"compute_blob_kzg_proof_case_invalid_commitment_{index}", get_test_runner(get_inputs)
 
 
 ###############################################################################
@@ -321,124 +311,119 @@ def case04_compute_blob_kzg_proof():
 
 
 def case05_verify_blob_kzg_proof():
+    def get_test_runner(input_getter):
+        def _runner():
+            blob, commitment, proof = input_getter()
+            try:
+                ok = None
+                ok = spec.verify_blob_kzg_proof(blob, commitment, proof)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "blob": encode_hex(blob),
+                            "commitment": encode_hex(commitment),
+                            "proof": encode_hex(proof),
+                        },
+                        "output": ok if ok is not None else None,
+                    },
+                )
+            ]
+
+        return _runner
+
     # Valid cases
-    for blob in VALID_BLOBS:
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.compute_blob_kzg_proof(blob, commitment)
-        assert spec.verify_blob_kzg_proof(blob, commitment, proof)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'verify_blob_kzg_proof_case_correct_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-                "proof": encode_hex(proof),
-            },
-            "output": True,
-        }
+    for index, blob in enumerate(VALID_BLOBS):
+
+        def get_inputs():
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.compute_blob_kzg_proof(blob, commitment)
+            return blob, commitment, proof
+
+        yield f"verify_blob_kzg_proof_case_correct_proof_{index}", get_test_runner(get_inputs)
 
     # Incorrect proofs
-    for blob in VALID_BLOBS:
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = bls_add_one(spec.compute_blob_kzg_proof(blob, commitment))
-        assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'verify_blob_kzg_proof_case_incorrect_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-                "proof": encode_hex(proof),
-            },
-            "output": False,
-        }
+    for index, blob in enumerate(VALID_BLOBS):
+
+        def get_inputs():
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = bls_add_one(spec.compute_blob_kzg_proof(blob, commitment))
+            return blob, commitment, proof
+
+        yield f"verify_blob_kzg_proof_case_incorrect_proof_{index}", get_test_runner(get_inputs)
 
     # Incorrect `G1_POINT_AT_INFINITY` proof
-    blob = BLOB_RANDOM_VALID1
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
-    yield "verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity", {
-        "input": {
-            "blob": encode_hex(blob),
-            "commitment": encode_hex(commitment),
-            "proof": encode_hex(proof),
-        },
-        "output": False,
-    }
+    if True:
+
+        def get_inputs():
+            blob = BLOB_RANDOM_VALID1
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return blob, commitment, proof
+
+        yield "verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity", get_test_runner(
+            get_inputs
+        )
 
     # Correct `G1_POINT_AT_INFINITY` proof and commitment for zero poly
-    blob = BLOB_ALL_ZEROS
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert commitment == spec.G1_POINT_AT_INFINITY
-    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
-    yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly", {
-        "input": {
-            "blob": encode_hex(blob),
-            "commitment": encode_hex(commitment),
-            "proof": encode_hex(proof),
-        },
-        "output": True,
-    }
+    if True:
+
+        def get_inputs():
+            blob = BLOB_ALL_ZEROS
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return blob, commitment, proof
+
+        yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly", get_test_runner(
+            get_inputs
+        )
 
     # Correct `G1_POINT_AT_INFINITY` proof for all twos poly
-    blob = BLOB_ALL_TWOS
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert commitment != spec.G1_POINT_AT_INFINITY
-    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
-    yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly", {
-        "input": {
-            "blob": encode_hex(blob),
-            "commitment": encode_hex(commitment),
-            "proof": encode_hex(proof),
-        },
-        "output": True,
-    }
+    if True:
+
+        def get_inputs():
+            blob = BLOB_ALL_TWOS
+            commitment = spec.blob_to_kzg_commitment(blob)
+            proof = spec.G1_POINT_AT_INFINITY
+            return blob, commitment, proof
+
+        yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly", get_test_runner(
+            get_inputs
+        )
 
     # Edge case: Invalid blob
-    for blob in INVALID_BLOBS:
-        proof = G1
-        commitment = G1
-        expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'verify_blob_kzg_proof_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, blob in enumerate(INVALID_BLOBS):
+
+        def get_inputs():
+            proof = G1
+            commitment = G1
+            return blob, commitment, proof
+
+        yield f"verify_blob_kzg_proof_case_invalid_blob_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid commitment
-    for commitment in INVALID_G1_POINTS:
-        blob = VALID_BLOBS[1]
-        proof = G1
-        expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-        identifier = f"{encode_hex(hash(commitment))}"
-        yield f'verify_blob_kzg_proof_case_invalid_commitment_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, commitment in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blob = VALID_BLOBS[1]
+            proof = G1
+            return blob, commitment, proof
+
+        yield f"verify_blob_kzg_proof_case_invalid_commitment_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid proof
-    for proof in INVALID_G1_POINTS:
-        blob = VALID_BLOBS[1]
-        commitment = G1
-        expect_exception(spec.verify_blob_kzg_proof, blob, commitment, proof)
-        identifier = f"{encode_hex(hash(proof))}"
-        yield f'verify_blob_kzg_proof_case_invalid_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-                "proof": encode_hex(proof),
-            },
-            "output": None,
-        }
+    for index, proof in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blob = VALID_BLOBS[1]
+            commitment = G1
+            return blob, commitment, proof
+
+        yield f"verify_blob_kzg_proof_case_invalid_proof_{index}", get_test_runner(get_inputs)
 
 
 ###############################################################################
@@ -447,127 +432,168 @@ def case05_verify_blob_kzg_proof():
 
 
 def case06_verify_blob_kzg_proof_batch():
-    # Valid cases
-    proofs = []
-    commitments = []
-    for blob in VALID_BLOBS:
-        commitments.append(spec.blob_to_kzg_commitment(blob))
-        proofs.append(spec.compute_blob_kzg_proof(blob, commitments[-1]))
+    def get_test_runner(input_getter):
+        def _runner():
+            blobs, commitments, proofs = input_getter()
+            try:
+                ok = None
+                ok = spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+            except:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "blobs": encode_hex_list(blobs),
+                            "commitments": encode_hex_list(commitments),
+                            "proofs": encode_hex_list(proofs),
+                        },
+                        "output": ok if ok is not None else None,
+                    },
+                )
+            ]
 
-    for i in range(len(proofs)):
-        assert spec.verify_blob_kzg_proof_batch(VALID_BLOBS[:i], commitments[:i], proofs[:i])
-        identifier = f'{encode_hex(hash(b"".join(VALID_BLOBS[:i])))}'
-        yield f'verify_blob_kzg_proof_batch_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blobs": encode_hex_list(VALID_BLOBS[:i]),
-                "commitments": encode_hex_list(commitments[:i]),
-                "proofs": encode_hex_list(proofs[:i]),
-            },
-            "output": True,
-        }
+        return _runner
+
+    # Valid cases
+    for length in range(len(VALID_BLOBS)):
+
+        def get_inputs():
+            blobs = VALID_BLOBS[:length]
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            return blobs, commitments, proofs
+
+        yield f"verify_blob_kzg_proof_batch_case_{length}", get_test_runner(get_inputs)
 
     # Incorrect proof
-    proofs_incorrect = [bls_add_one(proofs[0])] + proofs[1:]
-    assert not spec.verify_blob_kzg_proof_batch(VALID_BLOBS, commitments, proofs_incorrect)
-    yield "verify_blob_kzg_proof_batch_case_incorrect_proof_add_one", {
-        "input": {
-            "blobs": encode_hex_list(VALID_BLOBS),
-            "commitments": encode_hex_list(commitments),
-            "proofs": encode_hex_list(proofs_incorrect),
-        },
-        "output": False,
-    }
+    if True:
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Add one to the first proof, so that it's incorrect
+            proofs = [bls_add_one(proofs[0])] + proofs[1:]
+            return blobs, commitments, proofs
+
+        yield "verify_blob_kzg_proof_batch_case_incorrect_proof_add_one", get_test_runner(
+            get_inputs
+        )
 
     # Incorrect `G1_POINT_AT_INFINITY` proof
-    blob = BLOB_RANDOM_VALID1
-    commitment = spec.blob_to_kzg_commitment(blob)
-    proof = spec.G1_POINT_AT_INFINITY
-    assert not spec.verify_blob_kzg_proof_batch([blob], [commitment], [proof])
-    yield "verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity", {
-        "input": {
-            "blobs": encode_hex_list([blob]),
-            "commitments": encode_hex_list([commitment]),
-            "proofs": encode_hex_list([proof]),
-        },
-        "output": False,
-    }
+    if True:
+
+        def get_inputs():
+            blobs = [BLOB_RANDOM_VALID1]
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            # Use the wrong proof
+            proofs = [spec.G1_POINT_AT_INFINITY]
+            return blobs, commitments, proofs
+
+        yield "verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity", get_test_runner(
+            get_inputs
+        )
 
     # Edge case: Invalid blobs
-    for blob in INVALID_BLOBS:
-        blobs_invalid = VALID_BLOBS[:4] + [blob] + VALID_BLOBS[5:]
-        expect_exception(spec.verify_blob_kzg_proof_batch, blobs_invalid, commitments, proofs)
-        identifier = f"{encode_hex(hash(blob))}"
-        yield f'verify_blob_kzg_proof_batch_case_invalid_blob_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blobs": encode_hex_list(blobs_invalid),
-                "commitments": encode_hex_list(commitments),
-                "proofs": encode_hex_list(proofs),
-            },
-            "output": None,
-        }
+    for index, blob in enumerate(INVALID_BLOBS):
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Insert an invalid blob into the middle
+            blobs = VALID_BLOBS[:4] + [blob] + VALID_BLOBS[5:]
+            return blobs, commitments, proofs
+
+        yield f"verify_blob_kzg_proof_batch_case_invalid_blob_{index}", get_test_runner(get_inputs)
 
     # Edge case: Invalid commitment
-    for commitment in INVALID_G1_POINTS:
-        blobs = VALID_BLOBS
-        commitments_invalid = [commitment] + commitments[1:]
-        expect_exception(spec.verify_blob_kzg_proof_batch, blobs, commitments_invalid, proofs)
-        identifier = f"{encode_hex(hash(commitment))}"
-        yield f'verify_blob_kzg_proof_batch_case_invalid_commitment_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blobs": encode_hex_list(blobs),
-                "commitments": encode_hex_list(commitments_invalid),
-                "proofs": encode_hex_list(proofs),
-            },
-            "output": None,
-        }
+    for index, commitment in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Replace first commitment with an invalid commitment
+            commitments = [commitment] + commitments[1:]
+            return blobs, commitments, proofs
+
+        yield f"verify_blob_kzg_proof_batch_case_invalid_commitment_{index}", get_test_runner(
+            get_inputs
+        )
 
     # Edge case: Invalid proof
-    for proof in INVALID_G1_POINTS:
-        blobs = VALID_BLOBS
-        proofs_invalid = [proof] + proofs[1:]
-        expect_exception(spec.verify_blob_kzg_proof_batch, blobs, commitments, proofs_invalid)
-        identifier = f"{encode_hex(hash(proof))}"
-        yield f'verify_blob_kzg_proof_batch_case_invalid_proof_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
-            "input": {
-                "blobs": encode_hex_list(blobs),
-                "commitments": encode_hex_list(commitments),
-                "proofs": encode_hex_list(proofs_invalid),
-            },
-            "output": None,
-        }
+    for index, proof in enumerate(INVALID_G1_POINTS):
+
+        def get_inputs():
+            blobs = VALID_BLOBS[:length]
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Replace first proof with an invalid proof
+            proofs = [proof] + proofs[1:]
+            return blobs, commitments, proofs
+
+        yield f"verify_blob_kzg_proof_batch_case_invalid_proof_{index}", get_test_runner(get_inputs)
 
     # Edge case: Blob length different
-    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS[:-1], commitments, proofs)
-    yield "verify_blob_kzg_proof_batch_case_blob_length_different", {
-        "input": {
-            "blobs": encode_hex_list(VALID_BLOBS[:-1]),
-            "commitments": encode_hex_list(commitments),
-            "proofs": encode_hex_list(proofs),
-        },
-        "output": None,
-    }
+    if True:
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Delete the last blob
+            blobs = blobs[:-1]
+            return blobs, commitments, proofs
+
+        yield "verify_blob_kzg_proof_batch_case_blob_length_different", get_test_runner(get_inputs)
 
     # Edge case: Commitment length different
-    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments[:-1], proofs)
-    yield "verify_blob_kzg_proof_batch_case_commitment_length_different", {
-        "input": {
-            "blobs": encode_hex_list(VALID_BLOBS),
-            "commitments": encode_hex_list(commitments[:-1]),
-            "proofs": encode_hex_list(proofs),
-        },
-        "output": None,
-    }
+    if True:
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Delete the last commitment
+            commitments = commitments[:-1]
+            return blobs, commitments, proofs
+
+        yield "verify_blob_kzg_proof_batch_case_commitment_length_different", get_test_runner(
+            get_inputs
+        )
 
     # Edge case: Proof length different
-    expect_exception(spec.verify_blob_kzg_proof_batch, VALID_BLOBS, commitments, proofs[:-1])
-    yield "verify_blob_kzg_proof_batch_case_proof_length_different", {
-        "input": {
-            "blobs": encode_hex_list(VALID_BLOBS),
-            "commitments": encode_hex_list(commitments),
-            "proofs": encode_hex_list(proofs[:-1]),
-        },
-        "output": None,
-    }
+    if True:
+
+        def get_inputs():
+            blobs = VALID_BLOBS
+            commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+            proofs = [
+                spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
+            ]
+            # Delete the last proof
+            proofs = proofs[:-1]
+            return blobs, commitments, proofs
+
+        yield "verify_blob_kzg_proof_batch_case_proof_length_different", get_test_runner(get_inputs)
 
 
 ###############################################################################
@@ -587,8 +613,7 @@ def create_provider(
         return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
-        for data in test_case_fn():
-            (case_name, case_content) = data
+        for case_name, case_fn in test_case_fn():
             yield gen_typing.TestCase(
                 fork_name=fork_name,
                 preset_name="general",
@@ -596,7 +621,7 @@ def create_provider(
                 handler_name=handler_name,
                 suite_name="kzg-mainnet",
                 case_name=case_name,
-                case_fn=lambda: [("data", "data", case_content)],
+                case_fn=case_fn,
             )
 
     return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
