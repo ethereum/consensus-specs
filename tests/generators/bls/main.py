@@ -2,7 +2,6 @@
 BLS test vectors generator
 """
 
-from hashlib import sha256
 from typing import Tuple, Iterable, Any, Callable, Dict
 
 from eth_utils import (
@@ -20,10 +19,6 @@ from eth2spec.altair import spec
 
 def to_bytes(i):
     return i.to_bytes(32, "big")
-
-
-def hash(x):
-    return sha256(x).digest()
 
 
 def int_to_hex(n: int, byte_length: int = None) -> str:
@@ -78,14 +73,13 @@ def expect_exception(func, *args):
         raise Exception("should have raised exception")
 
 
-def case01_sign():
+def case_sign():
     # Valid cases
-    for privkey in PRIVKEYS:
-        for message in MESSAGES:
+    for i, privkey in enumerate(PRIVKEYS):
+        for j, message in enumerate(MESSAGES):
             sig = bls.Sign(privkey, message)
             assert sig == milagro_bls.Sign(to_bytes(privkey), message)  # double-check with milagro
-            identifier = f"{int_to_hex(privkey)}_{encode_hex(message)}"
-            yield f'sign_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            yield f'sign_case_{i}_{j}', {
                 "input": {
                     "privkey": int_to_hex(privkey),
                     "message": encode_hex(message),
@@ -104,9 +98,9 @@ def case01_sign():
     }
 
 
-def case02_verify():
+def case_verify():
     for i, privkey in enumerate(PRIVKEYS):
-        for message in MESSAGES:
+        for j, message in enumerate(MESSAGES):
             # Valid signature
             signature = bls.Sign(privkey, message)
             pubkey = bls.SkToPk(privkey)
@@ -114,12 +108,10 @@ def case02_verify():
             assert milagro_bls.SkToPk(to_bytes(privkey)) == pubkey
             assert milagro_bls.Sign(to_bytes(privkey), message) == signature
 
-            identifier = f"{encode_hex(pubkey)}_{encode_hex(message)}"
-
             assert bls.Verify(pubkey, message, signature)
             assert milagro_bls.Verify(pubkey, message, signature)
 
-            yield f'verify_valid_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            yield f'verify_valid_case_{i}_{j}', {
                 "input": {
                     "pubkey": encode_hex(pubkey),
                     "message": encode_hex(message),
@@ -130,10 +122,9 @@ def case02_verify():
 
             # Invalid signatures -- wrong pubkey
             wrong_pubkey = bls.SkToPk(PRIVKEYS[(i + 1) % len(PRIVKEYS)])
-            identifier = f"{encode_hex(wrong_pubkey)}_{encode_hex(message)}"
             assert not bls.Verify(wrong_pubkey, message, signature)
             assert not milagro_bls.Verify(wrong_pubkey, message, signature)
-            yield f'verify_wrong_pubkey_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            yield f'verify_wrong_pubkey_case_{i}_{j}', {
                 "input": {
                     "pubkey": encode_hex(wrong_pubkey),
                     "message": encode_hex(message),
@@ -144,10 +135,9 @@ def case02_verify():
 
             # Invalid signature -- tampered with signature
             tampered_signature = signature[:-4] + b"\xff\xff\xff\xff"
-            identifier = f"{encode_hex(pubkey)}_{encode_hex(message)}"
             assert not bls.Verify(pubkey, message, tampered_signature)
             assert not milagro_bls.Verify(pubkey, message, tampered_signature)
-            yield f'verify_tampered_signature_case_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+            yield f'verify_tampered_signature_case_{i}_{j}', {
                 "input": {
                     "pubkey": encode_hex(pubkey),
                     "message": encode_hex(message),
@@ -169,12 +159,12 @@ def case02_verify():
     }
 
 
-def case03_aggregate():
-    for message in MESSAGES:
+def case_aggregate():
+    for i, message in enumerate(MESSAGES):
         sigs = [bls.Sign(privkey, message) for privkey in PRIVKEYS]
         aggregate_sig = bls.Aggregate(sigs)
         assert aggregate_sig == milagro_bls.Aggregate(sigs)
-        yield f"aggregate_{encode_hex(message)}", {
+        yield f"aggregate_{i}", {
             "input": [encode_hex(sig) for sig in sigs],
             "output": encode_hex(aggregate_sig),
         }
@@ -197,7 +187,7 @@ def case03_aggregate():
     }
 
 
-def case04_fast_aggregate_verify():
+def case_fast_aggregate_verify():
     for i, message in enumerate(MESSAGES):
         privkeys = PRIVKEYS[: i + 1]
         sigs = [bls.Sign(privkey, message) for privkey in privkeys]
@@ -206,10 +196,9 @@ def case04_fast_aggregate_verify():
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
-        identifier = f"{pubkeys_serial}_{encode_hex(message)}"
         assert bls.FastAggregateVerify(pubkeys, message, aggregate_signature)
         assert milagro_bls.FastAggregateVerify(pubkeys, message, aggregate_signature)
-        yield f'fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'fast_aggregate_verify_valid_{i}', {
             "input": {
                 "pubkeys": pubkeys_serial,
                 "message": encode_hex(message),
@@ -221,10 +210,9 @@ def case04_fast_aggregate_verify():
         # Invalid signature -- extra pubkey
         pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
-        identifier = f"{pubkeys_extra_serial}_{encode_hex(message)}"
         assert not bls.FastAggregateVerify(pubkeys_extra, message, aggregate_signature)
         assert not milagro_bls.FastAggregateVerify(pubkeys_extra, message, aggregate_signature)
-        yield f'fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'fast_aggregate_verify_extra_pubkey_{i}', {
             "input": {
                 "pubkeys": pubkeys_extra_serial,
                 "message": encode_hex(message),
@@ -235,10 +223,9 @@ def case04_fast_aggregate_verify():
 
         # Invalid signature -- tampered with signature
         tampered_signature = aggregate_signature[:-4] + b"\xff\xff\xff\xff"
-        identifier = f"{pubkeys_serial}_{encode_hex(message)}"
         assert not bls.FastAggregateVerify(pubkeys, message, tampered_signature)
         assert not milagro_bls.FastAggregateVerify(pubkeys, message, tampered_signature)
-        yield f'fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'fast_aggregate_verify_tampered_signature_{i}', {
             "input": {
                 "pubkeys": pubkeys_serial,
                 "message": encode_hex(message),
@@ -290,7 +277,7 @@ def case04_fast_aggregate_verify():
     }
 
 
-def case05_aggregate_verify():
+def case_aggregate_verify():
     pubkeys = []
     pubkeys_serial = []
     messages = []
@@ -370,14 +357,13 @@ def case05_aggregate_verify():
     }
 
 
-def case06_eth_aggregate_pubkeys():
-    for pubkey in PUBKEYS:
-        encoded_pubkey = encode_hex(pubkey)
+def case_eth_aggregate_pubkeys():
+    for i, pubkey in enumerate(PUBKEYS):
         aggregate_pubkey = spec.eth_aggregate_pubkeys([pubkey])
         # Should be unchanged
         assert aggregate_pubkey == milagro_bls._AggregatePKs([pubkey]) == pubkey
         # Valid pubkey
-        yield f'eth_aggregate_pubkeys_valid_{(hash(bytes(encoded_pubkey, "utf-8"))[:8]).hex()}', {
+        yield f'eth_aggregate_pubkeys_valid_{i}', {
             "input": [encode_hex(pubkey)],
             "output": encode_hex(aggregate_pubkey),
         }
@@ -424,7 +410,7 @@ def case06_eth_aggregate_pubkeys():
     }
 
 
-def case07_eth_fast_aggregate_verify():
+def case_eth_fast_aggregate_verify():
     """
     Similar to `case04_fast_aggregate_verify` except for the empty case
     """
@@ -436,9 +422,8 @@ def case07_eth_fast_aggregate_verify():
         pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
 
         # Valid signature
-        identifier = f"{pubkeys_serial}_{encode_hex(message)}"
         assert spec.eth_fast_aggregate_verify(pubkeys, message, aggregate_signature)
-        yield f'eth_fast_aggregate_verify_valid_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'eth_fast_aggregate_verify_valid_{i}', {
             "input": {
                 "pubkeys": pubkeys_serial,
                 "message": encode_hex(message),
@@ -450,9 +435,8 @@ def case07_eth_fast_aggregate_verify():
         # Invalid signature -- extra pubkey
         pubkeys_extra = pubkeys + [bls.SkToPk(PRIVKEYS[-1])]
         pubkeys_extra_serial = [encode_hex(pubkey) for pubkey in pubkeys_extra]
-        identifier = f"{pubkeys_extra_serial}_{encode_hex(message)}"
         assert not spec.eth_fast_aggregate_verify(pubkeys_extra, message, aggregate_signature)
-        yield f'eth_fast_aggregate_verify_extra_pubkey_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'eth_fast_aggregate_verify_extra_pubkey_{i}', {
             "input": {
                 "pubkeys": pubkeys_extra_serial,
                 "message": encode_hex(message),
@@ -463,9 +447,8 @@ def case07_eth_fast_aggregate_verify():
 
         # Invalid signature -- tampered with signature
         tampered_signature = aggregate_signature[:-4] + b"\xff\xff\xff\xff"
-        identifier = f"{pubkeys_serial}_{encode_hex(message)}"
         assert not spec.eth_fast_aggregate_verify(pubkeys, message, tampered_signature)
-        yield f'eth_fast_aggregate_verify_tampered_signature_{(hash(bytes(identifier, "utf-8"))[:8]).hex()}', {
+        yield f'eth_fast_aggregate_verify_tampered_signature_{i}', {
             "input": {
                 "pubkeys": pubkeys_serial,
                 "message": encode_hex(message),
@@ -526,8 +509,7 @@ def create_provider(
         return
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
-        for data in test_case_fn():
-            (case_name, case_content) = data
+        for case_name, case_content in test_case_fn():
             yield gen_typing.TestCase(
                 fork_name=fork_name,
                 preset_name="general",
@@ -546,14 +528,12 @@ if __name__ == "__main__":
     gen_runner.run_generator(
         "bls",
         [
-            # PHASE0
-            create_provider(PHASE0, "sign", case01_sign),
-            create_provider(PHASE0, "verify", case02_verify),
-            create_provider(PHASE0, "aggregate", case03_aggregate),
-            create_provider(PHASE0, "fast_aggregate_verify", case04_fast_aggregate_verify),
-            create_provider(PHASE0, "aggregate_verify", case05_aggregate_verify),
-            # ALTAIR
-            create_provider(ALTAIR, "eth_aggregate_pubkeys", case06_eth_aggregate_pubkeys),
-            create_provider(ALTAIR, "eth_fast_aggregate_verify", case07_eth_fast_aggregate_verify),
+            create_provider(PHASE0, "sign", case_sign),
+            create_provider(PHASE0, "verify", case_verify),
+            create_provider(PHASE0, "aggregate", case_aggregate),
+            create_provider(PHASE0, "fast_aggregate_verify", case_fast_aggregate_verify),
+            create_provider(PHASE0, "aggregate_verify", case_aggregate_verify),
+            create_provider(ALTAIR, "eth_aggregate_pubkeys", case_eth_aggregate_pubkeys),
+            create_provider(ALTAIR, "eth_fast_aggregate_verify", case_eth_fast_aggregate_verify),
         ],
     )
