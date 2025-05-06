@@ -293,7 +293,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             results = pool.map(worker_function, iter(all_test_case_params))
 
         for result in results:
-            write_result_into_diagnostics_obj(result, diagnostics_obj)
+            write_result_into_diagnostics_obj(result[0], diagnostics_obj)
 
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
