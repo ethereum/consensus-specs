@@ -1,5 +1,3 @@
-from hashlib import sha256
-
 from eth_utils import (
     encode_hex,
     int_to_big_endian,
@@ -14,30 +12,12 @@ from eth2spec.fulu import spec
 ###############################################################################
 
 
-def expect_exception(func, *args):
-    try:
-        func(*args)
-    except Exception:
-        pass
-    else:
-        raise Exception("should have raised exception")
-
-
 def bls_add_one(x):
     """
     Adds "one" (actually bls.G1()) to a compressed group element.
     Useful to compute definitely incorrect proofs.
     """
     return bls.G1_to_bytes48(bls.add(bls.bytes48_to_G1(x), bls.G1()))
-
-
-def hash(x):
-    return sha256(x).digest()
-
-
-def make_id(*args):
-    values_str = "_".join(str(arg) for arg in args)
-    return hash(bytes(values_str, "utf-8"))[:8].hex()
 
 
 def field_element_bytes(x: int):
@@ -204,7 +184,3 @@ INVALID_INDIVIDUAL_CELL_BYTES = [
     CELL_INVALID_TOO_FEW_BYTES,
     CELL_INVALID_TOO_MANY_BYTES,
 ]
-
-# Cells & Proofs
-
-VALID_CELLS_AND_PROOFS = []  # Saved in case02_compute_cells_and_kzg_proofs
