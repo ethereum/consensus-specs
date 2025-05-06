@@ -275,9 +275,14 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 shutil.rmtree(case_dir)
 
             if GENERATOR_MODE == MODE_SINGLE_PROCESS:
-                result, span = generate_test_vector(test_case, case_dir, log_file, file_mode)
-                if span > TIME_THRESHOLD_TO_PRINT:
-                    debug_print(f"^^^ Slow test, took {span} seconds ^^^")
+                result, info = generate_test_vector(test_case, case_dir, log_file, file_mode)
+                if isinstance(result, int):
+                    # Skipped or error
+                    debug_print(info)
+                elif isinstance(result, str):
+                    # Success
+                    if info > TIME_THRESHOLD_TO_PRINT:
+                        debug_print(f"^^^ Slow test, took {info} seconds ^^^")
                 write_result_into_diagnostics_obj(result, diagnostics_obj)
             elif GENERATOR_MODE == MODE_MULTIPROCESSING:
                 item = TestCaseParams(test_case, case_dir, log_file, file_mode)
@@ -346,9 +351,8 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
             )
         except SkippedTest as e:
             result = 0  # 0 means skipped
-            print(e)
             shutil.rmtree(case_dir)
-            return result
+            return result, e
 
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
