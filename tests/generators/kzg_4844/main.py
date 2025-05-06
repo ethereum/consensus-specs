@@ -87,7 +87,7 @@ def case_compute_kzg_proof():
         def _runner():
             try:
                 proof, y = None, None
-                proof, y = cached_blob_to_kzg_commitment(blob)
+                proof, y = spec.compute_kzg_proof(blob, z)
             except:
                 pass
             return [
@@ -553,7 +553,7 @@ def case_verify_blob_kzg_proof_batch():
     for index, proof in enumerate(INVALID_G1_POINTS):
 
         def get_inputs():
-            blobs = VALID_BLOBS[:length]
+            blobs = VALID_BLOBS
             commitments = [cached_blob_to_kzg_commitment(blob) for blob in blobs]
             proofs = [
                 cached_compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)
