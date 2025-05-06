@@ -52,7 +52,6 @@ PRIVKEYS = [
         "0x00000000000000000000000000000000328388aff0d4a5b7dc9205abd374e7e98f3cd9f3418edb4eafda5fb16473d216"
     ),
 ]
-PUBKEYS = [bls.SkToPk(privkey) for privkey in PRIVKEYS]
 
 ZERO_PUBKEY = b"\x00" * 48
 G1_POINT_AT_INFINITY = b"\xc0" + b"\x00" * 47
@@ -322,7 +321,7 @@ def case_fast_aggregate_verify():
     if True:
 
         def get_inputs():
-            pubkeys = PUBKEYS.copy()
+            pubkeys = [bls.SkToPk(privkey) for privkey in PRIVKEYS]
             pubkeys_with_infinity = pubkeys + [G1_POINT_AT_INFINITY]
             signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
             aggregate_signature = bls.Aggregate(signatures)
@@ -360,20 +359,6 @@ def case_aggregate_verify():
             ]
 
         return _runner
-
-    pubkeys = []
-    pubkeys_serial = []
-    messages = []
-    messages_serial = []
-    sigs = []
-    for privkey, message in zip(PRIVKEYS, MESSAGES):
-        sig = bls.Sign(privkey, message)
-        pubkey = bls.SkToPk(privkey)
-        pubkeys.append(pubkey)
-        pubkeys_serial.append(encode_hex(pubkey))
-        messages.append(message)
-        messages_serial.append(encode_hex(message))
-        sigs.append(sig)
 
     if True:
 
@@ -463,8 +448,9 @@ def case_aggregate_verify():
 
 
 def case_eth_aggregate_pubkeys():
-    def get_test_runner(pubkeys):
+    def get_test_runner(input_getter):
         def _runner():
+            pubkeys = input_getter()
             try:
                 aggregate_pubkey = None
                 aggregate_pubkey = spec.eth_aggregate_pubkeys(pubkeys)
@@ -488,23 +474,40 @@ def case_eth_aggregate_pubkeys():
         return _runner
 
     # Valid pubkey
-    for i, pubkey in enumerate(PUBKEYS):
-        yield f"eth_aggregate_pubkeys_valid_{i}", get_test_runner([pubkey])
+    for i, privkey in enumerate(PRIVKEYS):
+        def get_inputs():
+            return [bls.SkToPk(privkey)]
+        yield f"eth_aggregate_pubkeys_valid_{i}", get_test_runner(get_inputs)
 
     # Valid pubkeys
-    yield "eth_aggregate_pubkeys_valid_pubkeys", get_test_runner(PUBKEYS)
+    if True:
+        def get_inputs():
+            return [bls.SkToPk(privkey) for privkey in PRIVKEYS]
+        yield "eth_aggregate_pubkeys_valid_pubkeys", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- len(pubkeys) == 0
-    yield "eth_aggregate_pubkeys_empty_list", get_test_runner([])
+    if True:
+        def get_inputs():
+            return []
+        yield "eth_aggregate_pubkeys_empty_list", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- [ZERO_PUBKEY]
-    yield "eth_aggregate_pubkeys_zero_pubkey", get_test_runner([ZERO_PUBKEY])
+    if True:
+        def get_inputs():
+            return [ZERO_PUBKEY]
+        yield "eth_aggregate_pubkeys_zero_pubkey", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- G1 point at infinity
-    yield "eth_aggregate_pubkeys_infinity_pubkey", get_test_runner([G1_POINT_AT_INFINITY])
+    if True:
+        def get_inputs():
+            return [G1_POINT_AT_INFINITY]
+        yield "eth_aggregate_pubkeys_infinity_pubkey", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- b'\x40\x00\x00\x00....\x00' pubkey
-    yield "eth_aggregate_pubkeys_x40_pubkey", get_test_runner([b"\x40" + b"\00" * 47])
+    if True:
+        def get_inputs():
+            return [b"\x40" + b"\00" * 47]
+        yield "eth_aggregate_pubkeys_x40_pubkey", get_test_runner(get_inputs)
 
 
 def case_eth_fast_aggregate_verify():
@@ -598,7 +601,7 @@ def case_eth_fast_aggregate_verify():
     if True:
 
         def get_inputs():
-            pubkeys = PUBKEYS.copy()
+            pubkeys = [bls.SkToPk(privkey) for privkey in PRIVKEYS]
             pubkeys_with_infinity = pubkeys + [G1_POINT_AT_INFINITY]
             signatures = [bls.Sign(privkey, SAMPLE_MESSAGE) for privkey in PRIVKEYS]
             aggregate_signature = bls.Aggregate(signatures)
