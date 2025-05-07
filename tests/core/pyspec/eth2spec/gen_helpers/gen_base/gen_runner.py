@@ -265,9 +265,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
-    if args.parallel:
-        all_test_case_params = []
-
+    all_test_case_params = []
     for tprov in test_providers:
         # Runs anything that we don't want to repeat for every test case.
         tprov.prepare()
@@ -288,88 +286,78 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
-            diagnostics_obj.collected_test_count += 1
-
             case_dir = get_test_case_dir(test_case, output_dir)
             if case_dir.exists():
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            if not args.parallel:
-                result, info = generate_test_vector(test_case, case_dir, log_file, file_mode)
-                if isinstance(result, int):
-                    # Skipped or error
-                    debug_print(info)
-                elif isinstance(result, str):
-                    # Success
-                    if info > args.time_threshold_to_print:
-                        debug_print(f"^^^ Slow test, took {info} seconds ^^^")
-                write_result_into_diagnostics_obj(result, diagnostics_obj)
-            else:
-                item = TestCaseParams(test_case, case_dir, log_file, file_mode)
-                all_test_case_params.append(item)
+            diagnostics_obj.collected_test_count += 1
+            item = TestCaseParams(test_case, case_dir, log_file, file_mode)
+            all_test_case_params.append(item)
 
-    if args.parallel:
-        if not args.progress:
-            def worker_function(item):
-                print(f"Generating: {get_test_identifier(item.test_case)}")
-                return generate_test_vector(*item)
+    # If the user requested parallel, use all cores, else just one
+    thread_count = os.cpu_count() if args.parallel else 1
 
-            with Pool() as pool:
-                for result in pool.map(worker_function, all_test_case_params):
-                    write_result_into_diagnostics_obj(result[0], diagnostics_obj)
-        else:
-            def worker_function(data):
-                item, active_tasks = data
-                identifier = get_test_identifier(item.test_case)
-                active_tasks[identifier] = time.time()
-                try:
-                    result = generate_test_vector(*item)
-                finally:
-                    del active_tasks[identifier]
-                return identifier, result
+    if not args.progress:
+        def worker_function(item):
+            print(f"Generating: {get_test_identifier(item.test_case)}")
+            return generate_test_vector(*item)
 
-            def display_active_tasks(active_tasks, total_tasks, completed, width):
-                init_time = time.time()
-                try:
-                    console = Console()
-                    with Live(refresh_per_second=4, console=console) as live:
-                        while True:
-                            remaining = total_tasks - completed.value
-                            if remaining == 0:
-                                elapsed = time.time() - init_time
-                                live.update(f"Completed generator in {human_time(elapsed)}")
-                                break
-                            table = Table(box=box.ROUNDED)
-                            table.add_column(f"Test Identifier (total={total_tasks}, remaining={remaining})", style="cyan", no_wrap=True, width=width)
-                            table.add_column("Elapsed Time", justify="right", style="magenta")
-                            for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
-                                elapsed = time.time() - start
-                                table.add_row(k, f"{human_time(elapsed)}")
-                            live.update(table)
-                            time.sleep(0.1)
-                except KeyboardInterrupt:
-                    return
+        with Pool(processes=thread_count) as pool:
+            for result in pool.map(worker_function, all_test_case_params):
+                write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+    else:
+        def worker_function(data):
+            item, active_tasks = data
+            identifier = get_test_identifier(item.test_case)
+            active_tasks[identifier] = time.time()
+            try:
+                result = generate_test_vector(*item)
+            finally:
+                del active_tasks[identifier]
+            return identifier, result
 
-            with multiprocessing.Manager() as manager:
-                total_tasks = len(all_test_case_params)
-                active_tasks = manager.dict()
-                completed = manager.Value("i", 0)
-                width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
+        def display_active_tasks(active_tasks, total_tasks, completed, width):
+            init_time = time.time()
+            try:
+                console = Console()
+                with Live(refresh_per_second=4, console=console) as live:
+                    while True:
+                        remaining = total_tasks - completed.value
+                        if remaining == 0:
+                            elapsed = time.time() - init_time
+                            live.update(f"Completed generator in {human_time(elapsed)}")
+                            break
+                        table = Table(box=box.ROUNDED)
+                        table.add_column(f"Test Identifier (total={total_tasks}, remaining={remaining})", style="cyan", no_wrap=True, width=width)
+                        table.add_column("Elapsed Time", justify="right", style="magenta")
+                        for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
+                            elapsed = time.time() - start
+                            table.add_row(k, f"{human_time(elapsed)}")
+                        live.update(table)
+                        time.sleep(0.1)
+            except KeyboardInterrupt:
+                return
 
-                display_thread = threading.Thread(
-                    target=display_active_tasks,
-                    args=(active_tasks, total_tasks, completed, width),
-                    daemon=True,
-                )
-                display_thread.start()
+        with multiprocessing.Manager() as manager:
+            total_tasks = len(all_test_case_params)
+            active_tasks = manager.dict()
+            completed = manager.Value("i", 0)
+            width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
 
-                inputs = [(t, active_tasks) for t in all_test_case_params]
-                for result in Pool().uimap(worker_function, inputs):
-                    write_result_into_diagnostics_obj(result[0], diagnostics_obj)
-                    completed.value += 1
+            display_thread = threading.Thread(
+                target=display_active_tasks,
+                args=(active_tasks, total_tasks, completed, width),
+                daemon=True,
+            )
+            display_thread.start()
 
-                display_thread.join()
+            inputs = [(t, active_tasks) for t in all_test_case_params]
+            for result in Pool(processes=thread_count).uimap(worker_function, inputs):
+                write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+                completed.value += 1
+
+            display_thread.join()
 
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
