@@ -326,10 +326,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                         remaining = total_tasks - completed.value
                         if remaining == 0:
                             elapsed = time.time() - init_time
-                            live.update(f"Completed generator in {human_time(elapsed)}")
+                            live.update(f"Completed {generator_name} in {human_time(elapsed)}")
                             break
                         table = Table(box=box.ROUNDED)
-                        table.add_column(f"Test Identifier (total={total_tasks}, remaining={remaining})", style="cyan", no_wrap=True, width=width)
+                        elapsed = time.time() - init_time
+                        table.add_column(f"Test Identifier (gen={generator_name}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
                         table.add_column("Elapsed Time", justify="right", style="magenta")
                         for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
                             elapsed = time.time() - start
