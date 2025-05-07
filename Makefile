@@ -221,6 +221,8 @@ gen_list:
 #   make gen_genesis modcheck=true
 # To generate tests in parallel, append parallel=true, eg:
 #   make gen_epoch_processing parallel=true
+# To show a pretty progress table, append progress=true, eg:
+#   make gen_operations progress=true
 # To run the generator for a specific test, append k=<test>, eg:
 #   make gen_operations k=invalid_committee_index
 # To run the generator for a specific fork, append fork=<fork>, eg:
@@ -234,6 +236,7 @@ gen_list:
 gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
 gen_%: MAYBE_PARALLEL := $(if $(filter true,$(parallel)),--parallel)
+gen_%: MAYBE_PROGRESS := $(if $(filter true,$(progress)),--progress)
 gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
 gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
 gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
@@ -244,6 +247,7 @@ gen_%: pyspec
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_MODCHECK) \
 		$(MAYBE_PARALLEL) \
+		$(MAYBE_PROGRESS) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS)

@@ -2,7 +2,9 @@ from dataclasses import (
     dataclass,
     field,
 )
+import multiprocessing
 import os
+import threading
 import time
 import shutil
 import argparse
@@ -28,9 +30,22 @@ from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
 
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+from rich import box
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+
+def human_time(seconds):
+    h, rem = divmod(int(seconds), 3600)
+    m, s = divmod(rem, 60)
+    parts = []
+    if h: parts.append(f"{h}h")
+    if m: parts.append(f"{m}m")
+    if s or not parts: parts.append(f"{s}s")
+    return " ".join(parts)
 
 
 @dataclass
@@ -50,10 +65,6 @@ TestCaseParams = namedtuple(
         "file_mode",
     ],
 )
-
-
-def worker_function(item):
-    return generate_test_vector(*item)
 
 
 def get_default_yaml():
@@ -204,6 +215,12 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=1.0,
         help="Print a log if the test takes longer than this.",
     )
+    parser.add_argument(
+        "--progress",
+        action="store_true",
+        default=False,
+        help="Show a progress table.",
+    )
     args = parser.parse_args()
 
     # Bail here if we are checking modules.
@@ -271,7 +288,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
-            print(f"Collected: {get_test_identifier(test_case)}")
             diagnostics_obj.collected_test_count += 1
 
             case_dir = get_test_case_dir(test_case, output_dir)
@@ -294,11 +310,66 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 all_test_case_params.append(item)
 
     if args.parallel:
-        with Pool() as pool:
-            results = pool.map(worker_function, iter(all_test_case_params))
+        if not args.progress:
+            def worker_function(item):
+                print(f"Generating: {get_test_identifier(item.test_case)}")
+                return generate_test_vector(*item)
 
-        for result in results:
-            write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+            with Pool() as pool:
+                for result in pool.map(worker_function, all_test_case_params):
+                    write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+        else:
+            def worker_function(data):
+                item, active_tasks = data
+                identifier = get_test_identifier(item.test_case)
+                active_tasks[identifier] = time.time()
+                try:
+                    result = generate_test_vector(*item)
+                finally:
+                    del active_tasks[identifier]
+                return identifier, result
+
+            def display_active_tasks(active_tasks, total_tasks, completed, width):
+                init_time = time.time()
+                try:
+                    console = Console()
+                    with Live(refresh_per_second=4, console=console) as live:
+                        while True:
+                            remaining = total_tasks - completed.value
+                            if remaining == 0:
+                                elapsed = time.time() - init_time
+                                live.update(f"Completed generator in {human_time(elapsed)}")
+                                break
+                            table = Table(box=box.ROUNDED)
+                            table.add_column(f"Test Identifier (total={total_tasks}, remaining={remaining})", style="cyan", no_wrap=True, width=width)
+                            table.add_column("Elapsed Time", justify="right", style="magenta")
+                            for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
+                                elapsed = time.time() - start
+                                table.add_row(k, f"{human_time(elapsed)}")
+                            live.update(table)
+                            time.sleep(0.1)
+                except KeyboardInterrupt:
+                    return
+
+            with multiprocessing.Manager() as manager:
+                total_tasks = len(all_test_case_params)
+                active_tasks = manager.dict()
+                completed = manager.Value("i", 0)
+                width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
+
+                display_thread = threading.Thread(
+                    target=display_active_tasks,
+                    args=(active_tasks, total_tasks, completed, width),
+                    daemon=True,
+                )
+                display_thread.start()
+
+                inputs = [(t, active_tasks) for t in all_test_case_params]
+                for result in Pool().uimap(worker_function, inputs):
+                    write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+                    completed.value += 1
+
+                display_thread.join()
 
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
