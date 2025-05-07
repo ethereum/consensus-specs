@@ -27,13 +27,6 @@ from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
-from .settings import (
-    GENERATOR_MODE,
-    MODE_MULTIPROCESSING,
-    MODE_SINGLE_PROCESS,
-    NUM_PROCESS,
-    TIME_THRESHOLD_TO_PRINT,
-)
 
 
 # Flag that the runner does NOT run test via pytest
@@ -199,6 +192,18 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=False,
         help="Print more information to the console.",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        default=False,
+        help="Generate tests with all CPU cores.",
+    )
+    parser.add_argument(
+        "--time-threshold-to-print",
+        type=float,
+        default=1.0,
+        help="Print a log if the test takes longer than this.",
+    )
     args = parser.parse_args()
 
     # Bail here if we are checking modules.
@@ -243,7 +248,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
+    if args.parallel:
         all_test_case_params = []
 
     for tprov in test_providers:
@@ -274,22 +279,22 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            if GENERATOR_MODE == MODE_SINGLE_PROCESS:
+            if not args.parallel:
                 result, info = generate_test_vector(test_case, case_dir, log_file, file_mode)
                 if isinstance(result, int):
                     # Skipped or error
                     debug_print(info)
                 elif isinstance(result, str):
                     # Success
-                    if info > TIME_THRESHOLD_TO_PRINT:
+                    if info > args.time_threshold_to_print:
                         debug_print(f"^^^ Slow test, took {info} seconds ^^^")
                 write_result_into_diagnostics_obj(result, diagnostics_obj)
-            elif GENERATOR_MODE == MODE_MULTIPROCESSING:
+            else:
                 item = TestCaseParams(test_case, case_dir, log_file, file_mode)
                 all_test_case_params.append(item)
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
-        with Pool(processes=NUM_PROCESS) as pool:
+    if args.parallel:
+        with Pool() as pool:
             results = pool.map(worker_function, iter(all_test_case_params))
 
         for result in results:
@@ -300,7 +305,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     summary_message = f"Completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
     summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
-    if span > TIME_THRESHOLD_TO_PRINT:
+    if span > args.time_threshold_to_print:
         summary_message += f" in {span} seconds"
     debug_print(summary_message)
 
