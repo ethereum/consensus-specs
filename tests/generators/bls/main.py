@@ -475,38 +475,50 @@ def case_eth_aggregate_pubkeys():
 
     # Valid pubkey
     for i, privkey in enumerate(PRIVKEYS):
+
         def get_inputs():
             return [bls.SkToPk(privkey)]
+
         yield f"eth_aggregate_pubkeys_valid_{i}", get_test_runner(get_inputs)
 
     # Valid pubkeys
     if True:
+
         def get_inputs():
             return [bls.SkToPk(privkey) for privkey in PRIVKEYS]
+
         yield "eth_aggregate_pubkeys_valid_pubkeys", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- len(pubkeys) == 0
     if True:
+
         def get_inputs():
             return []
+
         yield "eth_aggregate_pubkeys_empty_list", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- [ZERO_PUBKEY]
     if True:
+
         def get_inputs():
             return [ZERO_PUBKEY]
+
         yield "eth_aggregate_pubkeys_zero_pubkey", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- G1 point at infinity
     if True:
+
         def get_inputs():
             return [G1_POINT_AT_INFINITY]
+
         yield "eth_aggregate_pubkeys_infinity_pubkey", get_test_runner(get_inputs)
 
     # Invalid pubkeys -- b'\x40\x00\x00\x00....\x00' pubkey
     if True:
+
         def get_inputs():
             return [b"\x40" + b"\00" * 47]
+
         yield "eth_aggregate_pubkeys_x40_pubkey", get_test_runner(get_inputs)
 
 
