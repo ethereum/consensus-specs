@@ -20,6 +20,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	clean         \
 	coverage      \
 	detect_errors \
+	fix_lint      \
 	gen_all       \
 	gen_list      \
 	help          \
@@ -41,6 +42,7 @@ help:
 	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
 	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
 	@echo "make $(BOLD)detect_errors$(NORM) -- detect generator errors"
+	@echo "make $(BOLD)fix_lint$(NORM)      -- automatically fix code formatting with black"
 	@echo "make $(BOLD)gen_<gen>$(NORM)     -- run a single generator"
 	@echo "make $(BOLD)gen_all$(NORM)       -- run all generators"
 	@echo "make $(BOLD)gen_list$(NORM)      -- list all generator targets"
@@ -191,9 +193,14 @@ MARKDOWN_FILES = $(CURDIR)/README.md \
 lint: pyspec
 	@$(MDFORMAT_VENV) --number $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m black $(CURDIR)/tests
+	@$(PYTHON_VENV) -m black $(CURDIR)/tests $(PYSPEC_DIR) $(SCRIPTS_DIR)
+	@$(PYTHON_VENV) -m black --check $(CURDIR)/tests $(PYSPEC_DIR) $(SCRIPTS_DIR)
 	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
+
+# Automatically fix code formatting issues
+fix_lint: pyspec
+	@$(PYTHON_VENV) -m black $(CURDIR)/tests $(PYSPEC_DIR) $(SCRIPTS_DIR)
 
 ###############################################################################
 # Generators
