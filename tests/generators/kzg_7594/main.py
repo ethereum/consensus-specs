@@ -148,7 +148,7 @@ def case_verify_cell_kzg_proof_batch():
     # Valid cases
     for index, blob in enumerate(VALID_BLOBS):
 
-        def get_inputs():
+        def get_inputs(blob=blob):
             cells, proofs = cached_compute_cells_and_kzg_proofs(blob)
             commitments = [cached_blob_to_kzg_commitment(blob) for _ in cells]
             cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
@@ -240,7 +240,7 @@ def case_verify_cell_kzg_proof_batch():
     # Edge case: Invalid commitment
     for index, commitment in enumerate(INVALID_G1_POINTS):
 
-        def get_inputs():
+        def get_inputs(index=index, commitment=commitment):
             cells, proofs = cached_compute_cells_and_kzg_proofs(
                 VALID_BLOBS[index % len(INVALID_G1_POINTS)]
             )
@@ -271,7 +271,7 @@ def case_verify_cell_kzg_proof_batch():
     # Edge case: Invalid cell
     for index, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
 
-        def get_inputs():
+        def get_inputs(cell=cell):
             cells, proofs = cached_compute_cells_and_kzg_proofs(
                 VALID_BLOBS[index % len(INVALID_INDIVIDUAL_CELL_BYTES)]
             )
@@ -291,7 +291,7 @@ def case_verify_cell_kzg_proof_batch():
     # Edge case: Invalid proof
     for index, proof in enumerate(INVALID_G1_POINTS):
 
-        def get_inputs():
+        def get_inputs(proof=proof):
             cells, proofs = cached_compute_cells_and_kzg_proofs(
                 VALID_BLOBS[index % len(INVALID_G1_POINTS)]
             )
@@ -511,7 +511,7 @@ def case_recover_cells_and_kzg_proofs():
     # Edge case: Invalid cell
     for index, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
 
-        def get_inputs():
+        def get_inputs(cell=cell):
             cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[6])
             cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2))
             partial_cells = [cells[cell_index] for cell_index in cell_indices]
