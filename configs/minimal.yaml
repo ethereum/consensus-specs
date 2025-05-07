@@ -17,66 +17,62 @@ TERMINAL_TOTAL_DIFFICULTY: 11579208923731619542357098500868790785326998466564056
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
 
-
-
 # Genesis
 # ---------------------------------------------------------------
-# [customized]
+# [customized] 2**6 (= 64)
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 64
 # Jan 3, 2020
 MIN_GENESIS_TIME: 1578009600
-# Highest byte set to 0x01 to avoid collisions with mainnet versioning
+# [customized]
 GENESIS_FORK_VERSION: 0x00000001
-# [customized] Faster to spin up testnets, but does not give validator reasonable warning time for genesis
+# [customized] 5 * 60 (= 300) seconds
 GENESIS_DELAY: 300
-
 
 # Forking
 # ---------------------------------------------------------------
 # Values provided for illustrative purposes.
 # Individual tests/testnets may set different values.
 
-# Altair
+# [customized] Altair
 ALTAIR_FORK_VERSION: 0x01000001
 ALTAIR_FORK_EPOCH: 18446744073709551615
-# Bellatrix
+# [customized] Bellatrix
 BELLATRIX_FORK_VERSION: 0x02000001
 BELLATRIX_FORK_EPOCH: 18446744073709551615
-# Capella
+# [customized] Capella
 CAPELLA_FORK_VERSION: 0x03000001
 CAPELLA_FORK_EPOCH: 18446744073709551615
-# Deneb
+# [customized] Deneb
 DENEB_FORK_VERSION: 0x04000001
 DENEB_FORK_EPOCH: 18446744073709551615
-# Electra
+# [customized] Electra
 ELECTRA_FORK_VERSION: 0x05000001
 ELECTRA_FORK_EPOCH: 18446744073709551615
-# Fulu
+# [customized] Fulu
 FULU_FORK_VERSION: 0x06000001
 FULU_FORK_EPOCH: 18446744073709551615
-# EIP7441
+# [customized] EIP7441
 EIP7441_FORK_VERSION: 0x08000001
 EIP7441_FORK_EPOCH: 18446744073709551615
-# EIP7732
+# [customized] EIP7732
 EIP7732_FORK_VERSION: 0x09000001
 EIP7732_FORK_EPOCH: 18446744073709551615
-# EIP7805
+# [customized] EIP7805
 EIP7805_FORK_VERSION: 0x0a000001
 EIP7805_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
-# [customized] Faster for testing purposes
+# [customized] 6 seconds
 SECONDS_PER_SLOT: 6
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
-# 2**8 (= 256) epochs
+# 2**8 (= 256) epochs, ~27 hours
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-# [customized] higher frequency of committee turnover and faster time to acceptable voluntary exit
+# [customized] 2**6 (= 64) epochs, ~7 hours
 SHARD_COMMITTEE_PERIOD: 64
-# [customized] process deposits more quickly, but insecure
+# [customized] 2**4 (= 16) Eth1 blocks, ~4 minutes
 ETH1_FOLLOW_DISTANCE: 16
-
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -86,13 +82,12 @@ INACTIVITY_SCORE_BIAS: 4
 INACTIVITY_SCORE_RECOVERY_RATE: 16
 # 2**4 * 10**9 (= 16,000,000,000) Gwei
 EJECTION_BALANCE: 16000000000
-# [customized] more easily demonstrate the difference between this value and the activation churn limit
+# [customized] 2**1 (= 2) validators
 MIN_PER_EPOCH_CHURN_LIMIT: 2
-# [customized] scale queue churn at much lower validator counts for testing
+# [customized] 2**5 (= 32)
 CHURN_LIMIT_QUOTIENT: 32
-# [New in Deneb:EIP7514] [customized]
+# [customized] [New in Deneb:EIP7514] 2**2 (= 4)
 MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 4
-
 
 # Fork choice
 # ---------------------------------------------------------------
@@ -102,9 +97,8 @@ PROPOSER_SCORE_BOOST: 40
 REORG_HEAD_WEIGHT_THRESHOLD: 20
 # 160%
 REORG_PARENT_WEIGHT_THRESHOLD: 160
-# `2` epochs
+# 2 epochs
 REORG_MAX_EPOCHS_SINCE_FINALIZATION: 2
-
 
 # Deposit contract
 # ---------------------------------------------------------------
@@ -114,7 +108,6 @@ DEPOSIT_NETWORK_ID: 5
 # Configured on a per testnet basis
 DEPOSIT_CONTRACT_ADDRESS: 0x1234567890123456789012345678901234567890
 
-
 # Networking
 # ---------------------------------------------------------------
 # `10 * 2**20` (= 10485760, 10 MiB)
@@ -123,7 +116,7 @@ MAX_PAYLOAD_SIZE: 10485760
 MAX_REQUEST_BLOCKS: 1024
 # `2**8` (= 256)
 EPOCHS_PER_SUBNET_SUBSCRIPTION: 256
-# [customized] `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 272)
+# [customized] `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 272) epochs
 MIN_EPOCHS_FOR_BLOCK_REQUESTS: 272
 # 5s
 TTFB_TIMEOUT: 5
@@ -138,32 +131,33 @@ MESSAGE_DOMAIN_VALID_SNAPPY: 0x01000000
 SUBNETS_PER_NODE: 2
 # 2**8 (= 64)
 ATTESTATION_SUBNET_COUNT: 64
+# 0 bits
 ATTESTATION_SUBNET_EXTRA_BITS: 0
 # ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS
 ATTESTATION_SUBNET_PREFIX_BITS: 6
 
 # Deneb
-# `2**7` (=128)
+# 2**7 (= 128) blocks
 MAX_REQUEST_BLOCKS_DENEB: 128
-# `2**12` (= 4096 epochs, ~18 days)
+# 2**12 (= 4096) epochs, ~18 days
 MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
-# `6`
+# 6 subnets
 BLOB_SIDECAR_SUBNET_COUNT: 6
-## `uint64(6)`
+## 6 blobs
 MAX_BLOBS_PER_BLOCK: 6
-# MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
+# MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK (= 128 * 6) sidecars
 MAX_REQUEST_BLOB_SIDECARS: 768
 
 # Electra
-# [customized] 2**6 * 10**9 (= 64,000,000,000)
+# [customized] 2**6 * 10**9 (= 64,000,000,000) Gwei
 MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 64000000000
-# [customized] 2**7 * 10**9 (= 128,000,000,000)
+# [customized] 2**7 * 10**9 (= 128,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 128000000000
-# `9`
+# 9 subnets
 BLOB_SIDECAR_SUBNET_COUNT_ELECTRA: 9
-# `uint64(9)`
+# 9 blobs
 MAX_BLOBS_PER_BLOCK_ELECTRA: 9
-# MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA
+# MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA (= 128 * 9) sidecars
 MAX_REQUEST_BLOB_SIDECARS_ELECTRA: 1152
 
 # Fulu
@@ -184,8 +178,13 @@ PROPOSER_SELECTION_GAP: 1
 
 # EIP7732
 MAX_REQUEST_PAYLOADS: 128
+PROPOSER_SCORE_BOOST_EIP7732: 20
 
 # EIP7805
 ATTESTATION_DEADLINE: 2
 PROPOSER_INCLUSION_LIST_CUT_OFF: 5
 VIEW_FREEZE_DEADLINE: 3
+# 2**4 (= 16)
+MAX_REQUEST_INCLUSION_LIST: 16
+# 2**13 (= 8192)
+MAX_BYTES_PER_INCLUSION_LIST: 8192

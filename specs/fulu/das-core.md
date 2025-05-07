@@ -124,10 +124,10 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[ColumnIndex]:
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
-    return sorted([
+    return [
         ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
         for i in range(columns_per_group)
-    ])
+    ]
 ```
 
 ### `compute_matrix`
@@ -228,7 +228,7 @@ In the one-dimension construction, a node samples the peers by requesting the wh
 
 The potential benefits of having row custody could include:
 
-1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column \[0, N) and the latter is req/resp instead of gossiping.
+1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups -- but honestly, they won't know a priori which row their blob is going to be included in the block, so they would either need to listen to all rows or download a particular row after seeing the block. The former looks just like listening to column \[0, N) and the latter is req/resp instead of gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can compute extensions and seed missing samples to the network. This would either need to be able to send individual points on the gossip or would need some sort of req/resp faculty, potentially similar to an `IHAVEPOINTBITFIELD` and `IWANTSAMPLE`.
 
 However, for simplicity, we don't assign row custody assignments to nodes in the current design.

@@ -1,7 +1,5 @@
 # Electra -- Fork Logic
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -23,10 +21,10 @@ This document describes the process of the Electra upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name                   | Value                                 |
-| ---------------------- | ------------------------------------- |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`               |
-| `ELECTRA_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                         |
+| ---------------------- | --------------------------------------------- |
+| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`                       |
+| `ELECTRA_FORK_EPOCH`   | `Epoch(364032)` (May 7, 2025, 10:05:11am UTC) |
 
 ## Helper functions
 

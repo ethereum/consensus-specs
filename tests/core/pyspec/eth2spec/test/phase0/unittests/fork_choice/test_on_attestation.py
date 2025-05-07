@@ -35,7 +35,6 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
         )
-    # elif spec.fork == SHARDING: TODO: check if vote count for shard blob increased as expected
 
     assert store.latest_messages[sample_index] == latest_message
 

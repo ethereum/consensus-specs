@@ -89,7 +89,6 @@ pyspec: $(VENV) setup.py pyproject.toml
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
-# Note: for debugging output to show, print to stderr.
 #
 # To run a specific test, append k=<test>, eg:
 #   make test k=test_verify_kzg_proof
@@ -102,13 +101,16 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 # To run tests with a specific bls library, append bls=<bls>, eg:
 #   make test bls=arkworks
 test: MAYBE_TEST := $(if $(k),-k=$(k))
+# Disable parallelism which running a specific test.
+# Parallelism makes debugging difficult (print doesn't work).
+test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := --preset=$(if $(preset),$(preset),minimal)
 test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
 test: pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
-		-n auto \
+		$(MAYBE_PARALLEL) \
 		--capture=no \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
@@ -178,7 +180,8 @@ PYLINT_CONFIG = $(CURDIR)/pylint.ini
 
 PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
+MARKDOWN_FILES = $(CURDIR)/README.md \
+                 $(wildcard $(SPEC_DIR)/*/*.md) \
                  $(wildcard $(SPEC_DIR)/*/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*.md) \
                  $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
@@ -202,6 +205,7 @@ SCRIPTS_DIR = $(CURDIR)/scripts
 GENERATOR_ERROR_LOG_FILE = $(TEST_VECTOR_DIR)/testgen_error_log.txt
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
 GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
+COMMA:= ,
 
 # List available generators.
 gen_list:
@@ -211,14 +215,34 @@ gen_list:
 
 # Run one generator.
 # This will forcibly rebuild pyspec just in case.
+# To print more details, append verbose=true, eg:
+#   make gen_bls verbose=true
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
+# To run the generator for a specific test, append k=<test>, eg:
+#   make gen_operations k=invalid_committee_index
+# To run the generator for a specific fork, append fork=<fork>, eg:
+#   make gen_operations fork=fulu
+# To run the generator for a specific preset, append preset=<preset>, eg:
+#   make gen_operations preset=mainnet
+# To run the generator for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
+#   make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
+# Or all at the same time, eg:
+#   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
+gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
+gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
+gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
+gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
 gen_%: pyspec
 	@mkdir -p $(TEST_VECTOR_DIR)
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
-		$(MAYBE_MODCHECK)
+		$(MAYBE_VERBOSE) \
+		$(MAYBE_MODCHECK) \
+		$(MAYBE_TESTS) \
+		$(MAYBE_FORKS) \
+		$(MAYBE_PRESETS)
 
 # Run all generators then check for errors.
 gen_all: $(GENERATOR_TARGETS)
