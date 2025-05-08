@@ -44,10 +44,6 @@ jobs:
             echo "There is an error in the log"
             exit 1
           fi
-          if find . -type f -name "INCOMPLETE" | grep -q "INCOMPLETE"; then
-            echo "There is an INCOMPLETE file"
-            exit 1
-          fi
       - name: Archive configurations
         run: |
           cd consensus-spec-tests

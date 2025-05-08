@@ -258,11 +258,6 @@ gen_all: $(GENERATOR_TARGETS)
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
-	@incomplete_files=$$(find $(TEST_VECTOR_DIR) -name "INCOMPLETE"); \
-	if [ -n "$$incomplete_files" ]; then \
-		echo "[ERROR] incomplete detected"; \
-		exit 1; \
-	fi
 	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
 		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
 		exit 1; \

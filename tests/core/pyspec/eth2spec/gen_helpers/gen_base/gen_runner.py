@@ -165,10 +165,6 @@ def get_shared_prefix(test_case_params):
     return "::".join(prefix)
 
 
-def get_incomplete_tag_file(case_dir):
-    return case_dir / "INCOMPLETE"
-
-
 def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     """
     Implementation for a general test generator.
@@ -426,11 +422,8 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
 
     test_start = time.time()
 
-    # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
-    incomplete_tag_file = get_incomplete_tag_file(case_dir)
+    # Create the test case directory
     case_dir.mkdir(parents=True, exist_ok=True)
-    with incomplete_tag_file.open("w") as f:
-        f.write("\n")
 
     result = None
     try:
@@ -462,15 +455,13 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
         print(error_message)
         traceback.print_exc()
     else:
-        # If no written_part, the only file was incomplete_tag_file. Clear the existing case_dir folder.
+        # If no written_part, clear the existing case_dir folder.
         if not written_part:
             print(f"[Error] test case {case_dir} did not produce any written_part")
             shutil.rmtree(case_dir)
             result = -1
         else:
             result = get_test_identifier(test_case)
-            # Only remove `INCOMPLETE` tag file
-            os.remove(incomplete_tag_file)
     test_end = time.time()
     span = round(test_end - test_start, 2)
     return result, span
