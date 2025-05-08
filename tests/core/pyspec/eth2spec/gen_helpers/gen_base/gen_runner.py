@@ -141,7 +141,7 @@ def get_test_identifier(test_case):
     )
 
 
-def get_shared_prefix(test_case_params):
+def get_shared_prefix(test_case_params, min_segments=3):
     test_cases = [t.test_case for t in test_case_params]
     assert test_cases, "No test cases provided"
 
@@ -155,10 +155,12 @@ def get_shared_prefix(test_case_params):
     ]
 
     prefix = []
-    for field in fields:
+    for i, field in enumerate(fields):
         values = {getattr(tc, field) for tc in test_cases}
         if len(values) == 1:
             prefix.append(values.pop())
+        elif i < min_segments:
+            prefix.append("*")
         else:
             break
 
