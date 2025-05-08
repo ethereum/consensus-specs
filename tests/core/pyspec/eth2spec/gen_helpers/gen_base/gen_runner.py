@@ -31,10 +31,11 @@ from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
 
+from rich import box
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
-from rich import box
+from rich.text import Text
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -45,7 +46,7 @@ def human_time(seconds):
     parts = []
     if h: parts.append(f"{h}h")
     if m: parts.append(f"{m}m")
-    if s or not parts: parts.append(f"{s}s")
+    parts.append(f"{s}s")
     return " ".join(parts)
 
 
@@ -150,8 +151,6 @@ def get_shared_prefix(test_case_params, min_segments=3):
         "fork_name",
         "runner_name",
         "handler_name",
-        "suite_name",
-        "case_name"
     ]
 
     prefix = []
@@ -341,27 +340,24 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 del active_tasks[key]
 
         def display_active_tasks(active_tasks, total_tasks, completed, width):
+            console = Console()
             init_time = time.time()
-            try:
-                console = Console()
-                with Live(refresh_per_second=4, console=console) as live:
-                    while True:
-                        remaining = total_tasks - completed.value
-                        if remaining == 0:
-                            elapsed = time.time() - init_time
-                            live.update(f"Completed {tests_prefix} in {human_time(elapsed)}")
-                            break
-                        table = Table(box=box.ROUNDED)
+            with Live(refresh_per_second=4, console=console) as live:
+                while True:
+                    remaining = total_tasks - completed.value
+                    if remaining == 0:
                         elapsed = time.time() - init_time
-                        table.add_column(f"Test Identifier (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
-                        table.add_column("Elapsed Time", justify="right", style="magenta")
-                        for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
-                            elapsed = time.time() - start
-                            table.add_row(k[1], f"{human_time(elapsed)}")
-                        live.update(table)
-                        time.sleep(0.1)
-            except KeyboardInterrupt:
-                return
+                        live.update(Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}"))
+                        break
+                    table = Table(box=box.ROUNDED)
+                    elapsed = time.time() - init_time
+                    table.add_column(f"Test (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
+                    table.add_column("Elapsed Time", justify="right", style="magenta")
+                    for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
+                        elapsed = time.time() - start
+                        table.add_row(k[1], f"{human_time(elapsed)}")
+                    live.update(table)
+                    time.sleep(0.1)
 
         with multiprocessing.Manager() as manager:
             total_tasks = len(all_test_case_params)
