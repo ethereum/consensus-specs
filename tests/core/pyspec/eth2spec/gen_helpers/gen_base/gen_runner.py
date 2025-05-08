@@ -2,6 +2,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+import uuid
 import multiprocessing
 import os
 import threading
@@ -138,6 +139,30 @@ def get_test_identifier(test_case):
             test_case.case_name,
         ]
     )
+
+
+def get_shared_prefix(test_case_params):
+    test_cases = [t.test_case for t in test_case_params]
+    assert test_cases, "No test cases provided"
+
+    fields = [
+        "preset_name",
+        "fork_name",
+        "runner_name",
+        "handler_name",
+        "suite_name",
+        "case_name"
+    ]
+
+    prefix = []
+    for field in fields:
+        values = {getattr(tc, field) for tc in test_cases}
+        if len(values) == 1:
+            prefix.append(values.pop())
+        else:
+            break
+
+    return "::".join(prefix)
 
 
 def get_incomplete_tag_file(case_dir):
@@ -307,15 +332,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             for result in pool.map(worker_function, all_test_case_params):
                 write_result_into_diagnostics_obj(result[0], diagnostics_obj)
     else:
+        tests_prefix = get_shared_prefix(all_test_case_params)
         def worker_function(data):
             item, active_tasks = data
-            identifier = get_test_identifier(item.test_case)
-            active_tasks[identifier] = time.time()
+            key = (uuid.uuid4(), get_test_identifier(item.test_case))
+            active_tasks[key] = time.time()
             try:
-                result = generate_test_vector(*item)
+                return generate_test_vector(*item)
             finally:
-                del active_tasks[identifier]
-            return identifier, result
+                del active_tasks[key]
 
         def display_active_tasks(active_tasks, total_tasks, completed, width):
             init_time = time.time()
@@ -326,15 +351,15 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                         remaining = total_tasks - completed.value
                         if remaining == 0:
                             elapsed = time.time() - init_time
-                            live.update(f"Completed {generator_name} in {human_time(elapsed)}")
+                            live.update(f"Completed {tests_prefix} in {human_time(elapsed)}")
                             break
                         table = Table(box=box.ROUNDED)
                         elapsed = time.time() - init_time
-                        table.add_column(f"Test Identifier (gen={generator_name}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
+                        table.add_column(f"Test Identifier (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
                         table.add_column("Elapsed Time", justify="right", style="magenta")
                         for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
                             elapsed = time.time() - start
-                            table.add_row(k, f"{human_time(elapsed)}")
+                            table.add_row(k[1], f"{human_time(elapsed)}")
                         live.update(table)
                         time.sleep(0.1)
             except KeyboardInterrupt:
