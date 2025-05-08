@@ -71,7 +71,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Blob schedule
 
-*[New in EIP7594]* This schedule defines the maximum blobs per block limit for a given epoch.
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a given epoch.
 
 <!-- list-of-records:blob_schedule -->
 
