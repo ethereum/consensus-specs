@@ -34,7 +34,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j$(nproc) gen_all verbose=true 2>&1 | tee ../consensustestgen.log
+          make -j$(nproc) gen_all threads=1 verbose=true 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
