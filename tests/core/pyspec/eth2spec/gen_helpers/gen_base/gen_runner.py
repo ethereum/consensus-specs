@@ -41,12 +41,15 @@ from .gen_typing import TestProvider
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
 
+
 def human_time(seconds):
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
     parts = []
-    if h: parts.append(f"{h}h")
-    if m: parts.append(f"{m}m")
+    if h:
+        parts.append(f"{h}h")
+    if m:
+        parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
 
@@ -246,9 +249,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     # Gracefully handle Ctrl+C: restore cursor and exit immediately
     console = Console()
+
     def _handle_sigint(signum, frame):
         console.show_cursor()
         os._exit(0)
+
     signal.signal(signal.SIGINT, _handle_sigint)
 
     output_dir = args.output_dir
@@ -320,6 +325,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             all_test_case_params.append(item)
 
     tests_prefix = get_shared_prefix(all_test_case_params)
+
     def worker_function(data):
         item, active_tasks = data
         if args.verbose:
@@ -338,11 +344,18 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 remaining = total_tasks - completed.value
                 if remaining == 0:
                     elapsed = time.time() - init_time
-                    live.update(Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}"))
+                    live.update(
+                        Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}")
+                    )
                     break
                 table = Table(box=box.ROUNDED)
                 elapsed = time.time() - init_time
-                table.add_column(f"Test (gen={tests_prefix}, threads={args.threads}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
+                table.add_column(
+                    f"Test (gen={tests_prefix}, threads={args.threads}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})",
+                    style="cyan",
+                    no_wrap=True,
+                    width=width,
+                )
                 table.add_column("Elapsed Time", justify="right", style="magenta")
                 for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
                     elapsed = time.time() - start
