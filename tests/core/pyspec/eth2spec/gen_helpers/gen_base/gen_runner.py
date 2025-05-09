@@ -228,7 +228,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     signal.signal(signal.SIGINT, _handle_sigint)
 
     output_dir = args.output_dir
-    file_mode = "w"
     log_file = Path(output_dir) / "testgen_error_log.txt"
 
     def debug_print(msg):
@@ -290,7 +289,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            item = TestCaseParams(test_case, case_dir, log_file, file_mode)
+            item = TestCaseParams(test_case, case_dir, log_file)
             all_test_case_params.append(item)
 
     tests_prefix = get_shared_prefix(all_test_case_params)
@@ -372,9 +371,7 @@ def generate_test_vector(p: TestCaseParams):
     try:
         meta = dict()
         try:
-            written_part, meta = execute_test(
-                p.test_case, p.case_dir, meta, p.log_file, p.file_mode, cfg_yaml, yaml
-            )
+            written_part, meta = execute_test(p.test_case, p.case_dir, meta, p.log_file, cfg_yaml, yaml)
         except SkippedTest as e:
             result = 0  # 0 means skipped
             shutil.rmtree(p.case_dir)
@@ -383,9 +380,7 @@ def generate_test_vector(p: TestCaseParams):
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
             written_part = True
-            output_part(
-                p.case_dir, p.log_file, "data", "meta", dump_yaml_fn(meta, "meta", p.file_mode, yaml)
-            )
+            output_part(p.case_dir, p.log_file, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
 
     except Exception as e:
         result = -1  # -1 means error
@@ -410,10 +405,10 @@ def generate_test_vector(p: TestCaseParams):
     return result, span
 
 
-def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
+def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
     def dump(case_path: Path):
         out_path = case_path / Path(name + ".yaml")
-        with out_path.open(file_mode) as f:
+        with out_path.open("w") as f:
             yaml_encoder.dump(data, f)
             f.close()
 
@@ -449,7 +444,7 @@ def output_part(
         sys.exit(error_message)
 
 
-def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml):
+def execute_test(test_case, case_dir, meta, log_file, cfg_yaml, yaml):
     result = test_case.case_fn()
     written_part = False
     for name, out_kind, data in result:
@@ -458,25 +453,25 @@ def execute_test(test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml)
             meta[name] = data
         elif out_kind == "cfg":
             output_part(
-                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, file_mode, cfg_yaml)
+                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, cfg_yaml)
             )
         elif out_kind == "data":
             output_part(
-                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, file_mode, yaml)
+                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, yaml)
             )
         elif out_kind == "ssz":
-            output_part(case_dir, log_file, out_kind, name, dump_ssz_fn(data, name, file_mode))
+            output_part(case_dir, log_file, out_kind, name, dump_ssz_fn(data, name))
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 
     return written_part, meta
 
 
-def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
+def dump_ssz_fn(data: AnyStr, name: str):
     def dump(case_path: Path):
         out_path = case_path / Path(name + ".ssz_snappy")
         compressed = compress(data)
-        with out_path.open(file_mode + "b") as f:  # write in raw binary mode
+        with out_path.open("wb") as f:
             f.write(compressed)
 
     return dump

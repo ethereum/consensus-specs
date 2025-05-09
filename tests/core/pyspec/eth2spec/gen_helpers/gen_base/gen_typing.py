@@ -42,4 +42,3 @@ class TestCaseParams:
     test_case: TestCase
     case_dir: Path
     log_file: Path
-    file_mode: str
