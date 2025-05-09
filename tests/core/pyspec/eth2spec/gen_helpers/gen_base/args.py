@@ -59,12 +59,6 @@ def parse_arguments(generator_name):
         "--threads",
         type=int,
         default=os.cpu_count(),
-        help="Generate tests N threads, defaults to all available.",
-    )
-    parser.add_argument(
-        "--time-threshold-to-print",
-        type=float,
-        default=1.0,
-        help="Print a log if the test takes longer than this.",
+        help="Generate tests with N threads. Defaults to core count.",
     )
     return parser.parse_args()

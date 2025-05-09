@@ -1,6 +1,7 @@
 import functools
 import os
 import signal
+import time
 
 from rich.console import Console
 
@@ -16,7 +17,7 @@ def install_sigint_handler(console: Console) -> None:
 
 
 @functools.lru_cache(maxsize=None)
-def format_duration(seconds):
+def format_duration(seconds: float) -> str:
     """Convert seconds to a more readable time."""
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
@@ -27,3 +28,8 @@ def format_duration(seconds):
         parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
+
+
+def time_since(start_time: int) -> str:
+    """Get the duration since some start time."""
+    return format_duration(time.time() - start_time)

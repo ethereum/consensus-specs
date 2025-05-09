@@ -19,7 +19,7 @@ from eth2spec.test.exceptions import SkippedTest
 from .args import parse_arguments
 from .dumper import Dumper
 from .gen_typing import TestCase, TestProvider
-from .utils import format_duration, install_sigint_handler
+from .utils import install_sigint_handler, time_since
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -133,11 +133,8 @@ def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
                 if remaining == 0:
                     # Show a final status when the queue is empty
                     # This is better than showing an empty table
-                    live.update(
-                        Text.from_markup(
-                            f"Completed {tests_prefix} in {format_duration(time.time() - start_time)}"
-                        )
-                    )
+                    text = Text.from_markup(f"Completed {tests_prefix} in {time_since(start_time)}")
+                    live.update(text)
                     break
 
                 info = ", ".join(
@@ -147,7 +144,7 @@ def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
                         f"total={total_tasks}",
                         f"skipped={skipped.value}",
                         f"remaining={remaining}",
-                        f"time={format_duration(time.time() - start_time)}",
+                        f"time={time_since(start_time)}",
                     ]
                 )
 
@@ -155,7 +152,7 @@ def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
                 table.add_column(f"Test ({info})", style="cyan", no_wrap=True, width=width)
                 table.add_column("Elapsed Time", justify="right", style="magenta")
                 for k, start in sorted(active_tests.items(), key=lambda x: x[1]):
-                    table.add_row(k[1], f"{format_duration(time.time() - start)}")
+                    table.add_row(k[1], f"{time_since(start)}")
                 live.update(table)
                 time.sleep(0.1)
 
