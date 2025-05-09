@@ -1,16 +1,13 @@
-import argparse
 import functools
 import multiprocessing
 import os
 import shutil
 import signal
-import sys
 import threading
 import time
 import uuid
 
-from pathlib import Path
-from typing import Any, AnyStr, Callable, Iterable
+from typing import Any, Iterable
 
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
@@ -18,14 +15,13 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
-from ruamel.yaml import YAML
-from snappy import compress
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestCase, TestProvider
 from .dumper import Dumper
+from .args import parse_arguments
 
 ###############################################################################
 # Global settings
@@ -50,18 +46,6 @@ def human_time(seconds):
         parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
-
-
-def validate_output_dir(path_str):
-    path = Path(path_str)
-
-    if not path.exists():
-        raise argparse.ArgumentTypeError("Output directory must exist")
-
-    if not path.is_dir():
-        raise argparse.ArgumentTypeError("Output path must lead to a directory")
-
-    return path
 
 
 def get_shared_prefix(test_cases, min_segments=3):
@@ -102,70 +86,6 @@ def execute_test(test_case: TestCase):
 
     if meta:
         dumper.dump_meta(test_case, meta)
-
-
-def parse_arguments(generator_name):
-    parser = argparse.ArgumentParser(
-        prog="gen-" + generator_name,
-        description=f"Generate YAML test suite files for {generator_name}.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output-dir",
-        dest="output_dir",
-        required=True,
-        type=validate_output_dir,
-        help="Directory into which the generated YAML files will be dumped.",
-    )
-    parser.add_argument(
-        "--preset-list",
-        dest="preset_list",
-        nargs="*",
-        type=str,
-        required=False,
-        help="Specify presets to run with. Allows all if no preset names are specified.",
-    )
-    parser.add_argument(
-        "--fork-list",
-        dest="fork_list",
-        nargs="*",
-        type=str,
-        required=False,
-        help="Specify forks to run with. Allows all if no fork names are specified.",
-    )
-    parser.add_argument(
-        "--modcheck",
-        action="store_true",
-        default=False,
-        help="Check generator modules, do not run any tests.",
-    )
-    parser.add_argument(
-        "--case-list",
-        dest="case_list",
-        nargs="*",
-        type=str,
-        required=False,
-        help="Specify test cases to run with. Allows all if no test case names are specified.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        default=False,
-        help="Print more information to the console.",
-    )
-    parser.add_argument(
-        "--threads",
-        type=int,
-        default=os.cpu_count(),
-        help="Generate tests N threads, defaults to all available.",
-    )
-    parser.add_argument(
-        "--time-threshold-to-print",
-        type=float,
-        default=1.0,
-        help="Print a log if the test takes longer than this.",
-    )
-    return parser.parse_args()
 
 
 ###############################################################################
