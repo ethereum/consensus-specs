@@ -23,16 +23,8 @@ from .typing import TestCase, TestProvider
 from .dumper import Dumper
 from .args import parse_arguments
 
-###############################################################################
-# Global settings
-###############################################################################
-
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
-
-###############################################################################
-# Helper functions
-###############################################################################
 
 
 @functools.lru_cache(maxsize=None)
@@ -86,11 +78,6 @@ def execute_test(test_case: TestCase):
 
     if meta:
         dumper.dump_meta(test_case, meta)
-
-
-###############################################################################
-# Main logic
-###############################################################################
 
 
 def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
