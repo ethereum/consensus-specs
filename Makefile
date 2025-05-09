@@ -219,6 +219,8 @@ gen_list:
 #   make gen_bls verbose=true
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
+# To run the generator with fewer threads, append threads=N, eg:
+#   make gen_operations threads=1
 # To run the generator for a specific test, append k=<test>, eg:
 #   make gen_operations k=invalid_committee_index
 # To run the generator for a specific fork, append fork=<fork>, eg:
@@ -231,6 +233,7 @@ gen_list:
 #   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
 gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
+gen_%: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
 gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
 gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
 gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
@@ -240,6 +243,7 @@ gen_%: pyspec
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_MODCHECK) \
+		$(MAYBE_THREADS) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS)
@@ -250,11 +254,6 @@ gen_all: $(GENERATOR_TARGETS)
 
 # Detect errors in generators.
 detect_errors: $(TEST_VECTOR_DIR)
-	@incomplete_files=$$(find $(TEST_VECTOR_DIR) -name "INCOMPLETE"); \
-	if [ -n "$$incomplete_files" ]; then \
-		echo "[ERROR] incomplete detected"; \
-		exit 1; \
-	fi
 	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
 		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
 		exit 1; \

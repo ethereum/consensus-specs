@@ -34,7 +34,7 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j$(nproc) gen_all 2>&1 | tee ../consensustestgen.log
+          make -j$(nproc) gen_all threads=1 verbose=true 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
           find . -type d -empty -delete
@@ -42,10 +42,6 @@ jobs:
         run: |
           if grep -q "\[ERROR\]" consensustestgen.log; then
             echo "There is an error in the log"
-            exit 1
-          fi
-          if find . -type f -name "INCOMPLETE" | grep -q "INCOMPLETE"; then
-            echo "There is an INCOMPLETE file"
             exit 1
           fi
       - name: Archive configurations

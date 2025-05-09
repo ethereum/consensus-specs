@@ -2,7 +2,10 @@ from dataclasses import (
     dataclass,
     field,
 )
+import uuid
+import multiprocessing
 import os
+import threading
 import time
 import shutil
 import argparse
@@ -12,10 +15,17 @@ import json
 from typing import Iterable, AnyStr, Any, Callable
 import traceback
 from collections import namedtuple
+import signal
 
 from ruamel.yaml import (
     YAML,
 )
+
+from rich import box
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+from rich.text import Text
 
 from filelock import FileLock
 from snappy import compress
@@ -27,17 +37,21 @@ from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
-from .settings import (
-    GENERATOR_MODE,
-    MODE_MULTIPROCESSING,
-    MODE_SINGLE_PROCESS,
-    NUM_PROCESS,
-    TIME_THRESHOLD_TO_PRINT,
-)
-
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+
+
+def human_time(seconds):
+    h, rem = divmod(int(seconds), 3600)
+    m, s = divmod(rem, 60)
+    parts = []
+    if h:
+        parts.append(f"{h}h")
+    if m:
+        parts.append(f"{m}m")
+    parts.append(f"{s}s")
+    return " ".join(parts)
 
 
 @dataclass
@@ -57,10 +71,6 @@ TestCaseParams = namedtuple(
         "file_mode",
     ],
 )
-
-
-def worker_function(item):
-    return generate_test_vector(*item)
 
 
 def get_default_yaml():
@@ -136,8 +146,28 @@ def get_test_identifier(test_case):
     )
 
 
-def get_incomplete_tag_file(case_dir):
-    return case_dir / "INCOMPLETE"
+def get_shared_prefix(test_case_params, min_segments=3):
+    test_cases = [t.test_case for t in test_case_params]
+    assert test_cases, "No test cases provided"
+
+    fields = [
+        "preset_name",
+        "fork_name",
+        "runner_name",
+        "handler_name",
+    ]
+
+    prefix = []
+    for i, field in enumerate(fields):
+        values = {getattr(tc, field) for tc in test_cases}
+        if len(values) == 1:
+            prefix.append(values.pop())
+        elif i < min_segments:
+            prefix.append("*")
+        else:
+            break
+
+    return "::".join(prefix)
 
 
 def run_generator(generator_name, test_providers: Iterable[TestProvider]):
@@ -199,11 +229,32 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=False,
         help="Print more information to the console.",
     )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=os.cpu_count(),
+        help="Generate tests N threads, defaults to all available.",
+    )
+    parser.add_argument(
+        "--time-threshold-to-print",
+        type=float,
+        default=1.0,
+        help="Print a log if the test takes longer than this.",
+    )
     args = parser.parse_args()
 
     # Bail here if we are checking modules.
     if args.modcheck:
         return
+
+    # Gracefully handle Ctrl+C: restore cursor and exit immediately
+    console = Console()
+
+    def _handle_sigint(signum, frame):
+        console.show_cursor()
+        os._exit(0)
+
+    signal.signal(signal.SIGINT, _handle_sigint)
 
     output_dir = args.output_dir
     file_mode = "w"
@@ -243,9 +294,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
-        all_test_case_params = []
-
+    all_test_case_params = []
     for tprov in test_providers:
         # Runs anything that we don't want to repeat for every test case.
         tprov.prepare()
@@ -266,41 +315,82 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 debug_print(f"Skipped: {get_test_identifier(test_case)}")
                 continue
 
-            print(f"Collected: {get_test_identifier(test_case)}")
-            diagnostics_obj.collected_test_count += 1
-
             case_dir = get_test_case_dir(test_case, output_dir)
             if case_dir.exists():
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            if GENERATOR_MODE == MODE_SINGLE_PROCESS:
-                result, info = generate_test_vector(test_case, case_dir, log_file, file_mode)
-                if isinstance(result, int):
-                    # Skipped or error
-                    debug_print(info)
-                elif isinstance(result, str):
-                    # Success
-                    if info > TIME_THRESHOLD_TO_PRINT:
-                        debug_print(f"^^^ Slow test, took {info} seconds ^^^")
-                write_result_into_diagnostics_obj(result, diagnostics_obj)
-            elif GENERATOR_MODE == MODE_MULTIPROCESSING:
-                item = TestCaseParams(test_case, case_dir, log_file, file_mode)
-                all_test_case_params.append(item)
+            diagnostics_obj.collected_test_count += 1
+            item = TestCaseParams(test_case, case_dir, log_file, file_mode)
+            all_test_case_params.append(item)
 
-    if GENERATOR_MODE == MODE_MULTIPROCESSING:
-        with Pool(processes=NUM_PROCESS) as pool:
-            results = pool.map(worker_function, iter(all_test_case_params))
+    tests_prefix = get_shared_prefix(all_test_case_params)
 
-        for result in results:
+    def worker_function(data):
+        item, active_tasks = data
+        if args.verbose:
+            print(f"Generating: {get_test_identifier(item.test_case)}")
+        key = (uuid.uuid4(), get_test_identifier(item.test_case))
+        active_tasks[key] = time.time()
+        try:
+            return generate_test_vector(*item)
+        finally:
+            del active_tasks[key]
+
+    def display_active_tasks(active_tasks, total_tasks, completed, width):
+        init_time = time.time()
+        with Live(refresh_per_second=4, console=console) as live:
+            while True:
+                remaining = total_tasks - completed.value
+                if remaining == 0:
+                    elapsed = time.time() - init_time
+                    live.update(
+                        Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}")
+                    )
+                    break
+                table = Table(box=box.ROUNDED)
+                elapsed = time.time() - init_time
+                table.add_column(
+                    f"Test (gen={tests_prefix}, threads={args.threads}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})",
+                    style="cyan",
+                    no_wrap=True,
+                    width=width,
+                )
+                table.add_column("Elapsed Time", justify="right", style="magenta")
+                for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
+                    elapsed = time.time() - start
+                    table.add_row(k[1], f"{human_time(elapsed)}")
+                live.update(table)
+                time.sleep(0.1)
+
+    with multiprocessing.Manager() as manager:
+        total_tasks = len(all_test_case_params)
+        active_tasks = manager.dict()
+        completed = manager.Value("i", 0)
+        width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
+
+        if not args.verbose:
+            display_thread = threading.Thread(
+                target=display_active_tasks,
+                args=(active_tasks, total_tasks, completed, width),
+                daemon=True,
+            )
+            display_thread.start()
+
+        inputs = [(t, active_tasks) for t in all_test_case_params]
+        for result in Pool(processes=args.threads).uimap(worker_function, inputs):
             write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+            completed.value += 1
+
+        if not args.verbose:
+            display_thread.join()
 
     provider_end = time.time()
     span = round(provider_end - provider_start, 2)
 
     summary_message = f"Completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
     summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
-    if span > TIME_THRESHOLD_TO_PRINT:
+    if span > args.time_threshold_to_print:
         summary_message += f" in {span} seconds"
     debug_print(summary_message)
 
@@ -336,11 +426,8 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
 
     test_start = time.time()
 
-    # Add `INCOMPLETE` tag file to indicate that the test generation has not completed.
-    incomplete_tag_file = get_incomplete_tag_file(case_dir)
+    # Create the test case directory
     case_dir.mkdir(parents=True, exist_ok=True)
-    with incomplete_tag_file.open("w") as f:
-        f.write("\n")
 
     result = None
     try:
@@ -372,15 +459,13 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
         print(error_message)
         traceback.print_exc()
     else:
-        # If no written_part, the only file was incomplete_tag_file. Clear the existing case_dir folder.
+        # If no written_part, clear the existing case_dir folder.
         if not written_part:
             print(f"[Error] test case {case_dir} did not produce any written_part")
             shutil.rmtree(case_dir)
             result = -1
         else:
             result = get_test_identifier(test_case)
-            # Only remove `INCOMPLETE` tag file
-            os.remove(incomplete_tag_file)
     test_end = time.time()
     span = round(test_end - test_start, 2)
     return result, span
