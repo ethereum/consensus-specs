@@ -27,8 +27,16 @@ from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestCase, TestProvider
 
+###############################################################################
+# Global settings
+###############################################################################
+
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+
+###############################################################################
+# Helper functions
+###############################################################################
 
 
 @functools.lru_cache(maxsize=None)
@@ -117,6 +125,55 @@ def get_shared_prefix(test_cases, min_segments=3):
     return "::".join(prefix)
 
 
+def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
+    def dump(case_path: Path):
+        out_path = case_path / Path(name + ".yaml")
+        with out_path.open("w") as f:
+            yaml_encoder.dump(data, f)
+            f.close()
+
+    return dump
+
+
+def output_part(test_case: TestCase, out_kind: str, name: str, fn: Callable[[Path], None]):
+    # make sure the test case directory is created before any test part is written.
+    test_case.dir.mkdir(parents=True, exist_ok=True)
+    try:
+        fn(test_case.dir)
+    except (IOError, ValueError) as e:
+        print(f"[ERROR] failed to dump {test_case.dir}, part {name}, kind {out_kind}: {e}")
+        sys.exit(1)
+
+
+def execute_test(test_case: TestCase):
+    meta = dict()
+    result = test_case.case_fn()
+    for name, out_kind, data in result:
+        if out_kind == "meta":
+            meta[name] = data
+        elif out_kind == "cfg":
+            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml()))
+        elif out_kind == "data":
+            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml()))
+        elif out_kind == "ssz":
+            output_part(test_case, out_kind, name, dump_ssz_fn(data, name))
+        else:
+            raise ValueError("Unknown out_kind %s" % out_kind)
+
+    if len(meta) != 0:
+        output_part(test_case, "data", "meta", dump_yaml_fn(meta, "meta", get_default_yaml()))
+
+
+def dump_ssz_fn(data: AnyStr, name: str):
+    def dump(case_path: Path):
+        out_path = case_path / Path(name + ".ssz_snappy")
+        compressed = compress(data)
+        with out_path.open("wb") as f:
+            f.write(compressed)
+
+    return dump
+
+
 def parse_arguments(generator_name):
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
@@ -181,16 +238,12 @@ def parse_arguments(generator_name):
     return parser.parse_args()
 
 
-def run_generator(generator_name, test_providers: Iterable[TestProvider]):
-    """
-    Implementation for a general test generator.
-    :param generator_name: The name of the generator. (lowercase snake_case)
-    :param test_providers: A list of test provider,
-            each of these returns a callable that returns an iterable of test cases.
-            The call to get the iterable may set global configuration,
-            and the iterable should not be resumed after a pause with a change of that configuration.
-    :return:
-    """
+###############################################################################
+# Main logic
+###############################################################################
+
+
+def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
     args = parse_arguments(generator_name)
 
     # Bail here if we are checking modules.
@@ -333,52 +386,3 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     elapsed = round(time.time() - provider_start, 2)
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
-
-
-def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + ".yaml")
-        with out_path.open("w") as f:
-            yaml_encoder.dump(data, f)
-            f.close()
-
-    return dump
-
-
-def output_part(test_case: TestCase, out_kind: str, name: str, fn: Callable[[Path], None]):
-    # make sure the test case directory is created before any test part is written.
-    test_case.dir.mkdir(parents=True, exist_ok=True)
-    try:
-        fn(test_case.dir)
-    except (IOError, ValueError) as e:
-        print(f"[ERROR] failed to dump {test_case.dir}, part {name}, kind {out_kind}: {e}")
-        sys.exit(1)
-
-
-def execute_test(test_case: TestCase):
-    meta = dict()
-    result = test_case.case_fn()
-    for name, out_kind, data in result:
-        if out_kind == "meta":
-            meta[name] = data
-        elif out_kind == "cfg":
-            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml()))
-        elif out_kind == "data":
-            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml()))
-        elif out_kind == "ssz":
-            output_part(test_case, out_kind, name, dump_ssz_fn(data, name))
-        else:
-            raise ValueError("Unknown out_kind %s" % out_kind)
-
-    if len(meta) != 0:
-        output_part(test_case, "data", "meta", dump_yaml_fn(meta, "meta", get_default_yaml()))
-
-
-def dump_ssz_fn(data: AnyStr, name: str):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + ".ssz_snappy")
-        compressed = compress(data)
-        with out_path.open("wb") as f:
-            f.write(compressed)
-
-    return dump
