@@ -246,8 +246,12 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     )
     args = parser.parse_args()
 
-    # Gracefully handle Ctrl+C without stacktrace
-    signal.signal(signal.SIGINT, lambda signum, frame: os._exit(0))
+    # Gracefully handle Ctrl+C: restore cursor and exit immediately
+    console = Console()
+    def _handle_sigint(signum, frame):
+        console.show_cursor()
+        os._exit(0)
+    signal.signal(signal.SIGINT, _handle_sigint)
 
     # Bail here if we are checking modules.
     if args.modcheck:
@@ -324,51 +328,44 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     # If the user requested parallel, use all cores, else just one
     thread_count = os.cpu_count() if args.parallel else 1
 
-    if not args.progress:
-        def worker_function(item):
+    tests_prefix = get_shared_prefix(all_test_case_params)
+    def worker_function(data):
+        item, active_tasks = data
+        if not args.progress:
             print(f"Generating: {get_test_identifier(item.test_case)}")
+        key = (uuid.uuid4(), get_test_identifier(item.test_case))
+        active_tasks[key] = time.time()
+        try:
             return generate_test_vector(*item)
+        finally:
+            del active_tasks[key]
 
-        with Pool(processes=thread_count) as pool:
-            for result in pool.map(worker_function, all_test_case_params):
-                write_result_into_diagnostics_obj(result[0], diagnostics_obj)
-    else:
-        tests_prefix = get_shared_prefix(all_test_case_params)
-        def worker_function(data):
-            item, active_tasks = data
-            key = (uuid.uuid4(), get_test_identifier(item.test_case))
-            active_tasks[key] = time.time()
-            try:
-                return generate_test_vector(*item)
-            finally:
-                del active_tasks[key]
-
-        def display_active_tasks(active_tasks, total_tasks, completed, width):
-            console = Console()
-            init_time = time.time()
-            with Live(refresh_per_second=4, console=console) as live:
-                while True:
-                    remaining = total_tasks - completed.value
-                    if remaining == 0:
-                        elapsed = time.time() - init_time
-                        live.update(Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}"))
-                        break
-                    table = Table(box=box.ROUNDED)
+    def display_active_tasks(active_tasks, total_tasks, completed, width):
+        init_time = time.time()
+        with Live(refresh_per_second=4, console=console) as live:
+            while True:
+                remaining = total_tasks - completed.value
+                if remaining == 0:
                     elapsed = time.time() - init_time
-                    table.add_column(f"Test (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
-                    table.add_column("Elapsed Time", justify="right", style="magenta")
-                    for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
-                        elapsed = time.time() - start
-                        table.add_row(k[1], f"{human_time(elapsed)}")
-                    live.update(table)
-                    time.sleep(0.1)
+                    live.update(Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}"))
+                    break
+                table = Table(box=box.ROUNDED)
+                elapsed = time.time() - init_time
+                table.add_column(f"Test (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
+                table.add_column("Elapsed Time", justify="right", style="magenta")
+                for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
+                    elapsed = time.time() - start
+                    table.add_row(k[1], f"{human_time(elapsed)}")
+                live.update(table)
+                time.sleep(0.1)
 
-        with multiprocessing.Manager() as manager:
-            total_tasks = len(all_test_case_params)
-            active_tasks = manager.dict()
-            completed = manager.Value("i", 0)
-            width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
+    with multiprocessing.Manager() as manager:
+        total_tasks = len(all_test_case_params)
+        active_tasks = manager.dict()
+        completed = manager.Value("i", 0)
+        width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
 
+        if args.progress:
             display_thread = threading.Thread(
                 target=display_active_tasks,
                 args=(active_tasks, total_tasks, completed, width),
@@ -376,11 +373,12 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             )
             display_thread.start()
 
-            inputs = [(t, active_tasks) for t in all_test_case_params]
-            for result in Pool(processes=thread_count).uimap(worker_function, inputs):
-                write_result_into_diagnostics_obj(result[0], diagnostics_obj)
-                completed.value += 1
+        inputs = [(t, active_tasks) for t in all_test_case_params]
+        for result in Pool(processes=thread_count).uimap(worker_function, inputs):
+            write_result_into_diagnostics_obj(result[0], diagnostics_obj)
+            completed.value += 1
 
+        if args.progress:
             display_thread.join()
 
     provider_end = time.time()
