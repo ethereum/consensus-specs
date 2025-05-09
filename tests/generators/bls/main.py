@@ -14,8 +14,27 @@ from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.altair import spec
 
 
+###############################################################################
+# Helper functions
+###############################################################################
+
+
 def hex_to_int(x: str) -> int:
     return int(x, 16)
+
+
+def expect_exception(func, *args):
+    try:
+        func(*args)
+    except Exception:
+        pass
+    else:
+        raise Exception("should have raised exception")
+
+
+###############################################################################
+# Precomputed constants
+###############################################################################
 
 
 MESSAGES = [
@@ -49,13 +68,9 @@ ZERO_PRIVKEY = 0
 ZERO_PRIVKEY_BYTES = b"\x00" * 32
 
 
-def expect_exception(func, *args):
-    try:
-        func(*args)
-    except Exception:
-        pass
-    else:
-        raise Exception("should have raised exception")
+###############################################################################
+# Test cases for eth_aggregate_pubkeys
+###############################################################################
 
 
 def case_eth_aggregate_pubkeys():
@@ -131,6 +146,11 @@ def case_eth_aggregate_pubkeys():
             return [b"\x40" + b"\00" * 47]
 
         yield "eth_aggregate_pubkeys_x40_pubkey", get_test_runner(get_inputs)
+
+
+###############################################################################
+# Test cases for eth_fast_aggregate_verify
+###############################################################################
 
 
 def case_eth_fast_aggregate_verify():
@@ -227,6 +247,11 @@ def case_eth_fast_aggregate_verify():
             return pubkeys_with_infinity, SAMPLE_MESSAGE, aggregate_signature
 
         yield "eth_fast_aggregate_verify_infinity_pubkey", get_test_runner(get_inputs)
+
+
+###############################################################################
+# Main logic
+###############################################################################
 
 
 def create_provider(
