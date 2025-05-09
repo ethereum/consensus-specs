@@ -17,9 +17,9 @@ def install_sigint_handler(console: Console) -> None:
 
 
 @functools.lru_cache(maxsize=None)
-def format_duration(seconds: float) -> str:
+def format_seconds(seconds: int) -> str:
     """Convert seconds to a more readable time."""
-    h, rem = divmod(int(seconds), 3600)
+    h, rem = divmod(seconds, 3600)
     m, s = divmod(rem, 60)
     parts = []
     if h:
@@ -32,4 +32,4 @@ def format_duration(seconds: float) -> str:
 
 def time_since(start_time: int) -> str:
     """Get the duration since some start time."""
-    return format_duration(time.time() - start_time)
+    return format_seconds(int(time.time() - start_time))

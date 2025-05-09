@@ -147,14 +147,16 @@ def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
                         f"time={time_since(start_time)}",
                     ]
                 )
+                column_header = f"Test ({info})"
+                width = max(width, len(column_header))
 
                 table = Table(box=box.ROUNDED)
-                table.add_column(f"Test ({info})", style="cyan", no_wrap=True, width=width)
+                table.add_column(column_header, style="cyan", no_wrap=True, width=width)
                 table.add_column("Elapsed Time", justify="right", style="magenta")
                 for k, start in sorted(active_tests.items(), key=lambda x: x[1]):
                     table.add_row(k[1], f"{time_since(start)}")
                 live.update(table)
-                time.sleep(0.1)
+                time.sleep(0.25)
 
     # Generate all of the test cases
     with multiprocessing.Manager() as manager:
