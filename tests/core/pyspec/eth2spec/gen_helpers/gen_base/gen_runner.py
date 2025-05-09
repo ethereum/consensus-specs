@@ -228,14 +228,12 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     signal.signal(signal.SIGINT, _handle_sigint)
 
     output_dir = args.output_dir
-    log_file = Path(output_dir) / "testgen_error_log.txt"
 
     def debug_print(msg):
         if args.verbose:
             print(msg)
 
     debug_print(f"Generating tests into {output_dir}")
-    debug_print(f"Error log file: {log_file}")
 
     # preset_list arg
     presets = args.preset_list
@@ -289,7 +287,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            item = TestCaseParams(test_case, case_dir, log_file)
+            item = TestCaseParams(test_case, case_dir)
             all_test_case_params.append(item)
 
     tests_prefix = get_shared_prefix(all_test_case_params)
@@ -346,7 +344,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             display_thread.start()
 
         inputs = [(t, active_tasks) for t in all_test_case_params]
-        for result in Pool(processes=args.threads).uimap(worker_function, inputs):
+        for _ in Pool(processes=args.threads).uimap(worker_function, inputs):
             completed.value += 1
 
         if not args.verbose:
@@ -364,38 +362,28 @@ def generate_test_vector(p: TestCaseParams):
 
     test_start = time.time()
 
-    # Create the test case directory
-    p.case_dir.mkdir(parents=True, exist_ok=True)
-
     result = None
     try:
         meta = dict()
         try:
-            written_part, meta = execute_test(p.test_case, p.case_dir, meta, p.log_file, cfg_yaml, yaml)
+            written_part, meta = execute_test(p.test_case, p.case_dir, meta, cfg_yaml, yaml)
         except SkippedTest as e:
             result = 0  # 0 means skipped
-            shutil.rmtree(p.case_dir)
             return result, e
 
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
             written_part = True
-            output_part(p.case_dir, p.log_file, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
+            output_part(p.case_dir, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
 
     except Exception as e:
         result = -1  # -1 means error
-        error_message = f"[ERROR] failed to generate vector(s) for test {p.case_dir}: {e}"
-        # Write to error log file
-        with p.log_file.open("a+") as f:
-            f.write(error_message)
-            traceback.print_exc(file=f)
-            f.write("\n")
-        print(error_message)
+        print(f"[ERROR] failed to generate vector(s) for test {p.case_dir}: {e}")
         traceback.print_exc()
     else:
         # If no written_part, clear the existing case_dir folder.
         if not written_part:
-            print(f"[Error] test case {p.case_dir} did not produce any written_part")
+            print(f"[ERROR] test case {p.case_dir} did not produce any written_part")
             shutil.rmtree(p.case_dir)
             result = -1
         else:
@@ -417,7 +405,6 @@ def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
 
 def output_part(
     case_dir,
-    log_file,
     out_kind: str,
     name: str,
     fn: Callable[
@@ -432,19 +419,11 @@ def output_part(
     try:
         fn(case_dir)
     except (IOError, ValueError) as e:
-        error_message = (
-            f'[Error] error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}'
-        )
-        # Write to error log file
-        with log_file.open("a+") as f:
-            f.write(error_message)
-            traceback.print_exc(file=f)
-            f.write("\n")
-        print(error_message)
-        sys.exit(error_message)
+        print(f"[ERROR] failed to dump {case_dir}, part {name}, kind {out_kind}: {e}")
+        sys.exit(1)
 
 
-def execute_test(test_case, case_dir, meta, log_file, cfg_yaml, yaml):
+def execute_test(test_case, case_dir, meta, cfg_yaml, yaml):
     result = test_case.case_fn()
     written_part = False
     for name, out_kind, data in result:
@@ -453,14 +432,14 @@ def execute_test(test_case, case_dir, meta, log_file, cfg_yaml, yaml):
             meta[name] = data
         elif out_kind == "cfg":
             output_part(
-                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, cfg_yaml)
+                case_dir, out_kind, name, dump_yaml_fn(data, name, cfg_yaml)
             )
         elif out_kind == "data":
             output_part(
-                case_dir, log_file, out_kind, name, dump_yaml_fn(data, name, yaml)
+                case_dir, out_kind, name, dump_yaml_fn(data, name, yaml)
             )
         elif out_kind == "ssz":
-            output_part(case_dir, log_file, out_kind, name, dump_ssz_fn(data, name))
+            output_part(case_dir, out_kind, name, dump_ssz_fn(data, name))
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 

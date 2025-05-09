@@ -41,4 +41,3 @@ class TestProvider(object):
 class TestCaseParams:
     test_case: TestCase
     case_dir: Path
-    log_file: Path
