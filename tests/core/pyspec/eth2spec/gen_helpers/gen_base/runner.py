@@ -19,7 +19,7 @@ from rich.text import Text
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-from .gen_typing import TestCase, TestProvider
+from .typing import TestCase, TestProvider
 from .dumper import Dumper
 from .args import parse_arguments
 
