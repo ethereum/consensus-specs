@@ -28,6 +28,19 @@ class TestCase(object):
     case_name: str
     case_fn: Callable[[], Iterable[TestCasePart]]
 
+    def get_identifier(self):
+        """Return the human readable identifier."""
+        return "::".join(
+            [
+                self.preset_name,
+                self.fork_name,
+                self.runner_name,
+                self.handler_name,
+                self.suite_name,
+                self.case_name,
+            ]
+        )
+
     def get_case_dir(self, output_dir: str) -> Path:
         """Return the output directory for this test case."""
         return (

@@ -92,19 +92,6 @@ def validate_output_dir(path_str):
 
 
 
-def get_test_identifier(test_case):
-    return "::".join(
-        [
-            test_case.preset_name,
-            test_case.fork_name,
-            test_case.runner_name,
-            test_case.handler_name,
-            test_case.suite_name,
-            test_case.case_name,
-        ]
-    )
-
-
 def get_shared_prefix(test_cases, min_segments=3):
     assert test_cases, "no test cases provided"
 
@@ -258,17 +245,17 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
             if len(presets) != 0 and test_case.preset_name not in presets:
-                debug_print(f"Filtered: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {test_case.get_identifier()}")
                 continue
 
             # If fork list is assigned, filter by forks.
             if len(forks) != 0 and test_case.fork_name not in forks:
-                debug_print(f"Filtered: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {test_case.get_identifier()}")
                 continue
 
             # If cases list is assigned, filter by cases.
             if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
-                debug_print(f"Filtered: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {test_case.get_identifier()}")
                 continue
 
             case_dir = test_case.get_case_dir(output_dir)
@@ -283,13 +270,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     def worker_function(data):
         test_case, active_tasks = data
-        key = (uuid.uuid4(), get_test_identifier(test_case))
+        key = (uuid.uuid4(), test_case.get_identifier())
         active_tasks[key] = time.time()
         try:
             execute_test(test_case, output_dir)
-            debug_print(f"Generated: {get_test_identifier(test_case)}")
+            debug_print(f"Generated: {test_case.get_identifier()}")
         except SkippedTest:
-            debug_print(f"Skipped: {get_test_identifier(test_case)}")
+            debug_print(f"Skipped: {test_case.get_identifier()}")
             return
         finally:
             del active_tasks[key]
@@ -324,7 +311,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         total_tasks = len(all_test_cases)
         active_tasks = manager.dict()
         completed = manager.Value("i", 0)
-        width = max([len(get_test_identifier(t)) for t in all_test_cases])
+        width = max([len(test_case.get_identifier()) for t in all_test_cases])
 
         if not args.verbose:
             display_thread = threading.Thread(
@@ -401,8 +388,6 @@ def execute_test(test_case, output_dir):
     if len(meta) != 0:
         output_part(case_dir, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
 
-    #return time.time() - test_start
-
 
 def dump_ssz_fn(data: AnyStr, name: str):
     def dump(case_path: Path):
@@ -410,5 +395,4 @@ def dump_ssz_fn(data: AnyStr, name: str):
         compressed = compress(data)
         with out_path.open("wb") as f:
             f.write(compressed)
-
     return dump
