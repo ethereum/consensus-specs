@@ -6,6 +6,7 @@ from typing import (
     Tuple,
 )
 from dataclasses import dataclass
+from pathlib import Path
 
 # Elements: name, out_kind, data
 #
@@ -34,3 +35,11 @@ class TestProvider(object):
     prepare: Callable[[], None]
     # Retrieves an iterable of cases, called after prepare()
     make_cases: Callable[[], Iterable[TestCase]]
+
+
+@dataclass
+class TestCaseParams:
+    test_case: TestCase
+    case_dir: Path
+    log_file: Path
+    file_mode: str

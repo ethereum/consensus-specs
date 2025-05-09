@@ -10,7 +10,6 @@ import time
 import traceback
 import uuid
 
-from collections import namedtuple
 from pathlib import Path
 from typing import Any, AnyStr, Callable, Iterable
 
@@ -27,7 +26,7 @@ from snappy import compress
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-from .gen_typing import TestProvider
+from .gen_typing import TestProvider, TestCaseParams
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -43,17 +42,6 @@ def human_time(seconds):
         parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
-
-
-TestCaseParams = namedtuple(
-    "TestCaseParams",
-    [
-        "test_case",
-        "case_dir",
-        "log_file",
-        "file_mode",
-    ],
-)
 
 
 def get_default_yaml():
@@ -314,7 +302,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
         try:
-            return generate_test_vector(*item)
+            return generate_test_vector(item)
         finally:
             del active_tasks[key]
 
@@ -369,7 +357,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
 
 
-def generate_test_vector(test_case, case_dir, log_file, file_mode):
+def generate_test_vector(p: TestCaseParams):
     cfg_yaml = get_cfg_yaml()
     yaml = get_default_yaml()
 
@@ -378,32 +366,32 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     test_start = time.time()
 
     # Create the test case directory
-    case_dir.mkdir(parents=True, exist_ok=True)
+    p.case_dir.mkdir(parents=True, exist_ok=True)
 
     result = None
     try:
         meta = dict()
         try:
             written_part, meta = execute_test(
-                test_case, case_dir, meta, log_file, file_mode, cfg_yaml, yaml
+                p.test_case, p.case_dir, meta, p.log_file, p.file_mode, cfg_yaml, yaml
             )
         except SkippedTest as e:
             result = 0  # 0 means skipped
-            shutil.rmtree(case_dir)
+            shutil.rmtree(p.case_dir)
             return result, e
 
         # Once all meta data is collected (if any), write it to a meta data file.
         if len(meta) != 0:
             written_part = True
             output_part(
-                case_dir, log_file, "data", "meta", dump_yaml_fn(meta, "meta", file_mode, yaml)
+                p.case_dir, p.log_file, "data", "meta", dump_yaml_fn(meta, "meta", p.file_mode, yaml)
             )
 
     except Exception as e:
         result = -1  # -1 means error
-        error_message = f"[ERROR] failed to generate vector(s) for test {case_dir}: {e}"
+        error_message = f"[ERROR] failed to generate vector(s) for test {p.case_dir}: {e}"
         # Write to error log file
-        with log_file.open("a+") as f:
+        with p.log_file.open("a+") as f:
             f.write(error_message)
             traceback.print_exc(file=f)
             f.write("\n")
@@ -412,11 +400,11 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     else:
         # If no written_part, clear the existing case_dir folder.
         if not written_part:
-            print(f"[Error] test case {case_dir} did not produce any written_part")
-            shutil.rmtree(case_dir)
+            print(f"[Error] test case {p.case_dir} did not produce any written_part")
+            shutil.rmtree(p.case_dir)
             result = -1
         else:
-            result = get_test_identifier(test_case)
+            result = get_test_identifier(p.test_case)
     test_end = time.time()
     span = round(test_end - test_start, 2)
     return result, span
