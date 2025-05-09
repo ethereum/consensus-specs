@@ -221,8 +221,6 @@ gen_list:
 #   make gen_genesis modcheck=true
 # To run the generator with fewer threads, append threads=N, eg:
 #   make gen_operations threads=1
-# To run the generator without a fancy table, append simple=true, eg:
-#   make gen_operations simple=true
 # To run the generator for a specific test, append k=<test>, eg:
 #   make gen_operations k=invalid_committee_index
 # To run the generator for a specific fork, append fork=<fork>, eg:
@@ -236,7 +234,6 @@ gen_list:
 gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
 gen_%: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
-gen_%: MAYBE_SIMPLE := $(if $(simple),--simple=$(simple))
 gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
 gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
 gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
@@ -247,7 +244,6 @@ gen_%: pyspec
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_MODCHECK) \
 		$(MAYBE_THREADS) \
-		$(MAYBE_SIMPLE) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS)

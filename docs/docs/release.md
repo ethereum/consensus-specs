@@ -143,7 +143,7 @@ errors afterwards.
 > to do this. Note that the "Bundle Reference Tests" section can be skipped if this route is taken.
 
 ```bash
-make --jobs gen_all 2>&1 | tee ../consensustestgen.log
+make --jobs gen_all verbose=true 2>&1 | tee ../consensustestgen.log
 ```
 
 Next, check for errors by searching for "ERROR" in test logfile.

@@ -42,10 +42,8 @@ make clean && rm -rf ../consensus-spec-tests/tests
 This runs all of the generators.
 
 ```bash
-make -j 4 gen_all
+make gen_all
 ```
-
-The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
 
 ### Running a single generator
 

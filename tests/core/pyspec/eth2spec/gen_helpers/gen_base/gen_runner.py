@@ -238,13 +238,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=1.0,
         help="Print a log if the test takes longer than this.",
     )
-    parser.add_argument(
-        "--simple",
-        action="store_true",
-        default=False,
-        help="Keep output simple, no fancy table.",
-    )
     args = parser.parse_args()
+
+    # Bail here if we are checking modules.
+    if args.modcheck:
+        return
 
     # Gracefully handle Ctrl+C: restore cursor and exit immediately
     console = Console()
@@ -252,10 +250,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         console.show_cursor()
         os._exit(0)
     signal.signal(signal.SIGINT, _handle_sigint)
-
-    # Bail here if we are checking modules.
-    if args.modcheck:
-        return
 
     output_dir = args.output_dir
     file_mode = "w"
@@ -328,7 +322,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     tests_prefix = get_shared_prefix(all_test_case_params)
     def worker_function(data):
         item, active_tasks = data
-        if args.simple:
+        if args.verbose:
             print(f"Generating: {get_test_identifier(item.test_case)}")
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
@@ -362,7 +356,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         completed = manager.Value("i", 0)
         width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
 
-        if not args.simple:
+        if not args.verbose:
             display_thread = threading.Thread(
                 target=display_active_tasks,
                 args=(active_tasks, total_tasks, completed, width),
@@ -375,7 +369,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             write_result_into_diagnostics_obj(result[0], diagnostics_obj)
             completed.value += 1
 
-        if not args.simple:
+        if not args.verbose:
             display_thread.join()
 
     provider_end = time.time()
