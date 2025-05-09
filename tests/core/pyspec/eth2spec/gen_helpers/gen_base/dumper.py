@@ -5,7 +5,7 @@ from eth_utils import encode_hex
 from ruamel.yaml import YAML
 from snappy import compress
 
-from .typing import TestCase
+from .gen_typing import TestCase
 
 
 @functools.lru_cache(maxsize=None)
