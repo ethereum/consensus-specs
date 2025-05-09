@@ -15,10 +15,17 @@ import json
 from typing import Iterable, AnyStr, Any, Callable
 import traceback
 from collections import namedtuple
+import signal
 
 from ruamel.yaml import (
     YAML,
 )
+
+from rich import box
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+from rich.text import Text
 
 from filelock import FileLock
 from snappy import compress
@@ -30,12 +37,6 @@ from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestProvider
-
-from rich import box
-from rich.console import Console
-from rich.live import Live
-from rich.table import Table
-from rich.text import Text
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -244,6 +245,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="Show a progress table.",
     )
     args = parser.parse_args()
+
+    # Gracefully handle Ctrl+C without stacktrace
+    signal.signal(signal.SIGINT, lambda signum, frame: os._exit(0))
 
     # Bail here if we are checking modules.
     if args.modcheck:
