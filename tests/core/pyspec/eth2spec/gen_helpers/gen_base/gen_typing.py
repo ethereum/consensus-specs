@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from typing import (
     Any,
     Callable,
@@ -41,3 +42,8 @@ class TestProvider(object):
 class TestCaseParams:
     test_case: TestCase
     case_dir: Path
+
+
+class Result(Enum):
+    COMPLETED = auto()
+    SKIPPED = auto()

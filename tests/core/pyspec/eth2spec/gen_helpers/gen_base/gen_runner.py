@@ -269,26 +269,28 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         for test_case in tprov.make_cases():
             # If preset list is assigned, filter by presets.
             if len(presets) != 0 and test_case.preset_name not in presets:
-                debug_print(f"Skipped: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {get_test_identifier(test_case)}")
                 continue
 
             # If fork list is assigned, filter by forks.
             if len(forks) != 0 and test_case.fork_name not in forks:
-                debug_print(f"Skipped: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {get_test_identifier(test_case)}")
                 continue
 
             # If cases list is assigned, filter by cases.
             if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
-                debug_print(f"Skipped: {get_test_identifier(test_case)}")
+                debug_print(f"Filtered: {get_test_identifier(test_case)}")
                 continue
 
             case_dir = get_test_case_dir(test_case, output_dir)
             if case_dir.exists():
-                # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
             item = TestCaseParams(test_case, case_dir)
             all_test_case_params.append(item)
+
+    if len(all_test_case_params) == 0:
+        return
 
     tests_prefix = get_shared_prefix(all_test_case_params)
 
@@ -299,7 +301,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
         try:
-            return generate_test_vector(item)
+            execute_test(item.test_case, item.case_dir)
+        except SkippedTest:
+            debug_print(f"Skipped: {get_test_identifier(test_case)}")
+            return
         finally:
             del active_tasks[key]
 
@@ -354,45 +359,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
 
 
-def generate_test_vector(p: TestCaseParams):
-    cfg_yaml = get_cfg_yaml()
-    yaml = get_default_yaml()
-
-    written_part = False
-
-    test_start = time.time()
-
-    result = None
-    try:
-        meta = dict()
-        try:
-            written_part, meta = execute_test(p.test_case, p.case_dir, meta, cfg_yaml, yaml)
-        except SkippedTest as e:
-            result = 0  # 0 means skipped
-            return result, e
-
-        # Once all meta data is collected (if any), write it to a meta data file.
-        if len(meta) != 0:
-            written_part = True
-            output_part(p.case_dir, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
-
-    except Exception as e:
-        result = -1  # -1 means error
-        print(f"[ERROR] failed to generate vector(s) for test {p.case_dir}: {e}")
-        traceback.print_exc()
-    else:
-        # If no written_part, clear the existing case_dir folder.
-        if not written_part:
-            print(f"[ERROR] test case {p.case_dir} did not produce any written_part")
-            shutil.rmtree(p.case_dir)
-            result = -1
-        else:
-            result = get_test_identifier(p.test_case)
-    test_end = time.time()
-    span = round(test_end - test_start, 2)
-    return result, span
-
-
 def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
     def dump(case_path: Path):
         out_path = case_path / Path(name + ".yaml")
@@ -423,11 +389,14 @@ def output_part(
         sys.exit(1)
 
 
-def execute_test(test_case, case_dir, meta, cfg_yaml, yaml):
+def execute_test(test_case, case_dir):
+    test_start = time.time()
+    cfg_yaml = get_cfg_yaml()
+    yaml = get_default_yaml()
+
+    meta = dict()
     result = test_case.case_fn()
-    written_part = False
     for name, out_kind, data in result:
-        written_part = True
         if out_kind == "meta":
             meta[name] = data
         elif out_kind == "cfg":
@@ -443,7 +412,10 @@ def execute_test(test_case, case_dir, meta, cfg_yaml, yaml):
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 
-    return written_part, meta
+    if len(meta) != 0:
+        output_part(case_dir, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
+
+    #return time.time() - test_start
 
 
 def dump_ssz_fn(data: AnyStr, name: str):
