@@ -11,12 +11,10 @@ import traceback
 import uuid
 
 from collections import namedtuple
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AnyStr, Callable, Iterable
 
 from eth_utils import encode_hex
-from filelock import FileLock
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
 from rich.console import Console
@@ -45,14 +43,6 @@ def human_time(seconds):
         parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
-
-
-@dataclass
-class Diagnostics(object):
-    collected_test_count: int = 0
-    generated_test_count: int = 0
-    skipped_test_count: int = 0
-    test_identifiers: list = field(default_factory=list)
 
 
 TestCaseParams = namedtuple(
@@ -284,7 +274,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if len(cases) != 0:
         debug_print(f"Filtering test-generator runs to only include test cases: {', '.join(cases)}")
 
-    diagnostics_obj = Diagnostics()
     provider_start = time.time()
 
     all_test_case_params = []
@@ -313,7 +302,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 # Clear the existing case_dir folder
                 shutil.rmtree(case_dir)
 
-            diagnostics_obj.collected_test_count += 1
             item = TestCaseParams(test_case, case_dir, log_file, file_mode)
             all_test_case_params.append(item)
 
@@ -372,43 +360,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
         inputs = [(t, active_tasks) for t in all_test_case_params]
         for result in Pool(processes=args.threads).uimap(worker_function, inputs):
-            write_result_into_diagnostics_obj(result[0], diagnostics_obj)
             completed.value += 1
 
         if not args.verbose:
             display_thread.join()
 
-    provider_end = time.time()
-    span = round(provider_end - provider_start, 2)
-
-    summary_message = f"Completed generation of {generator_name} with {diagnostics_obj.generated_test_count} tests"
-    summary_message += f" ({diagnostics_obj.skipped_test_count} skipped tests)"
-    if span > args.time_threshold_to_print:
-        summary_message += f" in {span} seconds"
-    debug_print(summary_message)
-
-    diagnostics_output = {
-        "collected_test_count": diagnostics_obj.collected_test_count,
-        "generated_test_count": diagnostics_obj.generated_test_count,
-        "skipped_test_count": diagnostics_obj.skipped_test_count,
-        "test_identifiers": diagnostics_obj.test_identifiers,
-        "durations": [f"{span} seconds"],
-    }
-    diagnostics_path = Path(os.path.join(output_dir, "diagnostics_obj.json"))
-    diagnostics_lock = FileLock(os.path.join(output_dir, "diagnostics_obj.json.lock"))
-    with diagnostics_lock:
-        diagnostics_path.touch(exist_ok=True)
-        if os.path.getsize(diagnostics_path) == 0:
-            with open(diagnostics_path, "w+") as f:
-                json.dump(diagnostics_output, f)
-        else:
-            with open(diagnostics_path, "r+") as f:
-                existing_diagnostics = json.load(f)
-                for k, v in diagnostics_output.items():
-                    existing_diagnostics[k] += v
-            with open(diagnostics_path, "w+") as f:
-                json.dump(existing_diagnostics, f)
-        debug_print(f"Wrote diagnostics_obj to {diagnostics_path}")
+    elapsed = round(time.time() - provider_start, 2)
+    debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
 
 
 def generate_test_vector(test_case, case_dir, log_file, file_mode):
@@ -462,18 +420,6 @@ def generate_test_vector(test_case, case_dir, log_file, file_mode):
     test_end = time.time()
     span = round(test_end - test_start, 2)
     return result, span
-
-
-def write_result_into_diagnostics_obj(result, diagnostics_obj):
-    if result == -1:  # error
-        pass
-    elif result == 0:
-        diagnostics_obj.skipped_test_count += 1
-    elif result is not None:
-        diagnostics_obj.generated_test_count += 1
-        diagnostics_obj.test_identifiers.append(result)
-    else:
-        raise Exception(f"Unexpected result: {result}")
 
 
 def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
