@@ -25,7 +25,7 @@ from snappy import compress
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-from .gen_typing import TestProvider
+from .gen_typing import TestCase, TestProvider
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -94,8 +94,6 @@ def validate_output_dir(path_str):
     return path
 
 
-
-
 def get_shared_prefix(test_cases, min_segments=3):
     assert test_cases, "no test cases provided"
 
@@ -117,6 +115,7 @@ def get_shared_prefix(test_cases, min_segments=3):
             break
 
     return "::".join(prefix)
+
 
 def parse_arguments(generator_name):
     parser = argparse.ArgumentParser(
@@ -346,17 +345,7 @@ def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
     return dump
 
 
-def output_part(
-    test_case,
-    out_kind: str,
-    name: str,
-    fn: Callable[
-        [
-            Path,
-        ],
-        None,
-    ],
-):
+def output_part(test_case: TestCase, out_kind: str, name: str, fn: Callable[[Path], None]):
     # make sure the test case directory is created before any test part is written.
     test_case.dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -366,20 +355,16 @@ def output_part(
         sys.exit(1)
 
 
-def execute_test(test_case):
+def execute_test(test_case: TestCase):
     meta = dict()
     result = test_case.case_fn()
     for name, out_kind, data in result:
         if out_kind == "meta":
             meta[name] = data
         elif out_kind == "cfg":
-            output_part(
-                test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml())
-            )
+            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml()))
         elif out_kind == "data":
-            output_part(
-                test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml())
-            )
+            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml()))
         elif out_kind == "ssz":
             output_part(test_case, out_kind, name, dump_ssz_fn(data, name))
         else:
@@ -395,4 +380,5 @@ def dump_ssz_fn(data: AnyStr, name: str):
         compressed = compress(data)
         with out_path.open("wb") as f:
             f.write(compressed)
+
     return dump
