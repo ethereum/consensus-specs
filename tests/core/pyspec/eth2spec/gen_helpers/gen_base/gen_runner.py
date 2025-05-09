@@ -1,37 +1,30 @@
-from dataclasses import (
-    dataclass,
-    field,
-)
-import uuid
+import argparse
+import json
 import multiprocessing
 import os
+import shutil
+import signal
+import sys
 import threading
 import time
-import shutil
-import argparse
-from pathlib import Path
-import sys
-import json
-from typing import Iterable, AnyStr, Any, Callable
 import traceback
+import uuid
+
 from collections import namedtuple
-import signal
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, AnyStr, Callable, Iterable
 
-from ruamel.yaml import (
-    YAML,
-)
-
+from eth_utils import encode_hex
+from filelock import FileLock
+from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
-
-from filelock import FileLock
+from ruamel.yaml import YAML
 from snappy import compress
-from pathos.multiprocessing import ProcessingPool as Pool
-
-from eth_utils import encode_hex
 
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
