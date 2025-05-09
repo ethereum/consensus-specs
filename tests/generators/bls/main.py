@@ -102,7 +102,7 @@ def case_eth_aggregate_pubkeys():
     # Valid pubkey
     for i, privkey in enumerate(PRIVKEYS):
 
-        def get_inputs():
+        def get_inputs(privkey=privkey):
             return [bls.SkToPk(privkey)]
 
         yield f"eth_aggregate_pubkeys_valid_{i}", get_test_runner(get_inputs)
@@ -182,7 +182,7 @@ def case_eth_fast_aggregate_verify():
     # Valid signature
     for i, message in enumerate(MESSAGES):
 
-        def get_inputs():
+        def get_inputs(i=i, message=message):
             privkeys = PRIVKEYS[: i + 1]
             sigs = [bls.Sign(privkey, message) for privkey in privkeys]
             aggregate_signature = bls.Aggregate(sigs)
@@ -194,7 +194,7 @@ def case_eth_fast_aggregate_verify():
     # Invalid signature -- extra pubkey
     for i, message in enumerate(MESSAGES):
 
-        def get_inputs():
+        def get_inputs(i=i, message=message):
             privkeys = PRIVKEYS[: i + 1]
             sigs = [bls.Sign(privkey, message) for privkey in privkeys]
             aggregate_signature = bls.Aggregate(sigs)
@@ -207,7 +207,7 @@ def case_eth_fast_aggregate_verify():
     # Invalid signature -- tampered with signature
     for i, message in enumerate(MESSAGES):
 
-        def get_inputs():
+        def get_inputs(i=i, message=message):
             privkeys = PRIVKEYS[: i + 1]
             sigs = [bls.Sign(privkey, message) for privkey in privkeys]
             aggregate_signature = bls.Aggregate(sigs)
