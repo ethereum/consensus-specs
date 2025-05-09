@@ -3,6 +3,7 @@ from typing import (
     Callable,
     Iterable,
     NewType,
+    Optional,
     Tuple,
 )
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ class TestCase(object):
     suite_name: str
     case_name: str
     case_fn: Callable[[], Iterable[TestCasePart]]
+    dir: Optional[Path] = None
 
     def get_identifier(self):
         """Return the human readable identifier."""
@@ -41,9 +43,9 @@ class TestCase(object):
             ]
         )
 
-    def get_case_dir(self, output_dir: str) -> Path:
-        """Return the output directory for this test case."""
-        return (
+    def set_output_dir(self, output_dir: str) -> None:
+        """Compute and store the output directory on the instance."""
+        self.dir = (
             Path(output_dir)
             / self.preset_name
             / self.fork_name

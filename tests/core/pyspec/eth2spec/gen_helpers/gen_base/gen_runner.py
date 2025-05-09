@@ -1,4 +1,5 @@
 import argparse
+import functools
 import multiprocessing
 import os
 import shutil
@@ -30,6 +31,7 @@ from .gen_typing import TestProvider
 context.is_pytest = False
 
 
+@functools.lru_cache(maxsize=None)
 def human_time(seconds):
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
@@ -42,6 +44,7 @@ def human_time(seconds):
     return " ".join(parts)
 
 
+@functools.lru_cache(maxsize=None)
 def get_default_yaml():
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
@@ -61,6 +64,7 @@ def get_default_yaml():
     return yaml
 
 
+@functools.lru_cache(maxsize=None)
 def get_cfg_yaml():
     # Spec config is using a YAML subset
     cfg_yaml = YAML(pure=True)
@@ -258,9 +262,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 debug_print(f"Filtered: {test_case.get_identifier()}")
                 continue
 
-            case_dir = test_case.get_case_dir(output_dir)
-            if case_dir.exists():
-                shutil.rmtree(case_dir)
+            test_case.set_output_dir(output_dir)
+            if test_case.dir.exists():
+                shutil.rmtree(test_case.dir)
             all_test_cases.append(test_case)
 
     if len(all_test_cases) == 0:
@@ -273,7 +277,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         key = (uuid.uuid4(), test_case.get_identifier())
         active_tasks[key] = time.time()
         try:
-            execute_test(test_case, output_dir)
+            execute_test(test_case)
             debug_print(f"Generated: {test_case.get_identifier()}")
         except SkippedTest:
             debug_print(f"Skipped: {test_case.get_identifier()}")
@@ -311,7 +315,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         total_tasks = len(all_test_cases)
         active_tasks = manager.dict()
         completed = manager.Value("i", 0)
-        width = max([len(test_case.get_identifier()) for t in all_test_cases])
+        width = max([len(t.get_identifier()) for t in all_test_cases])
 
         if not args.verbose:
             display_thread = threading.Thread(
@@ -343,7 +347,7 @@ def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
 
 
 def output_part(
-    case_dir,
+    test_case,
     out_kind: str,
     name: str,
     fn: Callable[
@@ -354,19 +358,15 @@ def output_part(
     ],
 ):
     # make sure the test case directory is created before any test part is written.
-    case_dir.mkdir(parents=True, exist_ok=True)
+    test_case.dir.mkdir(parents=True, exist_ok=True)
     try:
-        fn(case_dir)
+        fn(test_case.dir)
     except (IOError, ValueError) as e:
-        print(f"[ERROR] failed to dump {case_dir}, part {name}, kind {out_kind}: {e}")
+        print(f"[ERROR] failed to dump {test_case.dir}, part {name}, kind {out_kind}: {e}")
         sys.exit(1)
 
 
-def execute_test(test_case, output_dir):
-    cfg_yaml = get_cfg_yaml()
-    yaml = get_default_yaml()
-    case_dir = test_case.get_case_dir(output_dir)
-
+def execute_test(test_case):
     meta = dict()
     result = test_case.case_fn()
     for name, out_kind, data in result:
@@ -374,19 +374,19 @@ def execute_test(test_case, output_dir):
             meta[name] = data
         elif out_kind == "cfg":
             output_part(
-                case_dir, out_kind, name, dump_yaml_fn(data, name, cfg_yaml)
+                test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml())
             )
         elif out_kind == "data":
             output_part(
-                case_dir, out_kind, name, dump_yaml_fn(data, name, yaml)
+                test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml())
             )
         elif out_kind == "ssz":
-            output_part(case_dir, out_kind, name, dump_ssz_fn(data, name))
+            output_part(test_case, out_kind, name, dump_ssz_fn(data, name))
         else:
             raise ValueError("Unknown out_kind %s" % out_kind)
 
     if len(meta) != 0:
-        output_part(case_dir, "data", "meta", dump_yaml_fn(meta, "meta", yaml))
+        output_part(test_case, "data", "meta", dump_yaml_fn(meta, "meta", get_default_yaml()))
 
 
 def dump_ssz_fn(data: AnyStr, name: str):
