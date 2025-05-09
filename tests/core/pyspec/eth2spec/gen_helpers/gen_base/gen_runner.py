@@ -239,10 +239,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="Print a log if the test takes longer than this.",
     )
     parser.add_argument(
-        "--progress",
+        "--simple",
         action="store_true",
         default=False,
-        help="Show a progress table.",
+        help="Keep output simple, no fancy table.",
     )
     args = parser.parse_args()
 
@@ -328,7 +328,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     tests_prefix = get_shared_prefix(all_test_case_params)
     def worker_function(data):
         item, active_tasks = data
-        if not args.progress:
+        if args.simple:
             print(f"Generating: {get_test_identifier(item.test_case)}")
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
@@ -362,7 +362,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         completed = manager.Value("i", 0)
         width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
 
-        if args.progress:
+        if not args.simple:
             display_thread = threading.Thread(
                 target=display_active_tasks,
                 args=(active_tasks, total_tasks, completed, width),
@@ -375,7 +375,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             write_result_into_diagnostics_obj(result[0], diagnostics_obj)
             completed.value += 1
 
-        if args.progress:
+        if not args.simple:
             display_thread.join()
 
     provider_end = time.time()
