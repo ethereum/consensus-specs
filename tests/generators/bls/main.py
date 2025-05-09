@@ -2,30 +2,16 @@
 BLS test vectors generator
 """
 
-from typing import Tuple, Iterable, Any, Callable, Dict
-
-from eth_utils import (
-    encode_hex,
-    int_to_big_endian,
-)
 import milagro_bls_binding as milagro_bls
 
+from eth_utils import encode_hex
+from typing import Tuple, Iterable, Any, Callable, Dict
+
 from eth2spec.utils import bls
-from eth2spec.test.helpers.constants import PHASE0, ALTAIR
+from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base import gen_runner, gen_typing
 from eth2spec.altair import spec
-
-
-def to_bytes(i):
-    return i.to_bytes(32, "big")
-
-
-def int_to_hex(n: int, byte_length: int = None) -> str:
-    byte_value = int_to_big_endian(n)
-    if byte_length:
-        byte_value = byte_value.rjust(byte_length, b"\x00")
-    return encode_hex(byte_value)
 
 
 def hex_to_int(x: str) -> int:
