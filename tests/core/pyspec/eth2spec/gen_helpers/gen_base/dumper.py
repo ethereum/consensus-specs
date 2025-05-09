@@ -1,5 +1,3 @@
-import functools
-
 from eth2spec.test import context
 from eth_utils import encode_hex
 from ruamel.yaml import YAML
@@ -8,7 +6,6 @@ from snappy import compress
 from .gen_typing import TestCase
 
 
-@functools.lru_cache(maxsize=None)
 def get_default_yaml():
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
@@ -28,7 +25,6 @@ def get_default_yaml():
     return yaml
 
 
-@functools.lru_cache(maxsize=None)
 def get_cfg_yaml():
     # Spec config is using a YAML subset
     cfg_yaml = YAML(pure=True)
