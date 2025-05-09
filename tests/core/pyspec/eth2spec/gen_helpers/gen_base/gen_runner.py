@@ -12,7 +12,6 @@ import uuid
 from pathlib import Path
 from typing import Any, AnyStr, Callable, Iterable
 
-from eth_utils import encode_hex
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
 from rich.console import Console
@@ -26,6 +25,7 @@ from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
 from .gen_typing import TestCase, TestProvider
+from .dumper import Dumper
 
 ###############################################################################
 # Global settings
@@ -50,44 +50,6 @@ def human_time(seconds):
         parts.append(f"{m}m")
     parts.append(f"{s}s")
     return " ".join(parts)
-
-
-@functools.lru_cache(maxsize=None)
-def get_default_yaml():
-    yaml = YAML(pure=True)
-    yaml.default_flow_style = None
-
-    def _represent_none(self, _):
-        return self.represent_scalar("tag:yaml.org,2002:null", "null")
-
-    def _represent_str(self, data):
-        if data.startswith("0x"):
-            # Without this, a zero-byte hex string is represented without quotes.
-            return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
-        return self.represent_str(data)
-
-    yaml.representer.add_representer(type(None), _represent_none)
-    yaml.representer.add_representer(str, _represent_str)
-
-    return yaml
-
-
-@functools.lru_cache(maxsize=None)
-def get_cfg_yaml():
-    # Spec config is using a YAML subset
-    cfg_yaml = YAML(pure=True)
-    cfg_yaml.default_flow_style = False  # Emit separate line for each key
-
-    def cfg_represent_bytes(self, data):
-        return self.represent_int(encode_hex(data))
-
-    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
-
-    def cfg_represent_quoted_str(self, data):
-        return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
-
-    cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
-    return cfg_yaml
 
 
 def validate_output_dir(path_str):
@@ -125,53 +87,21 @@ def get_shared_prefix(test_cases, min_segments=3):
     return "::".join(prefix)
 
 
-def dump_yaml_fn(data: Any, name: str, yaml_encoder: YAML):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + ".yaml")
-        with out_path.open("w") as f:
-            yaml_encoder.dump(data, f)
-            f.close()
-
-    return dump
-
-
-def output_part(test_case: TestCase, out_kind: str, name: str, fn: Callable[[Path], None]):
-    # make sure the test case directory is created before any test part is written.
-    test_case.dir.mkdir(parents=True, exist_ok=True)
-    try:
-        fn(test_case.dir)
-    except (IOError, ValueError) as e:
-        print(f"[ERROR] failed to dump {test_case.dir}, part {name}, kind {out_kind}: {e}")
-        sys.exit(1)
-
-
 def execute_test(test_case: TestCase):
-    meta = dict()
-    result = test_case.case_fn()
-    for name, out_kind, data in result:
-        if out_kind == "meta":
+    dumper = Dumper()
+    meta: dict[str, Any] = {}
+    for name, kind, data in test_case.case_fn():
+        if kind == "meta":
             meta[name] = data
-        elif out_kind == "cfg":
-            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_cfg_yaml()))
-        elif out_kind == "data":
-            output_part(test_case, out_kind, name, dump_yaml_fn(data, name, get_default_yaml()))
-        elif out_kind == "ssz":
-            output_part(test_case, out_kind, name, dump_ssz_fn(data, name))
         else:
-            raise ValueError("Unknown out_kind %s" % out_kind)
+            try:
+                method = getattr(dumper, f"dump_{kind}")
+            except AttributeError:
+                raise ValueError(f"Unknown kind {kind!r}")
+            method(test_case, name, data)
 
-    if len(meta) != 0:
-        output_part(test_case, "data", "meta", dump_yaml_fn(meta, "meta", get_default_yaml()))
-
-
-def dump_ssz_fn(data: AnyStr, name: str):
-    def dump(case_path: Path):
-        out_path = case_path / Path(name + ".ssz_snappy")
-        compressed = compress(data)
-        with out_path.open("wb") as f:
-            f.write(compressed)
-
-    return dump
+    if meta:
+        dumper.dump_meta(test_case, meta)
 
 
 def parse_arguments(generator_name):
