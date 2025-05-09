@@ -1,8 +1,5 @@
-import functools
 import multiprocessing
-import os
 import shutil
-import signal
 import threading
 import time
 import uuid
@@ -19,25 +16,13 @@ from rich.text import Text
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-from .gen_typing import TestCase, TestProvider
-from .dumper import Dumper
 from .args import parse_arguments
+from .dumper import Dumper
+from .gen_typing import TestCase, TestProvider
+from .utils import format_duration, install_sigint_handler
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
-
-
-@functools.lru_cache(maxsize=None)
-def human_time(seconds):
-    h, rem = divmod(int(seconds), 3600)
-    m, s = divmod(rem, 60)
-    parts = []
-    if h:
-        parts.append(f"{h}h")
-    if m:
-        parts.append(f"{m}m")
-    parts.append(f"{s}s")
-    return " ".join(parts)
 
 
 def get_shared_prefix(test_cases, min_segments=3):
@@ -63,8 +48,8 @@ def get_shared_prefix(test_cases, min_segments=3):
     return "::".join(prefix)
 
 
-def execute_test(test_case: TestCase):
-    dumper = Dumper()
+def execute_test(test_case: TestCase, dumper: Dumper):
+    """Execute a test and write the outputs to storage."""
     meta: dict[str, Any] = {}
     for name, kind, data in test_case.case_fn():
         if kind == "meta":
@@ -81,145 +66,123 @@ def execute_test(test_case: TestCase):
 
 
 def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
+    start_time = time.time()
     args = parse_arguments(generator_name)
 
     # Bail here if we are checking modules.
     if args.modcheck:
         return
 
-    console = Console()
-
-    # Gracefully handle Ctrl+C: restore cursor and exit immediately
-    def _handle_sigint(signum, frame):
-        console.show_cursor()
-        os._exit(0)
-
-    signal.signal(signal.SIGINT, _handle_sigint)
-
-    output_dir = args.output_dir
-
     def debug_print(msg):
+        """Only print if verbose is enabled."""
         if args.verbose:
             print(msg)
 
-    debug_print(f"Generating tests into {output_dir}")
+    console = Console()
+    dumper = Dumper()
 
-    # preset_list arg
-    presets = args.preset_list
-    if presets is None:
-        presets = []
+    # Gracefully handle Ctrl+C
+    install_sigint_handler(console)
 
-    if len(presets) != 0:
-        debug_print(f"Filtering test-generator runs to only include presets: {', '.join(presets)}")
-
-    # fork_list arg
-    forks = args.fork_list
-    if forks is None:
-        forks = []
-
-    if len(forks) != 0:
-        debug_print(f"Filtering test-generator runs to only include forks: {', '.join(forks)}")
-
-    # case_list arg
-    cases = args.case_list
-    if cases is None:
-        cases = []
-
-    if len(cases) != 0:
-        debug_print(f"Filtering test-generator runs to only include test cases: {', '.join(cases)}")
-
-    provider_start = time.time()
-
-    all_test_cases = []
+    test_cases = []
     for tprov in test_providers:
-        # Runs anything that we don't want to repeat for every test case.
-        tprov.prepare()
-
         for test_case in tprov.make_cases():
-            # If preset list is assigned, filter by presets.
-            if len(presets) != 0 and test_case.preset_name not in presets:
+            # Check if the test case should be filtered out
+            if len(args.presets) != 0 and test_case.preset_name not in args.presets:
+                debug_print(f"Filtered: {test_case.get_identifier()}")
+                continue
+            if len(args.forks) != 0 and test_case.fork_name not in args.forks:
+                debug_print(f"Filtered: {test_case.get_identifier()}")
+                continue
+            if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
                 debug_print(f"Filtered: {test_case.get_identifier()}")
                 continue
 
-            # If fork list is assigned, filter by forks.
-            if len(forks) != 0 and test_case.fork_name not in forks:
-                debug_print(f"Filtered: {test_case.get_identifier()}")
-                continue
-
-            # If cases list is assigned, filter by cases.
-            if len(cases) != 0 and not any(s in test_case.case_name for s in cases):
-                debug_print(f"Filtered: {test_case.get_identifier()}")
-                continue
-
-            test_case.set_output_dir(output_dir)
+            # Set the output dir and add this to out list
+            test_case.set_output_dir(args.output_dir)
             if test_case.dir.exists():
                 shutil.rmtree(test_case.dir)
-            all_test_cases.append(test_case)
+            test_cases.append(test_case)
 
-    if len(all_test_cases) == 0:
+    if len(test_cases) == 0:
         return
 
-    tests_prefix = get_shared_prefix(all_test_cases)
+    debug_print(f"Generating tests into {args.output_dir}")
+    tests_prefix = get_shared_prefix(test_cases)
 
     def worker_function(data):
-        test_case, active_tasks = data
+        """Execute a test case and update active tests."""
+        test_case, active_tests = data
         key = (uuid.uuid4(), test_case.get_identifier())
-        active_tasks[key] = time.time()
+        active_tests[key] = time.time()
         try:
-            execute_test(test_case)
+            execute_test(test_case, dumper)
             debug_print(f"Generated: {test_case.get_identifier()}")
+            return "generated"
         except SkippedTest:
             debug_print(f"Skipped: {test_case.get_identifier()}")
-            return
+            return "skipped"
         finally:
-            del active_tasks[key]
+            del active_tests[key]
 
-    def display_active_tasks(active_tasks, total_tasks, completed, width):
-        init_time = time.time()
-        with Live(refresh_per_second=4, console=console) as live:
+    def display_active_tests(active_tests, total_tasks, completed, skipped, width):
+        """Display a table of active tests."""
+        with Live(console=console) as live:
             while True:
                 remaining = total_tasks - completed.value
                 if remaining == 0:
-                    elapsed = time.time() - init_time
+                    # Show a final status when the queue is empty
+                    # This is better than showing an empty table
                     live.update(
-                        Text.from_markup(f"Completed {tests_prefix} in {human_time(elapsed)}")
+                        Text.from_markup(
+                            f"Completed {tests_prefix} in {format_duration(time.time() - start_time)}"
+                        )
                     )
                     break
-                table = Table(box=box.ROUNDED)
-                elapsed = time.time() - init_time
-                table.add_column(
-                    f"Test (gen={tests_prefix}, threads={args.threads}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})",
-                    style="cyan",
-                    no_wrap=True,
-                    width=width,
+
+                info = ", ".join(
+                    [
+                        f"gen={tests_prefix}",
+                        f"threads={args.threads}",
+                        f"total={total_tasks}",
+                        f"skipped={skipped.value}",
+                        f"remaining={remaining}",
+                        f"time={format_duration(time.time() - start_time)}",
+                    ]
                 )
+
+                table = Table(box=box.ROUNDED)
+                table.add_column(f"Test ({info})", style="cyan", no_wrap=True, width=width)
                 table.add_column("Elapsed Time", justify="right", style="magenta")
-                for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
-                    elapsed = time.time() - start
-                    table.add_row(k[1], f"{human_time(elapsed)}")
+                for k, start in sorted(active_tests.items(), key=lambda x: x[1]):
+                    table.add_row(k[1], f"{format_duration(time.time() - start)}")
                 live.update(table)
                 time.sleep(0.1)
 
+    # Generate all of the test cases
     with multiprocessing.Manager() as manager:
-        total_tasks = len(all_test_cases)
-        active_tasks = manager.dict()
+        active_tests = manager.dict()
         completed = manager.Value("i", 0)
-        width = max([len(t.get_identifier()) for t in all_test_cases])
+        skipped = manager.Value("i", 0)
+        width = max([len(t.get_identifier()) for t in test_cases])
 
         if not args.verbose:
             display_thread = threading.Thread(
-                target=display_active_tasks,
-                args=(active_tasks, total_tasks, completed, width),
+                target=display_active_tests,
+                args=(active_tests, len(test_cases), completed, skipped, width),
                 daemon=True,
             )
             display_thread.start()
 
-        inputs = [(t, active_tasks) for t in all_test_cases]
-        for _ in Pool(processes=args.threads).uimap(worker_function, inputs):
+        # Map each test case to a thread worker
+        inputs = [(t, active_tests) for t in test_cases]
+        for result in Pool(processes=args.threads).uimap(worker_function, inputs):
+            if result == "skipped":
+                skipped.value += 1
             completed.value += 1
 
         if not args.verbose:
             display_thread.join()
 
-    elapsed = round(time.time() - provider_start, 2)
+    elapsed = round(time.time() - start_time, 2)
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")

@@ -234,9 +234,9 @@ gen_list:
 gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
 gen_%: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
-gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
-gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
-gen_%: MAYBE_PRESETS := $(if $(preset),--preset-list $(subst ${COMMA}, ,$(preset)))
+gen_%: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
+gen_%: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
+gen_%: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 gen_%: pyspec
 	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
 		--output $(TEST_VECTOR_DIR) \
