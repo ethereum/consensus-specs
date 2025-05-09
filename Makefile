@@ -219,8 +219,8 @@ gen_list:
 #   make gen_bls verbose=true
 # To check modules for a generator, append modcheck=true, eg:
 #   make gen_genesis modcheck=true
-# To generate tests in parallel, append parallel=true, eg:
-#   make gen_epoch_processing parallel=true
+# To generate with fewer threads, append threads=N, eg:
+#   make gen_operations threads=1
 # To show a pretty progress table, append progress=true, eg:
 #   make gen_operations progress=true
 # To run the generator for a specific test, append k=<test>, eg:
@@ -235,7 +235,7 @@ gen_list:
 #   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
 gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
-gen_%: MAYBE_PARALLEL := $(if $(filter true,$(parallel)),--parallel)
+gen_%: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
 gen_%: MAYBE_PROGRESS := $(if $(filter true,$(progress)),--progress)
 gen_%: MAYBE_TESTS := $(if $(k),--case-list $(subst ${COMMA}, ,$(k)))
 gen_%: MAYBE_FORKS := $(if $(fork),--fork-list $(subst ${COMMA}, ,$(fork)))
@@ -246,7 +246,7 @@ gen_%: pyspec
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_MODCHECK) \
-		$(MAYBE_PARALLEL) \
+		$(MAYBE_THREADS) \
 		$(MAYBE_PROGRESS) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \

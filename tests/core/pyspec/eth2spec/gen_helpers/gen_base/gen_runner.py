@@ -227,10 +227,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         help="Print more information to the console.",
     )
     parser.add_argument(
-        "--parallel",
-        action="store_true",
-        default=False,
-        help="Generate tests with all CPU cores.",
+        "--threads",
+        type=int,
+        default=os.cpu_count(),
+        help="Generate tests N threads, defaults to all available.",
     )
     parser.add_argument(
         "--time-threshold-to-print",
@@ -325,9 +325,6 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             item = TestCaseParams(test_case, case_dir, log_file, file_mode)
             all_test_case_params.append(item)
 
-    # If the user requested parallel, use all cores, else just one
-    thread_count = os.cpu_count() if args.parallel else 1
-
     tests_prefix = get_shared_prefix(all_test_case_params)
     def worker_function(data):
         item, active_tasks = data
@@ -351,7 +348,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                     break
                 table = Table(box=box.ROUNDED)
                 elapsed = time.time() - init_time
-                table.add_column(f"Test (gen={tests_prefix}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
+                table.add_column(f"Test (gen={tests_prefix}, threads={args.threads}, total={total_tasks}, remaining={remaining}, time={human_time(elapsed)})", style="cyan", no_wrap=True, width=width)
                 table.add_column("Elapsed Time", justify="right", style="magenta")
                 for k, start in sorted(active_tasks.items(), key=lambda x: x[1]):
                     elapsed = time.time() - start
@@ -374,7 +371,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             display_thread.start()
 
         inputs = [(t, active_tasks) for t in all_test_case_params]
-        for result in Pool(processes=thread_count).uimap(worker_function, inputs):
+        for result in Pool(processes=args.threads).uimap(worker_function, inputs):
             write_result_into_diagnostics_obj(result[0], diagnostics_obj)
             completed.value += 1
 
