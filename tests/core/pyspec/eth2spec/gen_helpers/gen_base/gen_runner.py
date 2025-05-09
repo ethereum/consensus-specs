@@ -140,18 +140,7 @@ def get_shared_prefix(test_case_params, min_segments=3):
 
     return "::".join(prefix)
 
-
-def run_generator(generator_name, test_providers: Iterable[TestProvider]):
-    """
-    Implementation for a general test generator.
-    :param generator_name: The name of the generator. (lowercase snake_case)
-    :param test_providers: A list of test provider,
-            each of these returns a callable that returns an iterable of test cases.
-            The call to get the iterable may set global configuration,
-            and the iterable should not be resumed after a pause with a change of that configuration.
-    :return:
-    """
-
+def parse_arguments(generator_name):
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
         description=f"Generate YAML test suite files for {generator_name}.",
@@ -212,7 +201,20 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         default=1.0,
         help="Print a log if the test takes longer than this.",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def run_generator(generator_name, test_providers: Iterable[TestProvider]):
+    """
+    Implementation for a general test generator.
+    :param generator_name: The name of the generator. (lowercase snake_case)
+    :param test_providers: A list of test provider,
+            each of these returns a callable that returns an iterable of test cases.
+            The call to get the iterable may set global configuration,
+            and the iterable should not be resumed after a pause with a change of that configuration.
+    :return:
+    """
+    args = parse_arguments(generator_name)
 
     # Bail here if we are checking modules.
     if args.modcheck:
@@ -296,12 +298,11 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     def worker_function(data):
         item, active_tasks = data
-        if args.verbose:
-            print(f"Generating: {get_test_identifier(item.test_case)}")
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
         try:
             execute_test(item.test_case, item.case_dir)
+            debug_print(f"Generated: {get_test_identifier(item.test_case)}")
         except SkippedTest:
             debug_print(f"Skipped: {get_test_identifier(test_case)}")
             return
