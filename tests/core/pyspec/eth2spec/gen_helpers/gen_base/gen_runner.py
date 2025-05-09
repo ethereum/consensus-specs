@@ -92,16 +92,6 @@ def validate_output_dir(path_str):
     return path
 
 
-def get_test_case_dir(test_case, output_dir):
-    return (
-        Path(output_dir)
-        / Path(test_case.preset_name)
-        / Path(test_case.fork_name)
-        / Path(test_case.runner_name)
-        / Path(test_case.handler_name)
-        / Path(test_case.suite_name)
-        / Path(test_case.case_name)
-    )
 
 
 def get_test_identifier(test_case):
@@ -220,9 +210,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     if args.modcheck:
         return
 
-    # Gracefully handle Ctrl+C: restore cursor and exit immediately
     console = Console()
 
+    # Gracefully handle Ctrl+C: restore cursor and exit immediately
     def _handle_sigint(signum, frame):
         console.show_cursor()
         os._exit(0)
@@ -284,7 +274,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 debug_print(f"Filtered: {get_test_identifier(test_case)}")
                 continue
 
-            case_dir = get_test_case_dir(test_case, output_dir)
+            case_dir = test_case.get_case_dir(output_dir)
             if case_dir.exists():
                 shutil.rmtree(case_dir)
 
@@ -301,7 +291,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         key = (uuid.uuid4(), get_test_identifier(item.test_case))
         active_tasks[key] = time.time()
         try:
-            execute_test(item.test_case, item.case_dir)
+            execute_test(item.test_case, output_dir)
             debug_print(f"Generated: {get_test_identifier(item.test_case)}")
         except SkippedTest:
             debug_print(f"Skipped: {get_test_identifier(test_case)}")
@@ -390,10 +380,10 @@ def output_part(
         sys.exit(1)
 
 
-def execute_test(test_case, case_dir):
-    test_start = time.time()
+def execute_test(test_case, output_dir):
     cfg_yaml = get_cfg_yaml()
     yaml = get_default_yaml()
+    case_dir = test_case.get_case_dir(output_dir)
 
     meta = dict()
     result = test_case.case_fn()
