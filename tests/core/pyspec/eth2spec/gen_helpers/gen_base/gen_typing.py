@@ -1,4 +1,3 @@
-from enum import Enum, auto
 from typing import (
     Any,
     Callable,
@@ -48,14 +47,3 @@ class TestProvider(object):
     prepare: Callable[[], None]
     # Retrieves an iterable of cases, called after prepare()
     make_cases: Callable[[], Iterable[TestCase]]
-
-
-@dataclass
-class TestCaseParams:
-    test_case: TestCase
-    case_dir: Path
-
-
-class Result(Enum):
-    COMPLETED = auto()
-    SKIPPED = auto()

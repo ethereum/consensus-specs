@@ -1,5 +1,4 @@
 import argparse
-import json
 import multiprocessing
 import os
 import shutil
@@ -7,7 +6,6 @@ import signal
 import sys
 import threading
 import time
-import traceback
 import uuid
 
 from pathlib import Path
@@ -26,7 +24,7 @@ from snappy import compress
 from eth2spec.test import context
 from eth2spec.test.exceptions import SkippedTest
 
-from .gen_typing import TestProvider, TestCaseParams
+from .gen_typing import TestProvider
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
@@ -107,9 +105,8 @@ def get_test_identifier(test_case):
     )
 
 
-def get_shared_prefix(test_case_params, min_segments=3):
-    test_cases = [t.test_case for t in test_case_params]
-    assert test_cases, "No test cases provided"
+def get_shared_prefix(test_cases, min_segments=3):
+    assert test_cases, "no test cases provided"
 
     fields = [
         "preset_name",
@@ -253,7 +250,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
     provider_start = time.time()
 
-    all_test_case_params = []
+    all_test_cases = []
     for tprov in test_providers:
         # Runs anything that we don't want to repeat for every test case.
         tprov.prepare()
@@ -277,22 +274,20 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             case_dir = test_case.get_case_dir(output_dir)
             if case_dir.exists():
                 shutil.rmtree(case_dir)
+            all_test_cases.append(test_case)
 
-            item = TestCaseParams(test_case, case_dir)
-            all_test_case_params.append(item)
-
-    if len(all_test_case_params) == 0:
+    if len(all_test_cases) == 0:
         return
 
-    tests_prefix = get_shared_prefix(all_test_case_params)
+    tests_prefix = get_shared_prefix(all_test_cases)
 
     def worker_function(data):
-        item, active_tasks = data
-        key = (uuid.uuid4(), get_test_identifier(item.test_case))
+        test_case, active_tasks = data
+        key = (uuid.uuid4(), get_test_identifier(test_case))
         active_tasks[key] = time.time()
         try:
-            execute_test(item.test_case, output_dir)
-            debug_print(f"Generated: {get_test_identifier(item.test_case)}")
+            execute_test(test_case, output_dir)
+            debug_print(f"Generated: {get_test_identifier(test_case)}")
         except SkippedTest:
             debug_print(f"Skipped: {get_test_identifier(test_case)}")
             return
@@ -326,10 +321,10 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 time.sleep(0.1)
 
     with multiprocessing.Manager() as manager:
-        total_tasks = len(all_test_case_params)
+        total_tasks = len(all_test_cases)
         active_tasks = manager.dict()
         completed = manager.Value("i", 0)
-        width = max([len(get_test_identifier(t.test_case)) for t in all_test_case_params])
+        width = max([len(get_test_identifier(t)) for t in all_test_cases])
 
         if not args.verbose:
             display_thread = threading.Thread(
@@ -339,7 +334,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             )
             display_thread.start()
 
-        inputs = [(t, active_tasks) for t in all_test_case_params]
+        inputs = [(t, active_tasks) for t in all_test_cases]
         for _ in Pool(processes=args.threads).uimap(worker_function, inputs):
             completed.value += 1
 
