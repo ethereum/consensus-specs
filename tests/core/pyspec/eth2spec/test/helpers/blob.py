@@ -118,9 +118,9 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_max_blob_count(spec):
+def get_max_blob_count(spec, state):
     if is_post_fulu(spec):
-        return spec.config.MAX_BLOBS_PER_BLOCK_FULU
+        return spec.get_max_blobs_per_block(spec.get_current_epoch(state))
     elif is_post_electra(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     else:
