@@ -142,7 +142,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+  i.e. validate that `len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))`
 
 ###### `beacon_aggregate_and_proof`
 

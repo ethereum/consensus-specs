@@ -177,7 +177,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
 
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
 
     # Verify the execution payload is valid
     # Pass `versioned_hashes` to Execution Engine
