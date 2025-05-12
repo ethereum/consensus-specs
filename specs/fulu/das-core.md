@@ -69,17 +69,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
-### Blob schedule
-
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a given epoch.
-
-<!-- list-of-records:blob_schedule -->
-
-| Epoch                       | Max Blobs Per Block | Description                      |
-| --------------------------- | ------------------- | -------------------------------- |
-| `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
-| `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
-
 ### Containers
 
 #### `DataColumnSidecar`
@@ -129,20 +118,6 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 
     assert len(custody_groups) == len(set(custody_groups))
     return sorted(custody_groups)
-```
-
-### `get_max_blobs_per_block`
-
-```python
-def get_max_blobs_per_block(epoch: Epoch) -> uint64:
-    """
-    Return the maximum number of blobs that can be included in a block for a given epoch.
-    """
-    assert len(BLOB_SCHEDULE) > 0
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return entry["MAX_BLOBS_PER_BLOCK"]
-    return min(entry["MAX_BLOBS_PER_BLOCK"] for entry in BLOB_SCHEDULE)
 ```
 
 ### `compute_columns_for_custody_group`

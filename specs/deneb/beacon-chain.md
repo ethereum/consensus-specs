@@ -11,6 +11,7 @@
 - [Configuration](#configuration)
   - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
+  - [Blob schedule](#blob-schedule)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -20,6 +21,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
+  - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
@@ -91,6 +93,17 @@ and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limi
 | Name                                   | Value                |
 | -------------------------------------- | -------------------- |
 | `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
+
+### Blob schedule
+
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a given epoch.
+
+<!-- list-of-records:blob_schedule -->
+
+| Epoch                       | Max Blobs Per Block | Description                      |
+| --------------------------- | ------------------- | -------------------------------- |
+| `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
+| `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
 
 ## Containers
 
@@ -224,6 +237,20 @@ class BeaconState(Container):
 ```python
 def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> VersionedHash:
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
+```
+
+### New `get_max_blobs_per_block`
+
+```python
+def get_max_blobs_per_block(epoch: Epoch) -> uint64:
+    """
+    Return the maximum number of blobs that can be included in a block for a given epoch.
+    """
+    assert len(BLOB_SCHEDULE) > 0
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["MAX_BLOBS_PER_BLOCK"]
+    return min(entry["MAX_BLOBS_PER_BLOCK"] for entry in BLOB_SCHEDULE)
 ```
 
 ### Beacon state accessors
@@ -417,7 +444,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
 
     # [New in Deneb:EIP4844] Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    # [Modified in Fulu:EIP7892] A backported change to use the blob schedule
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
 
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
