@@ -9,7 +9,6 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
-  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
   - [Blob schedule](#blob-schedule)
 - [Containers](#containers)
@@ -79,15 +78,6 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ## Configuration
 
-### Execution
-
-| Name                  | Value       | Description                                                                                                    |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
-
-*Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
-and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by `MAX_BLOBS_PER_BLOCK`.
-
 ### Validator cycle
 
 | Name                                   | Value                |
@@ -104,6 +94,9 @@ and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limi
 | --------------------------- | ------------------- | -------------------------------- |
 | `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
 | `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
+
+*Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
+and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by the blob schedule.
 
 ## Containers
 

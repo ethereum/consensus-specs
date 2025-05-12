@@ -10,7 +10,6 @@
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -76,14 +75,6 @@ The following validations are added:
 
 - [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
 - [REJECT] `aggregate.data.index == 0`
-
-###### `blob_sidecar_{subnet_id}`
-
-*[Modified in Electra:EIP7691]*
-
-The existing validations all apply as given from previous forks, with the following exceptions:
-
-- Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
 ##### Attestation subnets
 

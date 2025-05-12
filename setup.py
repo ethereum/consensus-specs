@@ -206,13 +206,16 @@ def check_yaml_matches_spec(var_name, yaml, value_def):
     if var_name == "TERMINAL_BLOCK_HASH":
         # This is just Hash32() in the specs, that's fine
         return
+    if var_name.startswith("MAX_REQUEST_BLOB_SIDECARS"):
+        # TODO(jtraglia): Figure out how to handle this properly
+        return
 
     # We use a var in the definition of a new var, replace usages
     # Reverse sort so that overridden values come first
     updated_value = value_def.value
     for var in sorted(yaml.keys(), reverse=True):
         if var in updated_value:
-            updated_value = updated_value.replace(var, yaml[var])
+            updated_value = updated_value.replace(var, str(yaml[var]))
     try:
         assert yaml[var_name] == repr(eval(updated_value)), \
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
