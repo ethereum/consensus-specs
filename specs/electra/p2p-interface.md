@@ -34,10 +34,10 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value                                                                | Description                                                       |
+| ----------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * BLOB_SCHEDULE[1]["MAX_BLOBS_PER_BLOCK"]` | Maximum number of blob sidecars in a single request               |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                                  | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -64,7 +64,7 @@ The derivation of the `message-id` remains stable.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))`
+  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 
 ###### `beacon_aggregate_and_proof`
 

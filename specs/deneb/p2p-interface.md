@@ -58,12 +58,12 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                                            | Description                                                        |
-| --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
-| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
+| Name                                    | Value                                                                | Description                                                        |
+| --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                                       | Maximum number of blocks in a single request                       |
+| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * BLOB_SCHEDULE[0]["MAX_BLOBS_PER_BLOCK"]` | Maximum number of blob sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                                    | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                                                  | The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ### Containers
 
@@ -142,7 +142,7 @@ The *type* of the payload of this topic changes to the (modified) `SignedBeaconB
 New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))`
+  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 
 ###### `beacon_aggregate_and_proof`
 
@@ -173,7 +173,7 @@ This topic is used to propagate blob sidecars, where each blob index maps to som
 
 The following validations MUST pass before forwarding the `blob_sidecar` on the network, assuming the alias `block_header = blob_sidecar.signed_block_header.message`:
 
-- _[REJECT]_ The sidecar's index is consistent with `MAX_BLOBS_PER_BLOCK` -- i.e. `blob_sidecar.index < MAX_BLOBS_PER_BLOCK`.
+- _[REJECT]_ The sidecar's index is consistent with the blob limit -- i.e. `blob_sidecar.index < get_max_blobs_per_block(compute_epoch_at_slot(blob_sidecar.signed_block_header.slot))`.
 - _[REJECT]_ The sidecar is for the correct subnet -- i.e. `compute_subnet_for_blob_sidecar(blob_sidecar.index) == subnet_id`.
 - _[IGNORE]_ The sidecar is not from a future slot (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that `block_header.slot <= current_slot` (a client MAY queue future sidecars for processing at the appropriate slot).
 - _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot -- i.e. validate that `block_header.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`

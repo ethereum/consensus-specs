@@ -169,7 +169,7 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))`
+  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 
 ##### Blob subnets
 
