@@ -63,7 +63,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name                       | Value | Description                                                                       |
 | -------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of custody groups an honest node samples from                      |
+| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
