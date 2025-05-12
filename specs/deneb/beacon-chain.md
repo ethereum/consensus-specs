@@ -243,6 +243,8 @@ def get_max_blobs_per_block(epoch: Epoch) -> uint64:
     for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
         if epoch >= entry["EPOCH"]:
             return entry["MAX_BLOBS_PER_BLOCK"]
+
+    # Only for testing. Should never reach this in the real world.
     return min(entry["MAX_BLOBS_PER_BLOCK"] for entry in BLOB_SCHEDULE)
 ```
 
