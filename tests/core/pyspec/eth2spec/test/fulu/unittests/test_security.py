@@ -22,7 +22,7 @@ def test_sampling_config(spec):
     column_size_in_bytes = (
         spec.FIELD_ELEMENTS_PER_CELL
         * spec.BYTES_PER_FIELD_ELEMENT
-        * spec.config.MAX_BLOBS_PER_BLOCK
+        * max(entry["MAX_BLOBS_PER_BLOCK"] for entry in spec.config.BLOB_SCHEDULE)
     )
     bytes_per_slot = column_size_in_bytes * spec.SAMPLES_PER_SLOT
     # TODO: What is the bandwidth requirement?

@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     single_phase,
     spec_test,
+    spec_state_test,
     with_electra_and_later,
 )
 
@@ -13,13 +14,19 @@ def test_processing_pending_partial_withdrawals(spec):
 
 
 @with_electra_and_later
-@spec_test
+@spec_state_test
 @single_phase
-def test_networking(spec):
-    assert spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+def test_networking(spec, state):
+    assert (
+        spec.get_max_blobs_per_block(spec.get_current_epoch(state))
+        <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+    )
     assert (
         spec.config.MAX_REQUEST_BLOB_SIDECARS_ELECTRA
-        == spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+        == spec.config.MAX_REQUEST_BLOCKS_DENEB
+        * spec.get_max_blobs_per_block(spec.get_current_epoch(state))
     )
     # Start with the same size, but `BLOB_SIDECAR_SUBNET_COUNT` could potentially increase later.
-    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT_ELECTRA == spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+    assert spec.config.BLOB_SIDECAR_SUBNET_COUNT_ELECTRA == spec.get_max_blobs_per_block(
+        spec.get_current_epoch(state)
+    )

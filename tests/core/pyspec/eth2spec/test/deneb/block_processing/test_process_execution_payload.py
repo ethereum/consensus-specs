@@ -14,7 +14,6 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
-    get_max_blob_count,
 )
 
 
@@ -411,7 +410,7 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec, state) + 1
+        spec, blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)) + 1
     )
 
     execution_payload.transactions = [opaque_tx]
