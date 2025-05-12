@@ -20,7 +20,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
-  - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
+    - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
@@ -232,7 +232,7 @@ def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> Versioned
     return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
 ```
 
-### New `get_max_blobs_per_block`
+#### `get_max_blobs_per_block`
 
 ```python
 def get_max_blobs_per_block(epoch: Epoch) -> uint64:
