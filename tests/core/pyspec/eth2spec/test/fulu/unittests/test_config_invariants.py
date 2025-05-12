@@ -1,7 +1,13 @@
 from eth2spec.test.context import (
     single_phase,
     spec_test,
+    spec_state_test,
+    with_presets,
     with_fulu_and_later,
+    expect_assertion_error,
+)
+from eth2spec.test.helpers.constants import (
+    MAINNET,
 )
 
 
@@ -30,5 +36,10 @@ def test_polynomial_commitments_sampling(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_networking(spec):
-    assert spec.config.MAX_BLOBS_PER_BLOCK_FULU <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+@with_presets([MAINNET], reason="to have fork epoch number")
+def test_blob_schedule(spec):
+    for entry in spec.config.BLOB_SCHEDULE:
+        # Check that all epochs are post-Deneb
+        assert entry["EPOCH"] >= spec.config.DENEB_FORK_EPOCH
+        # Check that all blob counts are less than the limit
+        assert entry["MAX_BLOBS_PER_BLOCK"] <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
