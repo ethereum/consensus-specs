@@ -6,8 +6,9 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.context import (
-    spec_state_test,
     expect_assertion_error,
+    spec_state_test,
+    with_custom_state,
     with_deneb_and_later,
 )
 from eth2spec.test.helpers.keys import privkeys
@@ -405,6 +406,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 
 
 @with_deneb_and_later
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)

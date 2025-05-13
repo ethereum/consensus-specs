@@ -8,6 +8,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.context import (
     spec_state_test,
+    with_custom_state,
     with_deneb_until_eip7732,
 )
 from eth2spec.test.helpers.execution_payload import (
@@ -81,6 +82,7 @@ def test_one_blob_two_txs(spec, state):
 
 
 @with_deneb_until_eip7732
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
     yield from run_block_with_blobs(
@@ -92,6 +94,7 @@ def test_one_blob_max_txs(spec, state):
 
 
 @with_deneb_until_eip7732
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
     yield from run_block_with_blobs(
@@ -104,6 +107,7 @@ def test_invalid_one_blob_max_plus_one_txs(spec, state):
 
 
 @with_deneb_until_eip7732
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
@@ -112,6 +116,7 @@ def test_max_blobs_per_block(spec, state):
 
 
 @with_deneb_until_eip7732
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
     yield from run_block_with_blobs(
@@ -124,6 +129,7 @@ def test_invalid_max_blobs_per_block_two_txs(spec, state):
 
 
 @with_deneb_until_eip7732
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(

@@ -55,45 +55,6 @@ class ForkMeta:
     fork_epoch: int
 
 
-def _prepare_state(
-    balances_fn: Callable[[Any], Sequence[int]],
-    threshold_fn: Callable[[Any], int],
-    spec: Spec,
-    phases: SpecForks,
-):
-    balances = balances_fn(spec)
-    activation_threshold = threshold_fn(spec)
-    state = create_genesis_state(
-        spec=spec, validator_balances=balances, activation_threshold=activation_threshold
-    )
-    return state
-
-
-_custom_state_cache_dict = LRU(size=10)
-
-
-def with_custom_state(
-    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
-):
-    def deco(fn):
-        def entry(*args, spec: Spec, phases: SpecForks, **kw):
-            # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
-            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
-            if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
-                _custom_state_cache_dict[key] = state.get_backing()
-
-            # Take an entry out of the LRU.
-            # No copy is necessary, as we wrap the immutable backing with a new view.
-            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
-            kw["state"] = state
-            return fn(*args, spec=spec, phases=phases, **kw)
-
-        return entry
-
-    return deco
-
-
 def default_activation_threshold(spec: Spec):
     """
     Helper method to use the default balance activation threshold for state creation for tests.
@@ -181,9 +142,6 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
         // spec.MIN_ACTIVATION_BALANCE
     )
     return [spec.MIN_ACTIVATION_BALANCE] * num_validators
-
-
-with_state = with_custom_state(default_balances, default_activation_threshold)
 
 
 def low_balances(spec: Spec):
@@ -862,3 +820,44 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
         return wrapper
 
     return decorator
+
+
+def _prepare_state(
+    balances_fn: Callable[[Any], Sequence[int]],
+    threshold_fn: Callable[[Any], int],
+    spec: Spec,
+    set_slot: bool,
+):
+    balances = balances_fn(spec)
+    activation_threshold = threshold_fn(spec)
+    return create_genesis_state(spec, balances, activation_threshold, set_slot)
+
+
+_custom_state_cache_dict = LRU(size=10)
+
+
+def with_custom_state(
+    balances_fn: Callable[[Any], Sequence[int]] = default_balances,
+    threshold_fn: Callable[[Any], int] = default_activation_threshold,
+    set_slot: bool = False,
+):
+    def deco(fn):
+        def entry(*args, spec: Spec, phases: SpecForks, **kw):
+            # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
+            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
+            if key not in _custom_state_cache_dict:
+                state = _prepare_state(balances_fn, threshold_fn, spec, set_slot)
+                _custom_state_cache_dict[key] = state.get_backing()
+
+            # Take an entry out of the LRU.
+            # No copy is necessary, as we wrap the immutable backing with a new view.
+            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
+            kw["state"] = state
+            return fn(*args, spec=spec, phases=phases, **kw)
+
+        return entry
+
+    return deco
+
+
+with_state = with_custom_state(default_balances, default_activation_threshold, set_slot=False)
