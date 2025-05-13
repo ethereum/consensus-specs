@@ -33,10 +33,10 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                                | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * BLOB_SCHEDULE[1]["MAX_BLOBS_PER_BLOCK"]` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                                  | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value                                                                              | Description                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * get_max_blobs_per_block(ELECTRA_FORK_EPOCH)` (= 1,152) | Maximum number of blob sidecars in a single request               |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                                                | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 

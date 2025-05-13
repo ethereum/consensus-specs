@@ -58,12 +58,12 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                                                                | Description                                                        |
-| --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                                       | Maximum number of blocks in a single request                       |
-| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * BLOB_SCHEDULE[0]["MAX_BLOBS_PER_BLOCK"]` | Maximum number of blob sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                                    | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                                                  | The number of blob sidecar subnets used in the gossipsub protocol. |
+| Name                                    | Value                                                                          | Description                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                                                 | Maximum number of blocks in a single request                       |
+| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * get_max_blobs_per_block(DENEB_FORK_EPOCH)` (= 768) | Maximum number of blob sidecars in a single request                |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                                              | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                                                            | The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ### Containers
 
