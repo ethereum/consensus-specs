@@ -21,6 +21,8 @@ from eth2spec.test.helpers.eip7441 import (
     compute_whisk_initial_k_commitment_cached,
 )
 
+from eth2spec.test.helpers.forks import is_post_fulu
+
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
@@ -221,5 +223,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.latest_block_hash = (
             state.latest_execution_payload_header.block_hash
         )  # last block is full
+
+    if is_post_fulu(spec):
+        # Initialize proposer lookahead list
+        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
 
     return state

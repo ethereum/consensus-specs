@@ -203,3 +203,17 @@ def get_validator_index_by_pubkey(state, pubkey):
 def advance_finality_to(spec, state, epoch):
     while state.finalized_checkpoint.epoch < epoch:
         next_epoch_with_full_participation(spec, state)
+
+
+def simulate_lookahead(spec, state):
+    """
+    Simulate the lookahead by advancing the state forward with empty slots and
+    calling `get_beacon_proposer_index`.
+    """
+    lookahead = []
+    simulation_state = state.copy()
+    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
+        proposer_index = spec.get_beacon_proposer_index(simulation_state)
+        lookahead.append(proposer_index)
+        next_slot(spec, simulation_state)
+    return lookahead
