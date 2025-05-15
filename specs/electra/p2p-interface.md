@@ -34,10 +34,9 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value | Description                                                       |
+| ----------------------------------- | ----- | ----------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -167,13 +166,13 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobSidecar, MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA]
 )
 ```
 
 *Updated validation*
 
-Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` sidecars.
 
 ##### BlobSidecarsByRoot v1
 
@@ -185,7 +184,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobIdentifier, MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA]
 )
 ```
 
@@ -193,10 +192,10 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobSidecar, MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA]
 )
 ```
 
 *Updated validation*
 
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` may be requested at a time.

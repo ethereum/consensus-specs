@@ -55,11 +55,10 @@ The specification of these changes continues in the same format as the network s
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                                          | Description                                                               |
-| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                          | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                             | Description                                                               |
+| ---------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                             | The number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -267,7 +266,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS]
 )
 ```
 
@@ -300,7 +299,7 @@ to be fully compliant with `DataColumnSidecarsByRange` requests.
 participating in the networking immediately, other peers MAY
 disconnect and/or temporarily ban such an un-synced or semi-synced client.
 
-Clients MUST respond with at least the data column sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` sidecars.
+Clients MUST respond with at least the data column sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` sidecars.
 
 Clients MUST include all data column sidecars of each block from which they include data column sidecars.
 
@@ -348,7 +347,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS]
 )
 ```
 
@@ -358,7 +357,7 @@ It may be less in the case that the responding peer is missing blocks or sidecar
 
 Before consuming the next response chunk, the response reader SHOULD verify the data column sidecar is well-formatted through `verify_data_column_sidecar`, has valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and is correct w.r.t. the expected KZG commitments through `verify_data_column_sidecar_kzg_proofs`.
 
-No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` may be requested at a time.
 
 The response MUST consist of zero or more `response_chunk`.
 Each _successful_ `response_chunk` MUST contain a single `DataColumnSidecar` payload.
