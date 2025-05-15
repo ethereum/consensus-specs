@@ -119,11 +119,7 @@ def get_validators_custody_requirement(state: BeaconState, validator_indices: Se
 This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count`
 and in the node's ENR by setting a higher `custody_group_count`. As with the regular custody
 requirement, a node with validators MAY still choose to custody, advertise and serve more than
-this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In
-addition, when the validator custody requirement increases, due to an increase in the total
-effective balance of the attached validators, a node MUST backfill columns from the new custody
-groups. However, a node MAY wait to advertise a higher custody in its Metadata and ENR until
-backfilling is complete.
+this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing.
 
 A node SHOULD dynamically adjust its custody groups (without any input from the user) following any
 changes to the total effective balances of attached validators. If the node's custody requirements
