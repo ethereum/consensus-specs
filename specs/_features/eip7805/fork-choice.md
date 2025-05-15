@@ -83,8 +83,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in EIP-7805]
-        inclusion_lists={},
-        inclusion_list_equivocators={},
         unsatisfied_inclusion_list_blocks=set(),
     )
 ```
