@@ -19,13 +19,11 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 .PHONY: \
 	clean         \
 	coverage      \
-	detect_errors \
-	gen_all       \
-	gen_list      \
 	help          \
 	kzg_setups    \
 	lint          \
 	pyspec        \
+	reftests      \
 	serve_docs    \
 	test
 
@@ -40,13 +38,10 @@ NORM = $(shell tput sgr0)
 help:
 	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
 	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
-	@echo "make $(BOLD)detect_errors$(NORM) -- detect generator errors"
-	@echo "make $(BOLD)gen_<gen>$(NORM)     -- run a single generator"
-	@echo "make $(BOLD)gen_all$(NORM)       -- run all generators"
-	@echo "make $(BOLD)gen_list$(NORM)      -- list all generator targets"
 	@echo "make $(BOLD)kzg_setups$(NORM)    -- generate trusted setups"
 	@echo "make $(BOLD)lint$(NORM)          -- run the linters"
-	@echo "make $(BOLD)pyspec$(NORM)        -- generate python specifications"
+	@echo "make $(BOLD)pyspec$(NORM)        -- build python specifications"
+	@echo "make $(BOLD)reftests$(NORM)      -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM)    -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)          -- run pyspec tests"
 
@@ -199,70 +194,47 @@ lint: pyspec
 # Generators
 ###############################################################################
 
-TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
-GENERATOR_DIR = $(CURDIR)/tests/generators
-SCRIPTS_DIR = $(CURDIR)/scripts
-GENERATOR_ERROR_LOG_FILE = $(TEST_VECTOR_DIR)/testgen_error_log.txt
-GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
-GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
 COMMA:= ,
+TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 
-# List available generators.
-gen_list:
-	@for target in $(shell echo $(GENERATOR_TARGETS) | tr ' ' '\n' | sort -n); do \
-		echo $$target; \
-	done
-
-# Run one generator.
+# Generate reference tests.
 # This will forcibly rebuild pyspec just in case.
-# To print more details, append verbose=true, eg:
-#   make gen_bls verbose=true
-# To check modules for a generator, append modcheck=true, eg:
-#   make gen_genesis modcheck=true
-# To run the generator with fewer threads, append threads=N, eg:
-#   make gen_operations threads=1
-# To run the generator for a specific test, append k=<test>, eg:
-#   make gen_operations k=invalid_committee_index
-# To run the generator for a specific fork, append fork=<fork>, eg:
-#   make gen_operations fork=fulu
-# To run the generator for a specific preset, append preset=<preset>, eg:
-#   make gen_operations preset=mainnet
-# To run the generator for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
-#   make gen_operations k=invalid_committee_index,invalid_too_many_committee_bits
+# To generate reference tests for a single runner, append runner=<runner>, eg:
+#   make reftests runner=bls
+# To generate reference tests with more details, append verbose=true, eg:
+#   make reftests runner=bls verbose=true
+# To generate reference tests with fewer threads, append threads=N, eg:
+#   make reftests runner=bls threads=1
+# To generate reference tests for a specific test, append k=<test>, eg:
+#   make reftests runner=operations k=invalid_committee_index
+# To generate reference tests for a specific fork, append fork=<fork>, eg:
+#   make reftests runner=operations fork=fulu
+# To generate reference tests for a specific preset, append preset=<preset>, eg:
+#   make reftests runner=operations preset=mainnet
+# To generate reference tests for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
+#   make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits
 # Or all at the same time, eg:
-#   make gen_operations preset=mainnet fork=fulu k=invalid_committee_index
-gen_%: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-gen_%: MAYBE_MODCHECK := $(if $(filter true,$(modcheck)),--modcheck)
-gen_%: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
-gen_%: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
-gen_%: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
-gen_%: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
-gen_%: pyspec
-	@$(PYTHON_VENV) $(GENERATOR_DIR)/$*/main.py \
+#   make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index
+reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+reftests: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
+reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)))
+reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
+reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
+reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+reftests: pyspec
+	@$(PYTHON_VENV) -m tests.generators.main \
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
-		$(MAYBE_MODCHECK) \
 		$(MAYBE_THREADS) \
+		$(MAYBE_RUNNERS) \
 		$(MAYBE_TESTS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS)
 
-# Run all generators then check for errors.
-gen_all: $(GENERATOR_TARGETS)
-	@$(MAKE) detect_errors
-
-# Detect errors in generators.
-detect_errors: $(TEST_VECTOR_DIR)
-	@if [ -f $(GENERATOR_ERROR_LOG_FILE) ]; then \
-		echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists"; \
-		exit 1; \
-	fi
-	@echo "[PASSED] no errors detected"
-
 # Generate KZG trusted setups for testing.
 kzg_setups: pyspec
 	@for preset in minimal mainnet; do \
-		$(PYTHON_VENV) $(SCRIPTS_DIR)/gen_kzg_trusted_setups.py \
+		$(PYTHON_VENV) $(CURDIR)/scripts/gen_kzg_trusted_setups.py \
 			--secret=1337 \
 			--g1-length=4096 \
 			--g2-length=65 \

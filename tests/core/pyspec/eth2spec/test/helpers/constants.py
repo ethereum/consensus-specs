@@ -24,7 +24,7 @@ EIP7805 = SpecForkName("eip7805")
 #
 
 # The forks that are deployed on Mainnet
-MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB)
+MAINNET_FORKS = (PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA)
 LATEST_FORK = MAINNET_FORKS[-1]
 # The forks that pytest can run with.
 # Note: when adding a new fork here, all tests from previous forks with decorator `with_X_and_later`
@@ -32,15 +32,14 @@ LATEST_FORK = MAINNET_FORKS[-1]
 ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
-    ELECTRA,
     FULU,
     # Experimental patches
     EIP7732,
 )
 # The forks that have light client specs
-LIGHT_CLIENT_TESTING_FORKS = (*[item for item in MAINNET_FORKS if item != PHASE0], ELECTRA)
+LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0]
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, ELECTRA, FULU, EIP7441, EIP7732)
+TESTGEN_FORKS = (*MAINNET_FORKS, FULU)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
 
@@ -68,6 +67,7 @@ POST_FORK_OF = {
     BELLATRIX: CAPELLA,
     CAPELLA: DENEB,
     DENEB: ELECTRA,
+    ELECTRA: FULU,
 }
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()

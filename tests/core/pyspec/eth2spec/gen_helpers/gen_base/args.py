@@ -3,10 +3,10 @@ import os
 import pathlib
 
 
-def parse_arguments(generator_name):
+def parse_arguments():
     parser = argparse.ArgumentParser(
-        prog="gen-" + generator_name,
-        description=f"Generate YAML test suite files for {generator_name}.",
+        prog="generator",
+        description=f"Generate YAML test suite files.",
     )
     parser.add_argument(
         "-o",
@@ -15,6 +15,15 @@ def parse_arguments(generator_name):
         required=True,
         type=pathlib.Path,
         help="Directory into which the generated YAML files will be dumped.",
+    )
+    parser.add_argument(
+        "--runners",
+        dest="runners",
+        nargs="*",
+        type=str,
+        default=[],
+        required=False,
+        help="Specify runners to run with. Allows all if no runner names are specified.",
     )
     parser.add_argument(
         "--presets",
