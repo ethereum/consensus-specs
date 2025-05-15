@@ -587,7 +587,10 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw["phase"]
                     _phases = [phase]
-                    _other_phases = [POST_FORK_OF[phase]]
+                    if phase in POST_FORK_OF:
+                        _other_phases = [POST_FORK_OF[phase]]
+                    else:
+                        _other_phases = None
                     ret = _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )

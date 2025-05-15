@@ -38,11 +38,6 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
         if slot == state.slot:
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
-            if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(slot):
-                print(
-                    "warning: block slot far away, and no proposer index manually given."
-                    " Signing block is slow due to transition for proposer index calculation."
-                )
             # use stub state to get proposer index of future slot
             stub_state = state.copy()
             if stub_state.slot < slot:
