@@ -54,7 +54,7 @@ This topic is used to propagate the latest `LightClientFinalityUpdate` to light 
 The following validations MUST pass before forwarding the `finality_update` on the network.
 
 - _[IGNORE]_ The `finalized_header.beacon.slot` is greater than that of all previously forwarded `finality_update`s, or it matches the highest previously forwarded slot and also has a `sync_aggregate` indicating supermajority (> 2/3) sync committee participation while the previously forwarded `finality_update` for that slot did not indicate supermajority
-- _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `finality_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
+- _[IGNORE]_ The `finality_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that `SYNC_MESSAGE_DUE_MS` milliseconds after `finality_update.signature_slot` has transpired, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance.
 
 For full nodes, the following validations MUST additionally pass before forwarding the `finality_update` on the network.
 
@@ -85,7 +85,7 @@ This topic is used to propagate the latest `LightClientOptimisticUpdate` to ligh
 The following validations MUST pass before forwarding the `optimistic_update` on the network.
 
 - _[IGNORE]_ The `attested_header.beacon.slot` is greater than that of all previously forwarded `optimistic_update`s
-- _[IGNORE]_ The `optimistic_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that one-third of `optimistic_update.signature_slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance)
+- _[IGNORE]_ The `optimistic_update` is received after the block at `signature_slot` was given enough time to propagate through the network -- i.e. validate that `SYNC_MESSAGE_DUE_MS` milliseconds after the start of the `optimistic_update.signature_slot` slot has transpired, with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance.
 
 For full nodes, the following validations MUST additionally pass before forwarding the `optimistic_update` on the network.
 
@@ -277,4 +277,4 @@ Whenever fork choice selects a new head block with a sync aggregate participatio
 - If `finalized_header.beacon.slot` increased, a `LightClientFinalityUpdate` SHOULD be broadcasted to the pubsub topic `light_client_finality_update` if no matching message has not yet been forwarded as part of gossip validation.
 - If `attested_header.beacon.slot` increased, a `LightClientOptimisticUpdate` SHOULD be broadcasted to the pubsub topic `light_client_optimistic_update` if no matching message has not yet been forwarded as part of gossip validation.
 
-These messages SHOULD be broadcasted after one-third of `slot` has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of the slot). To ensure that the corresponding block was given enough time to propagate through the network, they SHOULD NOT be sent earlier. Note that this is different from how other messages are handled, e.g., attestations, which may be sent early.
+These messages SHOULD be broadcasted after `SYNC_MESSAGE_DUE_MS` milliseconds after the start of the slot. To ensure that the corresponding block was given enough time to propagate through the network, they SHOULD NOT be sent earlier. Note that this is different from how other messages are handled, e.g., attestations, which may be sent early.

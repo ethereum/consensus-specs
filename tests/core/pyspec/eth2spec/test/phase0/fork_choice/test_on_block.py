@@ -513,8 +513,7 @@ def test_proposer_boost(spec, state):
     time = (
         store.genesis_time
         + block.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-        - 1
+        + (spec.LATE_BLOCK_CUTOFF_MS - 1) // 1000
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
@@ -614,7 +613,7 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     time = (
         store.genesis_time
         + block.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
+        + spec.LATE_BLOCK_CUTOFF_MS // 1000
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
@@ -655,8 +654,7 @@ def test_proposer_boost_is_first_block(spec, state):
     time = (
         store.genesis_time
         + block_a.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-        - 1
+        + (spec.LATE_BLOCK_CUTOFF_MS - 1) // 1000
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_a, test_steps)
