@@ -12,9 +12,11 @@
 
 ## Introduction
 
-A number of extensions are defined to handle BLS signatures in the Altair upgrade.
+A number of extensions are defined to handle BLS signatures in the Altair
+upgrade.
 
-Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed, including type definitions.
+Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed,
+including type definitions.
 
 ## Constants
 

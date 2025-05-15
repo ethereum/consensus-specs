@@ -4,15 +4,17 @@
 [![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
 
 This repository hosts the current Ethereum
-[proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/) specifications.
-Discussions about design rationale and proposed changes can be brought up and discussed as issues.
-Solidified, agreed-upon changes to the specifications can be made through pull requests.
+[proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
+specifications. Discussions about design rationale and proposed changes can be
+brought up and discussed as issues. Solidified, agreed-upon changes to the
+specifications can be made through pull requests.
 
 ## Specifications
 
-Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs). These are
-divided into features. Features are researched and developed in parallel, and then consolidated into
-sequential upgrades when ready.
+Core specifications for Ethereum proof-of-stake clients can be found in
+[specs](specs). These are divided into features. Features are researched and
+developed in parallel, and then consolidated into sequential upgrades when
+ready.
 
 ### Stable Specifications
 
@@ -39,8 +41,8 @@ sequential upgrades when ready.
 
 ### External specifications
 
-Additional specifications and standards outside of requisite client functionality can be found in
-the following repositories:
+Additional specifications and standards outside of requisite client
+functionality can be found in the following repositories:
 
 - [Beacon APIs](https://github.com/ethereum/beacon-apis)
 - [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
@@ -49,11 +51,11 @@ the following repositories:
 
 ### Reference tests
 
-Reference tests built from the executable Python spec are available in the [Ethereum Proof-of-Stake
-Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repository. Compressed
-tarballs are available for each release
-[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly reference tests are
-available
+Reference tests built from the executable Python spec are available in the
+[Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests)
+repository. Compressed tarballs are available for each release
+[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly
+reference tests are available
 [here](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml).
 
 ## Contributors
@@ -80,12 +82,16 @@ make help
 
 ### Design goals
 
-The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
+The following are the broad design goals for the Ethereum proof-of-stake
+consensus specifications:
 
 - Minimize complexity, even at the cost of some losses in efficiency.
-- Remain live through major network partitions and when very large portions of nodes go offline.
-- Select components that are quantum secure or easily swappable for quantum-secure alternatives.
-- Utilize crypto and design techniques that allow for a large participation of validators.
+- Remain live through major network partitions and when very large portions of
+  nodes go offline.
+- Select components that are quantum secure or easily swappable for
+  quantum-secure alternatives.
+- Utilize crypto and design techniques that allow for a large participation of
+  validators.
 - Minimize hardware requirements such that a consumer laptop can participate.
 
 ### Useful resources
