@@ -219,7 +219,7 @@ Efficient algorithms for computing this object can be found in [the implementati
 We first define helper functions:
 
 - `size_of(B)`, where `B` is a basic type: the length, in bytes, of the serialized form of the basic type.
-- `chunk_count(type)`: calculate the amount of leafs for merkleization of the type.
+- `chunk_count(type)`: calculate the amount of leaves for merkleization of the type.
   - all basic types: `1`
   - `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size, rounding up)
   - `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
