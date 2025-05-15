@@ -107,9 +107,7 @@ latest finalized `BeaconState` and `validator_indices` is the list of indices co
 attached to the node. Any node with at least one validator attached, and with the sum of the
 effective balances of all attached validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum
-of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`. The node
-SHOULD dynamically adjust its custody groups following any changes to the effective balances of
-attached validators.
+of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
@@ -127,9 +125,19 @@ effective balance of the attached validators, a node MUST backfill columns from 
 groups. However, a node MAY wait to advertise a higher custody in its Metadata and ENR until
 backfilling is complete.
 
-*Note*: The node SHOULD manage validator custody (and any changes during its lifetime) without any
-input from the user, for example by using existing signals about validator metadata to compute the
-required custody.
+A node SHOULD dynamically adjust its custody groups (without any input from the user) following any
+changes to the total effective balances of attached validators. If the node's custody requirements
+are increased, it should only advertise the updated `custody_group_count` after
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. The node SHOULD NOT backfill custody groups as a
+result of this change. After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able
+to respond to any `DataColumnSidecar` request within the retention period. If the node's custody
+requirements are decreased, the node should continue custodying the original custody groups for
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. This ensures the custody groups the node was
+required to custody are available for the entire retention period. After
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`, the node SHOULD update their `custody_group_count` to
+reflect their new custody requirement and MAY prune data which is no longer required to be
+custodied. Nodes SHOULD be able to appropriately handle multiple changes to custody requirements
+within the same retention period (e.g., an increase in one epoch and a decrease in the next epoch).
 
 ### Block and sidecar proposal
 
