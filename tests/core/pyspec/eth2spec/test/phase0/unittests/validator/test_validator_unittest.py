@@ -36,7 +36,6 @@ def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True
         assert committee == spec.get_beacon_committee(state, slot, committee_index)
         assert committee_index < spec.get_committee_count_per_slot(state, epoch)
         assert validator_index in committee
-        assert valid
     except AssertionError:
         assert not valid
     else:
