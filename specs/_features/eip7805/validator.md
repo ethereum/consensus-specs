@@ -109,9 +109,9 @@ lists that gathered up to `PROPOSER_INCLUSION_LIST_CUT_OFF`.
 
 ## New inclusion list committee duty
 
-Some validators are selected to submit signed inclusion list. Validators should
-call `get_inclusion_committee_assignment` at the beginning of an epoch to be
-prepared to submit their inclusion list during the next epoch.
+Some validators are selected to submit `signed_inclusion_list`. Validators
+should call `get_inclusion_committee_assignment` at the beginning of an epoch to
+be prepared to submit their inclusion list during the next epoch.
 
 A validator should create and broadcast the `signed_inclusion_list` to the
 global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into
