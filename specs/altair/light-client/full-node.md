@@ -16,13 +16,16 @@
 
 ## Introduction
 
-This document provides helper functions to enable full nodes to serve light client data. Full nodes SHOULD implement the described functionality to enable light clients to sync with the network.
+This document provides helper functions to enable full nodes to serve light
+client data. Full nodes SHOULD implement the described functionality to enable
+light clients to sync with the network.
 
 ## Helper functions
 
 ### `compute_merkle_proof`
 
-This function return the Merkle proof of the given SSZ object `object` at generalized index `index`.
+This function return the Merkle proof of the given SSZ object `object` at
+generalized index `index`.
 
 ```python
 def compute_merkle_proof(object: SSZObject,
@@ -47,7 +50,8 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
 
 ## Deriving light client data
 
-Full nodes are expected to derive light client data from historic blocks and states and provide it to other clients.
+Full nodes are expected to derive light client data from historic blocks and
+states and provide it to other clients.
 
 ### `create_light_client_bootstrap`
 
@@ -74,21 +78,32 @@ def create_light_client_bootstrap(state: BeaconState,
     )
 ```
 
-Full nodes SHOULD provide `LightClientBootstrap` for all finalized epoch boundary blocks in the epoch range `[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]` where `current_epoch` is defined by the current wall-clock time. Full nodes MAY also provide `LightClientBootstrap` for other blocks.
+Full nodes SHOULD provide `LightClientBootstrap` for all finalized epoch
+boundary blocks in the epoch range
+`[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+where `current_epoch` is defined by the current wall-clock time. Full nodes MAY
+also provide `LightClientBootstrap` for other blocks.
 
-Blocks are considered to be epoch boundary blocks if their block root can occur as part of a valid `Checkpoint`, i.e., if their slot is the initial slot of an epoch, or if all following slots through the initial slot of the next epoch are empty (no block proposed / orphaned).
+Blocks are considered to be epoch boundary blocks if their block root can occur
+as part of a valid `Checkpoint`, i.e., if their slot is the initial slot of an
+epoch, or if all following slots through the initial slot of the next epoch are
+empty (no block proposed / orphaned).
 
-`LightClientBootstrap` is computed from the block's immediate post state (without applying empty slots).
+`LightClientBootstrap` is computed from the block's immediate post state
+(without applying empty slots).
 
 ### `create_light_client_update`
 
-To form a `LightClientUpdate`, the following historical states and blocks are needed:
+To form a `LightClientUpdate`, the following historical states and blocks are
+needed:
 
 - `state`: the post state of any block with a post-Altair parent block
 - `block`: the corresponding block
 - `attested_state`: the post state of `attested_block`
 - `attested_block`: the block referred to by `block.parent_root`
-- `finalized_block`: the block referred to by `attested_state.finalized_checkpoint.root`, if locally available (may be unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
+- `finalized_block`: the block referred to by
+  `attested_state.finalized_checkpoint.root`, if locally available (may be
+  unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
 
 ```python
 def create_light_client_update(state: BeaconState,
@@ -137,11 +152,20 @@ def create_light_client_update(state: BeaconState,
     return update
 ```
 
-Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to `is_better_update`) for each sync committee period covering any epochs in range `[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]` where `current_epoch` is defined by the current wall-clock time. Full nodes MAY also provide `LightClientUpdate` for other sync committee periods.
+Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to
+`is_better_update`) for each sync committee period covering any epochs in range
+`[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+where `current_epoch` is defined by the current wall-clock time. Full nodes MAY
+also provide `LightClientUpdate` for other sync committee periods.
 
-- `LightClientUpdate` are assigned to sync committee periods based on their `attested_header.beacon.slot`
-- `LightClientUpdate` are only considered if `compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
-- Only `LightClientUpdate` with `sync_aggregate` from blocks on the canonical chain as selected by fork choice are considered, regardless of ranking by `is_better_update`. `LightClientUpdate` referring to orphaned blocks SHOULD NOT be provided.
+- `LightClientUpdate` are assigned to sync committee periods based on their
+  `attested_header.beacon.slot`
+- `LightClientUpdate` are only considered if
+  `compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)`
+- Only `LightClientUpdate` with `sync_aggregate` from blocks on the canonical
+  chain as selected by fork choice are considered, regardless of ranking by
+  `is_better_update`. `LightClientUpdate` referring to orphaned blocks SHOULD
+  NOT be provided.
 
 ### `create_light_client_finality_update`
 
@@ -156,7 +180,13 @@ def create_light_client_finality_update(update: LightClientUpdate) -> LightClien
     )
 ```
 
-Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientFinalityUpdate` whenever `finalized_header` changes. If that `LightClientFinalityUpdate` does not have supermajority (> 2/3) sync committee participation, a second `LightClientFinalityUpdate` SHOULD be delivered for the same `finalized_header` once supermajority participation is obtained.
+Full nodes SHOULD provide the `LightClientFinalityUpdate` with the highest
+`attested_header.beacon.slot` (if multiple, highest `signature_slot`) as
+selected by fork choice, and SHOULD support a push mechanism to deliver new
+`LightClientFinalityUpdate` whenever `finalized_header` changes. If that
+`LightClientFinalityUpdate` does not have supermajority (> 2/3) sync committee
+participation, a second `LightClientFinalityUpdate` SHOULD be delivered for the
+same `finalized_header` once supermajority participation is obtained.
 
 ### `create_light_client_optimistic_update`
 
@@ -169,4 +199,7 @@ def create_light_client_optimistic_update(update: LightClientUpdate) -> LightCli
     )
 ```
 
-Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest `attested_header.beacon.slot` (if multiple, highest `signature_slot`) as selected by fork choice, and SHOULD support a push mechanism to deliver new `LightClientOptimisticUpdate` whenever `attested_header` changes.
+Full nodes SHOULD provide the `LightClientOptimisticUpdate` with the highest
+`attested_header.beacon.slot` (if multiple, highest `signature_slot`) as
+selected by fork choice, and SHOULD support a push mechanism to deliver new
+`LightClientOptimisticUpdate` whenever `attested_header` changes.
