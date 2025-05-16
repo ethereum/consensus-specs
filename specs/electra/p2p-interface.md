@@ -211,4 +211,5 @@ Response Content:
 
 *Updated validation*
 
-No more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` may be
+requested at a time.

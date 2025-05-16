@@ -461,7 +461,8 @@ Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
 the expected KZG commitments through `verify_blob_kzg_proof`.
 
-No more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` may be requested
+at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when
 receiving a block with a transaction whose corresponding blob is missing).

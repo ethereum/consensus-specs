@@ -442,7 +442,8 @@ valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
 is correct w.r.t. the expected KZG commitments through
 `verify_data_column_sidecar_kzg_proofs`.
 
-No more than `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` may be requested at a time.
+No more than `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` may be requested at
+a time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `DataColumnSidecar` payload.
