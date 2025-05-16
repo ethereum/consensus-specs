@@ -52,8 +52,9 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the shard data custody game,
-building upon the [Sharding](../sharding/beacon-chain.md) specification.
+This document details the beacon chain additions and changes of to support the
+shard data custody game, building upon the
+[Sharding](../sharding/beacon-chain.md) specification.
 
 ## Constants
 
@@ -219,7 +220,9 @@ class CustodyKeyReveal(Container):
 
 #### `EarlyDerivedSecretReveal`
 
-Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
+Represents an early (punishable) reveal of one of the derived secrets, where
+derived secrets are RANDAO reveals and custody reveals (both are part of the
+same domain).
 
 ```python
 class EarlyDerivedSecretReveal(Container):
@@ -251,7 +254,9 @@ def replace_empty_or_append(l: List, new_element: Any) -> int:
 
 ### `legendre_bit`
 
-Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e. `((a/q) + 1) // 2`). In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
+Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e.
+`((a/q) + 1) // 2`). In a production implementation, a well-optimized library
+(e.g. GMP) should be used for this.
 
 ```python
 def legendre_bit(a: int, q: int) -> int:
@@ -280,7 +285,8 @@ def legendre_bit(a: int, q: int) -> int:
 
 ### `get_custody_atoms`
 
-Given one set of data, return the custody atoms: each atom will be combined with one legendre bit.
+Given one set of data, return the custody atoms: each atom will be combined with
+one legendre bit.
 
 ```python
 def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:

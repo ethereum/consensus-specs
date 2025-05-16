@@ -15,7 +15,11 @@
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Capella upgrade. It extends the [Altair Light Client specifications](../../altair/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Altair based deployments to Capella.
+This upgrade adds information about the execution payload to light client data
+as part of the Capella upgrade. It extends the
+[Altair Light Client specifications](../../altair/light-client/sync-protocol.md).
+The [fork document](./fork.md) explains how to upgrade existing Altair based
+deployments to Capella.
 
 Additional documents describes the impact of the upgrade on certain roles:
 
