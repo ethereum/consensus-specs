@@ -1,7 +1,11 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_capella_until_eip7732,
+    with_all_phases_from_except,
     with_test_suite_name,
+)
+from eth2spec.test.helpers.constants import (
+    CAPELLA,
+    EIP7732,
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
@@ -9,7 +13,7 @@ from eth2spec.test.helpers.attestations import (
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_capella_until_eip7732
+@with_all_phases_from_except(CAPELLA, [EIP7732])
 @spec_state_test
 def test_execution_merkle_proof(spec, state):
     block = state_transition_with_full_block(spec, state, True, False)

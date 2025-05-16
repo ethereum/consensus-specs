@@ -1,10 +1,14 @@
 import random
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.constants import (
+    CAPELLA,
+    EIP7732,
+    MINIMAL,
+)
 from eth2spec.test.helpers.forks import is_post_electra, is_post_eip7732
 from eth2spec.test.context import (
-    with_capella_and_later,
-    with_capella_until_eip7732,
     spec_state_test,
+    with_all_phases_from_except,
+    with_capella_and_later,
     with_presets,
 )
 from eth2spec.test.helpers.keys import pubkeys
@@ -40,7 +44,7 @@ from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 #
 
 
-@with_capella_until_eip7732
+@with_all_phases_from_except(CAPELLA, [EIP7732])
 @spec_state_test
 def test_invalid_is_execution_enabled_false(spec, state):
     # Set `latest_execution_payload_header` to empty
@@ -206,7 +210,7 @@ def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_bloc
 #
 
 
-@with_capella_until_eip7732
+@with_all_phases_from_except(CAPELLA, [EIP7732])
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0

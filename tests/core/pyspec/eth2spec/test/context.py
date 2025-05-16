@@ -640,12 +640,6 @@ with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
-with_altair_until_eip7732 = with_all_phases_from_to(ALTAIR, EIP7732)
-with_bellatrix_until_eip7732 = with_all_phases_from_to(BELLATRIX, EIP7732)
-with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
-with_deneb_until_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
-with_electra_until_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
-
 
 class quoted_str(str):
     pass
