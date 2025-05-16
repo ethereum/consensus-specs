@@ -39,7 +39,8 @@ def is_data_available(beacon_block_root: Root) -> bool:
 
 ### Modified `on_block`
 
-*Note*: The only modification is that `is_data_available` does not take `blob_kzg_commitments` as input.
+*Note*: The only modification is that `is_data_available` does not take
+`blob_kzg_commitments` as input.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:

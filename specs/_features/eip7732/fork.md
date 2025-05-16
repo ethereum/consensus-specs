@@ -58,12 +58,14 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-The fork is triggered at epoch `EIP7732_FORK_EPOCH`. The EIP may be combined with other consensus-layer upgrade.
+The fork is triggered at epoch `EIP7732_FORK_EPOCH`. The EIP may be combined
+with other consensus-layer upgrade.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`,
-an irregular state change is made to upgrade to EIP-7732.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`, an irregular state
+change is made to upgrade to EIP-7732.
 
 ```python
 def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
