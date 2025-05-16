@@ -37,8 +37,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in
-[Fulu -- Beacon Chain](./beacon-chain.md) and \[Fulu -- Data Availability
-Sampling Core\] are requisite for this document and used throughout.
+[Fulu -- Beacon Chain](./beacon-chain.md) and
+[Fulu -- Data Availability Sampling Core](./das-core.md) are requisite for this
+document and used throughout.
 
 ## Configuration
 
