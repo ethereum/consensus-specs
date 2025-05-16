@@ -49,13 +49,20 @@
 
 ## Introduction
 
-This document extends [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the functions required for data availability sampling (DAS). It is not part of the core Deneb spec but an extension that can be optionally implemented to allow nodes to reduce their load using DAS.
+This document extends
+[polynomial-commitments.md](../deneb/polynomial-commitments.md) with the
+functions required for data availability sampling (DAS). It is not part of the
+core Deneb spec but an extension that can be optionally implemented to allow
+nodes to reduce their load using DAS.
 
 ## Public Methods
 
-For any KZG library extended to support DAS, functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
+For any KZG library extended to support DAS, functions flagged as "Public
+method" MUST be provided by the underlying KZG library as public functions. All
+other functions are private functions used internally by the KZG library.
 
-Public functions MUST accept raw bytes as input and perform the required cryptographic normalization before invoking any internal functions.
+Public functions MUST accept raw bytes as input and perform the required
+cryptographic normalization before invoking any internal functions.
 
 The following is a list of the public methods:
 
@@ -83,7 +90,9 @@ The following is a list of the public methods:
 
 ### Blob
 
-Cells are the smallest unit of blob data that can come with their own KZG proofs. Samples can be constructed from one or several cells (e.g. an individual cell or line).
+Cells are the smallest unit of blob data that can come with their own KZG
+proofs. Samples can be constructed from one or several cells (e.g. an individual
+cell or line).
 
 | Name                                     | Value                                                    | Description                                              |
 | ---------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |

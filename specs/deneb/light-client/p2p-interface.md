@@ -19,7 +19,9 @@
 
 ## Networking
 
-The [Capella light client networking specification](../../capella/light-client/p2p-interface.md) is extended to exchange [Deneb light client data](./sync-protocol.md).
+The
+[Capella light client networking specification](../../capella/light-client/p2p-interface.md)
+is extended to exchange [Deneb light client data](./sync-protocol.md).
 
 ### The gossip domain: gossipsub
 
