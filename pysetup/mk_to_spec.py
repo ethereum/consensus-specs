@@ -2,12 +2,13 @@ import ast
 import json
 from pathlib import Path
 import string
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Iterator
 import re
 from functools import lru_cache
 
 
-from marko.block import BlankLine, Heading, FencedCode, HTMLBlock
+from marko.block import BlankLine, Heading, FencedCode, HTMLBlock, Document
+from marko.element import Element
 from marko.ext.gfm import gfm
 from marko.ext.gfm.elements import Table
 from marko.inline import CodeSpan
@@ -16,7 +17,6 @@ from .typing import ProtocolDefinition, VariableDefinition, SpecObject
 
 class MarkdownToSpec:
     def __init__(self, file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name: str):
-        self.file_name = file_name
         self.preset = preset
         self.config = config
         self.preset_name = preset_name
@@ -35,12 +35,8 @@ class MarkdownToSpec:
         self.custom_types: Dict[str, str] = {}
         self.preset_dep_custom_types: Dict[str, str] = {}
 
-        self.document = None
-        self.document_iterator = None
-        self.current_name = None
-        self.should_skip = False
-        self.list_of_records = None
-        self.list_of_records_name = None
+        self.document_iterator: Iterator[Element] = self._parse_document(file_name)
+        self.current_heading_name: str | None = None
 
     def run(self) -> SpecObject:
         """
@@ -51,27 +47,341 @@ class MarkdownToSpec:
         Returns:
             SpecObject: The constructed specification object.
         """
-        self._parse_document()
-        # self.document_iterator = iter(self.document.children)
-        # while (child := self._get_next_element()) is not None:
-        for child in self.document.children:
+        while (child := self._get_next_element()) is not None:
             self._process_child(child)
         self._finalize_types()
         return self._build_spec_object()
 
-    def _get_next_element(self):
+    def _get_next_element(self) -> Optional[Element]:
         """
         Returns the next element in the document.
         If the end of the document is reached, returns None.
         """
 
         try:
-            # while isinstance(result := next(self.document_iterator), BlankLine):
-            #     pass
-            # return result
-            next(self.document_iterator)
+            while isinstance(result := next(self.document_iterator), BlankLine):
+                pass
+            return result
         except StopIteration:
             return None
+
+    def _skip_element(self) -> None:
+        """
+        Skips the current element in the document.
+        This is a placeholder for future functionality.
+        """
+        self._get_next_element()
+
+    
+
+    def _parse_document(self, file_name: Path) -> Iterator[Element]:
+        """
+        Opens the markdown file, parses its content into a document object using _parse_markdown,
+        and stores the parsed document in self.document.
+        """
+        with open(file_name) as source_file:
+            document = parse_markdown(source_file.read())
+            return iter(document.children)
+
+    def _process_child(self, child: Element):
+        # Skip blank lines
+        if isinstance(child, BlankLine):
+            return
+
+        # Dispatch to the correct handler
+        match child:
+            case Heading():
+                self._process_heading(child)
+            case FencedCode():
+                self._process_code_block(child)
+            case Table():
+                self._process_table(child)
+            case HTMLBlock():
+                self._process_html_block(child)
+
+    def _process_heading(self, heading: Heading):
+        """
+        Extracts the section name from the heading and updates current_name for context.
+        """
+        if not isinstance(heading, Heading):
+            return
+        self.current_heading_name = _get_name_from_heading(heading)
+        # else: skip unknown types
+
+    def _process_code_block(self, code_block: FencedCode):
+        """
+        Processes a FencedCode block:
+        - Checks if the code block is Python.
+        - Extracts source code and determines if it is a function, dataclass, or class.
+        - Updates the appropriate dictionary (functions, protocols, dataclasses, ssz_objects).
+        """
+        if code_block.lang != "python":
+            return
+
+        source = _get_source_from_code_block(code_block)
+        module = ast.parse(source)
+
+        clean_source = "\n".join(line.rstrip() for line in source.splitlines())
+        # AST container of the first definition in the block
+        first_def = module.body[0] 
+
+        if isinstance(first_def, ast.FunctionDef):
+            self._process_code_def(clean_source, first_def)
+        elif isinstance(first_def, ast.ClassDef) and _has_decorator(first_def, "dataclass"):
+            self._add_dataclass(clean_source, first_def)
+        elif isinstance(first_def, ast.ClassDef):
+            self._process_code_class(clean_source, first_def)
+        else:
+            raise Exception("unrecognized python code element: " + source)
+
+    def _process_code_def(self, source: str, fn: ast.FunctionDef):
+        """
+        Processes a function definition node from the AST and stores its source code representation.
+        If the function is a method (i.e., has a self type), it is added to the protocol functions for that type.
+        Otherwise, it is stored as a standalone function.
+        Args:
+            source (str): The source code of the function definition.
+            fn (ast.FunctionDef): The AST node representing the function definition.
+        """
+
+        self_type_name = _get_self_type_from_source(fn)
+        
+        if self_type_name is None:
+            self.functions[fn.name] = source
+        else:
+            self._add_protocol_function(self_type_name, fn.name, source)
+
+    def _add_protocol_function(self, protocol_name: str, function_name: str, function_def: str):
+        """
+        Adds a function definition to the protocol functions dictionary.
+        """
+
+        if protocol_name not in self.protocols:
+            self.protocols[protocol_name] = ProtocolDefinition(
+                functions={})
+        self.protocols[protocol_name].functions[function_name] = function_def
+
+    def _add_dataclass(self, source, cls: ast.ClassDef):
+        self.dataclasses[cls.name] = source
+
+    def _process_code_class(self, source, cls: ast.ClassDef):
+        class_name, parent_class = _get_class_info_from_ast(cls)
+
+        # check consistency with spec
+        if class_name != self.current_heading_name:
+            raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
+
+        if parent_class:
+            assert parent_class == "Container"
+        self.ssz_objects[class_name] = source
+
+    def _process_table(self, child: HTMLBlock):
+        """
+        Handles standard tables (not list-of-records).
+        Iterates over rows, extracting variable names, values, and descriptions.
+        Determines if the variable is a constant, preset, config, or custom type.
+        Updates the corresponding dictionaries.
+        Handles special cases for predefined types and function-dependent presets.
+        """
+
+        for row in child.children:
+            if len(row.children) < 2:
+                continue
+
+            name, value, description = self._get_table_row_fields(row)
+
+            # Skip types that have been defined elsewhere
+            if description is not None and description.startswith("<!-- predefined-type -->"):
+                continue
+
+            # If it is not a constant, check if it is a custom type
+            if not _is_constant_id(name):
+                # Check for short type declarations
+                if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
+                    self.all_custom_types[name] = value
+                continue
+
+            # It is a constant name and a generalized index
+            if value.startswith("get_generalized_index"):
+                self.ssz_dep_constants[name] = value
+                continue
+
+            # It is a constant and not a generalized index, and a function-dependent preset
+            if description is not None and description.startswith("<!-- predefined -->"):
+                self.func_dep_presets[name] = value
+
+            # It is a constant and not a generalized index
+            value_def = _parse_value(name, value)
+            # It is a preset
+            if name in self.preset:
+                if self.preset_name == "mainnet":
+                    check_yaml_matches_spec(name, self.preset, value_def)
+
+                self.preset_vars[name] = VariableDefinition(value_def.type_name, self.preset[name], value_def.comment, None)
+
+            # It is a config variable
+            elif name in self.config:
+                if self.preset_name == "mainnet":
+                    check_yaml_matches_spec(name, self.config, value_def)
+
+                self.config_vars[name] = VariableDefinition(value_def.type_name, self.config[name], value_def.comment, None)
+
+            # It is a constant variable or a preset_dep_constant_vars
+            else:
+                if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
+                    # Deal with mypy Literal typing check
+                    value_def = _parse_value(name, value, type_hint='Final')
+                if any(k in value for k in self.preset) or any(k in value for k in self.preset_dep_constant_vars):
+                    self.preset_dep_constant_vars[name] = value_def
+                else:
+                    self.constant_vars[name] = value_def
+
+    @staticmethod
+    def _get_table_row_fields(row: Element) -> tuple[str, str, Optional[str]]:
+        """
+        Extracts the name, value, and description fields from a table row element.
+        Description can be None.
+        """
+        cells = row.children
+        name_cell = cells[0]
+        name = name_cell.children[0].children
+
+        value_cell = cells[1]
+        value = value_cell.children[0].children
+
+        if isinstance(name, list):
+            name = name[0].children
+        if isinstance(value, list):
+            value = value[0].children
+
+        description = None
+        if len(cells) >= 3:
+            description_cell = cells[2]
+            if len(description_cell.children) > 0:
+                description = description_cell.children[0].children
+                if isinstance(description, list):
+                    description = description[0].children
+
+        return name, value, description
+
+    def _process_list_of_records_table(self, child, list_of_records_name):
+        """
+        Handles tables marked as 'list-of-records'.
+        Extracts headers and rows, mapping field names and types.
+        Applies type mapping to config entries.
+        Validates or updates the config variable as needed based on preset_name.
+        Updates config_vars with the processed list.
+
+        Example of input:
+            | Epoch                       | Max Blobs Per Block | Description                      |
+            | --------------------------- | ------------------- | -------------------------------- |
+            | `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
+            | `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
+
+        The method _process_html_block calls this method when it encounters a comment
+        of the form `<!-- list-of-records:name -->`.
+        """
+        list_of_records_spec = self._extract_list_of_records_spec(child)
+
+        # Make a type map from the spec definition
+        type_map = self._make_list_of_records_type_map(list_of_records_spec)
+
+        # Apply the types to the file config
+        list_of_records_config_file = self._extract_typed_records_config(
+            list_of_records_name, type_map
+        )
+
+        # For mainnet, check that the spec config & file config are the same
+        # For minimal, we expect this to be different; just use the file config
+        if self.preset_name == "mainnet":
+            assert list_of_records_spec == list_of_records_config_file, \
+                f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
+
+        # Set the config variable
+        self.config_vars[list_of_records_name] = list_of_records_config_file
+
+    @staticmethod
+    def _make_list_of_records_type_map(list_of_records: list[dict[str, str]]) -> dict[str, str]:
+        """
+        Given a list of records (each a dict of field name to value), extract a mapping
+        from field name to type name, based on values of the form 'TypeName(...)'.
+        """
+        type_map: dict[str, str] = {}
+        pattern = re.compile(r'^(\w+)\(.*\)$')
+        for entry in list_of_records:
+            for k, v in entry.items():
+                m = pattern.match(v)
+                if m:
+                    type_map[k] = m.group(1)
+        return type_map
+
+    @staticmethod
+    def _extract_list_of_records_spec(child) -> list[dict[str, str]]:
+        """
+        Extracts the list of records from a table element.
+        Returns a list of dicts, each representing a row with field names as keys.
+        """
+
+        # Save the table header, used for field names (skip last item: description)
+        header_row = child.children[0]
+        list_of_records_spec_header = [
+            re.sub(r'\s+', '_', value.children[0].children.upper())
+            for value in header_row.children[:-1]
+        ]
+
+        # Process the remaining rows
+        list_of_records_spec: list[dict[str, str]] = [
+            {
+                list_of_records_spec_header[j]: value.children[0].children
+                for j, value in enumerate(row.children[:-1])
+            }
+            for row in child.children[1:]
+        ]
+
+        return list_of_records_spec
+
+    def _extract_typed_records_config(
+        self, list_of_records_name: str, type_map: dict[str, str]
+    ) -> list[dict[str, str]]:
+        """
+        Applies type constructors to config entries based on the type map.
+        Returns a new list of dicts with types applied.
+        """
+        list_of_records_config_file: list[dict[str, str]] = []
+        for entry in self.config[list_of_records_name]:
+            new_entry = {}
+            for k, v in entry.items():
+                ctor = type_map.get(k)
+                if ctor:
+                    new_entry[k] = f"{ctor}({v})"
+                else:
+                    new_entry[k] = v
+            list_of_records_config_file.append(new_entry)
+        return list_of_records_config_file
+
+    def _process_html_block(self, child):
+        """
+        Handles HTML comments for skip logic and list-of-records detection.
+        Sets flags or state variables for the next iteration.
+        """
+
+        body = child.body.strip()
+
+        # This comment marks that we should skip the next element
+        if body == "<!-- eth2spec: skip -->":
+            self._skip_element()
+
+        # Handle list-of-records tables
+        # This comment marks that the next table is a list-of-records
+        # e.g. <!-- list-of-records: <name> -->
+        match = re.match(
+            r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
+        if match:
+            table_element = self._get_next_element()
+            if not isinstance(table_element, Table):
+                raise Exception(
+                    f"expected table after list-of-records comment, got {type(table_element)}")
+            self._process_list_of_records_table(table_element, match.group(1).upper())
 
     def _finalize_types(self):
         """
@@ -98,240 +408,6 @@ class MarkdownToSpec:
                 self.preset_dep_custom_types[name] = value
             else:
                 self.custom_types[name] = value
-
-    def _parse_document(self):
-        """
-        Opens the markdown file, parses its content into a document object using _parse_markdown,
-        and stores the parsed document in self.document.
-        """
-        with open(self.file_name) as source_file:
-            self.document = parse_markdown(source_file.read())
-
-    def _process_child(self, child):
-        # Skip blank lines
-        if isinstance(child, BlankLine):
-            return
-
-        if self.should_skip:
-            self.should_skip = False
-            return
-
-            # Dispatch to the correct handler
-        if isinstance(child, Heading):
-            self._process_heading(child)
-        elif isinstance(child, FencedCode):
-            self._process_code_block(child)
-        elif isinstance(child, Table):
-            # Handler for list-of-records is managed by state in _process_html_block
-            if self.list_of_records is not None:
-                self._process_list_of_records_table(child)
-            else:
-                self._process_table(child)
-        elif isinstance(child, HTMLBlock):
-            self._process_html_block(child)
-
-    def _process_heading(self, child):
-        """
-        Extracts the section name from the heading and updates current_name for context.
-        """
-        if not isinstance(child, Heading):
-            return
-        self.current_name = _get_name_from_heading(child)
-        # else: skip unknown types
-
-    def _process_code_block(self, child):
-        """
-        Processes a FencedCode block:
-        - Checks if the code block is Python.
-        - Extracts source code and determines if it is a function, dataclass, or class.
-        - Updates the appropriate dictionary (functions, protocols, dataclasses, ssz_objects).
-        """
-        if child.lang != "python":
-            return
-
-        source = _get_source_from_code_block(child)
-
-        if source.startswith("def"):
-            self._process_code_def(source)
-        elif source.startswith("@dataclass"):
-            self._process_code_dataclass(source)
-        elif source.startswith("class"):
-            self._process_code_class(source)
-        else:
-            raise Exception("unrecognized python code element: " + source)
-
-    def _process_code_def(self, source):
-        self.current_name = _get_function_name_from_source(source)
-        self_type_name = _get_self_type_from_source(source)
-        function_def = "\n".join(line.rstrip() for line in source.splitlines())
-        if self_type_name is None:
-            self.functions[self.current_name] = function_def
-        else:
-            if self_type_name not in self.protocols:
-                self.protocols[self_type_name] = ProtocolDefinition(
-                    functions={})
-            self.protocols[self_type_name].functions[self.current_name] = function_def
-
-    def _process_code_dataclass(self, source):
-        """ if self.current_name is None:
-            raise Exception(f"found @dataclass without a name: {source}")"""
-        self.dataclasses[self.current_name] = "\n".join(
-            line.rstrip() for line in source.splitlines())
-
-    def _process_code_class(self, source):
-        class_name, parent_class = _get_class_info_from_source(source)
-        # check consistency with spec
-        if class_name != self.current_name:
-            raise Exception(
-                f"class_name {class_name} != current_name {self.current_name}")
-
-        if parent_class:
-            assert parent_class == "Container"
-        self.ssz_objects[self.current_name] = "\n".join(
-            line.rstrip() for line in source.splitlines())
-
-    def _process_table(self, child):
-        """
-        Handles standard tables (not list-of-records).
-        Iterates over rows, extracting variable names, values, and descriptions.
-        Determines if the variable is a constant, preset, config, or custom type.
-        Updates the corresponding dictionaries.
-        Handles special cases for predefined types and function-dependent presets.
-        """
-
-        for row in child.children:
-            cells = row.children
-            if len(cells) >= 2:
-                name_cell = cells[0]
-                name = name_cell.children[0].children
-
-                value_cell = cells[1]
-                value = value_cell.children[0].children
-
-                description = None
-                if len(cells) >= 3:
-                    description_cell = cells[2]
-                    if len(description_cell.children) > 0:
-                        description = description_cell.children[0].children
-                        if isinstance(description, list):
-                            description = description[0].children
-
-                if isinstance(name, list):
-                    name = name[0].children
-                if isinstance(value, list):
-                    value = value[0].children
-
-                # Skip types that have been defined elsewhere
-                if description is not None and description.startswith("<!-- predefined-type -->"):
-                    continue
-
-                if not _is_constant_id(name):
-                    # Check for short type declarations
-                    if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
-                        self.all_custom_types[name] = value
-                    continue
-
-                if value.startswith("get_generalized_index"):
-                    self.ssz_dep_constants[name] = value
-                    continue
-
-                if description is not None and description.startswith("<!-- predefined -->"):
-                    self.func_dep_presets[name] = value
-
-                value_def = _parse_value(name, value)
-                if name in self.preset:
-                    if self.preset_name == "mainnet":
-                        check_yaml_matches_spec(
-                            name, self.preset, value_def)
-                    self.preset_vars[name] = VariableDefinition(
-                        value_def.type_name, self.preset[name], value_def.comment, None)
-                elif name in self.config:
-                    if self.preset_name == "mainnet":
-                        check_yaml_matches_spec(
-                            name, self.config, value_def)
-                    self.config_vars[name] = VariableDefinition(
-                        value_def.type_name, self.config[name], value_def.comment, None)
-                else:
-                    if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
-                        # Deal with mypy Literal typing check
-                        value_def = _parse_value(
-                            name, value, type_hint='Final')
-                    if any(k in value for k in self.preset) or any(k in value for k in self.preset_dep_constant_vars):
-                        self.preset_dep_constant_vars[name] = value_def
-                    else:
-                        self.constant_vars[name] = value_def
-
-    def _process_list_of_records_table(self, child):
-        """
-        Handles tables marked as 'list-of-records'.
-        Extracts headers and rows, mapping field names and types.
-        Applies type mapping to config entries.
-        Validates or updates the config variable as needed based on preset_name.
-        Updates config_vars with the processed list.
-        """
-
-        list_of_records_header = None
-        for i, row in enumerate(child.children):
-            if i == 0:
-                # Save the table header, used for field names (skip last item: description)
-                list_of_records_header = [
-                    re.sub(r'\s+', '_', value.children[0].children.upper())
-                    for value in row.children[:-1]
-                ]
-            else:
-                # Add the row entry to our list of records
-                self.list_of_records.append({
-                    list_of_records_header[j]: value.children[0].children
-                    for j, value in enumerate(row.children[:-1])
-                })
-
-        # Make a type map from the spec definition
-        type_map: dict[str, str] = {}
-        pattern = re.compile(r'^(\w+)\(.*\)$')
-        for entry in self.list_of_records:
-            for k, v in entry.items():
-                m = pattern.match(v)
-                if m:
-                    type_map[k] = m.group(1)
-
-        # Apply the types to the file config
-        list_of_records_config: list[dict[str, str]] = []
-        for entry in self.config[self.list_of_records_name]:
-            new_entry = {}
-            for k, v in entry.items():
-                ctor = type_map.get(k)
-                if ctor:
-                    new_entry[k] = f"{ctor}({v})"
-                else:
-                    new_entry[k] = v
-            list_of_records_config.append(new_entry)
-
-        # For mainnet, check that the spec config & file config are the same
-        if self.preset_name == "mainnet":
-            assert self.list_of_records == list_of_records_config, \
-                f"list of records mismatch: {self.list_of_records} vs {list_of_records_config}"
-        elif self.preset_name == "minimal":
-            self.list_of_records = list_of_records_config
-
-        # Set the config variable and reset the state
-        self.config_vars[self.list_of_records_name] = self.list_of_records
-        self.list_of_records = None
-
-    def _process_html_block(self, child):
-        """
-        Handles HTML comments for skip logic and list-of-records detection.
-        Sets flags or state variables for the next iteration.
-        """
-
-        body = child.body.strip()
-        if body == "<!-- eth2spec: skip -->":
-            self.should_skip = True
-        # Handle list-of-records tables
-        match = re.match(
-            r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
-        if match:
-            self.list_of_records = []
-            self.list_of_records_name = match.group(1).upper()
 
     def _build_spec_object(self):
         """
@@ -368,12 +444,13 @@ def _get_source_from_code_block(block: FencedCode) -> str:
 @lru_cache(maxsize=None)
 def _get_function_name_from_source(source: str) -> str:
     fn = ast.parse(source).body[0]
+    if not isinstance(fn, ast.FunctionDef):
+        raise Exception("expected function definition")
     return fn.name
 
 
 @lru_cache(maxsize=None)
-def _get_self_type_from_source(source: str) -> Optional[str]:
-    fn = ast.parse(source).body[0]
+def _get_self_type_from_source(fn: ast.FunctionDef) -> Optional[str]:
     args = fn.args.args
     if len(args) == 0:
         return None
@@ -385,9 +462,8 @@ def _get_self_type_from_source(source: str) -> Optional[str]:
 
 
 @lru_cache(maxsize=None)
-def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
-    class_def = ast.parse(source).body[0]
-    base = class_def.bases[0]
+def _get_class_info_from_ast(cls: ast.ClassDef) -> Tuple[str, Optional[str]]:
+    base = cls.bases[0]
     if isinstance(base, ast.Name):
         parent_class = base.id
     elif isinstance(base, ast.Subscript):
@@ -397,11 +473,22 @@ def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
         # e.g. `phase0.SignedBeaconBlock`
         # TODO: check for consistency with other phases
         parent_class = None
-    return class_def.name, parent_class
+    return cls.name, parent_class
 
 
 @lru_cache(maxsize=None)
 def _is_constant_id(name: str) -> bool:
+    """
+    Check if the given name follows the convention for constant identifiers.
+    A valid constant identifier must:
+    - Start with an uppercase ASCII letter or an underscore ('_').
+    - All subsequent characters (if any) must be uppercase ASCII letters, underscores, or digits.
+    Args:
+        name (str): The identifier name to check.
+    Returns:
+        bool: True if the name is a valid constant identifier, False otherwise.
+    """
+
     if name[0] not in string.ascii_uppercase + '_':
         return False
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
@@ -486,7 +573,7 @@ def _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_consta
 
 
 @lru_cache(maxsize=None)
-def parse_markdown(content: str):
+def parse_markdown(content: str) -> Document:
     return gfm.parse(content)
 
 
@@ -511,3 +598,12 @@ def check_yaml_matches_spec(var_name, yaml, value_def):
     except NameError:
         # Okay it's probably something more serious, let's ignore
         pass
+
+def _has_decorator(decorateable: ast.expr, name: str) -> bool:
+    return any(_is_decorator(d, name) for d in decorateable.decorator_list)
+
+def _is_decorator(decorator: ast.expr, name: str) -> bool:
+    return (isinstance(decorator, ast.Name) and decorator.id == name) or \
+            (isinstance(decorator, ast.Attribute) and decorator.attr == name) or \
+            (isinstance(decorator, ast.Call) and decorator.func.id == name) or \
+            (isinstance(decorator, ast.Subscript) and decorator.value.id == name)

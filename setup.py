@@ -267,7 +267,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                         protocols[self_type_name] = ProtocolDefinition(functions={})
                     protocols[self_type_name].functions[current_name] = function_def
             elif source.startswith("@dataclass"):
-                dataclasses[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
+                dataclasses[ast.parse(source).body[0].name] = "\n".join(line.rstrip() for line in source.splitlines())
             elif source.startswith("class"):
                 class_name, parent_class = _get_class_info_from_source(source)
                 # check consistency with spec
@@ -482,7 +482,7 @@ def build_spec(fork: str,
     config = load_config(config_file)
     all_specs = [get_spec_new(spec, preset, config, preset_name) for spec in source_files]
     all_specs_old = [get_spec(spec, preset, config, preset_name) for spec in source_files]
-    
+
     assert DeepDiff(all_specs, all_specs_old, ignore_order=True) == {}, f"specs differ: {DeepDiff(all_specs, all_specs_old, ignore_order=True)}"
 
     spec_object = all_specs[0]
