@@ -35,11 +35,12 @@ ALL_PHASES = (
     FULU,
     # Experimental patches
     EIP7732,
+    EIP7805,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0]
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, FULU)
+TESTGEN_FORKS = (*MAINNET_FORKS, FULU, EIP7732, EIP7805)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
 

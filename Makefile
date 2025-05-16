@@ -13,7 +13,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	eip6800   \
 	eip7441   \
 	eip7732   \
-  eip7805
+	eip7805
 
 # A list of fake targets.
 .PHONY: \
@@ -36,14 +36,14 @@ NORM = $(shell tput sgr0)
 
 # Print target descriptions.
 help:
-	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
-	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
-	@echo "make $(BOLD)kzg_setups$(NORM)    -- generate trusted setups"
-	@echo "make $(BOLD)lint$(NORM)          -- run the linters"
-	@echo "make $(BOLD)pyspec$(NORM)        -- build python specifications"
-	@echo "make $(BOLD)reftests$(NORM)      -- generate reference tests"
-	@echo "make $(BOLD)serve_docs$(NORM)    -- start a local docs web server"
-	@echo "make $(BOLD)test$(NORM)          -- run pyspec tests"
+	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
+	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
+	@echo "make $(BOLD)kzg_setups$(NORM) -- generate trusted setups"
+	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
+	@echo "make $(BOLD)pyspec$(NORM)     -- build python specifications"
+	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
+	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
+	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
 
 ###############################################################################
 # Virtual Environment
