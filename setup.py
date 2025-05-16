@@ -21,6 +21,7 @@ from ruamel.yaml import YAML
 from setuptools import setup, find_packages, Command
 from setuptools.command.build_py import build_py
 from typing import Dict, List, Sequence, Optional, Tuple
+from deepdiff import DeepDiff
 
 pysetup_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, pysetup_path)
@@ -46,7 +47,7 @@ from pysetup.typing import (
     SpecObject,
     VariableDefinition,
 )
-
+from pysetup.mk_to_spec import MarkdownToSpec
 
 # Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
 warnings.filterwarnings('ignore', message='Normalizing .* to .*')
@@ -220,6 +221,8 @@ def check_yaml_matches_spec(var_name, yaml, value_def):
         # Okay it's probably something more serious, let's ignore
         pass
 
+def get_spec_new(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
+    return MarkdownToSpec(file_name, preset, config, preset_name).run()
 
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
@@ -477,7 +480,10 @@ def build_spec(fork: str,
                config_file: Path) -> str:
     preset = load_preset(tuple(preset_files))
     config = load_config(config_file)
-    all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
+    all_specs = [get_spec_new(spec, preset, config, preset_name) for spec in source_files]
+    all_specs_old = [get_spec(spec, preset, config, preset_name) for spec in source_files]
+    
+    assert DeepDiff(all_specs, all_specs_old, ignore_order=True) == {}, f"specs differ: {DeepDiff(all_specs, all_specs_old, ignore_order=True)}"
 
     spec_object = all_specs[0]
     for value in all_specs[1:]:
@@ -676,3 +682,4 @@ setup(
     py_modules=["eth2spec"],
     cmdclass=commands,
 )
+
