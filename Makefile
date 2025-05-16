@@ -59,7 +59,7 @@ MDFORMAT_VENV = $(VENV)/bin/mdformat
 $(VENV):
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
-	@$(PIP_VENV) install --quiet uv==0.5.24
+	@$(PIP_VENV) install --quiet --upgrade uv
 
 ###############################################################################
 # Specification
