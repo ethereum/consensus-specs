@@ -186,6 +186,7 @@ MARKDOWN_FILES = $(CURDIR)/README.md \
 lint: pyspec
 	@$(MDFORMAT_VENV) --number --wrap=80 $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+	@$(PYTHON_VENV) -m isort $(CURDIR)/tests
 	@$(PYTHON_VENV) -m black $(CURDIR)/tests
 	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
