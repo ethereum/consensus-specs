@@ -1,9 +1,9 @@
-from typing import Tuple, Optional
-from eth_typing import BLSPubkey
+from typing import Optional, Tuple
+
 from curdleproofs import GenerateWhiskTrackerProof, WhiskTracker
 from eth2spec.test.helpers.keys import whisk_ks_initial
+from eth_typing import BLSPubkey
 from py_arkworks_bls12381 import G1Point, Scalar
-
 
 # Map of validator index to initial WhiskTracker (r = 1, k = index)
 whisk_initial_tracker_cache_by_index = {}

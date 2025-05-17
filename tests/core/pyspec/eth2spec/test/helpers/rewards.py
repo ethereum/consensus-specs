@@ -1,21 +1,21 @@
 from random import Random
-from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
-from eth2spec.test.helpers.state import (
-    next_epoch,
-)
-from eth2spec.test.helpers.random import (
-    set_some_new_deposits,
-    exit_random_validators,
-    slash_random_validators,
-    randomize_state,
-)
 from eth2spec.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
-from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.random import (
+    exit_random_validators,
+    randomize_state,
+    set_some_new_deposits,
+    slash_random_validators,
+)
+from eth2spec.test.helpers.state import (
+    next_epoch,
+)
+from eth2spec.utils.ssz.ssz_typing import Container, List, uint64
+from lru import LRU
 
 
 class Deltas(Container):

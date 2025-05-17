@@ -1,38 +1,31 @@
+import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
+import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
+from py_arkworks_bls12381 import GT as arkworks_GT
+from py_arkworks_bls12381 import G1Point as arkworks_G1
+from py_arkworks_bls12381 import G2Point as arkworks_G2
+from py_arkworks_bls12381 import Scalar as arkworks_Scalar
 from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
+from py_ecc.bls.g2_primitives import G1_to_pubkey as py_ecc_G1_to_bytes48
+from py_ecc.bls.g2_primitives import G2_to_signature as py_ecc_G2_to_bytes96
+from py_ecc.bls.g2_primitives import curve_order as BLS_MODULUS  # noqa: F401
+from py_ecc.bls.g2_primitives import pubkey_to_G1 as py_ecc_bytes48_to_G1
 from py_ecc.bls.g2_primitives import signature_to_G2 as _signature_to_G2
-from py_ecc.utils import prime_field_inv as py_ecc_prime_field_inv
-from py_ecc.optimized_bls12_381 import (  # noqa: F401
-    G1 as py_ecc_G1,
-    G2 as py_ecc_G2,
-    Z1 as py_ecc_Z1,
-    Z2 as py_ecc_Z2,
-    add as py_ecc_add,
-    multiply as py_ecc_mul,
-    neg as py_ecc_neg,
-    pairing as py_ecc_pairing,
-    final_exponentiate as py_ecc_final_exponentiate,
-    FQ12 as py_ecc_GT,
+from py_ecc.bls.g2_primitives import signature_to_G2 as py_ecc_bytes96_to_G2
+from py_ecc.optimized_bls12_381 import (
     FQ,
     FQ2,
 )
-from py_ecc.bls.g2_primitives import (  # noqa: F401
-    curve_order as BLS_MODULUS,
-    G1_to_pubkey as py_ecc_G1_to_bytes48,
-    pubkey_to_G1 as py_ecc_bytes48_to_G1,
-    G2_to_signature as py_ecc_G2_to_bytes96,
-    signature_to_G2 as py_ecc_bytes96_to_G2,
-)
-from py_arkworks_bls12381 import (
-    G1Point as arkworks_G1,
-    G2Point as arkworks_G2,
-    Scalar as arkworks_Scalar,
-    GT as arkworks_GT,
-)
-
-
-import milagro_bls_binding as milagro_bls  # noqa: F401 for BLS switching option
-
-import py_arkworks_bls12381 as arkworks_bls  # noqa: F401 for BLS switching option
+from py_ecc.optimized_bls12_381 import FQ12 as py_ecc_GT
+from py_ecc.optimized_bls12_381 import G1 as py_ecc_G1  # noqa: F401
+from py_ecc.optimized_bls12_381 import G2 as py_ecc_G2
+from py_ecc.optimized_bls12_381 import Z1 as py_ecc_Z1
+from py_ecc.optimized_bls12_381 import Z2 as py_ecc_Z2
+from py_ecc.optimized_bls12_381 import add as py_ecc_add
+from py_ecc.optimized_bls12_381 import final_exponentiate as py_ecc_final_exponentiate
+from py_ecc.optimized_bls12_381 import multiply as py_ecc_mul
+from py_ecc.optimized_bls12_381 import neg as py_ecc_neg
+from py_ecc.optimized_bls12_381 import pairing as py_ecc_pairing
+from py_ecc.utils import prime_field_inv as py_ecc_prime_field_inv
 
 
 class py_ecc_Scalar(FQ):

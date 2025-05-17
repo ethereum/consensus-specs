@@ -1,33 +1,33 @@
-from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
-from eth2spec.test.helpers.execution_payload import build_empty_signed_execution_payload_header
-from eth2spec.test.helpers.forks import (
-    is_post_eip7441,
-    is_post_altair,
-    is_post_bellatrix,
-    is_post_eip7732,
-    is_post_electra,
-)
-from eth2spec.test.helpers.keys import privkeys, whisk_ks_initial, whisk_ks_final
-from eth2spec.utils import bls
-from eth2spec.utils.bls import only_with_bls
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from curdleproofs import (
+    GenerateWhiskShuffleProof,
     GenerateWhiskTrackerProof,
     WhiskTracker,
-    GenerateWhiskShuffleProof,
-)
-from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
-from py_ecc.typing import Optimized_Field, Optimized_Point3D
-from py_ecc.bls.g2_primitives import (
-    G1_to_pubkey as py_ecc_G1_to_bytes48,
-    pubkey_to_G1 as py_ecc_bytes48_to_G1,
 )
 from eth2spec.test.helpers.eip7441 import (
     compute_whisk_tracker_and_commitment,
     is_first_proposal,
     resolve_known_tracker,
 )
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_empty_signed_execution_payload_header,
+)
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_eip7441,
+    is_post_eip7732,
+    is_post_electra,
+)
+from eth2spec.test.helpers.keys import privkeys, whisk_ks_final, whisk_ks_initial
+from eth2spec.utils import bls
+from eth2spec.utils.bls import only_with_bls
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from py_arkworks_bls12381 import Scalar
+from py_ecc.bls.g2_primitives import G1_to_pubkey as py_ecc_G1_to_bytes48
+from py_ecc.bls.g2_primitives import pubkey_to_G1 as py_ecc_bytes48_to_G1
+from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
+from py_ecc.typing import Optimized_Field, Optimized_Point3D
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 

@@ -3,18 +3,16 @@ import shutil
 import threading
 import time
 import uuid
-
 from typing import Any, Iterable
 
+from eth2spec.test import context
+from eth2spec.test.exceptions import SkippedTest
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 from rich.text import Text
-
-from eth2spec.test import context
-from eth2spec.test.exceptions import SkippedTest
 
 from .args import parse_arguments
 from .dumper import Dumper

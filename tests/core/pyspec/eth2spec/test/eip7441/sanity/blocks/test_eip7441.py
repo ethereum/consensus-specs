@@ -1,9 +1,9 @@
-from eth2spec.test.helpers.block import build_empty_block
+from curdleproofs import WhiskTracker
 from eth2spec.test.context import spec_state_test, with_eip7441_and_later
+from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.helpers.eip7441 import compute_whisk_tracker_and_commitment
 from eth2spec.test.helpers.keys import whisk_ks_initial
 from eth2spec.test.helpers.state import state_transition_and_sign_block
-from eth2spec.test.helpers.eip7441 import compute_whisk_tracker_and_commitment
-from curdleproofs import WhiskTracker
 
 known_whisk_trackers = {}
 

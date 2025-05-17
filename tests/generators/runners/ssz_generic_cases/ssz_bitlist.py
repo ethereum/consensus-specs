@@ -1,8 +1,10 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
-from eth2spec.utils.ssz.ssz_typing import Bitlist
-from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
+
 from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_typing import Bitlist
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):

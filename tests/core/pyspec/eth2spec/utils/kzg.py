@@ -3,21 +3,20 @@
 # - https://github.com/asn-d6/kzgverify
 import json
 import os
-from typing import (
-    Tuple,
-    Sequence,
-)
 from pathlib import Path
-
-from eth_utils import encode_hex
-from py_ecc.typing import (
-    Optimized_Point3D,
+from typing import (
+    Sequence,
+    Tuple,
 )
+
 from eth2spec.utils import bls
 from eth2spec.utils.bls import (
     BLS_MODULUS,
 )
-
+from eth_utils import encode_hex
+from py_ecc.typing import (
+    Optimized_Point3D,
+)
 
 PRIMITIVE_ROOT_OF_UNITY = 7
 

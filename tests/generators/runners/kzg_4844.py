@@ -5,8 +5,6 @@ KZG test vectors generator for EIP-4844
 from functools import lru_cache
 from typing import Iterable
 
-from eth_utils import encode_hex
-
 from eth2spec.deneb import spec
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import DENEB
@@ -23,7 +21,7 @@ from eth2spec.test.utils.kzg_tests import (
     bls_add_one,
     encode_hex_list,
 )
-
+from eth_utils import encode_hex
 
 ###############################################################################
 # Test helpers

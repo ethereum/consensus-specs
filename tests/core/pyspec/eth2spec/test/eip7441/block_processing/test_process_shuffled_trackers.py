@@ -1,7 +1,7 @@
-from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
-from eth2spec.test.helpers.keys import whisk_ks_initial
-from eth2spec.test.helpers.eip7441 import compute_whisk_tracker
 from curdleproofs import GenerateWhiskShuffleProof
+from eth2spec.test.context import expect_assertion_error, spec_state_test, with_eip7441_and_later
+from eth2spec.test.helpers.eip7441 import compute_whisk_tracker
+from eth2spec.test.helpers.keys import whisk_ks_initial
 
 
 def set_correct_shuffle_proofs(spec, state, body):

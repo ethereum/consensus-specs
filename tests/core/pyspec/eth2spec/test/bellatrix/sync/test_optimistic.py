@@ -16,9 +16,9 @@ from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step,
 )
 from eth2spec.test.helpers.optimistic_sync import (
+    MegaStore,
     PayloadStatusV1,
     PayloadStatusV1Status,
-    MegaStore,
     add_optimistic_block,
     get_optimistic_store,
 )

@@ -1,4 +1,3 @@
-from eth_utils import encode_hex
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_until_eip7732,
@@ -23,6 +22,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
 )
+from eth_utils import encode_hex
 
 
 @with_altair_until_eip7732

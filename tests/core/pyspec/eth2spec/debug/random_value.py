@@ -1,21 +1,20 @@
-from random import Random
 from enum import Enum
-
+from random import Random
 from typing import Type
 
 from eth2spec.utils.ssz.ssz_typing import (
-    View,
     BasicView,
-    uint,
-    Container,
-    List,
-    boolean,
-    Vector,
-    ByteVector,
-    ByteList,
     Bitlist,
     Bitvector,
+    ByteList,
+    ByteVector,
+    Container,
+    List,
     Union,
+    Vector,
+    View,
+    boolean,
+    uint,
 )
 
 # in bytes

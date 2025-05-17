@@ -1,20 +1,17 @@
 import hashlib
-
+from inspect import getmembers, isclass
 from random import Random
 from typing import Iterable
-from inspect import getmembers, isclass
 
+from eth2spec.debug import encode, random_value
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart
-
-from eth2spec.debug import random_value, encode
-from eth2spec.test.helpers.constants import TESTGEN_FORKS, MINIMAL, MAINNET
 from eth2spec.test.context import spec_targets
-from eth2spec.utils.ssz.ssz_typing import Container
+from eth2spec.test.helpers.constants import MAINNET, MINIMAL, TESTGEN_FORKS
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
 )
-
+from eth2spec.utils.ssz.ssz_typing import Container
 
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10

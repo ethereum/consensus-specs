@@ -1,32 +1,33 @@
+from random import Random
+
 from eth2spec.test.context import (
+    PHASE0,
+    low_single_balance,
+    misc_balances,
+    single_phase,
     spec_state_test,
     spec_test,
     with_all_phases,
-    single_phase,
-    with_phases,
-    PHASE0,
     with_custom_state,
+    with_phases,
     zero_activation_threshold,
-    misc_balances,
-    low_single_balance,
-)
-from eth2spec.test.helpers.forks import (
-    is_post_altair,
-)
-from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_slot,
 )
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     get_valid_attestation,
-    sign_attestation,
     prepare_state_with_attestations,
+    sign_attestation,
 )
-from eth2spec.test.helpers.rewards import leaking
 from eth2spec.test.helpers.attester_slashings import get_indexed_attestation_participants
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
-from random import Random
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+)
+from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_slot,
+)
 
 
 def run_process_rewards_and_penalties(spec, state):
