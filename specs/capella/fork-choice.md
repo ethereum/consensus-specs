@@ -18,7 +18,8 @@
 
 This is the modification of the fork choice according to the Capella upgrade.
 
-Unless stated explicitly, all prior functionality from [Bellatrix](../bellatrix/fork-choice.md) is inherited.
+Unless stated explicitly, all prior functionality from
+[Bellatrix](../bellatrix/fork-choice.md) is inherited.
 
 ## Custom types
 
@@ -26,12 +27,14 @@ Unless stated explicitly, all prior functionality from [Bellatrix](../bellatrix/
 
 ### `ExecutionEngine`
 
-*Note*: The `notify_forkchoice_updated` function is modified in the `ExecutionEngine` protocol at the Capella upgrade.
+*Note*: The `notify_forkchoice_updated` function is modified in the
+`ExecutionEngine` protocol at the Capella upgrade.
 
 #### `notify_forkchoice_updated`
 
-The only change made is to the `PayloadAttributes` container through the addition of `withdrawals`.
-Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
+The only change made is to the `PayloadAttributes` container through the
+addition of `withdrawals`. Otherwise, `notify_forkchoice_updated` inherits all
+prior functionality.
 
 ```python
 def notify_forkchoice_updated(self: ExecutionEngine,
@@ -61,7 +64,8 @@ class PayloadAttributes(object):
 
 ### `on_block`
 
-*Note*: The only modification is the deletion of the verification of merge transition block conditions.
+*Note*: The only modification is the deletion of the verification of merge
+transition block conditions.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:

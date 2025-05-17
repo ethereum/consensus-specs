@@ -1,17 +1,17 @@
 import random
+
 from eth_utils import encode_hex
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.context import MINIMAL, spec_state_test, with_altair_and_later, with_presets
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
     build_empty_block,
-    transition_unsigned_block,
+    build_empty_block_for_next_slot,
     sign_block,
+    transition_unsigned_block,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -19,16 +19,16 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.fork_choice import (
-    check_head_against_root,
-    get_genesis_forkchoice_store_and_block,
-    get_store_full_state,
-    on_tick_and_append_step,
     add_block,
-    tick_and_add_block,
     apply_next_epoch_with_attestations,
     apply_next_slots_with_attestations,
-    is_ready_to_justify,
+    check_head_against_root,
     find_next_justifying_slot,
+    get_genesis_forkchoice_store_and_block,
+    get_store_full_state,
+    is_ready_to_justify,
+    on_tick_and_append_step,
+    tick_and_add_block,
 )
 from eth2spec.test.helpers.forks import (
     is_post_bellatrix,
@@ -40,6 +40,7 @@ from eth2spec.test.helpers.state import (
     payload_state_transition,
     state_transition_and_sign_block,
 )
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 rng = random.Random(2020)
 

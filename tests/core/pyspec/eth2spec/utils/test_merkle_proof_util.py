@@ -1,6 +1,5 @@
 import pytest
 
-
 # Note: these functions are extract from merkle-proofs.md (deprecated),
 # the tests are temporary to show correctness while the document is still there.
 

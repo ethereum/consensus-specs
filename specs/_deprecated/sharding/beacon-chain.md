@@ -42,18 +42,23 @@
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
-based on the ideas [here](https://notes.ethereum.org/@dankrad/new_sharding) and more broadly [here](https://arxiv.org/abs/1809.09044),
-using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+This document describes the extensions made to the Phase 0 design of The Beacon
+Chain to support data sharding, based on the ideas
+[here](https://notes.ethereum.org/@dankrad/new_sharding) and more broadly
+[here](https://arxiv.org/abs/1809.09044), using KZG10 commitments to commit to
+data to remove any need for fraud proofs (and hence, safety-critical synchrony
+assumptions) in the design.
 
 ### Glossary
 
 - **Data**: A list of KZG points, to translate a byte string into
-- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
+- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2
+  transactions.
 
 ## Constants
 
-The following values are (non-configurable) constants used throughout the specification.
+The following values are (non-configurable) constants used throughout the
+specification.
 
 ### Misc
 
@@ -79,7 +84,8 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Time parameters
 
-With the introduction of builder blocks the number of slots per epoch is doubled (it counts beacon blocks and builder blocks).
+With the introduction of builder blocks the number of slots per epoch is doubled
+(it counts beacon blocks and builder blocks).
 
 | Name              | Value                 | Unit  |   Duration   |
 | ----------------- | --------------------- | :---: | :----------: |
@@ -93,8 +99,9 @@ With the introduction of builder blocks the number of slots per epoch is doubled
 
 ## Configuration
 
-*Note*: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.
-E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
+*Note*: Some preset variables may become run-time configurable for testnets, but
+default to a preset while the spec is unstable. E.g. `ACTIVE_SHARDS` and
+`SAMPLES_PER_BLOB`.
 
 ### Time parameters
 

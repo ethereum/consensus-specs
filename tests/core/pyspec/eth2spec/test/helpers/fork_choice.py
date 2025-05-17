@@ -1,13 +1,14 @@
-from typing import NamedTuple, Sequence, Any
+from typing import Any, NamedTuple, Sequence
 
 from eth_utils import encode_hex
+
 from eth2spec.test.exceptions import BlockNotFoundException
-from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.state import (
     payload_state_transition,
     payload_state_transition_no_store,

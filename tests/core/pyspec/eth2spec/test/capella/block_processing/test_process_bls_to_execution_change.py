@@ -1,14 +1,14 @@
-from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
-from eth2spec.test.helpers.constants import CAPELLA, MAINNET
 from eth2spec.test.context import (
     always_bls,
     expect_assertion_error,
     spec_state_test,
     with_capella_and_later,
-    with_presets,
     with_phases,
+    with_presets,
 )
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth2spec.test.helpers.constants import CAPELLA, MAINNET
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def run_bls_to_execution_change_processing(spec, state, signed_address_change, valid=True):

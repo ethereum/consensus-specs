@@ -1,10 +1,11 @@
 from random import Random
+
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
 from eth2spec.test.helpers.forks import is_post_altair
-from eth2spec.test.helpers.state import transition_to, next_epoch_via_block, next_slot
+from eth2spec.test.helpers.state import next_epoch_via_block, next_slot, transition_to
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
 

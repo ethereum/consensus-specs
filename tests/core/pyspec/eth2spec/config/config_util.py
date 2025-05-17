@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Dict, Iterable, Union, BinaryIO, TextIO, Any
+from typing import Any, BinaryIO, Dict, Iterable, TextIO, Union
+
 from ruamel.yaml import YAML
 
 

@@ -1,9 +1,9 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
 )
-from eth2spec.test.helpers.forks import is_post_electra
 
 
 @with_all_phases

@@ -1,10 +1,10 @@
-from eth2spec.test.helpers.deposits import mock_deposit
-from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test, with_electra_and_later
+from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential_with_balance,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 

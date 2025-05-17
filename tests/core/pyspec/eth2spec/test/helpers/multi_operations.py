@@ -1,22 +1,22 @@
 from random import Random
 
-from eth2spec.test.helpers.keys import privkeys, pubkeys
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-)
+from eth2spec.test.helpers.attestations import get_max_attestations, get_valid_attestation
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing_by_indices
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth2spec.test.helpers.sync_committee import (
-    compute_committee_indices,
-    compute_aggregate_sync_committee_signature,
-)
-from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing_by_indices
-from eth2spec.test.helpers.attestations import get_valid_attestation, get_max_attestations
-from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
-from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
+from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
+from eth2spec.test.helpers.state import (
+    state_transition_and_sign_block,
+)
+from eth2spec.test.helpers.sync_committee import (
+    compute_aggregate_sync_committee_signature,
+    compute_committee_indices,
+)
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
 
 
 def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):

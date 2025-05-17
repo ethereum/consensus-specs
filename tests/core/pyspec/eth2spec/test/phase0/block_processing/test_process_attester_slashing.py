@@ -1,23 +1,23 @@
 from random import Random
 
 from eth2spec.test.context import (
-    spec_state_test,
-    expect_assertion_error,
     always_bls,
-    with_all_phases,
-    with_custom_state,
-    spec_test,
-    single_phase,
+    expect_assertion_error,
     low_balances,
     misc_balances,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import (
+    get_attestation_1_data,
+    get_attestation_2_data,
+    get_indexed_attestation_participants,
     get_valid_attester_slashing,
     get_valid_attester_slashing_by_indices,
-    get_indexed_attestation_participants,
-    get_attestation_2_data,
-    get_attestation_1_data,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_min_slashing_penalty_quotient,

@@ -7,12 +7,12 @@ from eth2spec.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
     MINIMAL,
 )
-from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
     transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
 )
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def mock_activated_validators(spec, state, mock_activations):

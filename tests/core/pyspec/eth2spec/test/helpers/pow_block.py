@@ -1,4 +1,5 @@
 from random import Random
+
 from eth2spec.utils.ssz.ssz_typing import uint256
 
 

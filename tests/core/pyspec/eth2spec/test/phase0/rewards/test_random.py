@@ -1,19 +1,19 @@
 from random import Random
 
+import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.context import (
-    with_all_phases,
-    spec_test,
-    spec_state_test,
-    with_custom_state,
-    single_phase,
     low_balances,
     misc_balances,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
 )
-import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.helpers.random import (
-    randomize_state,
     patch_state_to_non_leaking,
     randomize_attestation_participation,
+    randomize_state,
 )
 from eth2spec.test.helpers.state import has_active_balance_differential, next_epoch
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators

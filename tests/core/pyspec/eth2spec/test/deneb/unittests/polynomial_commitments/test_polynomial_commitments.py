@@ -1,16 +1,16 @@
 import random
 
 from eth2spec.test.context import (
-    spec_test,
-    single_phase,
-    with_deneb_and_later,
-    expect_assertion_error,
     always_bls,
+    expect_assertion_error,
+    single_phase,
+    spec_test,
+    with_deneb_and_later,
 )
 from eth2spec.test.helpers.blob import (
-    get_sample_blob,
-    get_poly_in_both_forms,
     eval_poly_in_coeff_form,
+    get_poly_in_both_forms,
+    get_sample_blob,
 )
 from eth2spec.utils import bls
 from eth2spec.utils.bls import BLS_MODULUS

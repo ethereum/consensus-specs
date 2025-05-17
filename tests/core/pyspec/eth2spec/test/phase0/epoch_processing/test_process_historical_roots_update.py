@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
-    PHASE0,
     ALTAIR,
     BELLATRIX,
+    PHASE0,
     spec_state_test,
     with_phases,
 )

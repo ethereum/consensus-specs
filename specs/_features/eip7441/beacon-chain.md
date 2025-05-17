@@ -26,9 +26,11 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the EIP-7441 (Whisk SSLE).
+This document details the beacon chain additions and changes of to support the
+EIP-7441 (Whisk SSLE).
 
-*Note*: This specification is built upon [capella](../../capella/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon
+[capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -69,7 +71,8 @@ This document details the beacon chain additions and changes of to support the E
 | `WhiskShuffleProof` | `ByteList[MAX_SHUFFLE_PROOF_SIZE]` | Serialized shuffle proof      |
 | `WhiskTrackerProof` | `ByteList[MAX_OPENING_PROOF_SIZE]` | Serialized tracker proof      |
 
-*Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for use in any of the functions below.
+*Note*: A subgroup check MUST be performed when deserializing a `BLSG1Point` for
+use in any of the functions below.
 
 ```python
 def BLSG1ScalarMultiply(scalar: BLSFieldElement, point: BLSG1Point) -> BLSG1Point:
@@ -94,7 +97,10 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
 
 ### Curdleproofs and opening proofs
 
-Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and all related data structures and verifier code (along with tests) is specified in [curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev) repository.
+Note that Curdleproofs (Whisk Shuffle Proofs), the tracker opening proofs and
+all related data structures and verifier code (along with tests) is specified in
+[curdleproofs.pie](https://github.com/nalinbhardwaj/curdleproofs.pie/tree/dev)
+repository.
 
 ```python
 def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
@@ -244,7 +250,8 @@ def process_whisk_opening_proof(state: BeaconState, block: BeaconBlock) -> None:
     assert IsValidWhiskOpeningProof(tracker, k_commitment, block.body.whisk_opening_proof)
 ```
 
-Removed `assert block.proposer_index == get_beacon_proposer_index(state)` check in Whisk.
+Removed `assert block.proposer_index == get_beacon_proposer_index(state)` check
+in Whisk.
 
 ```python
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:

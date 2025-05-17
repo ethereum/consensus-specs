@@ -1,10 +1,10 @@
-from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
-)
 from eth2spec.test.context import (
+    ELECTRA,
     spec_state_test,
     with_phases,
-    ELECTRA,
+)
+from eth2spec.test.helpers.block import (
+    build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.deposits import (
     build_deposit_data,

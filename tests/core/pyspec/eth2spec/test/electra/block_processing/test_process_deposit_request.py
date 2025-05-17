@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, always_bls, with_electra_and_later
+from eth2spec.test.context import always_bls, spec_state_test, with_electra_and_later
 from eth2spec.test.helpers.deposits import (
     prepare_deposit_request,
     run_deposit_request_processing,

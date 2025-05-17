@@ -54,7 +54,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 The fork is triggered at epoch `DENEB_FORK_EPOCH`.
 
-Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
+Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since
+it starts with Deneb version logic.
 
 ### Upgrading the state
 

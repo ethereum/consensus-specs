@@ -2,7 +2,6 @@ from eth2spec.test.helpers.constants import (
     DENEB,
 )
 
-
 DENEB_FORK_TEST_META_TAGS = {
     "fork": DENEB,
 }

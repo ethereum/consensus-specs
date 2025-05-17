@@ -1,11 +1,13 @@
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
     Any,
     Callable,
     Iterable,
     NewType,
+    Optional,
     Tuple,
 )
-from dataclasses import dataclass
 
 # Elements: name, out_kind, data
 #
@@ -26,11 +28,29 @@ class TestCase(object):
     suite_name: str
     case_name: str
     case_fn: Callable[[], Iterable[TestCasePart]]
+    dir: Optional[Path] = None
 
+    def get_identifier(self):
+        """Return the human readable identifier."""
+        return "::".join(
+            [
+                self.preset_name,
+                self.fork_name,
+                self.runner_name,
+                self.handler_name,
+                self.suite_name,
+                self.case_name,
+            ]
+        )
 
-@dataclass
-class TestProvider(object):
-    # Prepares the context for the provider as a whole, as opposed to per-test-case changes.
-    prepare: Callable[[], None]
-    # Retrieves an iterable of cases, called after prepare()
-    make_cases: Callable[[], Iterable[TestCase]]
+    def set_output_dir(self, output_dir: str) -> None:
+        """Compute and store the output directory on the instance."""
+        self.dir = (
+            Path(output_dir)
+            / self.preset_name
+            / self.fork_name
+            / self.runner_name
+            / self.handler_name
+            / self.suite_name
+            / self.case_name
+        )

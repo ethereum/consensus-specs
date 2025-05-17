@@ -108,9 +108,11 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 ### Rewards and penalties
 
-This patch updates a few configuration values to move penalty parameters closer to their final, maximum security values.
+This patch updates a few configuration values to move penalty parameters closer
+to their final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
+*Note*: The spec does *not* override previous configuration values but instead
+creates new values and replaces usage throughout.
 
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |
@@ -216,9 +218,11 @@ class SyncCommittee(Container):
 
 ### Crypto
 
-Refer to the definitions in the [phase 0 document regarding BLS signatures](../phase0/beacon-chain.md#bls-signatures)
-and the extensions defined in the [Altair BLS document](./bls.md). This specification assumes knowledge of
-the functionality described in those documents.
+Refer to the definitions in the
+[phase 0 document regarding BLS signatures](../phase0/beacon-chain.md#bls-signatures)
+and the extensions defined in the [Altair BLS document](./bls.md). This
+specification assumes knowledge of the functionality described in those
+documents.
 
 ### Misc
 
@@ -291,7 +295,9 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 #### `get_next_sync_committee`
 
-*Note*: The function `get_next_sync_committee` should only be called at sync committee period boundaries and when [upgrading state to Altair](./fork.md#upgrading-the-state).
+*Note*: The function `get_next_sync_committee` should only be called at sync
+committee period boundaries and when
+[upgrading state to Altair](./fork.md#upgrading-the-state).
 
 ```python
 def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
@@ -313,9 +319,11 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
 
 #### `get_base_reward`
 
-*Note*: The function `get_base_reward` is modified with the removal of `BASE_REWARDS_PER_EPOCH` and the use of increment based accounting.
+*Note*: The function `get_base_reward` is modified with the removal of
+`BASE_REWARDS_PER_EPOCH` and the use of increment based accounting.
 
-*Note*: On average an optimally performing validator earns one base reward per epoch.
+*Note*: On average an optimally performing validator earns one base reward per
+epoch.
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
@@ -423,8 +431,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 #### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`
-and use `PROPOSER_WEIGHT` when calculating the proposer reward.
+*Note*: The function `slash_validator` is modified to use
+`MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR` and use `PROPOSER_WEIGHT` when
+calculating the proposer reward.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -464,7 +473,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Modified `process_attestation`
 
-*Note*: The function `process_attestation` is modified to do incentive accounting with epoch participation flags.
+*Note*: The function `process_attestation` is modified to do incentive
+accounting with epoch participation flags.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -504,7 +514,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 #### Modified `add_validator_to_registry`
 
-*Note*: The function `add_validator_to_registry` is modified to initialize `inactivity_scores`, `previous_epoch_participation`, and `current_epoch_participation`.
+*Note*: The function `add_validator_to_registry` is modified to initialize
+`inactivity_scores`, `previous_epoch_participation`, and
+`current_epoch_participation`.
 
 ```python
 def add_validator_to_registry(state: BeaconState,
@@ -573,7 +585,8 @@ def process_epoch(state: BeaconState) -> None:
 
 #### Justification and finalization
 
-*Note*: The function `process_justification_and_finalization` is modified to adapt to the new participation records.
+*Note*: The function `process_justification_and_finalization` is modified to
+adapt to the new participation records.
 
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
@@ -612,7 +625,8 @@ def process_inactivity_updates(state: BeaconState) -> None:
 
 #### Rewards and penalties
 
-*Note*: The function `process_rewards_and_penalties` is modified to support the incentive accounting reforms.
+*Note*: The function `process_rewards_and_penalties` is modified to support the
+incentive accounting reforms.
 
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
@@ -630,7 +644,8 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
 #### Slashings
 
-*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR`.
+*Note*: The function `process_slashings` is modified to use
+`PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:

@@ -1,14 +1,12 @@
 from eth2spec.test.context import (
-    spec_state_test,
     always_bls,
-    with_phases,
+    spec_state_test,
     with_altair_and_later,
+    with_phases,
 )
 from eth2spec.test.helpers.constants import (
     ALTAIR,
 )
-
-
 from eth2spec.test.helpers.deposits import (
     run_deposit_processing_with_specific_fork_version,
 )

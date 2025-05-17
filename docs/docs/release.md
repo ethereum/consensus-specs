@@ -125,7 +125,7 @@ cp -r presets ../consensus-spec-tests
 cp -r configs ../consensus-spec-tests
 ```
 
-Next, use `make gen_all` to generate all the reference tests. The following command will run all
+Next, use `make reftests` to generate all the reference tests. The following command will run all
 generators in parallel for maximum speed. The console output is saved to a file so we can check for
 errors afterwards.
 
@@ -143,7 +143,7 @@ errors afterwards.
 > to do this. Note that the "Bundle Reference Tests" section can be skipped if this route is taken.
 
 ```bash
-make --jobs gen_all 2>&1 | tee ../consensustestgen.log
+make reftests verbose=true 2>&1 | tee ../consensustestgen.log
 ```
 
 Next, check for errors by searching for "ERROR" in test logfile.

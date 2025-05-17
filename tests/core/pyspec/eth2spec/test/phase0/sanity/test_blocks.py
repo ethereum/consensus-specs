@@ -1,31 +1,32 @@
 from random import Random
-from eth2spec.utils import bls
 
-from eth2spec.test.helpers.state import (
-    get_balance,
-    state_transition_and_sign_block,
-    next_slot,
-    next_epoch,
-    next_epoch_via_block,
+from eth2spec.test.context import (
+    always_bls,
+    dump_skipping_message,
+    expect_assertion_error,
+    large_validator_set,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
+    with_phases,
+    with_presets,
+)
+from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.attester_slashings import (
+    get_indexed_attestation_participants,
+    get_max_attester_slashings,
+    get_valid_attester_slashing,
+    get_valid_attester_slashing_by_indices,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
     build_empty_block,
+    build_empty_block_for_next_slot,
     sign_block,
     transition_unsigned_block,
 )
-from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.attester_slashings import (
-    get_valid_attester_slashing_by_indices,
-    get_valid_attester_slashing,
-    get_indexed_attestation_participants,
-    get_max_attester_slashings,
-)
-from eth2spec.test.helpers.proposer_slashings import (
-    get_valid_proposer_slashing,
-    check_proposer_slashing_effect,
-)
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.constants import MINIMAL, PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -33,36 +34,35 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
-from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_capella,
+    is_post_eip7732,
+    is_post_electra,
+)
+from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.multi_operations import (
     run_slash_and_exit,
     run_test_full_random_operations,
+)
+from eth2spec.test.helpers.proposer_slashings import (
+    check_proposer_slashing_effect,
+    get_valid_proposer_slashing,
+)
+from eth2spec.test.helpers.state import (
+    get_balance,
+    next_epoch,
+    next_epoch_via_block,
+    next_slot,
+    state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_committee_indices,
     compute_sync_committee_participant_reward_and_penalty,
 )
-from eth2spec.test.helpers.constants import PHASE0, MINIMAL
-from eth2spec.test.helpers.forks import (
-    is_post_altair,
-    is_post_bellatrix,
-    is_post_electra,
-    is_post_capella,
-    is_post_eip7732,
-)
-from eth2spec.test.context import (
-    spec_test,
-    spec_state_test,
-    dump_skipping_message,
-    with_phases,
-    with_all_phases,
-    single_phase,
-    expect_assertion_error,
-    always_bls,
-    with_presets,
-    with_custom_state,
-    large_validator_set,
-)
+from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
+from eth2spec.utils import bls
 
 
 @with_all_phases

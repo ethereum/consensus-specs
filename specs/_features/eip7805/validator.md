@@ -24,15 +24,20 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an "honest validator" to implement EIP-7805.
+This document represents the changes to be made in the code of an "honest
+validator" to implement EIP-7805.
 
 ## Prerequisites
 
-This document is an extension of the [Electra -- Honest Validator](../../electra/validator.md) guide.
-All behaviors and definitions defined in this document, and documents it extends, carry over unless explicitly noted or overridden.
+This document is an extension of the
+[Electra -- Honest Validator](../../electra/validator.md) guide. All behaviors
+and definitions defined in this document, and documents it extends, carry over
+unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in the updated Beacon Chain doc of [EIP-7805](./beacon-chain.md) are requisite for this document and used throughout.
-Please see related Beacon Chain doc before continuing and use them as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the
+updated Beacon Chain doc of [EIP-7805](./beacon-chain.md) are requisite for this
+document and used throughout. Please see related Beacon Chain doc before
+continuing and use them as a reference throughout.
 
 ## Configuration
 
@@ -46,15 +51,21 @@ Please see related Beacon Chain doc before continuing and use them as a referenc
 
 ### `ExecutionEngine`
 
-*Note*: `engine_getInclusionListV1` and `engine_updateBlockWithInclusionListV1` functions are added to the `ExecutionEngine` protocol for use as a validator.
+*Note*: `engine_getInclusionListV1` and `engine_updateBlockWithInclusionListV1`
+functions are added to the `ExecutionEngine` protocol for use as a validator.
 
-The body of these function is implementation dependent. The Engine API may be used to implement it with an external execution engine.
+The body of these function is implementation dependent. The Engine API may be
+used to implement it with an external execution engine.
 
 ## New inclusion list committee assignment
 
-A validator may be a member of the new Inclusion List Committee (ILC) for a given slot. To check for ILC assignments the validator uses the helper `get_inclusion_committee_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
+A validator may be a member of the new Inclusion List Committee (ILC) for a
+given slot. To check for ILC assignments the validator uses the helper
+`get_inclusion_committee_assignment(state, epoch, validator_index)` where
+`epoch <= next_epoch`.
 
-Inclusion list committee selection is only stable within the context of the current and next epoch.
+Inclusion list committee selection is only stable within the context of the
+current and next epoch.
 
 ```python
 def get_inclusion_committee_assignment(
@@ -77,34 +88,50 @@ def get_inclusion_committee_assignment(
 
 ### Lookahead
 
-`get_inclusion_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting their assigned ILC slot.
+`get_inclusion_committee_assignment` should be called at the start of each epoch
+to get the assignment for the next epoch (`current_epoch + 1`). A validator
+should plan for future assignments by noting their assigned ILC slot.
 
 ## New proposer duty
 
 ### Block proposal
 
-Proposers are still expected to propose `SignedBeaconBlock` at the beginning of any slot during which `is_proposer(state, validator_index)` returns true. The mechanism to prepare this beacon block and related sidecars differs from previous forks as follows:
+Proposers are still expected to propose `SignedBeaconBlock` at the beginning of
+any slot during which `is_proposer(state, validator_index)` returns true. The
+mechanism to prepare this beacon block and related sidecars differs from
+previous forks as follows:
 
 #### Update execution client with inclusion lists
 
-The proposer should call `engine_updateInclusionListV1` at `PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion lists that gathered up to `PROPOSER_INCLUSION_LIST_CUT_OFF`.
+The proposer should call `engine_updateInclusionListV1` at
+`PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion
+lists that gathered up to `PROPOSER_INCLUSION_LIST_CUT_OFF`.
 
 ## New inclusion list committee duty
 
-Some validators are selected to submit signed inclusion list. Validators should call `get_inclusion_committee_assignment` at the beginning of an epoch to be prepared to submit their inclusion list during the next epoch.
+Some validators are selected to submit signed inclusion list. Validators should
+call `get_inclusion_committee_assignment` at the beginning of an epoch to be
+prepared to submit their inclusion list during the next epoch.
 
-A validator should create and broadcast the `signed_inclusion_list` to the global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into the slot, unless a block for the current slot has been processed and is the head of the chain and broadcast to the network.
+A validator should create and broadcast the `signed_inclusion_list` to the
+global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into
+the slot, unless a block for the current slot has been processed and is the head
+of the chain and broadcast to the network.
 
 #### Constructing a signed inclusion list
 
 The validator creates the `signed_inclusion_list` as follows:
 
 - First, the validator creates the `inclusion_list`.
-- Set `inclusion_list.slot` to the assigned slot returned by `get_inclusion_committee_assignment`.
+- Set `inclusion_list.slot` to the assigned slot returned by
+  `get_inclusion_committee_assignment`.
 - Set `inclusion_list.validator_index` to the validator's index.
-- Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of the committee that the validator is a member of.
-- Set `inclusion_list.transactions` using the response from `engine_getInclusionListV1` from the execution layer client.
-- Sign the `inclusion_list` using the helper `get_inclusion_list_signature` and obtain the `signature`.
+- Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of
+  the committee that the validator is a member of.
+- Set `inclusion_list.transactions` using the response from
+  `engine_getInclusionListV1` from the execution layer client.
+- Sign the `inclusion_list` using the helper `get_inclusion_list_signature` and
+  obtain the `signature`.
 - Set `signed_inclusion_list.message` to `inclusion_list`.
 - Set `signed_inclusion_list.signature` to `signature`.
 

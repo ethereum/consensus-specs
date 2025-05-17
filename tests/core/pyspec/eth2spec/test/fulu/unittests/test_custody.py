@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     expect_assertion_error,
-    spec_test,
     single_phase,
+    spec_test,
     with_fulu_and_later,
 )
 

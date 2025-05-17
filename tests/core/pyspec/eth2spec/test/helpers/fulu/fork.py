@@ -2,7 +2,6 @@ from eth2spec.test.helpers.constants import (
     FULU,
 )
 
-
 FULU_FORK_TEST_META_TAGS = {
     "fork": FULU,
 }

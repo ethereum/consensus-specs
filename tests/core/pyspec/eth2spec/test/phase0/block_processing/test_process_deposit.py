@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
+from eth2spec.test.context import always_bls, spec_state_test, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -6,8 +6,8 @@ from eth2spec.test.helpers.deposits import (
     run_deposit_processing_with_specific_fork_version,
     sign_deposit_data,
 )
-from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.keys import privkeys, pubkeys
 
 
 @with_all_phases

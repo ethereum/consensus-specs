@@ -1,16 +1,16 @@
-from eth2spec.test.helpers.execution_payload import (
-    build_empty_execution_payload,
-    compute_el_block_hash,
-    build_state_with_incomplete_transition,
+from eth2spec.test.bellatrix.block_processing.test_process_execution_payload import (
+    run_execution_payload_processing,
 )
 from eth2spec.test.context import (
     spec_state_test,
     with_capella_and_later,
 )
-from eth2spec.test.helpers.state import next_slot
-from eth2spec.test.bellatrix.block_processing.test_process_execution_payload import (
-    run_execution_payload_processing,
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_state_with_incomplete_transition,
+    compute_el_block_hash,
 )
+from eth2spec.test.helpers.state import next_slot
 
 
 @with_capella_and_later

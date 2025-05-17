@@ -51,7 +51,8 @@ def get_power_of_two_floor(x: int) -> int:
 
 ## Generalized Merkle tree index
 
-In a binary Merkle tree, we define a "generalized index" of a node as `2**depth + index`. Visually, this looks as follows:
+In a binary Merkle tree, we define a "generalized index" of a node as
+`2**depth + index`. Visually, this looks as follows:
 
 ```
     1
@@ -60,7 +61,10 @@ In a binary Merkle tree, we define a "generalized index" of a node as `2**depth 
    ...
 ```
 
-Note that the generalized index has the convenient property that the two children of node `k` are `2k` and `2k+1`, and also that it equals the position of a node in the linear representation of the Merkle tree that's computed by this function:
+Note that the generalized index has the convenient property that the two
+children of node `k` are `2k` and `2k+1`, and also that it equals the position
+of a node in the linear representation of the Merkle tree that's computed by
+this function:
 
 ```python
 def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
@@ -76,13 +80,16 @@ def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
     return o
 ```
 
-We define a custom type `GeneralizedIndex` as a Python integer type in this document. It can be represented as a Bitvector/Bitlist object as well.
+We define a custom type `GeneralizedIndex` as a Python integer type in this
+document. It can be represented as a Bitvector/Bitlist object as well.
 
 We will define Merkle proofs in terms of generalized indices.
 
 ## SSZ object to index
 
-We can describe the hash tree of any SSZ object, rooted in `hash_tree_root(object)`, as a binary Merkle tree whose depth may vary. For example, an object `{x: bytes32, y: List[uint64]}` would look as follows:
+We can describe the hash tree of any SSZ object, rooted in
+`hash_tree_root(object)`, as a binary Merkle tree whose depth may vary. For
+example, an object `{x: bytes32, y: List[uint64]}` would look as follows:
 
 ```
      root
@@ -95,7 +102,16 @@ y_data_root  len(y)
   .......
 ```
 
-We can now define a concept of a "path", a way of describing a function that takes as input an SSZ object and outputs some specific (possibly deeply nested) member. For example, `foo -> foo.x` is a path, as are `foo -> len(foo.y)` and `foo -> foo.y[5].w`. We'll describe paths as lists, which can have two representations. In "human-readable form", they are `["x"]`, `["y", "__len__"]` and `["y", 5, "w"]` respectively. In "encoded form", they are lists of `uint64` values, in these cases (assuming the fields of `foo` in order are `x` then `y`, and `w` is the first field of `y[i]`) `[0]`, `[1, 2**64-1]`, `[1, 5, 0]`. We define `SSZVariableName` as the member variable name string, i.e., a path is presented as a sequence of integers and `SSZVariableName`.
+We can now define a concept of a "path", a way of describing a function that
+takes as input an SSZ object and outputs some specific (possibly deeply nested)
+member. For example, `foo -> foo.x` is a path, as are `foo -> len(foo.y)` and
+`foo -> foo.y[5].w`. We'll describe paths as lists, which can have two
+representations. In "human-readable form", they are `["x"]`, `["y", "__len__"]`
+and `["y", 5, "w"]` respectively. In "encoded form", they are lists of `uint64`
+values, in these cases (assuming the fields of `foo` in order are `x` then `y`,
+and `w` is the first field of `y[i]`) `[0]`, `[1, 2**64-1]`, `[1, 5, 0]`. We
+define `SSZVariableName` as the member variable name string, i.e., a path is
+presented as a sequence of integers and `SSZVariableName`.
 
 ```python
 def item_length(typ: SSZType) -> int:
@@ -183,7 +199,10 @@ def get_generalized_index(typ: SSZType, *path: PyUnion[int, SSZVariableName]) ->
 
 ### Helpers for generalized indices
 
-_Usage note: functions outside this section should manipulate generalized indices using only functions inside this section. This is to make it easier for developers to implement generalized indices with underlying representations other than bigints._
+_Usage note: functions outside this section should manipulate generalized
+indices using only functions inside this section. This is to make it easier for
+developers to implement generalized indices with underlying representations
+other than bigints._
 
 #### `concat_generalized_indices`
 
@@ -242,7 +261,11 @@ def generalized_index_parent(index: GeneralizedIndex) -> GeneralizedIndex:
 
 ## Merkle multiproofs
 
-We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree needed to fully authenticate that a set of nodes actually are part of a Merkle tree with some specified root, at a particular set of generalized indices. For example, here is the Merkle multiproof for positions 0, 1, 6 in an 8-node Merkle tree (i.e. generalized indices 8, 9, 14):
+We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree
+needed to fully authenticate that a set of nodes actually are part of a Merkle
+tree with some specified root, at a particular set of generalized indices. For
+example, here is the Merkle multiproof for positions 0, 1, 6 in an 8-node Merkle
+tree (i.e. generalized indices 8, 9, 14):
 
 ```
        .
@@ -251,9 +274,16 @@ We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree need
 x x . . . . x *
 ```
 
-. are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, the same amount required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
+. are unused nodes, * are used nodes, x are the values we are trying to prove.
+Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary
+nodes, the same amount required to prove a single value. Normally the efficiency
+gains are not quite that extreme, but the savings relative to individual Merkle
+proofs are still significant. As a rule of thumb, a multiproof for k nodes at
+the same level of an n-node tree has size `k * (n/k + log(n/k))`.
 
-First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
+First, we provide a method for computing the generalized indices of the
+auxiliary tree nodes that a proof of a given set of generalized indices will
+require:
 
 ```python
 def get_branch_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedIndex]:
@@ -295,7 +325,8 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
     return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
-Now we provide the Merkle proof verification functions. First, for single item proofs:
+Now we provide the Merkle proof verification functions. First, for single item
+proofs:
 
 ```python
 def calculate_merkle_root(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex) -> Root:
@@ -348,4 +379,9 @@ def verify_merkle_multiproof(leaves: Sequence[Bytes32],
     return calculate_multi_merkle_root(leaves, proof, indices) == root
 ```
 
-Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
+Note that the single-item proof is a special case of a multi-item proof; a valid
+single-item proof verifies correctly when put into the multi-item verification
+function (making the natural trivial changes to input arguments,
+`index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root`
+and `calculate_multi_merkle_root` can be used independently to compute the new
+Merkle root of a proof with leaves updated.

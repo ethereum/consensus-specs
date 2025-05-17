@@ -1,7 +1,7 @@
-from eth2spec.test.context import with_all_phases, with_phases, spec_state_test
+import eth2spec.test.helpers.rewards as rewards_helpers
+from eth2spec.test.context import spec_state_test, with_all_phases, with_phases
 from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.rewards import leaking
-import eth2spec.test.helpers.rewards as rewards_helpers
 
 
 @with_all_phases

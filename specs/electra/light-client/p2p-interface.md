@@ -19,7 +19,9 @@
 
 ## Networking
 
-The [Deneb light client networking specification](../../deneb/light-client/p2p-interface.md) is extended to exchange [Electra light client data](./sync-protocol.md).
+The
+[Deneb light client networking specification](../../deneb/light-client/p2p-interface.md)
+is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ### The gossip domain: gossipsub
 

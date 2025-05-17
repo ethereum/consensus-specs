@@ -19,7 +19,9 @@
 
 ## Networking
 
-The [Altair light client networking specification](../../altair/light-client/p2p-interface.md) is extended to exchange [Capella light client data](./sync-protocol.md).
+The
+[Altair light client networking specification](../../altair/light-client/p2p-interface.md)
+is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ### The gossip domain: gossipsub
 

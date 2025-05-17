@@ -1,15 +1,15 @@
 from eth2spec.test.context import (
-    spec_state_test,
-    expect_assertion_error,
     always_bls,
+    expect_assertion_error,
+    spec_state_test,
     with_all_phases,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import (
-    get_valid_proposer_slashing,
     check_proposer_slashing_effect,
+    get_valid_proposer_slashing,
 )
 from eth2spec.test.helpers.state import next_epoch
 

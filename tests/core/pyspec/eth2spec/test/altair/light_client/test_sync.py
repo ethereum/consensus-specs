@@ -19,8 +19,8 @@ from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.light_client import (
-    get_sync_aggregate,
     compute_start_slot_at_next_sync_committee_period,
+    get_sync_aggregate,
 )
 from eth2spec.test.helpers.light_client_sync import (
     emit_force_update,

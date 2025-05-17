@@ -1,16 +1,17 @@
 import random
+
 from eth2spec.test.context import (
     spec_state_test,
     with_deneb_and_later,
 )
-from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash,
-)
-from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
+from eth2spec.test.helpers.execution_payload import (
+    compute_el_block_hash,
+)
+from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 def _get_sample_sidecars(spec, state, rng):

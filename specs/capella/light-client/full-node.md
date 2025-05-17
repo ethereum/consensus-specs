@@ -10,7 +10,8 @@
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Capella upgrade.
+This upgrade adds information about the execution payload to light client data
+as part of the Capella upgrade.
 
 ## Helper functions
 

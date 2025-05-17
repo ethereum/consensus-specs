@@ -1,5 +1,10 @@
 from typing import Optional
-from eth2spec.utils.ssz.ssz_typing import uint256, Bytes32
+
+from eth2spec.test.context import (
+    spec_configured_state_test,
+    spec_state_test,
+    with_bellatrix_and_later,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -7,16 +12,11 @@ from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.pow_block import (
     prepare_random_pow_chain,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.context import (
-    spec_state_test,
-    with_bellatrix_and_later,
-    spec_configured_state_test,
-)
-
+from eth2spec.utils.ssz.ssz_typing import Bytes32, uint256
 
 TERMINAL_BLOCK_HASH_CONFIG_VAR = (
     "0x0000000000000000000000000000000000000000000000000000000000000001"

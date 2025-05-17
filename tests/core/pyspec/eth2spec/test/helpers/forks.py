@@ -1,13 +1,13 @@
 from .constants import (
-    PHASE0,
     ALTAIR,
     BELLATRIX,
     CAPELLA,
     DENEB,
-    ELECTRA,
-    FULU,
     EIP7441,
     EIP7732,
+    ELECTRA,
+    FULU,
+    PHASE0,
     PREVIOUS_FORK_OF,
 )
 

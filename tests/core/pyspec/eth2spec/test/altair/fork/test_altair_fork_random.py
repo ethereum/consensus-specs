@@ -1,29 +1,29 @@
 from random import Random
 
 from eth2spec.test.context import (
-    with_phases,
-    with_custom_state,
-    with_presets,
-    spec_test,
-    with_state,
+    large_validator_set,
     low_balances,
     misc_balances,
-    large_validator_set,
-)
-from eth2spec.test.utils import with_meta_tags
-from eth2spec.test.helpers.constants import (
-    PHASE0,
-    ALTAIR,
-    MINIMAL,
+    spec_test,
+    with_custom_state,
+    with_phases,
+    with_presets,
+    with_state,
 )
 from eth2spec.test.helpers.altair.fork import (
     ALTAIR_FORK_TEST_META_TAGS,
     run_fork_test,
 )
-from eth2spec.test.helpers.random import (
-    randomize_state,
-    randomize_attestation_participation,
+from eth2spec.test.helpers.constants import (
+    ALTAIR,
+    MINIMAL,
+    PHASE0,
 )
+from eth2spec.test.helpers.random import (
+    randomize_attestation_participation,
+    randomize_state,
+)
+from eth2spec.test.utils import with_meta_tags
 
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])

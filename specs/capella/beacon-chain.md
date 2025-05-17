@@ -39,19 +39,21 @@
 
 ## Introduction
 
-Capella is a consensus-layer upgrade containing a number of features related
-to validator withdrawals. Including:
+Capella is a consensus-layer upgrade containing a number of features related to
+validator withdrawals. Including:
 
 - Automatic withdrawals of `withdrawable` validators.
-- Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
+- Partial withdrawals sweep for validators with 0x01 withdrawal credentials and
+  balances in excess of `MAX_EFFECTIVE_BALANCE`.
 - Operation to change from `BLS_WITHDRAWAL_PREFIX` to
-  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
+  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable
+  withdrawals for a validator.
 
-Another new feature is the new independent state and block historical accumulators
-that replace the original singular historical roots. With these accumulators, it becomes possible to validate
-the entire block history that led up to that particular state without any additional information
-beyond the state and the blocks.
+Another new feature is the new independent state and block historical
+accumulators that replace the original singular historical roots. With these
+accumulators, it becomes possible to validate the entire block history that led
+up to that particular state without any additional information beyond the state
+and the blocks.
 
 ## Custom types
 
@@ -289,7 +291,8 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Epoch processing
 
-*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Capella.
+*Note*: The function `process_historical_summaries_update` replaces
+`process_historical_roots_update` in Capella.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -398,8 +401,9 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type
-and removed the `is_merge_transition_complete` check.
+*Note*: The function `process_execution_payload` is modified to use the new
+`ExecutionPayloadHeader` type and removed the `is_merge_transition_complete`
+check.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -435,7 +439,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Modified `process_operations`
 
-*Note*: The function `process_operations` is modified to process `BLSToExecutionChange` operations included in the block.
+*Note*: The function `process_operations` is modified to process
+`BLSToExecutionChange` operations included in the block.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:

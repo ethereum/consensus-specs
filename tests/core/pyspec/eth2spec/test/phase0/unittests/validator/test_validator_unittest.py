@@ -1,16 +1,16 @@
 import random
 
 from eth2spec.test.context import (
+    always_bls,
     single_phase,
     spec_state_test,
     spec_test,
-    always_bls,
-    with_phases,
     with_all_phases,
+    with_phases,
 )
-from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.state import next_epoch
@@ -36,7 +36,6 @@ def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True
         assert committee == spec.get_beacon_committee(state, slot, committee_index)
         assert committee_index < spec.get_committee_count_per_slot(state, epoch)
         assert validator_index in committee
-        assert valid
     except AssertionError:
         assert not valid
     else:

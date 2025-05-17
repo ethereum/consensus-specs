@@ -1,3 +1,5 @@
+from math import floor
+
 from eth2spec.test.helpers.constants import (
     CAPELLA,
     DENEB,
@@ -11,7 +13,6 @@ from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
 )
-from math import floor
 
 
 def latest_finalized_root_gindex(spec):

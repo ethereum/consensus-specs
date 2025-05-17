@@ -1,11 +1,11 @@
-from eth2spec.utils.ssz.ssz_typing import uint256
-from eth2spec.test.helpers.pow_block import (
-    prepare_random_pow_block,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_bellatrix_and_later,
 )
+from eth2spec.test.helpers.pow_block import (
+    prepare_random_pow_block,
+)
+from eth2spec.utils.ssz.ssz_typing import uint256
 
 
 @with_bellatrix_and_later

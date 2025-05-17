@@ -1,18 +1,18 @@
 from typing import (
     Dict,
 )
+
 from .constants import (
-    MINIMAL,
-    MAINNET,
     ALL_PHASES,
     EIP7441,
+    MAINNET,
+    MINIMAL,
 )
 from .typing import (
     PresetBaseName,
-    SpecForkName,
     Spec,
+    SpecForkName,
 )
-
 
 # NOTE: special case like `ALLOWED_TEST_RUNNER_FORKS`
 ALL_EXECUTABLE_SPEC_NAMES = ALL_PHASES + (EIP7441,)

@@ -1,23 +1,23 @@
 from random import Random
 
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-    next_epoch,
-    set_full_participation_previous_epoch,
+from eth2spec.test.context import (
+    spec_state_test,
+    with_altair_and_later,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
     build_empty_block,
+    build_empty_block_for_next_slot,
+)
+from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
+from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    set_full_participation_previous_epoch,
+    state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
 )
-from eth2spec.test.context import (
-    with_altair_and_later,
-    spec_state_test,
-)
-from eth2spec.test.helpers.rewards import leaking
-from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 
 
 def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(454545)):

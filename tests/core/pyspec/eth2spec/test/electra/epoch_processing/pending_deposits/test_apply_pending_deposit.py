@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
+    always_bls,
     spec_state_test,
     with_electra_and_later,
-    always_bls,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_pending_deposit,

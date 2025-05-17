@@ -1,17 +1,16 @@
 from copy import deepcopy
 from typing import Optional
 
-from eth2spec.test.helpers.pow_block import (
-    prepare_random_pow_chain,
-)
-from eth2spec.test.helpers.constants import (
-    BELLATRIX,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
 )
-
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+)
+from eth2spec.test.helpers.pow_block import (
+    prepare_random_pow_chain,
+)
 
 # For test_get_pow_block_at_terminal_total_difficulty
 IS_HEAD_BLOCK = "is_head_block"

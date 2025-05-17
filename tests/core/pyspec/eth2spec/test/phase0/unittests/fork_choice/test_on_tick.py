@@ -1,8 +1,8 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
-from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
+from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth2spec.test.helpers.state import (
     next_epoch,
     state_transition_and_sign_block,

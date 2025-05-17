@@ -1,35 +1,36 @@
 import random
+
+from eth2spec.test.context import (
+    always_bls,
+    default_activation_threshold,
+    default_balances_electra,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_altair_and_later,
+    with_custom_state,
+    with_presets,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-)
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-    transition_to,
-    next_epoch_via_block,
 )
 from eth2spec.test.helpers.constants import (
     MAINNET,
     MINIMAL,
 )
+from eth2spec.test.helpers.state import (
+    next_epoch_via_block,
+    state_transition_and_sign_block,
+    transition_to,
+)
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
-    run_sync_committee_processing,
     run_successful_sync_committee_test,
+    run_sync_committee_processing,
 )
 from eth2spec.test.helpers.voluntary_exits import (
     get_unslashed_exited_validators,
-)
-from eth2spec.test.context import (
-    with_altair_and_later,
-    with_presets,
-    spec_state_test,
-    always_bls,
-    single_phase,
-    with_custom_state,
-    spec_test,
-    default_balances_electra,
-    default_activation_threshold,
 )
 
 

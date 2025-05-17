@@ -1,6 +1,6 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.attestations import next_epoch_with_attestations
+from eth2spec.test.helpers.state import next_epoch_via_block
 
 
 def check_finality(

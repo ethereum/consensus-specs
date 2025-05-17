@@ -1,29 +1,25 @@
-from eth2spec.utils.ssz.ssz_typing import uint256
+from eth2spec.test.context import BELLATRIX, spec_state_test, with_phases
 from eth2spec.test.exceptions import BlockNotFoundException
-from eth2spec.test.context import spec_state_test, with_phases, BELLATRIX
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.execution_payload import (
+    build_state_with_incomplete_transition,
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.fork_choice import (
+    add_pow_block,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block,
 )
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-)
-from eth2spec.test.helpers.fork_choice import (
-    add_pow_block,
-)
 from eth2spec.test.helpers.pow_block import (
     prepare_random_pow_block,
 )
-from eth2spec.test.helpers.execution_payload import (
-    build_state_with_incomplete_transition,
+from eth2spec.test.helpers.state import (
+    state_transition_and_sign_block,
 )
+from eth2spec.utils.ssz.ssz_typing import uint256
 
 
 def with_pow_block_patch(spec, blocks, func):

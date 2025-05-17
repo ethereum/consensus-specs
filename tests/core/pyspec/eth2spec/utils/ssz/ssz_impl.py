@@ -1,8 +1,8 @@
 from typing import TypeVar
 
 from remerkleable.basic import uint
-from remerkleable.core import Type, View
 from remerkleable.byte_arrays import Bytes32
+from remerkleable.core import Type, View
 
 
 def ssz_serialize(obj: View) -> bytes:

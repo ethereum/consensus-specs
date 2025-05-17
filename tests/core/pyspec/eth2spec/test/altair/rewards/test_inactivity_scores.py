@@ -1,17 +1,17 @@
 from random import Random
 
+import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.context import (
-    with_altair_and_later,
-    spec_test,
-    spec_state_test,
-    with_custom_state,
-    single_phase,
     low_balances,
     misc_balances,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_altair_and_later,
+    with_custom_state,
 )
 from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 from eth2spec.test.helpers.rewards import leaking
-import eth2spec.test.helpers.rewards as rewards_helpers
 
 
 @with_altair_and_later

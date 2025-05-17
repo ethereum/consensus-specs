@@ -1,9 +1,10 @@
 import random
+
 from eth2spec.test.context import (
-    ForkMeta,
     ALTAIR,
-    with_presets,
+    ForkMeta,
     with_fork_metas,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import (
     ALL_PRE_POST_FORKS,
@@ -11,15 +12,14 @@ from eth2spec.test.helpers.constants import (
 )
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
-    transition_until_fork,
     transition_to_next_epoch_and_append_blocks,
+    transition_until_fork,
 )
 from eth2spec.test.helpers.random import (
     exit_random_validators,
     set_some_activations,
     set_some_new_deposits,
 )
-
 
 #
 # Exit

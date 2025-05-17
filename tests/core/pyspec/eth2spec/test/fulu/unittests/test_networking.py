@@ -1,13 +1,17 @@
 import random
+
+from eth2spec.debug.random_value import (
+    RandomizationMode,
+    get_random_ssz_object,
+)
 from eth2spec.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
     with_fulu_and_later,
 )
-from eth2spec.debug.random_value import (
-    RandomizationMode,
-    get_random_ssz_object,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     sign_block,
@@ -15,10 +19,6 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
-
 
 # Helper functions
 

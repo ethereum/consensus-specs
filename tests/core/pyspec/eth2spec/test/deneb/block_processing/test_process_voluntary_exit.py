@@ -1,3 +1,6 @@
+from eth2spec.test.bellatrix.block_processing.test_process_voluntary_exit import (
+    run_voluntary_exit_processing_test,
+)
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
@@ -5,9 +8,6 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import (
     DENEB,
-)
-from eth2spec.test.bellatrix.block_processing.test_process_voluntary_exit import (
-    run_voluntary_exit_processing_test,
 )
 
 

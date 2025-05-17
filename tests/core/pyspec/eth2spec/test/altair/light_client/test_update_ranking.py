@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_presets,
     with_light_client,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
