@@ -9,13 +9,14 @@ from typing import (
     Tuple,
 )
 
-from eth2spec.utils import bls
-from eth2spec.utils.bls import (
-    BLS_MODULUS,
-)
 from eth_utils import encode_hex
 from py_ecc.typing import (
     Optimized_Point3D,
+)
+
+from eth2spec.utils import bls
+from eth2spec.utils.bls import (
+    BLS_MODULUS,
 )
 
 PRIMITIVE_ROOT_OF_UNITY = 7

@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+from eth_utils import encode_hex
+
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
@@ -24,7 +26,6 @@ from eth2spec.test.helpers.state import (
     next_slots,
     transition_to,
 )
-from eth_utils import encode_hex
 
 
 class LightClientSyncTest(object):

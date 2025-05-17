@@ -1,5 +1,7 @@
 from typing import List
 
+from lru import LRU
+
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_electra
@@ -12,7 +14,6 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
-from lru import LRU
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):

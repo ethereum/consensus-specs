@@ -1,5 +1,10 @@
 from hashlib import sha256
 
+from eth_hash.auto import keccak
+from rlp import encode
+from rlp.sedes import Binary, List, big_endian_int
+from trie import HexaryTrie
+
 from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.forks import (
     is_post_capella,
@@ -10,10 +15,6 @@ from eth2spec.test.helpers.forks import (
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth_hash.auto import keccak
-from rlp import encode
-from rlp.sedes import Binary, List, big_endian_int
-from trie import HexaryTrie
 
 
 def get_execution_payload_header(spec, state, execution_payload):

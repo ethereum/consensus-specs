@@ -5,11 +5,12 @@ BLS test vectors generator
 from typing import Iterable
 
 import milagro_bls_binding as milagro_bls
+from eth_utils import encode_hex
+
 from eth2spec.altair import spec
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import ALTAIR
 from eth2spec.utils import bls
-from eth_utils import encode_hex
 
 ###############################################################################
 # Helper functions

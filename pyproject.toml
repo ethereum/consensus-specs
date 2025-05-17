@@ -68,6 +68,7 @@ line-length = 100
 profile = "black"
 line_length = 100
 combine_as_imports = true
+known_first_party = ["eth2spec"]
 skip_glob = [
   "tests/core/pyspec/eth2spec/*/mainnet.py",
   "tests/core/pyspec/eth2spec/*/minimal.py",

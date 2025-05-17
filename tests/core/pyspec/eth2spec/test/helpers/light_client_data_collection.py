@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set
 
+from eth_utils import encode_hex
+
 from eth2spec.test.helpers.constants import (
     ALTAIR,
 )
@@ -20,7 +22,6 @@ from eth2spec.test.helpers.light_client import (
     upgrade_lc_header_to_new_spec,
     upgrade_lc_update_to_new_spec,
 )
-from eth_utils import encode_hex
 
 
 def _next_epoch_boundary_slot(spec, slot):

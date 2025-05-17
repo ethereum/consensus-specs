@@ -1,5 +1,7 @@
 import random
 
+from eth_utils import encode_hex
+
 from eth2spec.test.context import MINIMAL, spec_state_test, with_altair_and_later, with_presets
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
@@ -39,7 +41,6 @@ from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth_utils import encode_hex
 
 rng = random.Random(2020)
 

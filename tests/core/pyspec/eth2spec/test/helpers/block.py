@@ -3,6 +3,14 @@ from curdleproofs import (
     GenerateWhiskTrackerProof,
     WhiskTracker,
 )
+from py_arkworks_bls12381 import Scalar
+from py_ecc.bls.g2_primitives import (
+    G1_to_pubkey as py_ecc_G1_to_bytes48,
+    pubkey_to_G1 as py_ecc_bytes48_to_G1,
+)
+from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
+from py_ecc.typing import Optimized_Field, Optimized_Point3D
+
 from eth2spec.test.helpers.eip7441 import (
     compute_whisk_tracker_and_commitment,
     is_first_proposal,
@@ -23,13 +31,6 @@ from eth2spec.test.helpers.keys import privkeys, whisk_ks_final, whisk_ks_initia
 from eth2spec.utils import bls
 from eth2spec.utils.bls import only_with_bls
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from py_arkworks_bls12381 import Scalar
-from py_ecc.bls.g2_primitives import (
-    G1_to_pubkey as py_ecc_G1_to_bytes48,
-    pubkey_to_G1 as py_ecc_bytes48_to_G1,
-)
-from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
-from py_ecc.typing import Optimized_Field, Optimized_Point3D
 
 PointProjective = Optimized_Point3D[Optimized_Field]
 

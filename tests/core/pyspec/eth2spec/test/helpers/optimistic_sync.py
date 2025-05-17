@@ -5,11 +5,12 @@ from typing import (
     Optional,
 )
 
+from eth_utils import encode_hex
+
 from eth2spec.test.helpers.fork_choice import (
     add_block,
 )
 from eth2spec.utils.ssz.ssz_typing import Bytes32
-from eth_utils import encode_hex
 
 
 class PayloadStatusV1StatusAlias(Enum):

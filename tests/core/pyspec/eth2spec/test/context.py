@@ -5,8 +5,9 @@ from random import Random
 from typing import Any, Callable, Dict, Sequence
 
 import pytest
-from eth2spec.utils import bls
 from lru import LRU
+
+from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
