@@ -1,19 +1,18 @@
 from eth2spec.test.context import (
     always_bls,
+    misc_balances,
+    single_phase,
     spec_state_test,
     spec_test,
     with_altair_and_later,
-    with_presets,
     with_custom_state,
-    single_phase,
-    misc_balances,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
-
+from eth2spec.test.helpers.state import transition_to
 
 #
 # Note:

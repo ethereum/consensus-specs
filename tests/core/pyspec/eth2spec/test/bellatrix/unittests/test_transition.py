@@ -1,8 +1,3 @@
-from eth2spec.test.helpers.execution_payload import (
-    build_empty_execution_payload,
-    build_state_with_incomplete_transition,
-    build_state_with_complete_transition,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases_from_except,
@@ -11,6 +6,11 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
     EIP7732,
+)
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_state_with_complete_transition,
+    build_state_with_incomplete_transition,
 )
 
 

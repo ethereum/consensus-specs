@@ -1,5 +1,4 @@
-from .typing import SpecForkName, PresetBaseName
-
+from .typing import PresetBaseName, SpecForkName
 
 #
 # SpecForkName

@@ -13,7 +13,6 @@ from eth2spec.test.helpers.fork_transition import (
     run_transition_with_operation,
 )
 
-
 #
 # DepositRequest
 #

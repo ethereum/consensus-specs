@@ -1,14 +1,14 @@
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    spec_state_test,
     always_bls,
-    with_all_phases,
-    with_presets,
-    spec_test,
-    single_phase,
-    with_custom_state,
     scaled_churn_balances_min_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
+    with_presets,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,

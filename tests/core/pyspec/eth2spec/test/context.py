@@ -1,45 +1,44 @@
-import pytest
+import importlib
 from copy import deepcopy
 from dataclasses import dataclass
-import importlib
+from random import Random
+from typing import Any, Callable, Dict, Sequence
+
+import pytest
+from lru import LRU
 
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0,
+    ALL_PHASES,
+    ALLOWED_TEST_RUNNER_FORKS,
     ALTAIR,
     BELLATRIX,
     CAPELLA,
     DENEB,
-    ELECTRA,
-    FULU,
     EIP7441,
     EIP7732,
-    MINIMAL,
-    ALL_PHASES,
-    POST_FORK_OF,
-    ALLOWED_TEST_RUNNER_FORKS,
+    ELECTRA,
+    FULU,
     LIGHT_CLIENT_TESTING_FORKS,
+    MINIMAL,
+    PHASE0,
+    POST_FORK_OF,
 )
-from .helpers.forks import is_post_fork, is_post_electra
+from .helpers.forks import is_post_electra, is_post_fork
 from .helpers.genesis import create_genesis_state
+from .helpers.specs import (
+    spec_targets,
+)
 from .helpers.typing import (
     Spec,
     SpecForks,
-)
-from .helpers.specs import (
-    spec_targets,
 )
 from .utils import (
     vector_test,
     with_meta_tags,
 )
-
-from random import Random
-from typing import Any, Callable, Sequence, Dict
-
-from lru import LRU
 
 # Without pytest CLI arg or pyspec-test-generator 'preset' argument, this will be the config to apply.
 DEFAULT_TEST_PRESET = MINIMAL

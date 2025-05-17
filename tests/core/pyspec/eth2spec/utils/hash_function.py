@@ -1,6 +1,7 @@
 from hashlib import sha256
-from remerkleable.byte_arrays import Bytes32
 from typing import Union
+
+from remerkleable.byte_arrays import Bytes32
 
 ZERO_BYTES32 = b"\x00" * 32
 

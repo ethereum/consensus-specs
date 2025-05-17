@@ -1,18 +1,20 @@
 from random import Random
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-    next_slot,
-)
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.execution_payload import build_randomized_execution_payload
+
 from eth2spec.test.context import (
+    BELLATRIX,
     spec_state_test,
     with_all_phases_from_except,
     with_phases,
 )
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
     EIP7732,
+)
+from eth2spec.test.helpers.execution_payload import build_randomized_execution_payload
+from eth2spec.test.helpers.state import (
+    next_slot,
+    state_transition_and_sign_block,
 )
 
 

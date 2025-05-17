@@ -3,12 +3,12 @@ from eth2spec.test.context import (
     with_all_phases_from_except,
     with_test_suite_name,
 )
+from eth2spec.test.helpers.attestations import (
+    state_transition_with_full_block,
+)
 from eth2spec.test.helpers.constants import (
     CAPELLA,
     EIP7732,
-)
-from eth2spec.test.helpers.attestations import (
-    state_transition_with_full_block,
 )
 
 

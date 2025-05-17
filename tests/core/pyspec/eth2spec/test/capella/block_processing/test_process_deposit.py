@@ -6,12 +6,12 @@ from eth2spec.test.helpers.constants import (
     CAPELLA,
     EIP7732,
 )
-from eth2spec.test.helpers.forks import is_post_electra
-from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
     run_deposit_processing,
 )
+from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 

@@ -39,6 +39,7 @@ test = [
 lint = [
   "black==25.1.0",
   "codespell==2.4.1",
+  "isort==6.0.1",
   "mdformat-gfm-alerts==1.0.1",
   "mdformat-gfm==0.4.1",
   "mdformat-toc==0.3.0",
@@ -62,3 +63,13 @@ docs = [
 
 [tool.black]
 line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+combine_as_imports = true
+known_first_party = ["eth2spec"]
+skip_glob = [
+  "tests/core/pyspec/eth2spec/*/mainnet.py",
+  "tests/core/pyspec/eth2spec/*/minimal.py",
+]

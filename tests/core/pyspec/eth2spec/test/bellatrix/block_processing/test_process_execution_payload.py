@@ -1,13 +1,5 @@
 from random import Random
 
-from eth2spec.test.helpers.execution_payload import (
-    build_empty_execution_payload,
-    build_randomized_execution_payload,
-    compute_el_block_hash,
-    get_execution_payload_header,
-    build_state_with_incomplete_transition,
-    build_state_with_complete_transition,
-)
 from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
@@ -19,9 +11,17 @@ from eth2spec.test.helpers.constants import (
     BELLATRIX,
     EIP7732,
 )
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_randomized_execution_payload,
+    build_state_with_complete_transition,
+    build_state_with_incomplete_transition,
+    compute_el_block_hash,
+    get_execution_payload_header,
+)
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
-from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 def run_execution_payload_processing(

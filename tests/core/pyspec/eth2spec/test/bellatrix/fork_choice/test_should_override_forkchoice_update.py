@@ -3,16 +3,16 @@ from eth2spec.test.context import (
     with_all_phases_from_except,
     with_presets,
 )
-from eth2spec.test.helpers.constants import (
-    BELLATRIX,
-    EIP7732,
-    MINIMAL,
-)
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_at_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+)
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+    EIP7732,
+    MINIMAL,
 )
 from eth2spec.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
@@ -24,9 +24,9 @@ from eth2spec.test.helpers.fork_choice import (
     tick_and_run_on_attestation,
 )
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
     next_epoch,
     next_slot,
+    state_transition_and_sign_block,
 )
 
 

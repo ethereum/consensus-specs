@@ -16,18 +16,18 @@ from eth2spec.test.helpers.constants import (
     EIP7732,
     MAINNET,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.fork_choice import (
+    add_attestation,
+    add_block,
     check_head_against_root,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
-    add_attestation,
-    add_block,
     tick_and_add_block,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
     payload_state_transition,
+    state_transition_and_sign_block,
 )
 
 

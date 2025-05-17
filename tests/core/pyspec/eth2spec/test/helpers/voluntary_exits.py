@@ -1,8 +1,9 @@
 from random import Random
-from eth2spec.utils import bls
+
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.forks import is_post_deneb
 from eth2spec.test.helpers.keys import privkeys
+from eth2spec.utils import bls
 
 
 def prepare_signed_exits(spec, state, indices, fork_version=None):

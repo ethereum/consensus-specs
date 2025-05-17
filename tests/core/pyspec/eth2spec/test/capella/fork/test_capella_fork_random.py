@@ -1,26 +1,26 @@
 from random import Random
 
 from eth2spec.test.context import (
-    with_phases,
-    with_custom_state,
-    with_presets,
-    spec_test,
-    with_state,
+    large_validator_set,
     low_balances,
     misc_balances,
-    large_validator_set,
-)
-from eth2spec.test.utils import with_meta_tags
-from eth2spec.test.helpers.constants import (
-    BELLATRIX,
-    CAPELLA,
-    MINIMAL,
+    spec_test,
+    with_custom_state,
+    with_phases,
+    with_presets,
+    with_state,
 )
 from eth2spec.test.helpers.capella.fork import (
     CAPELLA_FORK_TEST_META_TAGS,
     run_fork_test,
 )
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+    CAPELLA,
+    MINIMAL,
+)
 from eth2spec.test.helpers.random import randomize_state
+from eth2spec.test.utils import with_meta_tags
 
 
 @with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])

@@ -1,12 +1,16 @@
 from typing import Iterable
+
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from .ssz_generic_cases import ssz_basic_vector
-from .ssz_generic_cases import ssz_bitlist
-from .ssz_generic_cases import ssz_bitvector
-from .ssz_generic_cases import ssz_boolean
-from .ssz_generic_cases import ssz_uints
-from .ssz_generic_cases import ssz_container
 from eth2spec.test.helpers.constants import PHASE0
+
+from .ssz_generic_cases import (
+    ssz_basic_vector,
+    ssz_bitlist,
+    ssz_bitvector,
+    ssz_boolean,
+    ssz_container,
+    ssz_uints,
+)
 
 
 def get_test_cases() -> Iterable[TestCase]:

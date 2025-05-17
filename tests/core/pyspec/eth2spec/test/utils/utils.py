@@ -1,6 +1,7 @@
-from typing import Dict, Any
-from eth2spec.utils.ssz.ssz_typing import View
+from typing import Any, Dict
+
 from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_typing import View
 
 
 def vector_test(description: str = None):

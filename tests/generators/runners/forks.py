@@ -2,7 +2,7 @@ from importlib import import_module
 from typing import Iterable
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.gen_helpers.gen_from_tests.gen import get_expected_modules, generate_from_tests
+from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests, get_expected_modules
 from eth2spec.test.helpers.constants import ALL_PRESETS, POST_FORK_OF
 
 
