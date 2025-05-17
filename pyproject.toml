@@ -67,3 +67,7 @@ line-length = 100
 [tool.isort]
 profile = "black"
 line_length = 100
+skip_glob = [
+  "tests/core/pyspec/eth2spec/*/mainnet.py",
+  "tests/core/pyspec/eth2spec/*/minimal.py",
+]
