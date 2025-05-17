@@ -10,7 +10,6 @@
       - [Global topics](#global-topics)
         - [`beacon_block`](#beacon_block)
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -35,10 +34,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value                                                                              | Description                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * get_max_blobs_per_block(ELECTRA_FORK_EPOCH)` (= 1,152) | Maximum number of blob sidecars in a single request               |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                                                | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -70,7 +69,7 @@ The derivation of the `message-id` remains stable.
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA`
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 
 ###### `beacon_aggregate_and_proof`
 
@@ -83,16 +82,6 @@ The following validations are added:
 - [REJECT] `len(committee_indices) == 1`, where
   `committee_indices = get_committee_indices(aggregate)`.
 - [REJECT] `aggregate.data.index == 0`
-
-###### `blob_sidecar_{subnet_id}`
-
-*[Modified in Electra:EIP7691]*
-
-The existing validations all apply as given from previous forks, with the
-following exceptions:
-
-- Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with
-  `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
 ##### Attestation subnets
 

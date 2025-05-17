@@ -118,7 +118,7 @@ def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None
     return payload_header
 
 
-def create_genesis_state(spec, validator_balances, activation_threshold):
+def create_genesis_state(spec, validator_balances, activation_threshold, set_slot):
     deposit_root = b"\x42" * 32
 
     eth1_block_hash = b"\xda" * 32
@@ -221,5 +221,18 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.latest_block_hash = (
             state.latest_execution_payload_header.block_hash
         )  # last block is full
+
+    if set_slot:
+        if spec.fork != PHASE0:
+            fork_epoch = getattr(spec.config, f"{spec.fork.upper()}_FORK_EPOCH")
+            if fork_epoch != spec.FAR_FUTURE_EPOCH:
+                slot = fork_epoch * spec.SLOTS_PER_EPOCH
+                state.slot = slot
+                state.latest_block_header.slot = slot
+                previous_fork = PREVIOUS_FORK_OF[spec.fork]
+                if previous_fork == PHASE0:
+                    state.fork.epoch = spec.GENESIS_EPOCH
+                else:
+                    state.fork.epoch = getattr(spec.config, f"{previous_fork.upper()}_FORK_EPOCH")
 
     return state

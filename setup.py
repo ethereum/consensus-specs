@@ -148,6 +148,8 @@ ALL_CURDLEPROOFS_CRS = {
     'mainnet': _load_curdleproofs_crs('mainnet'),
 }
 
+TYPE_CONSTRUCTOR_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\((.*)\)$")
+
 
 @lru_cache(maxsize=None)
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
@@ -156,12 +158,17 @@ def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
-    if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
-    i = typed_value.index('(')
-    type_name = typed_value[:i]
+    match = TYPE_CONSTRUCTOR_RE.fullmatch(typed_value)
+    if match:
+        type_name, value = match.groups()
+        return VariableDefinition(
+            type_name=type_name,
+            value=value.strip(),
+            comment=comment,
+            type_hint=type_hint
+        )
 
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
+    return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
 
 
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name):

@@ -2,6 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
+    with_custom_state,
     with_fulu_and_later,
     with_test_suite_name,
 )
@@ -80,6 +81,7 @@ def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
 
 @with_test_suite_name("BeaconBlockBody")
 @with_fulu_and_later
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
     blob_count = spec.get_max_blobs_per_block(spec.get_current_epoch(state)) // 2
@@ -91,6 +93,7 @@ def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
 
 @with_test_suite_name("BeaconBlockBody")
 @with_fulu_and_later
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__max_blobs(spec, state):
     max_blobs = spec.get_max_blobs_per_block(spec.get_current_epoch(state))

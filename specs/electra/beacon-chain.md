@@ -16,7 +16,6 @@
   - [Withdrawals processing](#withdrawals-processing)
   - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
-  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -201,12 +200,6 @@ specification.
 | `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16) | *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
 
 ## Configuration
-
-### Execution
-
-| Name                          | Value       | Description                                                                                                      |
-| ----------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
@@ -1260,7 +1253,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA  # [Modified in Electra:EIP7691]
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(
