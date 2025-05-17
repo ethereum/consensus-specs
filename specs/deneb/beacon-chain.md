@@ -47,10 +47,14 @@
 
 Deneb is a consensus-layer upgrade containing a number of features. Including:
 
-- [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the EVM
-- [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions scale data-availability of Ethereum in a simple, forwards-compatible manner
-- [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed Voluntary Exits
-- [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation Inclusion Slot
+- [EIP-4788](https://eips.ethereum.org/EIPS/eip-4788): Beacon block root in the
+  EVM
+- [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844): Shard Blob Transactions
+  scale data-availability of Ethereum in a simple, forwards-compatible manner
+- [EIP-7044](https://eips.ethereum.org/EIPS/eip-7044): Perpetually Valid Signed
+  Voluntary Exits
+- [EIP-7045](https://eips.ethereum.org/EIPS/eip-7045): Increase Max Attestation
+  Inclusion Slot
 - [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
 ## Custom types
@@ -86,7 +90,8 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ### Blob schedule
 
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a given epoch.
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
+given epoch.
 
 <!-- list-of-records:blob_schedule -->
 
@@ -95,8 +100,10 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
 | `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
 
-*Note*: The blob transactions are packed into the execution payload by the EL/builder with their corresponding blobs being independently transmitted
-and are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is independently defined by the blob schedule.
+*Note*: The blob transactions are packed into the execution payload by the
+EL/builder with their \*corresponding blobs being independently transmitted and
+are limited by `MAX_BLOB_GAS_PER_BLOCK // GAS_PER_BLOB`. However the CL limit is
+independently defined by the blob schedule.
 
 ## Containers
 
@@ -252,7 +259,11 @@ def get_max_blobs_per_block(epoch: Epoch) -> uint64:
 
 #### Modified `get_attestation_participation_flag_indices`
 
-*Note*: The function `get_attestation_participation_flag_indices` is modified to set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of `inclusion_delay` as a baseline reward for any speed of inclusion of an attestation that contributes to justification of the contained chain for EIP-7045.
+*Note*: The function `get_attestation_participation_flag_indices` is modified to
+set the `TIMELY_TARGET_FLAG` for any correct target attestation, regardless of
+`inclusion_delay` as a baseline reward for any speed of inclusion of an
+attestation that contributes to justification of the contained chain for
+EIP-7045.
 
 ```python
 def get_attestation_participation_flag_indices(state: BeaconState,
@@ -313,7 +324,8 @@ class NewPayloadRequest(object):
 
 ##### `is_valid_block_hash`
 
-*Note*: The function `is_valid_block_hash` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+*Note*: The function `is_valid_block_hash` is modified to include the additional
+`parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
@@ -338,7 +350,8 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `parent_beacon_block_root` parameter for EIP-4788.
+*Note*: The function `notify_new_payload` is modified to include the additional
+`parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
@@ -383,7 +396,11 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
 #### Modified `process_attestation`
 
-*Note*: The function `process_attestation` is modified to expand valid slots for inclusion to those in both `target.epoch` epoch and `target.epoch + 1` epoch for EIP-7045. Additionally, it utilizes an updated version of `get_attestation_participation_flag_indices` to ensure rewards are available for the extended attestation inclusion range for EIP-7045.
+*Note*: The function `process_attestation` is modified to expand valid slots for
+inclusion to those in both `target.epoch` epoch and `target.epoch + 1` epoch for
+EIP-7045. Additionally, it utilizes an updated version of
+`get_attestation_participation_flag_indices` to ensure rewards are available for
+the extended attestation inclusion range for EIP-7045.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -425,7 +442,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to pass `versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to assign the new fields in `ExecutionPayloadHeader` for EIP-4844. It is also modified to pass in the parent beacon block root to support EIP-4788.
+*Note*: The function `process_execution_payload` is modified to pass
+`versioned_hashes` into `execution_engine.verify_and_notify_new_payload` and to
+assign the new fields in `ExecutionPayloadHeader` for EIP-4844. It is also
+modified to pass in the parent beacon block root to support EIP-4788.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -478,7 +498,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Modified `process_voluntary_exit`
 
-*Note*: The function `process_voluntary_exit` is modified to use the fixed fork version -- `CAPELLA_FORK_VERSION` -- for EIP-7044.
+*Note*: The function `process_voluntary_exit` is modified to use the fixed fork
+version -- `CAPELLA_FORK_VERSION` -- for EIP-7044.
 
 ```python
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
@@ -505,7 +526,9 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 
 #### Registry updates
 
-*Note*: The function `process_registry_updates` is modified to utilize `get_validator_activation_churn_limit()` to rate limit the activation queue for EIP-7514.
+*Note*: The function `process_registry_updates` is modified to utilize
+`get_validator_activation_churn_limit()` to rate limit the activation queue for
+EIP-7514.
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:

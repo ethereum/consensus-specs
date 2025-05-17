@@ -54,11 +54,3 @@ class TestCase(object):
             / self.suite_name
             / self.case_name
         )
-
-
-@dataclass
-class TestProvider(object):
-    # Prepares the context for the provider as a whole, as opposed to per-test-case changes.
-    prepare: Callable[[], None]
-    # Retrieves an iterable of cases, called after prepare()
-    make_cases: Callable[[], Iterable[TestCase]]

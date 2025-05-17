@@ -29,11 +29,14 @@
 
 ## Introduction
 
-This is the beacon chain specification to add EIP-7805 / fork-choice enforced, committee-based inclusion list (FOCIL) mechanism to allow forced transaction inclusion. Refers to the following posts:
+This is the beacon chain specification to add EIP-7805 / fork-choice enforced,
+committee-based inclusion list (FOCIL) mechanism to allow forced transaction
+inclusion. Refers to the following posts:
 
 - [Fork-Choice enforced Inclusion Lists (FOCIL): A simple committee-based inclusion list proposal](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
-  *Note*: This specification is built upon [Electra](../../electra/beacon-chain.md) and is under active development.
+  *Note*: This specification is built upon
+  [Electra](../../electra/beacon-chain.md) and is under active development.
 
 ## Constants
 
@@ -132,7 +135,8 @@ class NewPayloadRequest(object):
 
 ##### Modified `is_valid_block_hash`
 
-*Note*: The function `is_valid_block_hash` is modified to include the additional `inclusion_list_transactions`.
+*Note*: The function `is_valid_block_hash` is modified to include the additional
+`inclusion_list_transactions`.
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine,
@@ -148,7 +152,8 @@ def is_valid_block_hash(self: ExecutionEngine,
 
 ##### Modified `notify_new_payload`
 
-*Note*: The function `notify_new_payload` is modified to include the additional `inclusion_list_transactions`.
+*Note*: The function `notify_new_payload` is modified to include the additional
+`inclusion_list_transactions`.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
@@ -168,8 +173,9 @@ def notify_new_payload(self: ExecutionEngine,
 
 ##### Modified `verify_and_notify_new_payload`
 
-*Note*: The function `verify_and_notify_new_payload` is modified to pass the additional parameter
-`inclusion_list_transactions` when calling `notify_new_payload` in EIP-7805.
+*Note*: The function `verify_and_notify_new_payload` is modified to pass the
+additional parameter `inclusion_list_transactions` when calling
+`notify_new_payload` in EIP-7805.
 
 ```python
 def verify_and_notify_new_payload(self: ExecutionEngine,

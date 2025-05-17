@@ -25,7 +25,8 @@
 
 This document contains the consensus-layer networking specification for Electra.
 
-The specification of these changes continues in the same format as the network specifications of previous upgrades, and assumes them as pre-requisite.
+The specification of these changes continues in the same format as the network
+specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Electra
 
@@ -40,7 +41,8 @@ The specification of these changes continues in the same format as the network s
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Electra to support upgraded types.
+Some gossip meshes are upgraded in the fork of Electra to support upgraded
+types.
 
 #### Topics and messages
 
@@ -48,11 +50,14 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is modified to also support Electra blocks.
 
-The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are modified to support the gossip of the new attestation type.
+The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are
+modified to support the gossip of the new attestation type.
 
-The `attester_slashing` topic is modified to support the gossip of the new `AttesterSlashing` type.
+The `attester_slashing` topic is modified to support the gossip of the new
+`AttesterSlashing` type.
 
-The specification around the creation, validation, and dissemination of messages has not changed from the Capella document unless explicitly noted here.
+The specification around the creation, validation, and dissemination of messages
+has not changed from the Capella document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
@@ -62,8 +67,9 @@ The derivation of the `message-id` remains stable.
 
 *Updated validation*
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the limitation defined in Consensus Layer --
-  i.e. validate that `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in Consensus Layer -- i.e. validate that
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 
 ###### `beacon_aggregate_and_proof`
 
@@ -73,7 +79,8 @@ The following convenience variables are re-defined
 
 The following validations are added:
 
-- [REJECT] `len(committee_indices) == 1`, where `committee_indices = get_committee_indices(aggregate)`.
+- [REJECT] `len(committee_indices) == 1`, where
+  `committee_indices = get_committee_indices(aggregate)`.
 - [REJECT] `aggregate.data.index == 0`
 
 ##### Attestation subnets
@@ -94,8 +101,9 @@ The following validations are added:
 
 The following validations are removed:
 
-- _[REJECT]_ The attestation is unaggregated --
-  that is, it has exactly one participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`, i.e. exactly 1 bit is set).
+- _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one
+  participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`,
+  i.e. exactly 1 bit is set).
 - _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
   `len(aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, index))`.
 
@@ -107,7 +115,8 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-The Electra fork-digest is introduced to the `context` enum to specify Electra beacon block type.
+The Electra fork-digest is introduced to the `context` enum to specify Electra
+beacon block type.
 
 Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
@@ -164,7 +173,9 @@ Response Content:
 
 *Updated validation*
 
-Clients MUST respond with at least the blob sidecars of the first blob-carrying block that exists in the range, if they have it, and no more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+Clients MUST respond with at least the blob sidecars of the first blob-carrying
+block that exists in the range, if they have it, and no more than
+`MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
 
 ##### BlobSidecarsByRoot v1
 

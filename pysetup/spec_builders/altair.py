@@ -21,7 +21,7 @@ from eth2spec.utils.ssz.ssz_typing import Path
     def preparations(cls):
         return '''
 SSZVariableName = str
-GeneralizedIndex = NewType('GeneralizedIndex', int)
+GeneralizedIndex = int
 '''
 
     @classmethod

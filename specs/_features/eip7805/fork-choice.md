@@ -33,7 +33,8 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 #### Modified `Store`
 
-*Note*: `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
+*Note*: `Store` is modified to track the seen inclusion lists and inclusion list
+equivocators.
 
 ```python
 @dataclass
@@ -93,7 +94,8 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
 
 ##### Modified `get_proposer_head`
 
-The implementation of `get_proposer_head` is modified to also account for `store.unsatisfied_inclusion_list_blocks`.
+The implementation of `get_proposer_head` is modified to also account for
+`store.unsatisfied_inclusion_list_blocks`.
 
 ```python
 def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
@@ -142,7 +144,8 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 
 #### New `on_inclusion_list`
 
-`on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
+`on_inclusion_list` is called to import `signed_inclusion_list` to the fork
+choice store.
 
 ```python
 def on_inclusion_list(
