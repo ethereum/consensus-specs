@@ -1,12 +1,15 @@
 from random import Random
 
 from eth2spec.test.context import (
-    BELLATRIX,
     expect_assertion_error,
     spec_state_test,
+    with_all_phases_from_except,
     with_bellatrix_and_later,
-    with_bellatrix_until_eip7732,
     with_phases,
+)
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+    EIP7732,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -109,7 +112,7 @@ def run_success_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_success_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
@@ -117,7 +120,7 @@ def test_success_first_payload(spec, state):
     yield from run_success_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_success_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -133,14 +136,14 @@ def run_gap_slot_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_success_first_payload_with_gap_slot(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_gap_slot_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_success_regular_payload_with_gap_slot(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -157,14 +160,14 @@ def run_bad_execution_test(spec, state):
     )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_invalid_bad_execution_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_invalid_bad_execution_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -301,14 +304,14 @@ def run_non_empty_extra_data_test(spec, state):
     assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_non_empty_extra_data_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_non_empty_extra_data_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -332,14 +335,14 @@ def run_non_empty_transactions_test(spec, state):
     )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_non_empty_transactions_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_non_empty_transactions_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -361,14 +364,14 @@ def run_zero_length_transaction_test(spec, state):
     )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_zero_length_transaction_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_zero_length_transaction_test(spec, state)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_zero_length_transaction_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -389,7 +392,7 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
     rng = Random(1111)
@@ -397,7 +400,7 @@ def test_randomized_non_validated_execution_fields_first_payload__execution_vali
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
     rng = Random(2222)
@@ -405,7 +408,7 @@ def test_randomized_non_validated_execution_fields_regular_payload__execution_va
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(
     spec, state
@@ -417,7 +420,7 @@ def test_invalid_randomized_non_validated_execution_fields_first_payload__execut
     )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(
     spec, state

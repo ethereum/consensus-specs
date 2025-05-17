@@ -1,6 +1,10 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_capella_until_eip7732,
+    with_all_phases_from_except,
+)
+from eth2spec.test.helpers.constants import (
+    CAPELLA,
+    EIP7732,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -11,7 +15,7 @@ from eth2spec.test.helpers.state import next_epoch_via_block
 from eth2spec.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 
-@with_capella_until_eip7732
+@with_all_phases_from_except(CAPELLA, [EIP7732])
 @spec_state_test
 def test_success_top_up_to_withdrawn_validator(spec, state):
     validator_index = 0

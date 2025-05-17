@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
-    with_altair_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
@@ -11,7 +11,11 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.block import (
     build_empty_block,
 )
-from eth2spec.test.helpers.constants import MAINNET
+from eth2spec.test.helpers.constants import (
+    ALTAIR,
+    EIP7732,
+    MAINNET,
+)
 from eth2spec.test.helpers.fork_choice import (
     add_attestation,
     add_block,
@@ -137,7 +141,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
 
 
 # TODO(jtraglia): Investigate why this doesn't work with eip7732
-@with_altair_until_eip7732
+@with_all_phases_from_except(ALTAIR, [EIP7732])
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):
@@ -373,7 +377,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
 
 
 # TODO(jtraglia): Investigate why this doesn't work with eip7732
-@with_altair_until_eip7732
+@with_all_phases_from_except(ALTAIR, [EIP7732])
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):

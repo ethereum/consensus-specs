@@ -2,8 +2,8 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
-    with_altair_until_eip7732,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import get_valid_attestation, next_epoch_with_attestations
@@ -11,7 +11,11 @@ from eth2spec.test.helpers.block import (
     apply_empty_block,
     build_empty_block_for_next_slot,
 )
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.constants import (
+    ALTAIR,
+    EIP7732,
+    MINIMAL,
+)
 from eth2spec.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
@@ -265,7 +269,7 @@ def test_filtered_block_tree(spec, state):
 
 
 # This test is skipped in EIP-7732 because the block's slot decides first on weight ties
-@with_altair_until_eip7732
+@with_all_phases_from_except(ALTAIR, [EIP7732])
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
     test_steps = []
