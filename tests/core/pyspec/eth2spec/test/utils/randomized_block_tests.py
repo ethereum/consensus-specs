@@ -26,8 +26,8 @@ from eth2spec.test.helpers.multi_operations import (
 )
 from eth2spec.test.helpers.random import (
     patch_state_to_non_leaking,
+    randomize_state as randomize_state_helper,
 )
-from eth2spec.test.helpers.random import randomize_state as randomize_state_helper
 from eth2spec.test.helpers.state import (
     ensure_state_has_validators_across_lifecycle,
     next_epoch,

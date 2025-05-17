@@ -2,8 +2,7 @@ import random
 from typing import Iterable
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.phase0 import mainnet as spec_mainnet
-from eth2spec.phase0 import minimal as spec_minimal
+from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
 from eth2spec.test.helpers.constants import ALL_PRESETS, MAINNET, MINIMAL, PHASE0
 
 

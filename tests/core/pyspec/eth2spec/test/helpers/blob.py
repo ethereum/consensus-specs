@@ -5,9 +5,7 @@ from eth2spec.test.helpers.forks import (
     is_post_fulu,
 )
 from rlp import Serializable, encode
-from rlp.sedes import Binary, CountableList
-from rlp.sedes import List as RLPList
-from rlp.sedes import big_endian_int, binary
+from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
 
 
 class Eip4844RlpTransaction(Serializable):
