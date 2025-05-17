@@ -1,10 +1,10 @@
 from random import Random
 
 from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
-from eth2spec.test.helpers.keys import pubkeys, privkeys
-from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_to
+from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
+from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root

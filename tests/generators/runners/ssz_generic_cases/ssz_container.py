@@ -1,22 +1,24 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
+from random import Random
+from typing import Callable, Dict, Sequence, Tuple, Type
+
+from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import (
-    View,
+    Bitlist,
+    Bitvector,
+    ByteList,
     Container,
+    List,
+    Vector,
+    View,
     byte,
     uint8,
     uint16,
     uint32,
     uint64,
-    List,
-    ByteList,
-    Vector,
-    Bitvector,
-    Bitlist,
 )
-from eth2spec.utils.ssz.ssz_impl import serialize
-from random import Random
-from typing import Dict, Tuple, Sequence, Callable, Type
-from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 class SingleFieldTestStruct(Container):

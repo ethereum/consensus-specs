@@ -1,17 +1,17 @@
-from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.forks import is_post_electra
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    with_deneb_and_later,
-    spec_test,
-    spec_state_test,
-    single_phase,
-    with_custom_state,
-    with_presets,
-    scaled_churn_balances_exceed_activation_churn_limit,
     scaled_churn_balances_equal_activation_churn_limit,
+    scaled_churn_balances_exceed_activation_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
+    with_deneb_and_later,
+    with_presets,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def run_process_registry_updates(spec, state):

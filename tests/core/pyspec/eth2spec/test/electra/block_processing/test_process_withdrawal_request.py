@@ -1,7 +1,8 @@
 import random
+
 from eth2spec.test.context import (
-    spec_state_test,
     expect_assertion_error,
+    spec_state_test,
     with_electra_and_later,
     with_presets,
 )
@@ -10,8 +11,8 @@ from eth2spec.test.helpers.state import (
     get_validator_index_by_pubkey,
 )
 from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 #

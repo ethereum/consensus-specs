@@ -9,10 +9,10 @@ from eth2spec.test.context import (
     with_state,
 )
 from eth2spec.test.helpers.constants import (
-    PHASE0,
+    ALL_PHASES,
     ALTAIR,
     BELLATRIX,
-    ALL_PHASES,
+    PHASE0,
 )
 from eth2spec.test.helpers.forks import is_post_fork
 

@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from eth_utils import encode_hex
+
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
@@ -18,8 +19,8 @@ from eth2spec.test.helpers.forks import (
 from eth2spec.test.helpers.light_client import (
     get_sync_aggregate,
     upgrade_lc_bootstrap_to_new_spec,
-    upgrade_lc_update_to_new_spec,
     upgrade_lc_store_to_new_spec,
+    upgrade_lc_update_to_new_spec,
 )
 from eth2spec.test.helpers.state import (
     next_slots,

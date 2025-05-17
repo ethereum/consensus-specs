@@ -1,4 +1,5 @@
 from eth_utils import encode_hex
+
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_until_eip7732,

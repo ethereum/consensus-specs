@@ -1,39 +1,39 @@
 import random
-from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.forks import is_post_electra, is_post_eip7732
+
 from eth2spec.test.context import (
+    spec_state_test,
     with_capella_and_later,
     with_capella_until_eip7732,
-    spec_state_test,
     with_presets,
 )
-from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.test.helpers.state import (
-    next_epoch_via_block,
-    state_transition_and_sign_block,
-    transition_to,
-    next_slot,
-)
-from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
-    build_empty_block,
-)
-from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
 )
-from eth2spec.test.helpers.withdrawals import (
-    get_expected_withdrawals,
-    set_eth1_withdrawal_credential_with_balance,
-    set_validator_fully_withdrawable,
-    set_validator_partially_withdrawable,
-    prepare_expected_withdrawals,
+from eth2spec.test.helpers.block import (
+    build_empty_block,
+    build_empty_block_for_next_slot,
 )
+from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
+from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.state import (
+    next_epoch_via_block,
+    next_slot,
+    state_transition_and_sign_block,
+    transition_to,
+)
 from eth2spec.test.helpers.voluntary_exits import prepare_signed_exits
-
+from eth2spec.test.helpers.withdrawals import (
+    get_expected_withdrawals,
+    prepare_expected_withdrawals,
+    set_eth1_withdrawal_credential_with_balance,
+    set_validator_fully_withdrawable,
+    set_validator_partially_withdrawable,
+)
 
 #
 # `is_execution_enabled` has been removed from Capella

@@ -1,22 +1,22 @@
 import random
 
-from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
-)
-from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_deneb_until_eip7732,
+)
+from eth2spec.test.helpers.blob import (
+    get_max_blob_count,
+    get_sample_blob_tx,
+)
+from eth2spec.test.helpers.block import (
+    build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_random_tx,
 )
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-    get_max_blob_count,
+from eth2spec.test.helpers.state import (
+    state_transition_and_sign_block,
 )
 
 

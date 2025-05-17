@@ -3,9 +3,9 @@ from inspect import getmembers, isfunction
 from pkgutil import walk_packages
 from typing import Any, Iterable, Optional
 
-from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
-from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
+from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
+from eth2spec.test.helpers.typing import PresetBaseName, SpecForkName
 
 
 def generate_case_fn(tfn, generator_mode, phase, preset, bls_active):

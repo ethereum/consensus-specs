@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    spec_state_test,
     always_bls,
+    spec_state_test,
     with_bellatrix_and_later,
 )
 from eth2spec.test.helpers.deposits import (

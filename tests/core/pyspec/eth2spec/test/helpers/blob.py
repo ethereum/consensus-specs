@@ -1,5 +1,6 @@
 import random
-from rlp import encode, Serializable
+
+from rlp import Serializable, encode
 from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
 
 from eth2spec.test.helpers.forks import (

@@ -1,10 +1,10 @@
 from eth2spec.test.context import (
-    single_phase,
-    spec_test,
-    spec_state_test,
-    with_presets,
-    with_fulu_and_later,
     expect_assertion_error,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_fulu_and_later,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import (
     MAINNET,

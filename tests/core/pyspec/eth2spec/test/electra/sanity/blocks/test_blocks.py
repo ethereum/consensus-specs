@@ -1,37 +1,37 @@
-from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.context import (
+    default_activation_threshold,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
+    with_electra_until_eip7732,
+    with_presets,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     transition_unsigned_block,
 )
-from eth2spec.test.context import (
-    spec_test,
-    spec_state_test,
-    with_electra_until_eip7732,
-    single_phase,
-    with_presets,
-    with_custom_state,
-    scaled_churn_balances_exceed_activation_exit_churn_limit,
-    default_activation_threshold,
-)
 from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
 )
+from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.deposits import (
+    prepare_deposit_request,
+)
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash_for_block,
-)
-from eth2spec.test.helpers.voluntary_exits import (
-    prepare_signed_exits,
 )
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
 )
-from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
-    set_compounding_withdrawal_credential_with_balance,
+from eth2spec.test.helpers.voluntary_exits import (
+    prepare_signed_exits,
 )
-from eth2spec.test.helpers.deposits import (
-    prepare_deposit_request,
+from eth2spec.test.helpers.withdrawals import (
+    set_compounding_withdrawal_credential_with_balance,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 
