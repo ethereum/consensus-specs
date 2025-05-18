@@ -2,7 +2,7 @@ from hashlib import sha256
 
 from eth_hash.auto import keccak
 from rlp import encode
-from rlp.sedes import Binary, List, big_endian_int
+from rlp.sedes import big_endian_int, Binary, List
 from trie import HexaryTrie
 
 from eth2spec.debug.random_value import get_random_bytes_list

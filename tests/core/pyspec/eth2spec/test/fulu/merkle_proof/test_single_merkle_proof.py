@@ -1,8 +1,8 @@
 import random
 
 from eth2spec.debug.random_value import (
-    RandomizationMode,
     get_random_ssz_object,
+    RandomizationMode,
 )
 from eth2spec.test.context import (
     spec_state_test,

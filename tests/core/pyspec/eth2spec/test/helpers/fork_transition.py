@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import auto, Enum
 
 from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,

@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
 )
 from eth2spec.test.helpers.attestations import (
@@ -14,8 +14,8 @@ from eth2spec.test.helpers.constants import (
     DENEB,
 )
 from eth2spec.test.helpers.fork_transition import (
-    OperationType,
     do_fork,
+    OperationType,
     run_transition_with_operation,
     transition_until_fork,
 )

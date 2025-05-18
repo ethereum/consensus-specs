@@ -1,9 +1,9 @@
 from random import Random
 
 from eth2spec.test.context import (
-    PHASE0,
     low_single_balance,
     misc_balances,
+    PHASE0,
     single_phase,
     spec_state_test,
     spec_test,

@@ -2,12 +2,12 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth2spec.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
+    boolean,
     Container,
     List,
+    uint,
     Union,
     Vector,
-    boolean,
-    uint,
 )
 
 

@@ -1,7 +1,7 @@
 from random import Random
 from typing import Type
 
-from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
 from eth2spec.utils.ssz.ssz_typing import BasicView, uint8, uint16, uint32, uint64, uint128, uint256
 
 from .ssz_test_case import invalid_test_case, valid_test_case

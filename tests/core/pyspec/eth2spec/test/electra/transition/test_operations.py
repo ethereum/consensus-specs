@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
     with_presets,
 )

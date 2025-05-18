@@ -11,14 +11,14 @@ from eth2spec.fulu import spec
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.utils.kzg_tests import (
+    bls_add_one,
     CELL_RANDOM_VALID1,
     CELL_RANDOM_VALID2,
+    encode_hex_list,
     INVALID_BLOBS,
     INVALID_G1_POINTS,
     INVALID_INDIVIDUAL_CELL_BYTES,
     VALID_BLOBS,
-    bls_add_one,
-    encode_hex_list,
 )
 
 ###############################################################################

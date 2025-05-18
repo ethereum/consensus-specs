@@ -20,11 +20,11 @@ from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step,
 )
 from eth2spec.test.helpers.optimistic_sync import (
+    add_optimistic_block,
+    get_optimistic_store,
     MegaStore,
     PayloadStatusV1,
     PayloadStatusV1Status,
-    add_optimistic_block,
-    get_optimistic_store,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
