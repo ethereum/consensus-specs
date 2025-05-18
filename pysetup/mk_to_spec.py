@@ -21,19 +21,23 @@ class MarkdownToSpec:
         self.config = config
         self.preset_name = preset_name
 
-        self.functions: Dict[str, str] = {}
-        self.protocols: Dict[str, ProtocolDefinition] = {}
-        self.constant_vars: Dict[str, VariableDefinition] = {}
-        self.preset_dep_constant_vars: Dict[str, VariableDefinition] = {}
-        self.preset_vars: Dict[str, VariableDefinition] = {}
-        self.config_vars: Dict[str, VariableDefinition] = {}
-        self.ssz_dep_constants: Dict[str, str] = {}
-        self.func_dep_presets: Dict[str, str] = {}
-        self.ssz_objects: Dict[str, str] = {}
-        self.dataclasses: Dict[str, str] = {}
+        # Use a single dict to hold all SpecObject fields
+        self.spec = {
+            "functions": {},
+            "protocols": {},
+            "custom_types": {},
+            "preset_dep_custom_types": {},
+            "constant_vars": {},
+            "preset_dep_constant_vars": {},
+            "preset_vars": {},
+            "config_vars": {},
+            "ssz_dep_constants": {},
+            "func_dep_presets": {},
+            "ssz_objects": {},
+            "dataclasses": {},
+        }
+
         self.all_custom_types: Dict[str, str] = {}
-        self.custom_types: Dict[str, str] = {}
-        self.preset_dep_custom_types: Dict[str, str] = {}
 
         self.document_iterator: Iterator[Element] = self._parse_document(file_name)
         self.current_heading_name: str | None = None
@@ -68,7 +72,6 @@ class MarkdownToSpec:
     def _skip_element(self) -> None:
         """
         Skips the current element in the document.
-        This is a placeholder for future functionality.
         """
         self._get_next_element()
 
@@ -101,12 +104,9 @@ class MarkdownToSpec:
 
     def _process_heading(self, heading: Heading):
         """
-        Extracts the section name from the heading and updates current_name for context.
+        Extracts the section name from the heading and updates current_heading_name for context.
         """
-        if not isinstance(heading, Heading):
-            return
         self.current_heading_name = _get_name_from_heading(heading)
-        # else: skip unknown types
 
     def _process_code_block(self, code_block: FencedCode):
         """
@@ -119,9 +119,9 @@ class MarkdownToSpec:
             return
 
         source = _get_source_from_code_block(code_block)
-        module = ast.parse(source)
-
         clean_source = "\n".join(line.rstrip() for line in source.splitlines())
+
+        module = ast.parse(source)
         # AST container of the first definition in the block
         first_def = module.body[0] 
 
@@ -147,7 +147,7 @@ class MarkdownToSpec:
         self_type_name = _get_self_type_from_source(fn)
         
         if self_type_name is None:
-            self.functions[fn.name] = source
+            self.spec["functions"][fn.name] = source
         else:
             self._add_protocol_function(self_type_name, fn.name, source)
 
@@ -156,13 +156,13 @@ class MarkdownToSpec:
         Adds a function definition to the protocol functions dictionary.
         """
 
-        if protocol_name not in self.protocols:
-            self.protocols[protocol_name] = ProtocolDefinition(
+        if protocol_name not in self.spec["protocols"]:
+            self.spec["protocols"][protocol_name] = ProtocolDefinition(
                 functions={})
-        self.protocols[protocol_name].functions[function_name] = function_def
+        self.spec["protocols"][protocol_name].functions[function_name] = function_def
 
     def _add_dataclass(self, source, cls: ast.ClassDef):
-        self.dataclasses[cls.name] = source
+        self.spec["dataclasses"][cls.name] = source
 
     def _process_code_class(self, source, cls: ast.ClassDef):
         class_name, parent_class = _get_class_info_from_ast(cls)
@@ -173,7 +173,7 @@ class MarkdownToSpec:
 
         if parent_class:
             assert parent_class == "Container"
-        self.ssz_objects[class_name] = source
+        self.spec["ssz_objects"][class_name] = source
 
     def _process_table(self, child: HTMLBlock):
         """
@@ -203,12 +203,12 @@ class MarkdownToSpec:
 
             # It is a constant name and a generalized index
             if value.startswith("get_generalized_index"):
-                self.ssz_dep_constants[name] = value
+                self.spec["ssz_dep_constants"][name] = value
                 continue
 
             # It is a constant and not a generalized index, and a function-dependent preset
             if description is not None and description.startswith("<!-- predefined -->"):
-                self.func_dep_presets[name] = value
+                self.spec["func_dep_presets"][name] = value
 
             # It is a constant and not a generalized index
             value_def = _parse_value(name, value)
@@ -217,24 +217,24 @@ class MarkdownToSpec:
                 if self.preset_name == "mainnet":
                     check_yaml_matches_spec(name, self.preset, value_def)
 
-                self.preset_vars[name] = VariableDefinition(value_def.type_name, self.preset[name], value_def.comment, None)
+                self.spec["preset_vars"][name] = VariableDefinition(value_def.type_name, self.preset[name], value_def.comment, None)
 
             # It is a config variable
             elif name in self.config:
                 if self.preset_name == "mainnet":
                     check_yaml_matches_spec(name, self.config, value_def)
 
-                self.config_vars[name] = VariableDefinition(value_def.type_name, self.config[name], value_def.comment, None)
+                self.spec["config_vars"][name] = VariableDefinition(value_def.type_name, self.config[name], value_def.comment, None)
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
                 if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
                     # Deal with mypy Literal typing check
                     value_def = _parse_value(name, value, type_hint='Final')
-                if any(k in value for k in self.preset) or any(k in value for k in self.preset_dep_constant_vars):
-                    self.preset_dep_constant_vars[name] = value_def
+                if any(k in value for k in self.preset) or any(k in value for k in self.spec["preset_dep_constant_vars"]):
+                    self.spec["preset_dep_constant_vars"][name] = value_def
                 else:
-                    self.constant_vars[name] = value_def
+                    self.spec["constant_vars"][name] = value_def
 
     @staticmethod
     def _get_table_row_fields(row: Element) -> tuple[str, str, Optional[str]]:
@@ -298,7 +298,7 @@ class MarkdownToSpec:
                 f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
 
         # Set the config variable
-        self.config_vars[list_of_records_name] = list_of_records_config_file
+        self.spec["config_vars"][list_of_records_name] = list_of_records_config_file
 
     @staticmethod
     def _make_list_of_records_type_map(list_of_records: list[dict[str, str]]) -> dict[str, str]:
@@ -389,43 +389,43 @@ class MarkdownToSpec:
         Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
         """
         # Update KZG trusted setup if needed
-        if any('KZG_SETUP' in name for name in self.constant_vars):
+        if any('KZG_SETUP' in name for name in self.spec["constant_vars"]):
             _update_constant_vars_with_kzg_setups(
-                self.constant_vars, self.preset_dep_constant_vars, self.preset_name
+                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
 
         # Update CURDLEPROOFS CRS if needed
-        if any('CURDLEPROOFS_CRS' in name for name in self.constant_vars):
+        if any('CURDLEPROOFS_CRS' in name for name in self.spec["constant_vars"]):
             _update_constant_vars_with_curdleproofs_crs(
-                self.constant_vars, self.preset_dep_constant_vars, self.preset_name
+                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
 
         # Split all_custom_types into custom_types and preset_dep_custom_types
-        self.custom_types = {}
-        self.preset_dep_custom_types = {}
+        self.spec["custom_types"] = {}
+        self.spec["preset_dep_custom_types"] = {}
         for name, value in self.all_custom_types.items():
-            if any(k in value for k in self.preset) or any(k in value for k in self.preset_dep_constant_vars):
-                self.preset_dep_custom_types[name] = value
+            if any(k in value for k in self.preset) or any(k in value for k in self.spec["preset_dep_constant_vars"]):
+                self.spec["preset_dep_custom_types"][name] = value
             else:
-                self.custom_types[name] = value
+                self.spec["custom_types"][name] = value
 
     def _build_spec_object(self):
         """
-        Constructs and returns the SpecObject using all collected data.
+        Returns the SpecObject using all collected data.
         """
         return SpecObject(
-            functions=self.functions,
-            protocols=self.protocols,
-            custom_types=self.custom_types,
-            preset_dep_custom_types=self.preset_dep_custom_types,
-            constant_vars=self.constant_vars,
-            preset_dep_constant_vars=self.preset_dep_constant_vars,
-            preset_vars=self.preset_vars,
-            config_vars=self.config_vars,
-            ssz_dep_constants=self.ssz_dep_constants,
-            func_dep_presets=self.func_dep_presets,
-            ssz_objects=self.ssz_objects,
-            dataclasses=self.dataclasses,
+            functions=self.spec["functions"],
+            protocols=self.spec["protocols"],
+            custom_types=self.spec["custom_types"],
+            preset_dep_custom_types=self.spec["preset_dep_custom_types"],
+            constant_vars=self.spec["constant_vars"],
+            preset_dep_constant_vars=self.spec["preset_dep_constant_vars"],
+            preset_vars=self.spec["preset_vars"],
+            config_vars=self.spec["config_vars"],
+            ssz_dep_constants=self.spec["ssz_dep_constants"],
+            func_dep_presets=self.spec["func_dep_presets"],
+            ssz_objects=self.spec["ssz_objects"],
+            dataclasses=self.spec["dataclasses"],
         )
 
 @lru_cache(maxsize=None)
