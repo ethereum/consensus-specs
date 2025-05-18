@@ -14,14 +14,14 @@ from eth2spec.test.utils.kzg_tests import (
     BLOB_ALL_TWOS,
     BLOB_ALL_ZEROS,
     BLOB_RANDOM_VALID1,
+    bls_add_one,
+    encode_hex_list,
     G1,
     INVALID_BLOBS,
     INVALID_FIELD_ELEMENTS,
     INVALID_G1_POINTS,
     VALID_BLOBS,
     VALID_FIELD_ELEMENTS,
-    bls_add_one,
-    encode_hex_list,
 )
 
 ###############################################################################

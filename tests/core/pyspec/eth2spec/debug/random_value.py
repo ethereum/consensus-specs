@@ -6,15 +6,15 @@ from eth2spec.utils.ssz.ssz_typing import (
     BasicView,
     Bitlist,
     Bitvector,
+    boolean,
     ByteList,
     ByteVector,
     Container,
     List,
+    uint,
     Union,
     Vector,
     View,
-    boolean,
-    uint,
 )
 
 # in bytes

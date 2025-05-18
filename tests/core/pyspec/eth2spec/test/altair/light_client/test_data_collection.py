@@ -7,8 +7,8 @@ from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.light_client_data_collection import (
-    BlockID,
     add_new_block,
+    BlockID,
     finish_lc_data_collection_test,
     get_lc_bootstrap_block_id,
     get_lc_update_attested_block_id,

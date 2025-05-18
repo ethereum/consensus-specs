@@ -1,7 +1,7 @@
 import random
 
-from rlp import Serializable, encode
-from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
+from rlp import encode, Serializable
+from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLPList
 
 from eth2spec.test.helpers.forks import (
     is_post_electra,
