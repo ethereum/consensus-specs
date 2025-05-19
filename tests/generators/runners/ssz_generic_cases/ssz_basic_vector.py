@@ -1,5 +1,10 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
+from random import Random
+from typing import Dict, Type
+
+from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import (
+    BasicView,
     boolean,
     uint8,
     uint16,
@@ -8,12 +13,9 @@ from eth2spec.utils.ssz.ssz_typing import (
     uint128,
     uint256,
     Vector,
-    BasicView,
 )
-from eth2spec.utils.ssz.ssz_impl import serialize
-from random import Random
-from typing import Dict, Type
-from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def basic_vector_case_fn(

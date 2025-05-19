@@ -1,5 +1,6 @@
-from .ssz_test_case import valid_test_case, invalid_test_case
 from eth2spec.utils.ssz.ssz_typing import boolean
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def valid_cases():

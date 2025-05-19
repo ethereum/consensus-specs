@@ -1,21 +1,21 @@
 from random import Random
 
+from eth2spec.test.context import (
+    expect_assertion_error,
+    spec_state_test,
+    with_deneb_and_later,
+)
+from eth2spec.test.helpers.blob import (
+    get_max_blob_count,
+    get_sample_blob_tx,
+)
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.context import (
-    spec_state_test,
-    expect_assertion_error,
-    with_deneb_and_later,
-)
-from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-    get_max_blob_count,
-)
+from eth2spec.test.helpers.keys import privkeys
 
 
 def run_execution_payload_processing(

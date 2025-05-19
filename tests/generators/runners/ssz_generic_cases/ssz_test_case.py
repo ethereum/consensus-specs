@@ -1,7 +1,8 @@
-from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
-from eth2spec.debug.encode import encode
-from eth2spec.utils.ssz.ssz_typing import View
 from typing import Callable
+
+from eth2spec.debug.encode import encode
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize
+from eth2spec.utils.ssz.ssz_typing import View
 
 
 def valid_test_case(value_fn: Callable[[], View]):

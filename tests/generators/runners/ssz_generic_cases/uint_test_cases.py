@@ -3,14 +3,14 @@ import random
 from eth_utils import (
     to_tuple,
 )
-
-import ssz
-from ssz.sedes import (
-    UInt,
-)
 from renderers import (
     render_test_case,
 )
+from ssz.sedes import (
+    UInt,
+)
+
+import ssz
 
 random.seed(0)
 

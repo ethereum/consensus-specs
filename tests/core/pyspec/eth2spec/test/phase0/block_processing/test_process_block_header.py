@@ -1,15 +1,14 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_all_phases
+from eth2spec.test.context import expect_assertion_error, spec_state_test, with_all_phases
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.execution_payload import compute_el_block_hash_for_block
-from eth2spec.test.helpers.forks import is_post_bellatrix
-from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.state import next_slot
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
+    compute_el_block_hash_for_block,
 )
+from eth2spec.test.helpers.forks import is_post_bellatrix, is_post_eip7732
+from eth2spec.test.helpers.state import next_slot
 
 
 def prepare_state_for_header_processing(spec, state):

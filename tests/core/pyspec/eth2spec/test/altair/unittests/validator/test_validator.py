@@ -1,24 +1,25 @@
 import random
 from collections import defaultdict
-from eth2spec.utils.ssz.ssz_typing import Bitvector
-from eth2spec.utils import bls
-from eth2spec.test.helpers.block import build_empty_block
-from eth2spec.test.helpers.keys import pubkey_to_privkey, privkeys, pubkeys
-from eth2spec.test.helpers.state import transition_to
-from eth2spec.test.helpers.sync_committee import compute_sync_committee_signature
+
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_presets,
-    with_all_phases_from_except,
 )
+from eth2spec.test.helpers.block import build_empty_block
 from eth2spec.test.helpers.constants import (
-    MAINNET,
-    MINIMAL,
     ALTAIR,
     EIP7805,
+    MAINNET,
+    MINIMAL,
 )
+from eth2spec.test.helpers.keys import privkeys, pubkey_to_privkey, pubkeys
+from eth2spec.test.helpers.state import transition_to
+from eth2spec.test.helpers.sync_committee import compute_sync_committee_signature
+from eth2spec.utils import bls
+from eth2spec.utils.ssz.ssz_typing import Bitvector
 
 rng = random.Random(1337)
 
