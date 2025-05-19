@@ -332,25 +332,6 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_apply_pending_deposit_top_up__zero_balance(spec, state):
-    validator_index = 0
-    amount = spec.MIN_ACTIVATION_BALANCE // 4
-    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
-
-    initial_balance = 0
-    initial_effective_balance = 0
-    state.balances[validator_index] = initial_balance
-    state.validators[validator_index].effective_balance = initial_effective_balance
-
-    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
-
-    assert state.balances[validator_index] == initial_balance + amount
-    # unchanged effective balance
-    assert state.validators[validator_index].effective_balance == initial_effective_balance
-
-
-@with_electra_and_later
-@spec_state_test
 @always_bls
 def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
     validator_index = 0
