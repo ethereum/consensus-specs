@@ -1,16 +1,17 @@
 from random import Random
 
+import eth2spec.test.helpers.rewards as rewards_helpers
 from eth2spec.test.context import (
-    with_altair_and_later,
-    spec_test,
-    spec_state_test,
-    with_custom_state,
+    low_balances,
+    misc_balances,
     single_phase,
-    low_balances, misc_balances,
+    spec_state_test,
+    spec_test,
+    with_altair_and_later,
+    with_custom_state,
 )
 from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 from eth2spec.test.helpers.rewards import leaking
-import eth2spec.test.helpers.rewards as rewards_helpers
 
 
 @with_altair_and_later
@@ -63,7 +64,9 @@ def test_random_inactivity_scores_low_balances_1(spec, state):
 
 
 @with_altair_and_later
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 def test_full_random_misc_balances(spec, state):
@@ -74,6 +77,7 @@ def test_full_random_misc_balances(spec, state):
 #
 # Leaking variants
 #
+
 
 @with_altair_and_later
 @spec_state_test

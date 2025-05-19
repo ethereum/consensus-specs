@@ -1,13 +1,17 @@
 import random
+
+from eth2spec.debug.random_value import (
+    get_random_ssz_object,
+    RandomizationMode,
+)
 from eth2spec.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
     with_fulu_and_later,
 )
-from eth2spec.debug.random_value import (
-    RandomizationMode,
-    get_random_ssz_object,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     sign_block,
@@ -15,10 +19,6 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
-
 
 # Helper functions
 
@@ -36,10 +36,12 @@ def compute_data_column_sidecar(spec, state):
     )
     block.body.blob_kzg_commitments = blob_kzg_commitments
     block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    return spec.get_data_column_sidecars(signed_block, cells_and_kzg_proofs)[0]
+    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
 
 
 # Tests for verify_data_column_sidecar
@@ -180,5 +182,7 @@ def test_compute_subnet_for_data_column_sidecar(spec):
     # no duplicates
     assert len(subnet_results) == len(set(subnet_results))
     # next one should be duplicate
-    next_subnet = spec.compute_subnet_for_data_column_sidecar(spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT)
+    next_subnet = spec.compute_subnet_for_data_column_sidecar(
+        spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    )
     assert next_subnet == subnet_results[0]

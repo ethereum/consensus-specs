@@ -1,4 +1,3 @@
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
@@ -6,13 +5,14 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
-    run_attestation_processing,
-    get_valid_attestation,
-    sign_attestation,
     build_attestation_data,
-    get_valid_attestation_at_slot,
     get_empty_eip7549_aggregation_bits,
+    get_valid_attestation,
+    get_valid_attestation_at_slot,
+    run_attestation_processing,
+    sign_attestation,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.state import (
     next_slots,
 )
@@ -174,7 +174,9 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
         aggregate.aggregation_bits[committee_offset + i] = attestation_1.aggregation_bits[i]
 
     # Check that only one committee is presented
-    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(state, attestation_1)
+    assert spec.get_attesting_indices(state, aggregate) == spec.get_attesting_indices(
+        state, attestation_1
+    )
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 

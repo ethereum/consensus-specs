@@ -1,6 +1,7 @@
-from typing import Dict, Any
-from eth2spec.utils.ssz.ssz_typing import View
+from typing import Any, Dict
+
 from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_typing import View
 
 
 def vector_test(description: str = None):
@@ -13,6 +14,7 @@ def vector_test(description: str = None):
     :param description: Optional description for the test to add to the metadata.
     :return: Decorator.
     """
+
     def runner(fn):
         # this wraps the function, to yield type-annotated entries of data.
         # Valid types are:
@@ -25,7 +27,7 @@ def vector_test(description: str = None):
             def generator_mode():
                 if description is not None:
                     # description can be explicit
-                    yield 'description', 'meta', description
+                    yield "description", "meta", description
 
                 # transform the yielded data, and add type annotations
                 for data in fn(*args, **kw):
@@ -39,25 +41,27 @@ def vector_test(description: str = None):
                     if value is None:
                         continue
                     if isinstance(value, View):
-                        yield key, 'ssz', serialize(value)
+                        yield key, "ssz", serialize(value)
                     elif isinstance(value, bytes):
-                        yield key, 'ssz', value
-                    elif isinstance(value, list) and all([isinstance(el, (View, bytes)) for el in value]):
+                        yield key, "ssz", value
+                    elif isinstance(value, list) and all(
+                        [isinstance(el, (View, bytes)) for el in value]
+                    ):
                         for i, el in enumerate(value):
                             if isinstance(el, View):
-                                yield f'{key}_{i}', 'ssz', serialize(el)
+                                yield f"{key}_{i}", "ssz", serialize(el)
                             elif isinstance(el, bytes):
-                                yield f'{key}_{i}', 'ssz', el
-                        yield f'{key}_count', 'meta', len(value)
+                                yield f"{key}_{i}", "ssz", el
+                        yield f"{key}_count", "meta", len(value)
                     else:
                         # Not a ssz value.
                         # The data will now just be yielded as any python data,
                         #  something that should be encodable by the generator runner.
-                        yield key, 'data', value
+                        yield key, "data", value
 
             # check generator mode, may be None/else.
             # "pop" removes it, so it is not passed to the inner function.
-            if kw.pop('generator_mode', False) is True:
+            if kw.pop("generator_mode", False) is True:
                 # return the yielding function as a generator object.
                 # Don't yield in this function itself, that would make pytest skip over it.
                 return generator_mode()
@@ -81,6 +85,7 @@ def with_meta_tags(tags: Dict[str, Any]):
     :param tags: dict of tags
     :return: Decorator.
     """
+
     def runner(fn):
         def entry(*args, **kw):
             yielded_any = False
@@ -91,6 +96,8 @@ def with_meta_tags(tags: Dict[str, Any]):
             # As a pytest, we do not want to be yielding anything (unsupported by pytest)
             if yielded_any:
                 for k, v in tags.items():
-                    yield k, 'meta', v
+                    yield k, "meta", v
+
         return entry
+
     return runner

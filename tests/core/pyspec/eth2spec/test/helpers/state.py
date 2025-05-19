@@ -42,15 +42,6 @@ def transition_to_slot_via_block(spec, state, slot):
     assert state.slot == slot
 
 
-def transition_to_valid_shard_slot(spec, state):
-    """
-    Transition to slot `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH) + 1`
-    and fork at `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)`.
-    """
-    transition_to(spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH))
-    next_slot(spec, state)
-
-
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
@@ -72,7 +63,9 @@ def next_epoch_via_block(spec, state, insert_state_root=False):
     """
     Transition to the start slot of the next epoch via a full block transition
     """
-    block = apply_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
+    block = apply_empty_block(
+        spec, state, state.slot + spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH
+    )
     if insert_state_root:
         block.state_root = state.hash_tree_root()
     return block
@@ -194,11 +187,16 @@ def has_active_balance_differential(spec, state):
     """
     active_balance = spec.get_total_active_balance(state)
     total_balance = spec.get_total_balance(state, set(range(len(state.validators))))
-    return active_balance // spec.EFFECTIVE_BALANCE_INCREMENT != total_balance // spec.EFFECTIVE_BALANCE_INCREMENT
+    return (
+        active_balance // spec.EFFECTIVE_BALANCE_INCREMENT
+        != total_balance // spec.EFFECTIVE_BALANCE_INCREMENT
+    )
 
 
 def get_validator_index_by_pubkey(state, pubkey):
-    index = next((i for i, validator in enumerate(state.validators) if validator.pubkey == pubkey), None)
+    index = next(
+        (i for i, validator in enumerate(state.validators) if validator.pubkey == pubkey), None
+    )
     return index
 
 

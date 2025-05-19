@@ -1,9 +1,16 @@
 import random
 
+from eth2spec.debug.random_value import (
+    get_random_ssz_object,
+    RandomizationMode,
+)
 from eth2spec.test.context import (
     spec_state_test,
     with_deneb_and_later,
     with_test_suite_name,
+)
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -13,13 +20,6 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
-from eth2spec.debug.random_value import (
-    RandomizationMode,
-    get_random_ssz_object,
-)
 
 
 def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
@@ -44,7 +44,9 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
     else:
         block.body.blob_kzg_commitments = blob_kzg_commitments
         block.body.execution_payload.transactions = [opaque_tx]
-        block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
 
     signed_block = sign_block(spec, state, block, proposer_index=0)
     if is_post_eip7732(spec):
@@ -59,8 +61,7 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
 
     if is_post_eip7732(spec):
         inner_gindex = spec.get_generalized_index(
-            spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK],
-            blob_index
+            spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_index
         )
         outer_gindex = spec.get_generalized_index(
             spec.BeaconBlockBody,
@@ -70,12 +71,14 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
         )
         gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
     else:
-        gindex = spec.get_generalized_index(spec.BeaconBlockBody, 'blob_kzg_commitments', blob_index)
+        gindex = spec.get_generalized_index(
+            spec.BeaconBlockBody, "blob_kzg_commitments", blob_index
+        )
 
     yield "proof", {
         "leaf": "0x" + blob_sidecar.kzg_commitment.hash_tree_root().hex(),
         "leaf_index": gindex,
-        "branch": ['0x' + root.hex() for root in kzg_commitment_inclusion_proof]
+        "branch": ["0x" + root.hex() for root in kzg_commitment_inclusion_proof],
     }
 
     assert spec.is_valid_merkle_branch(

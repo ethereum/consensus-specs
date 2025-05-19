@@ -1,10 +1,10 @@
-from eth2spec.test.helpers.deposits import mock_deposit
-from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test, with_electra_and_later
+from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.withdrawals import (
+    set_compounding_withdrawal_credential_with_balance,
     set_eth1_withdrawal_credential_with_balance,
-    set_compounding_withdrawal_credential_with_balance
 )
 
 
@@ -14,16 +14,20 @@ def run_test_activation_queue_eligibility(spec, state, validator_index, balance)
     next_epoch(spec, state)
 
     state.balances[validator_index] = balance
-    state.validators[validator_index].effective_balance = balance
+    state.validators[validator_index].effective_balance = (
+        balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT
+    )
 
     # ready for entrance into activation queue
     mock_deposit(spec, state, validator_index)
 
-    yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
+    yield from run_epoch_processing_with(spec, state, "process_registry_updates")
 
     # validator moved into activation queue if eligible
     validator = state.validators[validator_index]
-    if validator.effective_balance < spec.MIN_ACTIVATION_BALANCE:
+    if validator.effective_balance <= (
+        spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    ):
         assert validator.activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
     else:
         assert validator.activation_eligibility_epoch < spec.FAR_FUTURE_EPOCH

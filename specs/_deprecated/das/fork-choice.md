@@ -1,24 +1,23 @@
 # Data Availability Sampling -- Fork Choice
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Dependency calculation](#dependency-calculation)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document is the beacon chain fork choice spec for Data Availability Sampling. The only change that we add from phase 0 is that we add a concept of "data dependencies";
-a block is only eligible for consideration in the fork choice after a data availability test has been successfully completed for all dependencies.
-The "root" of a shard block for data dependency purposes is considered to be a `DataCommitment` object, which is a pair of a Kate commitment and a length.
+This document is the beacon chain fork choice spec for Data Availability
+Sampling. The only change that we add from phase 0 is that we add a concept of
+"data dependencies"; a block is only eligible for consideration in the fork
+choice after a data availability test has been successfully completed for all
+dependencies. The "root" of a shard block for data dependency purposes is
+considered to be a `DataCommitment` object, which is a pair of a Kate commitment
+and a length.
 
 ## Dependency calculation
 

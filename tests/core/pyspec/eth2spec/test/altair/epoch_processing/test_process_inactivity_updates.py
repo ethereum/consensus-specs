@@ -1,22 +1,10 @@
 from random import Random
 
 from eth2spec.test.context import spec_state_test, with_altair_and_later
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
     zero_inactivity_scores,
-)
-from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_epoch_via_block,
-    set_full_participation,
-    set_empty_participation,
-)
-from eth2spec.test.helpers.voluntary_exits import (
-    exit_validators,
-    get_exited_validators
-)
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with
 )
 from eth2spec.test.helpers.random import (
     randomize_attestation_participation,
@@ -24,10 +12,17 @@ from eth2spec.test.helpers.random import (
     randomize_state,
 )
 from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_epoch_via_block,
+    set_empty_participation,
+    set_full_participation,
+)
+from eth2spec.test.helpers.voluntary_exits import exit_validators, get_exited_validators
 
 
 def run_process_inactivity_updates(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_inactivity_updates')
+    yield from run_epoch_processing_with(spec, state, "process_inactivity_updates")
 
 
 @with_altair_and_later
@@ -53,7 +48,10 @@ def test_genesis_random_scores(spec, state):
 # Thus all of following tests all go past genesis epoch to test core functionality
 #
 
-def run_inactivity_scores_test(spec, state, participation_fn=None, inactivity_scores_fn=None, rng=Random(10101)):
+
+def run_inactivity_scores_test(
+    spec, state, participation_fn=None, inactivity_scores_fn=None, rng=Random(10101)
+):
     while True:
         try:
             next_epoch_via_block(spec, state)
@@ -73,7 +71,9 @@ def run_inactivity_scores_test(spec, state, participation_fn=None, inactivity_sc
 @with_altair_and_later
 @spec_state_test
 def test_all_zero_inactivity_scores_empty_participation(spec, state):
-    yield from run_inactivity_scores_test(spec, state, set_empty_participation, zero_inactivity_scores)
+    yield from run_inactivity_scores_test(
+        spec, state, set_empty_participation, zero_inactivity_scores
+    )
     assert set(state.inactivity_scores) == set([0])
 
 
@@ -81,7 +81,9 @@ def test_all_zero_inactivity_scores_empty_participation(spec, state):
 @spec_state_test
 @leaking()
 def test_all_zero_inactivity_scores_empty_participation_leaking(spec, state):
-    yield from run_inactivity_scores_test(spec, state, set_empty_participation, zero_inactivity_scores)
+    yield from run_inactivity_scores_test(
+        spec, state, set_empty_participation, zero_inactivity_scores
+    )
 
     # Should still in be leak
     assert spec.is_in_inactivity_leak(state)
@@ -94,8 +96,11 @@ def test_all_zero_inactivity_scores_empty_participation_leaking(spec, state):
 @spec_state_test
 def test_all_zero_inactivity_scores_random_participation(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_attestation_participation, zero_inactivity_scores, rng=Random(5555),
+        spec,
+        state,
+        randomize_attestation_participation,
+        zero_inactivity_scores,
+        rng=Random(5555),
     )
     assert set(state.inactivity_scores) == set([0])
 
@@ -106,8 +111,11 @@ def test_all_zero_inactivity_scores_random_participation(spec, state):
 def test_all_zero_inactivity_scores_random_participation_leaking(spec, state):
     # Only randomize participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_previous_epoch_participation, zero_inactivity_scores, rng=Random(5555),
+        spec,
+        state,
+        randomize_previous_epoch_participation,
+        zero_inactivity_scores,
+        rng=Random(5555),
     )
 
     # Check still in leak
@@ -121,8 +129,10 @@ def test_all_zero_inactivity_scores_random_participation_leaking(spec, state):
 @spec_state_test
 def test_all_zero_inactivity_scores_full_participation(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, zero_inactivity_scores,
+        spec,
+        state,
+        set_full_participation,
+        zero_inactivity_scores,
     )
 
     assert set(state.inactivity_scores) == set([0])
@@ -134,8 +144,10 @@ def test_all_zero_inactivity_scores_full_participation(spec, state):
 def test_all_zero_inactivity_scores_full_participation_leaking(spec, state):
     # Only set full participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, zero_inactivity_scores,
+        spec,
+        state,
+        set_full_participation,
+        zero_inactivity_scores,
     )
 
     # Check still in leak
@@ -148,8 +160,11 @@ def test_all_zero_inactivity_scores_full_participation_leaking(spec, state):
 @spec_state_test
 def test_random_inactivity_scores_empty_participation(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_empty_participation, randomize_inactivity_scores, Random(9999),
+        spec,
+        state,
+        set_empty_participation,
+        randomize_inactivity_scores,
+        Random(9999),
     )
 
 
@@ -158,8 +173,11 @@ def test_random_inactivity_scores_empty_participation(spec, state):
 @leaking()
 def test_random_inactivity_scores_empty_participation_leaking(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_empty_participation, randomize_inactivity_scores, Random(9999),
+        spec,
+        state,
+        set_empty_participation,
+        randomize_inactivity_scores,
+        Random(9999),
     )
 
     # Check still in leak
@@ -170,8 +188,11 @@ def test_random_inactivity_scores_empty_participation_leaking(spec, state):
 @spec_state_test
 def test_random_inactivity_scores_random_participation(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_attestation_participation, randomize_inactivity_scores, Random(22222),
+        spec,
+        state,
+        randomize_attestation_participation,
+        randomize_inactivity_scores,
+        Random(22222),
     )
 
 
@@ -181,8 +202,11 @@ def test_random_inactivity_scores_random_participation(spec, state):
 def test_random_inactivity_scores_random_participation_leaking(spec, state):
     # Only randomize participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_previous_epoch_participation, randomize_inactivity_scores, Random(22222),
+        spec,
+        state,
+        randomize_previous_epoch_participation,
+        randomize_inactivity_scores,
+        Random(22222),
     )
 
     # Check still in leak
@@ -193,8 +217,11 @@ def test_random_inactivity_scores_random_participation_leaking(spec, state):
 @spec_state_test
 def test_random_inactivity_scores_full_participation(spec, state):
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, randomize_inactivity_scores, Random(33333),
+        spec,
+        state,
+        set_full_participation,
+        randomize_inactivity_scores,
+        Random(33333),
     )
 
 
@@ -204,8 +231,11 @@ def test_random_inactivity_scores_full_participation(spec, state):
 def test_random_inactivity_scores_full_participation_leaking(spec, state):
     # Only set full participation in previous epoch to remain in leak
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, randomize_inactivity_scores, Random(33333),
+        spec,
+        state,
+        set_full_participation,
+        randomize_inactivity_scores,
+        Random(33333),
     )
 
     # Check still in leak
@@ -231,8 +261,10 @@ def slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(404
 def test_some_slashed_zero_scores_full_participation(spec, state):
     slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(33429))
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, zero_inactivity_scores,
+        spec,
+        state,
+        set_full_participation,
+        zero_inactivity_scores,
     )
 
     assert set(state.inactivity_scores) == set([0])
@@ -244,8 +276,10 @@ def test_some_slashed_zero_scores_full_participation(spec, state):
 def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
     slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(332243))
     yield from run_inactivity_scores_test(
-        spec, state,
-        set_full_participation, zero_inactivity_scores,
+        spec,
+        state,
+        set_full_participation,
+        zero_inactivity_scores,
     )
 
     # Check still in leak
@@ -265,8 +299,11 @@ def test_some_slashed_full_random(spec, state):
     rng = Random(1010222)
     slash_some_validators_for_inactivity_scores_test(spec, state, rng=rng)
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_attestation_participation, randomize_inactivity_scores, rng=rng,
+        spec,
+        state,
+        randomize_attestation_participation,
+        randomize_inactivity_scores,
+        rng=rng,
     )
 
 
@@ -277,8 +314,11 @@ def test_some_slashed_full_random_leaking(spec, state):
     rng = Random(1102233)
     slash_some_validators_for_inactivity_scores_test(spec, state, rng=rng)
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_previous_epoch_participation, randomize_inactivity_scores, rng=rng,
+        spec,
+        state,
+        randomize_previous_epoch_participation,
+        randomize_inactivity_scores,
+        rng=rng,
     )
 
     # Check still in leak
@@ -314,8 +354,10 @@ def test_some_exited_full_random_leaking(spec, state):
     previous_scores = state.inactivity_scores.copy()
 
     yield from run_inactivity_scores_test(
-        spec, state,
-        randomize_previous_epoch_participation, rng=rng,
+        spec,
+        state,
+        randomize_previous_epoch_participation,
+        rng=rng,
     )
 
     # ensure exited validators have their score "frozen" at exit

@@ -1,10 +1,6 @@
 # Phase 0 -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Notation](#notation)
@@ -137,15 +133,23 @@
       - [Deposits](#deposits)
       - [Voluntary exits](#voluntary-exits)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 This document represents the specification for Phase 0 -- The Beacon Chain.
 
-At the core of Ethereum proof-of-stake is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of proof-of-stake, the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum proof-of-work chain. Activation as a validator happens when deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase 0).
+At the core of Ethereum proof-of-stake is a system chain called the "beacon
+chain". The beacon chain stores and manages the registry of validators. In the
+initial deployment phases of proof-of-stake, the only mechanism to become a
+validator is to make a one-way ETH transaction to a deposit contract on the
+Ethereum proof-of-work chain. Activation as a validator happens when deposit
+receipts are processed by the beacon chain, the activation balance is reached,
+and a queuing process is completed. Exit is either voluntary or done forcibly as
+a penalty for misbehavior. The primary source of load on the beacon chain is
+"attestations". Attestations are simultaneously availability votes for a shard
+block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
+0).
 
 ## Notation
 
@@ -155,51 +159,52 @@ Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Slot` | `uint64` | a slot number |
-| `Epoch` | `uint64` | an epoch number |
-| `CommitteeIndex` | `uint64` | a committee index at a slot |
-| `ValidatorIndex` | `uint64` | a validator registry index |
-| `Gwei` | `uint64` | an amount in Gwei |
-| `Root` | `Bytes32` | a Merkle root |
-| `Hash32` | `Bytes32` | a 256-bit hash |
-| `Version` | `Bytes4` | a fork version number |
-| `DomainType` | `Bytes4` | a domain type |
-| `ForkDigest` | `Bytes4` | a digest of the current fork data |
-| `Domain` | `Bytes32` | a signature domain |
-| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
+| Name             | SSZ equivalent | Description                       |
+| ---------------- | -------------- | --------------------------------- |
+| `Slot`           | `uint64`       | a slot number                     |
+| `Epoch`          | `uint64`       | an epoch number                   |
+| `CommitteeIndex` | `uint64`       | a committee index at a slot       |
+| `ValidatorIndex` | `uint64`       | a validator registry index        |
+| `Gwei`           | `uint64`       | an amount in Gwei                 |
+| `Root`           | `Bytes32`      | a Merkle root                     |
+| `Hash32`         | `Bytes32`      | a 256-bit hash                    |
+| `Version`        | `Bytes4`       | a fork version number             |
+| `DomainType`     | `Bytes4`       | a domain type                     |
+| `ForkDigest`     | `Bytes4`       | a digest of the current fork data |
+| `Domain`         | `Bytes32`      | a signature domain                |
+| `BLSPubkey`      | `Bytes48`      | a BLS12-381 public key            |
+| `BLSSignature`   | `Bytes96`      | a BLS12-381 signature             |
 
 ## Constants
 
-The following values are (non-configurable) constants used throughout the specification.
+The following values are (non-configurable) constants used throughout the
+specification.
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `UINT64_MAX` | `uint64(2**64 - 1)` |
-| `UINT64_MAX_SQRT` | `uint64(4294967295)` |
-| `GENESIS_SLOT` | `Slot(0)` |
-| `GENESIS_EPOCH` | `Epoch(0)` |
-| `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `BASE_REWARDS_PER_EPOCH` | `uint64(4)` |
+| Name                          | Value                 |
+| ----------------------------- | --------------------- |
+| `UINT64_MAX`                  | `uint64(2**64 - 1)`   |
+| `UINT64_MAX_SQRT`             | `uint64(4294967295)`  |
+| `GENESIS_SLOT`                | `Slot(0)`             |
+| `GENESIS_EPOCH`               | `Epoch(0)`            |
+| `FAR_FUTURE_EPOCH`            | `Epoch(2**64 - 1)`    |
+| `BASE_REWARDS_PER_EPOCH`      | `uint64(4)`           |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `uint64(2**5)` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH` | `uint64(4)` |
-| `ENDIANNESS` | `'little'` |
+| `JUSTIFICATION_BITS_LENGTH`   | `uint64(4)`           |
+| `ENDIANNESS`                  | `'little'`            |
 
 ### Withdrawal prefixes
 
-| Name | Value |
-| - | - |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
+| Name                             | Value            |
+| -------------------------------- | ---------------- |
+| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
 | `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
 | `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
 | `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
@@ -209,120 +214,147 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
 | `DOMAIN_APPLICATION_MASK`    | `DomainType('0x00000001')` |
 
-*Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in `DomainType` for application usage. This means for some `DomainType` `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK` **MUST** be non-zero. This expression for any other `DomainType` in the consensus specs **MUST** be zero.
+*Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in
+`DomainType` for application usage. This means for some `DomainType`
+`DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
+**MUST** be non-zero. This expression for any other `DomainType` in the
+consensus specs **MUST** be zero.
 
 ## Preset
 
-*Note*: The below configuration is bundled as a preset: a bundle of configuration variables which are expected to differ
-between different modes of operation, e.g. testing, but not generally between different networks.
-Additional preset configurations can be found in the [`configs`](../../configs) directory.
+*Note*: The below configuration is bundled as a preset: a bundle of
+configuration variables which are expected to differ between different modes of
+operation, e.g. testing, but not generally between different networks.
+Additional preset configurations can be found in the [`configs`](../../configs)
+directory.
 
 ### Misc
 
-| Name | Value |
-| - | - |
-| `MAX_COMMITTEES_PER_SLOT` | `uint64(2**6)` (= 64) |
-| `TARGET_COMMITTEE_SIZE` | `uint64(2**7)` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `uint64(2**11)` (= 2,048) |
-| `SHUFFLE_ROUND_COUNT` | `uint64(90)` |
-| `HYSTERESIS_QUOTIENT` | `uint64(4)` |
-| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)` |
-| `HYSTERESIS_UPWARD_MULTIPLIER` | `uint64(5)` |
+| Name                             | Value                     |
+| -------------------------------- | ------------------------- |
+| `MAX_COMMITTEES_PER_SLOT`        | `uint64(2**6)` (= 64)     |
+| `TARGET_COMMITTEE_SIZE`          | `uint64(2**7)` (= 128)    |
+| `MAX_VALIDATORS_PER_COMMITTEE`   | `uint64(2**11)` (= 2,048) |
+| `SHUFFLE_ROUND_COUNT`            | `uint64(90)`              |
+| `HYSTERESIS_QUOTIENT`            | `uint64(4)`               |
+| `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)`               |
+| `HYSTERESIS_UPWARD_MULTIPLIER`   | `uint64(5)`               |
 
-- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds
+  [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf);
+  with sufficient active validators (at least
+  `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures
+  committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness
+  with a Verifiable Delay Function (VDF) will improve committee robustness and
+  lower the safe minimum committee size.)
 
 ### Gwei values
 
-| Name | Value |
-| - | - |
-| `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
-| `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
-| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
+| Name                          | Value                                   |
+| ----------------------------- | --------------------------------------- |
+| `MIN_DEPOSIT_AMOUNT`          | `Gwei(2**0 * 10**9)` (= 1,000,000,000)  |
+| `MAX_EFFECTIVE_BALANCE`       | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
+| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000)  |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `uint64(2**0)` (= 1) | slots | 12 seconds |
-| `SLOTS_PER_EPOCH` | `uint64(2**5)` (= 32) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `uint64(2**0)` (= 1) | epochs | 6.4 minutes |
-| `MAX_SEED_LOOKAHEAD` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `uint64(2**6)` (= 64) | epochs | ~6.8 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `uint64(2**13)` (= 8,192) | slots | ~27 hours |
+| Name                               | Value                     |  Unit  |   Duration   |
+| ---------------------------------- | ------------------------- | :----: | :----------: |
+| `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |  12 seconds  |
+| `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  | 6.4 minutes  |
+| `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs | 6.4 minutes  |
+| `MAX_SEED_LOOKAHEAD`               | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `uint64(2**6)` (= 64)     | epochs |  ~6.8 hours  |
+| `SLOTS_PER_HISTORICAL_ROOT`        | `uint64(2**13)` (= 8,192) | slots  |  ~27 hours   |
 
 ### State list lengths
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `uint64(2**13)` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `uint64(2**24)` (= 16,777,216) | historical roots | ~52,262 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `uint64(2**40)` (= 1,099,511,627,776) | validators |
+| Name                           | Value                                 |       Unit       |   Duration    |
+| ------------------------------ | ------------------------------------- | :--------------: | :-----------: |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            |      epochs      |  ~0.8 years   |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             |      epochs      |   ~36 days    |
+| `HISTORICAL_ROOTS_LIMIT`       | `uint64(2**24)` (= 16,777,216)        | historical roots | ~52,262 years |
+| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) |    validators    |               |
 
 ### Rewards and penalties
 
-| Name | Value |
-| - | - |
-| `BASE_REWARD_FACTOR` | `uint64(2**6)` (= 64) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `uint64(2**9)` (= 512) |
-| `PROPOSER_REWARD_QUOTIENT` | `uint64(2**3)` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `uint64(2**26)` (= 67,108,864) |
-| `MIN_SLASHING_PENALTY_QUOTIENT` | `uint64(2**7)` (= 128) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)` |
+| Name                               | Value                          |
+| ---------------------------------- | ------------------------------ |
+| `BASE_REWARD_FACTOR`               | `uint64(2**6)` (= 64)          |
+| `WHISTLEBLOWER_REWARD_QUOTIENT`    | `uint64(2**9)` (= 512)         |
+| `PROPOSER_REWARD_QUOTIENT`         | `uint64(2**3)` (= 8)           |
+| `INACTIVITY_PENALTY_QUOTIENT`      | `uint64(2**26)` (= 67,108,864) |
+| `MIN_SLASHING_PENALTY_QUOTIENT`    | `uint64(2**7)` (= 128)         |
+| `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)`                    |
 
-- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
+- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where
+  `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it
+  takes the inactivity penalty to reduce the balance of non-participating
+  validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by
+  offline validators after `n` epochs is about
+  `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after
+  `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly
+  `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+  Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes
+  to provide a faster recovery in the event of an inactivity leak.
 
-- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stabilizes, this value will be upgraded to `3` to provide the maximal minimum accountable safety margin.
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet
+  launch, resulting in one-third of the minimum accountable safety margin in the
+  event of a finality attack. After Phase 0 mainnet stabilizes, this value will
+  be upgraded to `3` to provide the maximal minimum accountable safety margin.
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
-| `MAX_ATTESTER_SLASHINGS` | `2**1` (= 2) |
-| `MAX_ATTESTATIONS` | `2**7` (= 128) |
-| `MAX_DEPOSITS` | `2**4` (= 16) |
-| `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
+| Name                     | Value          |
+| ------------------------ | -------------- |
+| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16)  |
+| `MAX_ATTESTER_SLASHINGS` | `2**1` (= 2)   |
+| `MAX_ATTESTATIONS`       | `2**7` (= 128) |
+| `MAX_DEPOSITS`           | `2**4` (= 16)  |
+| `MAX_VOLUNTARY_EXITS`    | `2**4` (= 16)  |
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for illustrative purposes.
-Defaults for this more dynamic type of configuration are available with the presets in the [`configs`](../../configs) directory.
-Testnets and other types of chain instances may use a different configuration.
+*Note*: The default mainnet configuration values are included here for
+illustrative purposes. Defaults for this more dynamic type of configuration are
+available with the presets in the [`configs`](../../configs) directory. Testnets
+and other types of chain instances may use a different configuration.
 
 ### Genesis settings
 
-| Name | Value |
-| - | - |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384) |
-| `MIN_GENESIS_TIME` | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
-| `GENESIS_FORK_VERSION` | `Version('0x00000000')` |
-| `GENESIS_DELAY` | `uint64(604800)` (7 days) |
+| Name                                 | Value                                        |
+| ------------------------------------ | -------------------------------------------- |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384)                   |
+| `MIN_GENESIS_TIME`                   | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
+| `GENESIS_FORK_VERSION`               | `Version('0x00000000')`                      |
+| `GENESIS_DELAY`                      | `uint64(604800)` (7 days)                    |
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `SECONDS_PER_SLOT` | `uint64(12)` | seconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK` | `uint64(14)` | seconds | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs | ~27 hours |
-| `ETH1_FOLLOW_DISTANCE` | `uint64(2**11)` (= 2,048) | Eth1 blocks | ~8 hours |
+| Name                                  | Value                     |    Unit     |  Duration  |
+| ------------------------------------- | ------------------------- | :---------: | :--------: |
+| `SECONDS_PER_SLOT`                    | `uint64(12)`              |   seconds   | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds   | 14 seconds |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks |  ~8 hours  |
 
 ### Validator cycle
 
-| Name | Value |
-| - | - |
-| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
-| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4) |
-| `CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| Name                        | Value                                   |
+| --------------------------- | --------------------------------------- |
+| `EJECTION_BALANCE`          | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4)                    |
+| `CHURN_LIMIT_QUOTIENT`      | `uint64(2**16)` (= 65,536)              |
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) containers.
+The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
+containers.
 
-*Note*: The definitions are ordered topologically to facilitate execution of the spec.
+*Note*: The definitions are ordered topologically to facilitate execution of the
+spec.
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
@@ -591,7 +623,8 @@ class SignedBeaconBlockHeader(Container):
 
 ## Helper functions
 
-*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
+*Note*: The definitions below are for specification purposes and are not
+necessarily optimal implementations.
 
 ### Math
 
@@ -624,7 +657,9 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 
 #### `uint_to_bytes`
 
-`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint` type object to bytes in ``ENDIANNESS``-endian. The expected length of the output is the byte-length of the `uint` type.
+`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint`
+type object to bytes in `ENDIANNESS`-endian. The expected length of the output
+is the byte-length of the `uint` type.
 
 #### `bytes_to_uint64`
 
@@ -654,11 +689,16 @@ def saturating_sub(a: int, b: int) -> int:
 
 #### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../../ssz/simple-serialize.md#merkleization).
+`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
+objects into a single root by utilizing a hash tree structure, as defined in the
+[SSZ spec](../../ssz/simple-serialize.md#merkleization).
 
 #### BLS signatures
 
-The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the following functions:
+The
+[IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
+with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the
+following functions:
 
 - `def Sign(privkey: int, message: Bytes) -> BLSSignature`
 - `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
@@ -1182,13 +1222,23 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-Before the Ethereum beacon chain genesis has been triggered, and for every Ethereum proof-of-work block, let `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
+Before the Ethereum beacon chain genesis has been triggered, and for every
+Ethereum proof-of-work block, let
+`candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`
+where:
 
 - `eth1_block_hash` is the hash of the Ethereum proof-of-work block
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
-- `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
+- `deposits` is the sequence of all deposits, ordered chronologically, up to
+  (and including) the block with hash `eth1_block_hash`
 
-Proof-of-work blocks must only be considered once they are at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e. `eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`). Due to this constraint, if `GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the `genesis_time` can happen before the time/state is first known. Values should be configured to avoid this case.
+Proof-of-work blocks must only be considered once they are at least
+`SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e.
+`eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`).
+Due to this constraint, if
+`GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the
+`genesis_time` can happen before the time/state is first known. Values should be
+configured to avoid this case.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -1228,11 +1278,13 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     return state
 ```
 
-*Note*: The ETH1 block with `eth1_timestamp` meeting the minimum genesis active validator count criteria can also occur before `MIN_GENESIS_TIME`.
+*Note*: The ETH1 block with `eth1_timestamp` meeting the minimum genesis active
+validator count criteria can also occur before `MIN_GENESIS_TIME`.
 
 ### Genesis state
 
-Let `genesis_state = candidate_state` whenever `is_valid_genesis_state(candidate_state) is True` for the first time.
+Let `genesis_state = candidate_state` whenever
+`is_valid_genesis_state(candidate_state) is True` for the first time.
 
 ```python
 def is_valid_genesis_state(state: BeaconState) -> bool:
@@ -1249,7 +1301,11 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
+The post-state corresponding to a pre-state `state` and a signed block
+`signed_block` is defined as `state_transition(state, signed_block)`. State
+transitions that trigger an unhandled exception (e.g. a failed `assert` or an
+out-of-range list access) are considered invalid. State transitions that cause a
+`uint64` overflow or underflow are also considered invalid.
 
 ```python
 def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> None:
@@ -1627,6 +1683,7 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Eth1 data votes updates
+
 ```python
 def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -1672,6 +1729,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 ```
 
 #### Historical roots updates
+
 ```python
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator

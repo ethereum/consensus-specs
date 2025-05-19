@@ -1,8 +1,8 @@
 import pytest
 
-
 # Note: these functions are extract from merkle-proofs.md (deprecated),
 # the tests are temporary to show correctness while the document is still there.
+
 
 def get_power_of_two_ceil(x: int) -> int:
     if x <= 1:
@@ -23,16 +23,34 @@ def get_power_of_two_floor(x: int) -> int:
 
 
 power_of_two_ceil_cases = [
-    (0, 1), (1, 1), (2, 2), (3, 4), (4, 4), (5, 8), (6, 8), (7, 8), (8, 8), (9, 16),
+    (0, 1),
+    (1, 1),
+    (2, 2),
+    (3, 4),
+    (4, 4),
+    (5, 8),
+    (6, 8),
+    (7, 8),
+    (8, 8),
+    (9, 16),
 ]
 
 power_of_two_floor_cases = [
-    (0, 1), (1, 1), (2, 2), (3, 2), (4, 4), (5, 4), (6, 4), (7, 4), (8, 8), (9, 8),
+    (0, 1),
+    (1, 1),
+    (2, 2),
+    (3, 2),
+    (4, 4),
+    (5, 4),
+    (6, 4),
+    (7, 4),
+    (8, 8),
+    (9, 8),
 ]
 
 
 @pytest.mark.parametrize(
-    'value,expected',
+    "value,expected",
     power_of_two_ceil_cases,
 )
 def test_get_power_of_two_ceil(value, expected):
@@ -40,7 +58,7 @@ def test_get_power_of_two_ceil(value, expected):
 
 
 @pytest.mark.parametrize(
-    'value,expected',
+    "value,expected",
     power_of_two_floor_cases,
 )
 def test_get_power_of_two_floor(value, expected):

@@ -1,12 +1,8 @@
 # Custody Game -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -18,7 +14,7 @@
   - [Size parameters](#size-parameters)
   - [Reward and penalty quotients](#reward-and-penalty-quotients)
 - [Data structures](#data-structures)
-  - [Extended types](#extended-types)
+  - [Modified types](#modified-types)
     - [`Validator`](#validator)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
@@ -52,71 +48,71 @@
   - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
   - [Final updates](#final-updates)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the shard data custody game,
-building upon the [Sharding](../sharding/beacon-chain.md) specification.
+This document details the beacon chain additions and changes of to support the
+shard data custody game, building upon the
+[Sharding](../sharding/beacon-chain.md) specification.
 
 ## Constants
 
 ### Misc
 
-| Name | Value | Unit |
-| - | - | - |
-| `CUSTODY_PRIME` | `int(2 ** 256 - 189)` | - |
-| `CUSTODY_SECRETS` | `uint64(3)` | - |
-| `BYTES_PER_CUSTODY_ATOM` | `uint64(32)` | bytes |
-| `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)` | - |
+| Name                           | Value                 | Unit  |
+| ------------------------------ | --------------------- | ----- |
+| `CUSTODY_PRIME`                | `int(2 ** 256 - 189)` | -     |
+| `CUSTODY_SECRETS`              | `uint64(3)`           | -     |
+| `BYTES_PER_CUSTODY_ATOM`       | `uint64(32)`          | bytes |
+| `CUSTODY_PROBABILITY_EXPONENT` | `uint64(10)`          | -     |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                          | Value                      |
+| ----------------------------- | -------------------------- |
 | `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 
 ## Preset
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `RANDAO_PENALTY_EPOCHS` | `uint64(2**1)` (= 2) | epochs | 12.8 minutes |
-| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | `uint64(2**14)` (= 16,384) | epochs | ~73 days |
-| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `uint64(2**11)` (= 2,048) | epochs | ~9 days |
-| `MAX_CHUNK_CHALLENGE_DELAY` | `uint64(2**15)` (= 32,768) | epochs | ~146 days |
+| Name                                             | Value                      |  Unit  |   Duration   |
+| ------------------------------------------------ | -------------------------- | :----: | :----------: |
+| `RANDAO_PENALTY_EPOCHS`                          | `uint64(2**1)` (= 2)       | epochs | 12.8 minutes |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `uint64(2**15)` (= 32,768) | epochs |  ~146 days   |
+| `EPOCHS_PER_CUSTODY_PERIOD`                      | `uint64(2**14)` (= 16,384) | epochs |   ~73 days   |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING`               | `uint64(2**11)` (= 2,048)  | epochs |   ~9 days    |
+| `MAX_CHUNK_CHALLENGE_DELAY`                      | `uint64(2**15)` (= 32,768) | epochs |  ~146 days   |
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS` | `uint64(2**20)` (= 1,048,576) |
-| `MAX_CUSTODY_KEY_REVEALS` | `uint64(2**8)` (= 256) |
-| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `uint64(2**0)` (= 1) |
-| `MAX_CUSTODY_CHUNK_CHALLENGES` | `uint64(2**2)` (= 4) |
-| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16) |
-| `MAX_CUSTODY_SLASHINGS` | `uint64(2**0)` (= 1) |
+| Name                                    | Value                         |
+| --------------------------------------- | ----------------------------- |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RECORDS`   | `uint64(2**20)` (= 1,048,576) |
+| `MAX_CUSTODY_KEY_REVEALS`               | `uint64(2**8)` (= 256)        |
+| `MAX_EARLY_DERIVED_SECRET_REVEALS`      | `uint64(2**0)` (= 1)          |
+| `MAX_CUSTODY_CHUNK_CHALLENGES`          | `uint64(2**2)` (= 4)          |
+| `MAX_CUSTODY_CHUNK_CHALLENGE_RESPONSES` | `uint64(2**4)` (= 16)         |
+| `MAX_CUSTODY_SLASHINGS`                 | `uint64(2**0)` (= 1)          |
 
 ### Size parameters
 
-| Name | Value | Unit |
-| - | - | - |
-| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096) | bytes |
-| `CUSTODY_RESPONSE_DEPTH` | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | - |
+| Name                      | Value                                                       | Unit  |
+| ------------------------- | ----------------------------------------------------------- | ----- |
+| `BYTES_PER_CUSTODY_CHUNK` | `uint64(2**12)` (= 4,096)                                   | bytes |
+| `CUSTODY_RESPONSE_DEPTH`  | `ceillog2(MAX_SHARD_BLOCK_SIZE // BYTES_PER_CUSTODY_CHUNK)` | -     |
 
 ### Reward and penalty quotients
 
-| Name | Value |
-| - | - |
-| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `uint64(2**1)` (= 2) |
-| `MINOR_REWARD_QUOTIENT` | `uint64(2**8)` (= 256) |
+| Name                                               | Value                  |
+| -------------------------------------------------- | ---------------------- |
+| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `uint64(2**1)` (= 2)   |
+| `MINOR_REWARD_QUOTIENT`                            | `uint64(2**8)` (= 256) |
 
 ## Data structures
 
-### Extended types
+### Modified types
 
 #### `Validator`
 
@@ -224,7 +220,9 @@ class CustodyKeyReveal(Container):
 
 #### `EarlyDerivedSecretReveal`
 
-Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
+Represents an early (punishable) reveal of one of the derived secrets, where
+derived secrets are RANDAO reveals and custody reveals (both are part of the
+same domain).
 
 ```python
 class EarlyDerivedSecretReveal(Container):
@@ -256,7 +254,9 @@ def replace_empty_or_append(l: List, new_element: Any) -> int:
 
 ### `legendre_bit`
 
-Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e. `((a/q) + 1) // 2`). In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
+Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e.
+`((a/q) + 1) // 2`). In a production implementation, a well-optimized library
+(e.g. GMP) should be used for this.
 
 ```python
 def legendre_bit(a: int, q: int) -> int:
@@ -285,7 +285,8 @@ def legendre_bit(a: int, q: int) -> int:
 
 ### `get_custody_atoms`
 
-Given one set of data, return the custody atoms: each atom will be combined with one legendre bit.
+Given one set of data, return the custody atoms: each atom will be combined with
+one legendre bit.
 
 ```python
 def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:

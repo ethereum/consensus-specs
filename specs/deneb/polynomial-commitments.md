@@ -1,10 +1,6 @@
 # Deneb -- Polynomial Commitments
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -45,74 +41,80 @@
     - [`verify_blob_kzg_proof`](#verify_blob_kzg_proof)
     - [`verify_blob_kzg_proof_batch`](#verify_blob_kzg_proof_batch)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations that are essential for the implementation of the EIP-4844 feature in the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
+This document specifies basic polynomial operations and KZG polynomial
+commitment operations that are essential for the implementation of the EIP-4844
+feature in the Deneb specification. The implementations are not optimized for
+performance, but readability. All practical implementations should optimize the
+polynomial operations.
 
-Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
+Functions flagged as "Public method" MUST be provided by the underlying KZG
+library as public functions. All other functions are private functions used
+internally by the KZG library.
 
-Public functions MUST accept raw bytes as input and perform the required cryptographic normalization before invoking any internal functions.
+Public functions MUST accept raw bytes as input and perform the required
+cryptographic normalization before invoking any internal functions.
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `G1Point` | `Bytes48` | |
-| `G2Point` | `Bytes96` | |
-| `KZGCommitment` | `Bytes48` | Validation: Perform [BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5) "KeyValidate" check but do allow the identity point |
-| `KZGProof` | `Bytes48` | Same as for `KZGCommitment` |
-| `Blob` | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob |
+| Name            | SSZ equivalent                                                  | Description                                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `G1Point`       | `Bytes48`                                                       |                                                                                                                                                                              |
+| `G2Point`       | `Bytes96`                                                       |                                                                                                                                                                              |
+| `KZGCommitment` | `Bytes48`                                                       | Validation: Perform [BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5) "KeyValidate" check but do allow the identity point |
+| `KZGProof`      | `Bytes48`                                                       | Same as for `KZGCommitment`                                                                                                                                                  |
+| `Blob`          | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob                                                                                                                                                            |
 
 ## Cryptographic types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| [`BLSFieldElement`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L18-L19) | `uint256` | <!-- predefined-type --> A value in the finite field defined by `BLS_MODULUS` |
-| [`Polynomial`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L22-L28) | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | <!-- predefined-type --> A polynomial in evaluation form |
+| Name                                                                                                                                                  | SSZ equivalent                                     | Description                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [`BLSFieldElement`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L18-L19) | `uint256`                                          | <!-- predefined-type --> A value in the finite field defined by `BLS_MODULUS` |
+| [`Polynomial`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L22-L28)      | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | <!-- predefined-type --> A polynomial in evaluation form                      |
 
 ## Constants
 
-| Name | Value | Notes |
-| - | - | - |
-| `BLS_MODULUS` | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381 |
-| `BYTES_PER_COMMITMENT` | `uint64(48)` | The number of bytes in a KZG commitment |
-| `BYTES_PER_PROOF` | `uint64(48)` | The number of bytes in a KZG proof |
-| `BYTES_PER_FIELD_ELEMENT` | `uint64(32)` | Bytes used to encode a BLS scalar field element |
-| `BYTES_PER_BLOB` | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)` | The number of bytes in a blob |
-| `G1_POINT_AT_INFINITY` | `Bytes48(b'\xc0' + b'\x00' * 47)` | Serialized form of the point at infinity on the G1 group |
-| `KZG_ENDIANNESS` | `'big'` | The endianness of the field elements including blobs |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7` | The primitive root of unity from which all roots of unity should be derived |
+| Name                      | Value                                                                           | Notes                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `BLS_MODULUS`             | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381                                           |
+| `BYTES_PER_COMMITMENT`    | `uint64(48)`                                                                    | The number of bytes in a KZG commitment                                     |
+| `BYTES_PER_PROOF`         | `uint64(48)`                                                                    | The number of bytes in a KZG proof                                          |
+| `BYTES_PER_FIELD_ELEMENT` | `uint64(32)`                                                                    | Bytes used to encode a BLS scalar field element                             |
+| `BYTES_PER_BLOB`          | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)`                     | The number of bytes in a blob                                               |
+| `G1_POINT_AT_INFINITY`    | `Bytes48(b'\xc0' + b'\x00' * 47)`                                               | Serialized form of the point at infinity on the G1 group                    |
+| `KZG_ENDIANNESS`          | `'big'`                                                                         | The endianness of the field elements including blobs                        |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7`                                                                             | The primitive root of unity from which all roots of unity should be derived |
 
 ## Preset
 
 ### Blob
 
-| Name | Value |
-| - | - |
-| `FIELD_ELEMENTS_PER_BLOB` | `uint64(4096)` |
-| `FIAT_SHAMIR_PROTOCOL_DOMAIN` | `b'FSBLOBVERIFY_V1_'` |
+| Name                                | Value                 |
+| ----------------------------------- | --------------------- |
+| `FIELD_ELEMENTS_PER_BLOB`           | `uint64(4096)`        |
+| `FIAT_SHAMIR_PROTOCOL_DOMAIN`       | `b'FSBLOBVERIFY_V1_'` |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
 
 ### Trusted setup
 
-| Name | Value |
-| - | - |
-| `KZG_SETUP_G2_LENGTH` | `65` |
+| Name                    | Value                                      |
+| ----------------------- | ------------------------------------------ |
+| `KZG_SETUP_G2_LENGTH`   | `65`                                       |
 | `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
-| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]` |
+| `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
 
 ## Helper functions
 
 ### Bit-reversal permutation
 
-All polynomials (which are always given in Lagrange form) should be interpreted as being in
-bit-reversal permutation. In practice, clients can implement this by storing the lists
-`KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
-have to be called once at startup.
+All polynomials (which are always given in Lagrange form) should be interpreted
+as being in bit-reversal permutation. In practice, clients can implement this by
+storing the lists `KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal
+permutation, so these functions only have to be called once at startup.
 
 #### `is_power_of_two`
 
@@ -152,7 +154,8 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 #### `multi_exp`
 
-This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
+This function performs a multi-scalar multiplication between `points` and
+`integers`. `points` can either be in G1 or G2.
 
 ```python
 def multi_exp(points: Sequence[TPoint],

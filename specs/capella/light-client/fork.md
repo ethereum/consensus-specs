@@ -1,25 +1,26 @@
 # Capella Light Client -- Fork Logic
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Upgrading light client data](#upgrading-light-client-data)
 - [Upgrading the store](#upgrading-the-store)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes how to upgrade existing light client objects based on the [Altair specification](../../altair/light-client/sync-protocol.md) to Capella. This is necessary when processing pre-Capella data with a post-Capella `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
+This document describes how to upgrade existing light client objects based on
+the [Altair specification](../../altair/light-client/sync-protocol.md) to
+Capella. This is necessary when processing pre-Capella data with a post-Capella
+`LightClientStore`. Note that the data being exchanged over the network
+protocols uses the original format.
 
 ## Upgrading light client data
 
-A Capella `LightClientStore` can still process earlier light client data. In order to do so, that pre-Capella data needs to be locally upgraded to Capella before processing.
+A Capella `LightClientStore` can still process earlier light client data. In
+order to do so, that pre-Capella data needs to be locally upgraded to Capella
+before processing.
 
 ```python
 def upgrade_lc_header_to_capella(pre: bellatrix.LightClientHeader) -> LightClientHeader:
@@ -72,7 +73,9 @@ def upgrade_lc_optimistic_update_to_capella(pre: bellatrix.LightClientOptimistic
 
 ## Upgrading the store
 
-Existing `LightClientStore` objects based on Altair MUST be upgraded to Capella before Capella based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `CAPELLA_FORK_EPOCH`.
+Existing `LightClientStore` objects based on Altair MUST be upgraded to Capella
+before Capella based light client data can be processed. The `LightClientStore`
+upgrade MAY be performed before `CAPELLA_FORK_EPOCH`.
 
 ```python
 def upgrade_lc_store_to_capella(pre: bellatrix.LightClientStore) -> LightClientStore:

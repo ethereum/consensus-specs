@@ -1,23 +1,27 @@
 from eth2spec.test.context import (
-    with_phases,
+    large_validator_set,
+    low_balances,
+    misc_balances,
+    spec_test,
     with_custom_state,
+    with_phases,
     with_presets,
-    spec_test, with_state,
-    low_balances, misc_balances, large_validator_set,
+    with_state,
 )
-from eth2spec.test.utils import with_meta_tags
 from eth2spec.test.helpers.constants import (
-    ELECTRA, FULU,
+    ELECTRA,
+    FULU,
     MINIMAL,
-)
-from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_epoch_via_block,
 )
 from eth2spec.test.helpers.fulu.fork import (
     FULU_FORK_TEST_META_TAGS,
     run_fork_test,
 )
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_epoch_via_block,
+)
+from eth2spec.test.utils import with_meta_tags
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
@@ -65,7 +69,9 @@ def test_fork_random_low_balances(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_misc_balances(spec, phases, state):
@@ -73,9 +79,13 @@ def test_fork_random_misc_balances(spec, phases, state):
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
+@with_custom_state(
+    balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):

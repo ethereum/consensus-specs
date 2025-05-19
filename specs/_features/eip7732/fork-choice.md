@@ -1,12 +1,8 @@
 # EIP-7732 -- Fork Choice
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -37,8 +33,7 @@
   - [`on_payload_attestation_message`](#on_payload_attestation_message)
   - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -46,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `INTERVALS_PER_SLOT` | `4` # [modified in EIP-7732] |
-| `PROPOSER_SCORE_BOOST` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST` | `40` |
-| `PAYLOAD_REVEAL_BOOST` | `40` |
+| Name                           | Value                         |
+| ------------------------------ | ----------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256)       |
+| `INTERVALS_PER_SLOT`           | `4` # [modified in EIP-7732]  |
+| `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
+| `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
+| `PAYLOAD_REVEAL_BOOST`         | `40`                          |
 
 ## Containers
 
@@ -71,7 +66,7 @@ class ChildNode(Container):
 
 ### Modified `LatestMessage`
 
-**Note:** The class is modified to keep track of the slot instead of the epoch.
+*Note*: The class is modified to keep track of the slot instead of the epoch.
 
 ```python
 @dataclass(eq=True, frozen=True)
@@ -82,7 +77,11 @@ class LatestMessage(object):
 
 ### Modified `update_latest_messages`
 
-**Note:** the function `update_latest_messages` is updated to use the attestation slot instead of target. Notice that this function is only called on validated attestations and validators cannot attest twice in the same epoch without equivocating. Notice also that target epoch number and slot number are validated on `validate_on_attestation`.
+*Note*: the function `update_latest_messages` is updated to use the attestation
+slot instead of target. Notice that this function is only called on validated
+attestations and validators cannot attest twice in the same epoch without
+equivocating. Notice also that target epoch number and slot number are validated
+on `validate_on_attestation`.
 
 ```python
 def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
@@ -96,7 +95,9 @@ def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIn
 
 ### Modified `Store`
 
-**Note:** `Store` is modified to track the intermediate states of "empty" consensus blocks, that is, those consensus blocks for which the corresponding execution payload has not been revealed or has not been included on chain.
+*Note*: `Store` is modified to track the intermediate states of "empty"
+consensus blocks, that is, those consensus blocks for which the corresponding
+execution payload has not been revealed or has not been included on chain.
 
 ```python
 @dataclass
@@ -202,7 +203,8 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
 
 ### Modified `get_ancestor`
 
-**Note:** `get_ancestor` is modified to return whether the chain is based on an *empty* or *full* block.
+*Note*: `get_ancestor` is modified to return whether the chain is based on an
+*empty* or *full* block.
 
 ```python
 def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
@@ -223,7 +225,7 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ChildNode:
 
 ### Modified `get_checkpoint_block`
 
-**Note:** `get_checkpoint_block` is modified to use the new `get_ancestor`
+*Note*: `get_checkpoint_block` is modified to use the new `get_ancestor`
 
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
@@ -255,7 +257,11 @@ def is_supporting_vote(store: Store, node: ChildNode, message: LatestMessage) ->
 
 ### New `compute_proposer_boost`
 
-This is a helper to compute the proposer boost. It applies the proposer boost to any ancestor of the proposer boost root taking into account the payload presence. There is one exception: if the requested node has the same root and slot as the block with the proposer boost root, then the proposer boost is applied to both empty and full versions of the node.
+This is a helper to compute the proposer boost. It applies the proposer boost to
+any ancestor of the proposer boost root taking into account the payload
+presence. There is one exception: if the requested node has the same root and
+slot as the block with the proposer boost root, then the proposer boost is
+applied to both empty and full versions of the node.
 
 ```python
 def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
@@ -271,12 +277,13 @@ def compute_proposer_boost(store: Store, state: BeaconState, node: ChildNode) ->
     if (node.slot < proposer_boost_slot) and (ancestor.is_payload_present != node.is_payload_present):
         return Gwei(0)
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    return (committee_weight * PROPOSER_SCORE_BOOST_EIP7732) // 100
 ```
 
 ### New `compute_withhold_boost`
 
-This is a similar helper that applies for the withhold boost. In this case this always takes into account the reveal status.
+This is a similar helper that applies for the withhold boost. In this case this
+always takes into account the reveal status.
 
 ```python
 def compute_withhold_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
@@ -296,7 +303,9 @@ def compute_withhold_boost(store: Store, state: BeaconState, node: ChildNode) ->
 
 ### New `compute_reveal_boost`
 
-This is a similar helper to the last two, the only difference is that the reveal boost is only applied to the full version of the node when querying for the same slot as the revealed payload.
+This is a similar helper to the last two, the only difference is that the reveal
+boost is only applied to the full version of the node when querying for the same
+slot as the revealed payload.
 
 ```python
 def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> Gwei:
@@ -315,7 +324,10 @@ def compute_reveal_boost(store: Store, state: BeaconState, node: ChildNode) -> G
 
 ### Modified `get_weight`
 
-**Note:** `get_weight` is modified to only count votes for descending chains that support the status of a triple `Root, Slot, bool`, where the `bool` indicates if the block was full or not. `Slot` is needed for a correct implementation of `(Block, Slot)` voting.
+*Note*: `get_weight` is modified to only count votes for descending chains that
+support the status of a triple `Root, Slot, bool`, where the `bool` indicates if
+the block was full or not. `Slot` is needed for a correct implementation of
+`(Block, Slot)` voting.
 
 ```python
 def get_weight(store: Store, node: ChildNode) -> Gwei:
@@ -341,7 +353,8 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
 ### Modified `get_head`
 
-**Note:** `get_head` is a modified to use the new `get_weight` function. It returns the `ChildNode` object corresponding to the head block.
+*Note*: `get_head` is a modified to use the new `get_weight` function. It
+returns the `ChildNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ChildNode:
@@ -389,7 +402,10 @@ def get_head(store: Store) -> ChildNode:
 
 ### Modified `on_block`
 
-*Note*: The handler `on_block` is modified to consider the pre `state` of the given consensus beacon block depending not only on the parent block root, but also on the parent blockhash. In addition we delay the checking of blob data availability until the processing of the execution payload.
+*Note*: The handler `on_block` is modified to consider the pre `state` of the
+given consensus beacon block depending not only on the parent block root, but
+also on the parent blockhash. In addition we delay the checking of blob data
+availability until the processing of the execution payload.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -462,7 +478,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
 ### New `on_execution_payload`
 
-The handler `on_execution_payload` is called when the node receives a `SignedExecutionPayloadEnvelope` to sync.
+The handler `on_execution_payload` is called when the node receives a
+`SignedExecutionPayloadEnvelope` to sync.
 
 ```python
 def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
@@ -605,3 +622,4 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 
 
+```

@@ -1,10 +1,6 @@
 # Deneb -- Fork Logic
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -15,8 +11,7 @@
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -26,10 +21,10 @@ This document describes the process of Deneb upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `DENEB_FORK_VERSION` | `Version('0x04000000')` |
-| `DENEB_FORK_EPOCH` | `Epoch(269568)` (March 13, 2024, 01:55:35pm UTC) |
+| Name                 | Value                                            |
+| -------------------- | ------------------------------------------------ |
+| `DENEB_FORK_VERSION` | `Version('0x04000000')`                          |
+| `DENEB_FORK_EPOCH`   | `Epoch(269568)` (March 13, 2024, 01:55:35pm UTC) |
 
 ## Helper functions
 
@@ -57,10 +52,10 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-TBD. This fork is defined for testing purposes.
-For now, we assume the condition will be triggered at epoch `DENEB_FORK_EPOCH`.
+The fork is triggered at epoch `DENEB_FORK_EPOCH`.
 
-Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since it starts with Deneb version logic.
+Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since
+it starts with Deneb version logic.
 
 ### Upgrading the state
 

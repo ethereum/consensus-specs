@@ -1,6 +1,7 @@
 import random
+
 from rlp import encode, Serializable
-from rlp.sedes import Binary, CountableList, List as RLPList, big_endian_int, binary
+from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLPList
 
 from eth2spec.test.helpers.forks import (
     is_post_electra,
@@ -10,23 +11,30 @@ from eth2spec.test.helpers.forks import (
 
 class Eip4844RlpTransaction(Serializable):
     fields = (
-        ('chain_id', big_endian_int),
-        ('nonce', big_endian_int),
-        ('max_priority_fee_per_gas', big_endian_int),
-        ('max_fee_per_gas', big_endian_int),
-        ('gas_limit', big_endian_int),
-        ('to', Binary(20, 20)),
-        ('value', big_endian_int),
-        ('data', binary),
-        ('access_list', CountableList(RLPList([
-            Binary(20, 20),
-            CountableList(Binary(32, 32)),
-        ]))),
-        ('max_fee_per_blob_gas', big_endian_int),
-        ('blob_versioned_hashes', CountableList(Binary(32, 32))),
-        ('signature_y_parity', big_endian_int),
-        ('signature_r', big_endian_int),
-        ('signature_s', big_endian_int),
+        ("chain_id", big_endian_int),
+        ("nonce", big_endian_int),
+        ("max_priority_fee_per_gas", big_endian_int),
+        ("max_fee_per_gas", big_endian_int),
+        ("gas_limit", big_endian_int),
+        ("to", Binary(20, 20)),
+        ("value", big_endian_int),
+        ("data", binary),
+        (
+            "access_list",
+            CountableList(
+                RLPList(
+                    [
+                        Binary(20, 20),
+                        CountableList(Binary(32, 32)),
+                    ]
+                )
+            ),
+        ),
+        ("max_fee_per_blob_gas", big_endian_int),
+        ("blob_versioned_hashes", CountableList(Binary(32, 32))),
+        ("signature_y_parity", big_endian_int),
+        ("signature_r", big_endian_int),
+        ("signature_s", big_endian_int),
     )
 
 
@@ -60,8 +68,13 @@ def get_poly_in_both_forms(spec, rng=None):
     if rng is None:
         rng = random.Random(5566)
 
-    roots_of_unity_brp = spec.bit_reversal_permutation(spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB))
-    coeffs = [spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    roots_of_unity_brp = spec.bit_reversal_permutation(
+        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
+    )
+    coeffs = [
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
     evals = [eval_poly_in_coeff_form(spec, coeffs, z) for z in roots_of_unity_brp]
 
     return coeffs, evals
@@ -106,9 +119,9 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_max_blob_count(spec):
+def get_max_blob_count(spec, state):
     if is_post_fulu(spec):
-        return spec.config.MAX_BLOBS_PER_BLOCK_FULU
+        return spec.get_max_blobs_per_block(spec.get_current_epoch(state))
     elif is_post_electra(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     else:

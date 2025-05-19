@@ -1,19 +1,22 @@
 from random import Random
+
 from lru import LRU
 
 from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
-from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
-from eth2spec.test.helpers.state import (
-    next_epoch,
-)
-from eth2spec.test.helpers.random import (
-    set_some_new_deposits, exit_random_validators, slash_random_validators,
-    randomize_state,
-)
 from eth2spec.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
-from eth2spec.utils.ssz.ssz_typing import Container, uint64, List
+from eth2spec.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth2spec.test.helpers.random import (
+    exit_random_validators,
+    randomize_state,
+    set_some_new_deposits,
+    slash_random_validators,
+)
+from eth2spec.test.helpers.state import (
+    next_epoch,
+)
+from eth2spec.utils.ssz.ssz_typing import Container, List, uint64
 
 
 class Deltas(Container):
@@ -39,7 +42,8 @@ def has_enough_for_reward(spec, state, index):
     """
     return (
         state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
-        > spec.integer_squareroot(spec.get_total_active_balance(state)) // spec.BASE_REWARDS_PER_EPOCH
+        > spec.integer_squareroot(spec.get_total_active_balance(state))
+        // spec.BASE_REWARDS_PER_EPOCH
     )
 
 
@@ -52,10 +56,9 @@ def has_enough_for_leak_penalty(spec, state, index):
     """
 
     if is_post_altair(spec):
-        return (
-            state.validators[index].effective_balance * state.inactivity_scores[index]
-            > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
-        )
+        return state.validators[index].effective_balance * state.inactivity_scores[
+            index
+        ] > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
     else:
         return (
             state.validators[index].effective_balance * spec.get_finality_delay(state)
@@ -74,9 +77,10 @@ def run_deltas(spec, state):
           - inclusion delay deltas ('inclusion_delay_deltas')
       - inactivity penalty deltas ('inactivity_penalty_deltas')
     """
-    yield 'pre', state
+    yield "pre", state
 
     if is_post_altair(spec):
+
         def get_source_deltas(state):
             return spec.get_flag_index_deltas(state, spec.TIMELY_SOURCE_FLAG_INDEX)
 
@@ -91,21 +95,21 @@ def run_deltas(spec, state):
         state,
         spec.get_source_deltas if not is_post_altair(spec) else get_source_deltas,
         spec.get_matching_source_attestations,
-        'source_deltas',
+        "source_deltas",
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_target_deltas if not is_post_altair(spec) else get_target_deltas,
         spec.get_matching_target_attestations,
-        'target_deltas',
+        "target_deltas",
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_head_deltas if not is_post_altair(spec) else get_head_deltas,
         spec.get_matching_head_attestations,
-        'head_deltas',
+        "head_deltas",
     )
     if not is_post_altair(spec):
         yield from run_get_inclusion_delay_deltas(spec, state)
@@ -113,11 +117,11 @@ def run_deltas(spec, state):
 
 
 def deltas_name_to_flag_index(spec, deltas_name):
-    if 'source' in deltas_name:
+    if "source" in deltas_name:
         return spec.TIMELY_SOURCE_FLAG_INDEX
-    elif 'head' in deltas_name:
+    elif "head" in deltas_name:
         return spec.TIMELY_HEAD_FLAG_INDEX
-    elif 'target' in deltas_name:
+    elif "target" in deltas_name:
         return spec.TIMELY_TARGET_FLAG_INDEX
     raise ValueError("Wrong deltas_name %s" % deltas_name)
 
@@ -163,7 +167,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             assert penalties[index] == 0
         else:
             assert rewards[index] == 0
-            if is_post_altair(spec) and 'head' in deltas_name:
+            if is_post_altair(spec) and "head" in deltas_name:
                 assert penalties[index] == 0
             elif enough_for_reward:
                 assert penalties[index] > 0
@@ -178,15 +182,18 @@ def run_get_inclusion_delay_deltas(spec, state):
     """
     if is_post_altair(spec):
         # No inclusion_delay_deltas
-        yield 'inclusion_delay_deltas', Deltas(rewards=[0] * len(state.validators),
-                                               penalties=[0] * len(state.validators))
+        yield "inclusion_delay_deltas", Deltas(
+            rewards=[0] * len(state.validators), penalties=[0] * len(state.validators)
+        )
         return
 
     rewards, penalties = spec.get_inclusion_delay_deltas(state)
 
-    yield 'inclusion_delay_deltas', Deltas(rewards=rewards, penalties=penalties)
+    yield "inclusion_delay_deltas", Deltas(rewards=rewards, penalties=penalties)
 
-    eligible_attestations = spec.get_matching_source_attestations(state, spec.get_previous_epoch(state))
+    eligible_attestations = spec.get_matching_source_attestations(
+        state, spec.get_previous_epoch(state)
+    )
     attesting_indices = spec.get_unslashed_attesting_indices(state, eligible_attestations)
 
     rewarded_indices = set()
@@ -199,10 +206,10 @@ def run_get_inclusion_delay_deltas(spec, state):
             rewarded_indices.add(index)
 
             # Track proposer of earliest included attestation for the validator defined by index
-            earliest_attestation = min([
-                a for a in eligible_attestations
-                if index in spec.get_attesting_indices(state, a)
-            ], key=lambda a: a.inclusion_delay)
+            earliest_attestation = min(
+                [a for a in eligible_attestations if index in spec.get_attesting_indices(state, a)],
+                key=lambda a: a.inclusion_delay,
+            )
             rewarded_proposer_indices.add(earliest_attestation.proposer_index)
 
     # Ensure all expected proposers have been rewarded
@@ -227,11 +234,15 @@ def run_get_inactivity_penalty_deltas(spec, state):
     """
     rewards, penalties = spec.get_inactivity_penalty_deltas(state)
 
-    yield 'inactivity_penalty_deltas', Deltas(rewards=rewards, penalties=penalties)
+    yield "inactivity_penalty_deltas", Deltas(rewards=rewards, penalties=penalties)
 
     if not is_post_altair(spec):
-        matching_attestations = spec.get_matching_target_attestations(state, spec.get_previous_epoch(state))
-        matching_attesting_indices = spec.get_unslashed_attesting_indices(state, matching_attestations)
+        matching_attestations = spec.get_matching_target_attestations(
+            state, spec.get_previous_epoch(state)
+        )
+        matching_attesting_indices = spec.get_unslashed_attesting_indices(
+            state, matching_attestations
+        )
     else:
         matching_attesting_indices = spec.get_unslashed_participating_indices(
             state, spec.TIMELY_TARGET_FLAG_INDEX, spec.get_previous_epoch(state)
@@ -249,11 +260,16 @@ def run_get_inactivity_penalty_deltas(spec, state):
             base_reward = spec.get_base_reward(state, index)
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
-                base_penalty = cancel_base_rewards_per_epoch * base_reward - spec.get_proposer_reward(state, index)
+                base_penalty = (
+                    cancel_base_rewards_per_epoch * base_reward
+                    - spec.get_proposer_reward(state, index)
+                )
 
             if not has_enough_for_reward(spec, state, index):
                 assert penalties[index] == 0
-            elif index in matching_attesting_indices or not has_enough_for_leak_penalty(spec, state, index):
+            elif index in matching_attesting_indices or not has_enough_for_leak_penalty(
+                spec, state, index
+            ):
                 if is_post_altair(spec):
                     assert penalties[index] == 0
                 else:
@@ -274,8 +290,12 @@ def run_get_inactivity_penalty_deltas(spec, state):
                     assert penalties[index] == 0
                 else:
                     # copied from spec:
-                    penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-                    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
+                    penalty_numerator = (
+                        state.validators[index].effective_balance * state.inactivity_scores[index]
+                    )
+                    penalty_denominator = (
+                        spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
+                    )
                     assert penalties[index] == penalty_numerator // penalty_denominator
 
 
@@ -299,17 +319,25 @@ def leaking(epochs=None):
             # If the pre-state is not already known in the LRU, then take it,
             # transition it to leak, and put it in the LRU.
             # The input state is likely already cached, so the hash-tree-root does not affect speed.
-            key = (state.hash_tree_root(), spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY, spec.SLOTS_PER_EPOCH, epochs)
-            global _cache_dict
+            key = (
+                state.hash_tree_root(),
+                spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY,
+                spec.SLOTS_PER_EPOCH,
+                epochs,
+            )
             if key not in _cache_dict:
                 transition_state_to_leak(spec, state, epochs=epochs)
-                _cache_dict[key] = state.get_backing()  # cache the tree structure, not the view wrapping it.
+                _cache_dict[key] = (
+                    state.get_backing()
+                )  # cache the tree structure, not the view wrapping it.
 
             # Take an entry out of the LRU.
             # No copy is necessary, as we wrap the immutable backing with a new view.
             state = spec.BeaconState(backing=_cache_dict[key])
             return fn(*args, spec=spec, state=state, **kw)
+
         return entry
+
     return deco
 
 
@@ -426,9 +454,9 @@ def run_test_full_fraction_incorrect(spec, state, correct_target, correct_head, 
     num_incorrect = int(fraction_incorrect * len(state.previous_epoch_attestations))
     for pending_attestation in state.previous_epoch_attestations[:num_incorrect]:
         if not correct_target:
-            pending_attestation.data.target.root = b'\x55' * 32
+            pending_attestation.data.target.root = b"\x55" * 32
         if not correct_head:
-            pending_attestation.data.beacon_block_root = b'\x66' * 32
+            pending_attestation.data.beacon_block_root = b"\x66" * 32
 
     yield from run_deltas(spec, state)
 
@@ -500,7 +528,7 @@ def run_test_duplicate_attestations_at_later_slots(spec, state):
 
     state.previous_epoch_attestations = sorted(
         state.previous_epoch_attestations + later_attestations,
-        key=lambda a: a.data.slot + a.inclusion_delay
+        key=lambda a: a.data.slot + a.inclusion_delay,
     )
 
     yield from run_deltas(spec, state)

@@ -15,21 +15,21 @@ def _run_get_custody_groups(spec, rng, node_id=None, custody_group_count=None):
         custody_group_count = rng.randint(0, spec.config.NUMBER_OF_CUSTODY_GROUPS)
 
     result = spec.get_custody_groups(node_id, custody_group_count)
-    yield 'node_id', 'meta', node_id
-    yield 'custody_group_count', 'meta', int(custody_group_count)
+    yield "node_id", "meta", node_id
+    yield "custody_group_count", "meta", int(custody_group_count)
 
     assert len(result) == len(set(result))
     assert len(result) == custody_group_count
     assert all(i < spec.config.NUMBER_OF_CUSTODY_GROUPS for i in result)
     python_list_result = [int(i) for i in result]
 
-    yield 'result', 'meta', python_list_result
+    yield "result", "meta", python_list_result
 
 
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__min_node_id_min_custody_group_count(spec):
+def test_get_custody_groups_min_node_id_min_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(spec, rng, node_id=0, custody_group_count=0)
 
@@ -37,17 +37,17 @@ def test_get_custody_groups__min_node_id_min_custody_group_count(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__min_node_id_max_custody_group_count(spec):
+def test_get_custody_groups_min_node_id_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(
-        spec, rng, node_id=0,
-        custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS)
+        spec, rng, node_id=0, custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS
+    )
 
 
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__max_node_id_min_custody_group_count(spec):
+def test_get_custody_groups_max_node_id_min_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(spec, rng, node_id=2**256 - 1, custody_group_count=0)
 
@@ -55,10 +55,12 @@ def test_get_custody_groups__max_node_id_min_custody_group_count(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__max_node_id_max_custody_group_count(spec):
+def test_get_custody_groups_max_node_id_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(
-        spec, rng, node_id=2**256 - 1,
+        spec,
+        rng,
+        node_id=2**256 - 1,
         custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS,
     )
 
@@ -66,10 +68,12 @@ def test_get_custody_groups__max_node_id_max_custody_group_count(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__max_node_id_max_custody_group_count_minus_1(spec):
+def test_get_custody_groups_max_node_id_minus_1_max_custody_group_count(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(
-        spec, rng, node_id=2**256 - 2,
+        spec,
+        rng,
+        node_id=2**256 - 2,
         custody_group_count=spec.config.NUMBER_OF_CUSTODY_GROUPS,
     )
 
@@ -77,7 +81,7 @@ def test_get_custody_groups__max_node_id_max_custody_group_count_minus_1(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__short_node_id(spec):
+def test_get_custody_groups_short_node_id(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(spec, rng, node_id=1048576, custody_group_count=1)
 
@@ -85,7 +89,33 @@ def test_get_custody_groups__short_node_id(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__1(spec):
+def test_get_custody_groups_max_node_id_custody_group_count_is_4(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_groups(
+        spec,
+        rng,
+        node_id=2**256 - 1,
+        custody_group_count=4,
+    )
+
+
+@with_fulu_and_later
+@spec_test
+@single_phase
+def test_get_custody_groups_max_node_id_minus_1_custody_group_count_is_4(spec):
+    rng = random.Random(1111)
+    yield from _run_get_custody_groups(
+        spec,
+        rng,
+        node_id=2**256 - 2,
+        custody_group_count=4,
+    )
+
+
+@with_fulu_and_later
+@spec_test
+@single_phase
+def test_get_custody_groups_1(spec):
     rng = random.Random(1111)
     yield from _run_get_custody_groups(spec, rng)
 
@@ -93,7 +123,7 @@ def test_get_custody_groups__1(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__2(spec):
+def test_get_custody_groups_2(spec):
     rng = random.Random(2222)
     yield from _run_get_custody_groups(spec, rng)
 
@@ -101,6 +131,6 @@ def test_get_custody_groups__2(spec):
 @with_fulu_and_later
 @spec_test
 @single_phase
-def test_get_custody_groups__3(spec):
+def test_get_custody_groups_3(spec):
     rng = random.Random(3333)
     yield from _run_get_custody_groups(spec, rng)

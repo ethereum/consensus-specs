@@ -1,8 +1,9 @@
 import random
+
 from eth2spec.test.context import (
-    spec_test,
-    single_phase,
     expect_assertion_error,
+    single_phase,
+    spec_test,
     with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
@@ -29,7 +30,10 @@ def test_fft(spec):
     roots_of_unity = spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
 
     # sample a random polynomial
-    poly_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    poly_coeff = [
+        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
 
     # do an FFT and then an inverse FFT
     poly_eval = spec.fft_field(poly_coeff, roots_of_unity)
@@ -66,7 +70,10 @@ def test_coset_fft(spec):
     coset_shift = spec.BLSFieldElement(spec.PRIMITIVE_ROOT_OF_UNITY)
 
     # sample a random polynomial
-    poly_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    poly_coeff = [
+        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
 
     # do a coset FFT and then an inverse coset FFT
     poly_eval = spec.coset_fft_field(poly_coeff, roots_of_unity)
@@ -261,7 +268,7 @@ def test_recover_cells_and_kzg_proofs(spec):
 
     # Check that the original data match the non-extended portion of the recovered data
     blob_byte_array = [b for b in blob]
-    assert blob_byte_array == recovered_data[:len(recovered_data) // 2]
+    assert blob_byte_array == recovered_data[: len(recovered_data) // 2]
 
     # Check that the recovered cells/proofs match the original cells/proofs
     assert cells == recovered_cells
@@ -275,11 +282,19 @@ def test_multiply_polynomial_degree_overflow(spec):
     rng = random.Random(5566)
 
     # Perform a legitimate-but-maxed-out polynomial multiplication
-    poly1_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
-    poly2_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1)) for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)]
+    poly1_coeff = [
+        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
+    poly2_coeff = [
+        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
+    ]
     _ = spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff)
 
     # Now overflow the degree by pumping the degree of one of the inputs by one
-    poly2_coeff = [spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
-                   for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)]
+    poly2_coeff = [
+        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)
+    ]
     expect_assertion_error(lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff))

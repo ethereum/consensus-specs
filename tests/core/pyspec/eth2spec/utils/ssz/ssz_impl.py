@@ -1,8 +1,8 @@
 from typing import TypeVar
 
 from remerkleable.basic import uint
-from remerkleable.core import Type, View
 from remerkleable.byte_arrays import Bytes32
+from remerkleable.core import Type, View
 
 
 def ssz_serialize(obj: View) -> bytes:
@@ -29,7 +29,7 @@ def uint_to_bytes(n: uint) -> bytes:
     return serialize(n)
 
 
-V = TypeVar('V', bound=View)
+V = TypeVar("V", bound=View)
 
 
 # Helper method for typing copies, and avoiding a example_input.copy() method call, instead of copy(example_input)

@@ -1,12 +1,6 @@
 # Electra Light Client -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
@@ -14,12 +8,15 @@
 - [Upgrading light client data](#upgrading-light-client-data)
 - [Upgrading the store](#upgrading-the-store)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes how to upgrade existing light client objects based on the [Deneb specification](../../deneb/light-client/sync-protocol.md) to Electra. This is necessary when processing pre-Electra data with a post-Electra `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
+This document describes how to upgrade existing light client objects based on
+the [Deneb specification](../../deneb/light-client/sync-protocol.md) to Electra.
+This is necessary when processing pre-Electra data with a post-Electra
+`LightClientStore`. Note that the data being exchanged over the network
+protocols uses the original format.
 
 ## Helper functions
 
@@ -35,7 +32,9 @@ def normalize_merkle_branch(branch: Sequence[Bytes32],
 
 ## Upgrading light client data
 
-An Electra `LightClientStore` can still process earlier light client data. In order to do so, that pre-Electra data needs to be locally upgraded to Electra before processing.
+An Electra `LightClientStore` can still process earlier light client data. In
+order to do so, that pre-Electra data needs to be locally upgraded to Electra
+before processing.
 
 ```python
 def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
@@ -94,7 +93,9 @@ def upgrade_lc_optimistic_update_to_electra(pre: deneb.LightClientOptimisticUpda
 
 ## Upgrading the store
 
-Existing `LightClientStore` objects based on Deneb MUST be upgraded to Electra before Electra based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `ELECTRA_FORK_EPOCH`.
+Existing `LightClientStore` objects based on Deneb MUST be upgraded to Electra
+before Electra based light client data can be processed. The `LightClientStore`
+upgrade MAY be performed before `ELECTRA_FORK_EPOCH`.
 
 ```python
 def upgrade_lc_store_to_electra(pre: deneb.LightClientStore) -> LightClientStore:

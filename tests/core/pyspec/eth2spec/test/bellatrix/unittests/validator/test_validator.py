@@ -1,21 +1,20 @@
 from copy import deepcopy
 from typing import Optional
 
-from eth2spec.test.helpers.pow_block import (
-    prepare_random_pow_chain,
-)
-from eth2spec.test.helpers.constants import (
-    BELLATRIX,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_phases,
 )
-
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+)
+from eth2spec.test.helpers.pow_block import (
+    prepare_random_pow_chain,
+)
 
 # For test_get_pow_block_at_terminal_total_difficulty
-IS_HEAD_BLOCK = 'is_head_block'
-IS_HEAD_PARENT_BLOCK = 'is_head_parent_block'
+IS_HEAD_BLOCK = "is_head_block"
+IS_HEAD_PARENT_BLOCK = "is_head_parent_block"
 
 # NOTE: The following parameter names are in the view of the head block (the second block)
 # 'block_reached_ttd', 'block_parent_hash_is_empty', 'parent_reached_ttd', 'return_block'
@@ -37,12 +36,7 @@ expected_results = [
 @spec_state_test
 def test_get_pow_block_at_terminal_total_difficulty(spec, state):
     for result in expected_results:
-        (
-            block_reached_ttd,
-            block_parent_hash_is_empty,
-            parent_reached_ttd,
-            return_block
-        ) = result
+        (block_reached_ttd, block_parent_hash_is_empty, parent_reached_ttd, return_block) = result
         pow_chain = prepare_random_pow_chain(spec, 2)
         pow_chain.head(-1).parent_hash = spec.Hash32()
 
@@ -67,10 +61,10 @@ def test_get_pow_block_at_terminal_total_difficulty(spec, state):
         elif return_block is None:
             assert pow_block is None
         else:
-            raise Exception('Something is wrong')
+            raise Exception("Something is wrong")
 
 
-SAMPLE_PAYLOAD_ID = b'\x12' * 8
+SAMPLE_PAYLOAD_ID = b"\x12" * 8
 # ('is_merge_complete', 'is_terminal_block_hash_set', 'is_activation_epoch_reached',
 # 'terminal_pow_block_is_none', 'result_payload_id')
 prepare_execution_payload_expected_results = [
@@ -107,21 +101,25 @@ def test_prepare_execution_payload(spec, state):
 
         # 1. Handle `is_merge_complete`
         if is_merge_complete:
-            state.latest_execution_payload_header = spec.ExecutionPayloadHeader(prev_randao=b'\x12' * 32)
+            state.latest_execution_payload_header = spec.ExecutionPayloadHeader(
+                prev_randao=b"\x12" * 32
+            )
         else:
             state.latest_execution_payload_header = spec.ExecutionPayloadHeader()
 
         # 2. `is_terminal_block_hash_set` and `is_activation_epoch_reached` require mocking configs in runtime
         config_overrides = {}
-        _mock_terminal_block_hash = b'\x34' * 32
+        _mock_terminal_block_hash = b"\x34" * 32
         if is_terminal_block_hash_set:
-            config_overrides['TERMINAL_BLOCK_HASH'] = _mock_terminal_block_hash
+            config_overrides["TERMINAL_BLOCK_HASH"] = _mock_terminal_block_hash
         else:
-            config_overrides['TERMINAL_BLOCK_HASH'] = spec.Hash32()
+            config_overrides["TERMINAL_BLOCK_HASH"] = spec.Hash32()
 
         # Default `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` is too big and too close to overflow
         _mock_terminal_block_hash_activation_epoch = 3
-        config_overrides['TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH'] = _mock_terminal_block_hash_activation_epoch
+        config_overrides["TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"] = (
+            _mock_terminal_block_hash_activation_epoch
+        )
         if is_activation_epoch_reached:
             state.slot = _mock_terminal_block_hash_activation_epoch * spec.SLOTS_PER_EPOCH
         else:
@@ -145,17 +143,15 @@ def test_prepare_execution_payload(spec, state):
             pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
 
         # Dummy arguments
-        finalized_block_hash = b'\x56' * 32
-        safe_block_hash = b'\x58' * 32
-        suggested_fee_recipient = b'\x78' * 20
+        finalized_block_hash = b"\x56" * 32
+        safe_block_hash = b"\x58" * 32
+        suggested_fee_recipient = b"\x78" * 20
 
         # Mock execution_engine
         class TestEngine(spec.NoopExecutionEngine):
-            def notify_forkchoice_updated(self,
-                                          head_block_hash,
-                                          safe_block_hash,
-                                          finalized_block_hash,
-                                          payload_attributes) -> Optional[spec.PayloadId]:
+            def notify_forkchoice_updated(
+                self, head_block_hash, safe_block_hash, finalized_block_hash, payload_attributes
+            ) -> Optional[spec.PayloadId]:
                 return SAMPLE_PAYLOAD_ID
 
         payload_id = spec.prepare_execution_payload(

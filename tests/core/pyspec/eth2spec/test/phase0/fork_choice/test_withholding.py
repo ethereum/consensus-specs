@@ -3,32 +3,31 @@ from eth2spec.test.context import (
     with_altair_and_later,
     with_presets,
 )
-from eth2spec.test.helpers.constants import (
-    MINIMAL,
-)
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.constants import (
+    MINIMAL,
+)
 from eth2spec.test.helpers.fork_choice import (
+    apply_next_epoch_with_attestations,
     check_head_against_root,
+    find_next_justifying_slot,
     get_genesis_forkchoice_store_and_block,
     get_store_full_state,
     on_tick_and_append_step,
     payload_state_transition,
     payload_state_transition_no_store,
     tick_and_add_block,
-    apply_next_epoch_with_attestations,
-    find_next_justifying_slot,
 )
+from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
     next_epoch,
+    state_transition_and_sign_block,
 )
-
 
 TESTING_PRESETS = [MINIMAL]
 
@@ -37,24 +36,26 @@ TESTING_PRESETS = [MINIMAL]
 @spec_state_test
 @with_presets(TESTING_PRESETS, reason="too slow")
 def test_withholding_attack(spec, state):
-    """
-    """
+    """ """
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(
+        spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps
+    )
 
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps)
+            spec, state, store, True, True, test_steps=test_steps
+        )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -118,7 +119,7 @@ def test_withholding_attack(spec, state):
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
     check_head_against_root(spec, store, signed_honest_block.message.hash_tree_root())
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
 @with_altair_and_later
@@ -132,19 +133,22 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(
+        spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps
+    )
 
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps)
+            spec, state, store, True, True, test_steps=test_steps
+        )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -223,4 +227,4 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     # assert store.voting_source[honest_block_root].epoch == 5
     check_head_against_root(spec, store, honest_block_root)
 
-    yield 'steps', test_steps
+    yield "steps", test_steps

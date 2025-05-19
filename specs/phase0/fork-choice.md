@@ -1,10 +1,6 @@
 # Phase 0 -- Beacon Chain Fork Choice
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
@@ -13,7 +9,6 @@
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
-    - [`is_previous_epoch_justified`](#is_previous_epoch_justified)
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
@@ -54,31 +49,51 @@
     - [`on_attestation`](#on_attestation)
     - [`on_attester_slashing`](#on_attester_slashing)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document is the beacon chain fork choice spec, part of Phase 0. It assumes the [beacon chain state transition function spec](./beacon-chain.md).
+This document is the beacon chain fork choice spec, part of Phase 0. It assumes
+the [beacon chain state transition function spec](./beacon-chain.md).
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`.
+At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and
+update `store` by running:
 
-- `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
-- `on_attestation(store, attestation)` whenever an attestation `attestation` is received
-- `on_attester_slashing(store, attester_slashing)` whenever an attester slashing `attester_slashing` is received
+- `on_tick(store, time)` whenever `time > store.time` where `time` is the
+  current Unix time
+- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is
+  received
+- `on_attestation(store, attestation)` whenever an attestation `attestation` is
+  received
+- `on_attester_slashing(store, attester_slashing)` whenever an attester slashing
+  `attester_slashing` is received
 
-Any of the above handlers that trigger an unhandled exception (e.g. a failed assert or an out-of-range list access) are considered invalid. Invalid calls to handlers must not modify `store`.
+Any of the above handlers that trigger an unhandled exception (e.g. a failed
+assert or an out-of-range list access) are considered invalid. Invalid calls to
+handlers must not modify `store`.
 
 *Notes*:
 
-1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
-2) **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
-3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](./validator.md) should ensure that `state.latest_eth1_data` of the canonical beacon chain remains consistent with the canonical Ethereum proof-of-work chain. If not, emergency manual intervention will be required.
-4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
-5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
+1. **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or
+   `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically
+   handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
+2. **Honest clocks**: Honest nodes are assumed to have clocks synchronized
+   within `SECONDS_PER_SLOT` seconds of each other.
+3. **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the
+   [honest validator document](./validator.md) should ensure that
+   `state.latest_eth1_data` of the canonical beacon chain remains consistent
+   with the canonical Ethereum proof-of-work chain. If not, emergency manual
+   intervention will be required.
+4. **Manual forks**: Manual forks may arbitrarily change the fork choice rule
+   but are expected to be enacted at epoch transitions, with the fork details
+   reflected in `state.fork`.
+5. **Implementation**: The implementation found in this specification is
+   constructed for ease of understanding rather than for optimization in
+   computation, space, or any other resource. A number of optimized alternatives
+   can be found [here](https://github.com/protolambda/lmd-ghost).
 
 ### Constant
 
@@ -88,15 +103,15 @@ Any of the above handlers that trigger an unhandled exception (e.g. a failed ass
 
 ### Configuration
 
-| Name                                  | Value        |
-| ------------------------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
-| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)` |
-| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
-| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
+| Name                                  | Value         |
+| ------------------------------------- | ------------- |
+| `PROPOSER_SCORE_BOOST`                | `uint64(40)`  |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)`  |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)` |
+| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`    |
 
-- The proposer score boost and re-org weight threshold are percentage
-  values that are measured with respect to the weight of a single committee. See
+- The proposer score boost and re-org weight threshold are percentage values
+  that are measured with respect to the weight of a single committee. See
   `calculate_committee_fraction`.
 
 ### Helpers
@@ -112,12 +127,22 @@ class LatestMessage(object):
 
 #### `Store`
 
-The `Store` is responsible for tracking information required for the fork choice algorithm. The important fields being tracked are described below:
+The `Store` is responsible for tracking information required for the fork choice
+algorithm. The important fields being tracked are described below:
 
-- `justified_checkpoint`: the justified checkpoint used as the starting point for the LMD GHOST fork choice algorithm.
-- `finalized_checkpoint`: the highest known finalized checkpoint. The fork choice only considers blocks that are not conflicting with this checkpoint.
-- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization*** has occurred, i.e. FFG processing of new attestations within the state transition function. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
-- `unrealized_justifications`: stores a map of block root to the unrealized justified checkpoint observed in that block.
+- `justified_checkpoint`: the justified checkpoint used as the starting point
+  for the LMD GHOST fork choice algorithm.
+- `finalized_checkpoint`: the highest known finalized checkpoint. The fork
+  choice only considers blocks that are not conflicting with this checkpoint.
+- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these
+  track the highest justified & finalized checkpoints resp., without regard to
+  whether on-chain ***realization*** has occurred, i.e. FFG processing of new
+  attestations within the state transition function. This is an important
+  distinction from `justified_checkpoint` & `finalized_checkpoint`, because they
+  will only track the checkpoints that are realized on-chain. Note that on-chain
+  processing of FFG information only happens at epoch boundaries.
+- `unrealized_justifications`: stores a map of block root to the unrealized
+  justified checkpoint observed in that block.
 
 ```python
 @dataclass
@@ -138,20 +163,16 @@ class Store(object):
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
 ```
 
-#### `is_previous_epoch_justified`
-
-```python
-def is_previous_epoch_justified(store: Store) -> bool:
-    current_epoch = get_current_store_epoch(store)
-    return store.justified_checkpoint.epoch + 1 == current_epoch
-```
-
 #### `get_forkchoice_store`
 
-The provided anchor-state will be regarded as a trusted state, to not roll back beyond.
-This should be the genesis state for a full client.
+The provided anchor-state will be regarded as a trusted state, to not roll back
+beyond. This should be the genesis state for a full client.
 
-*Note* With regards to fork choice, block headers are interchangeable with blocks. The spec is likely to move to headers for reduced overhead in test vectors and better encapsulation. Full implementations store blocks as part of their database and will often use full blocks when dealing with production fork choice.
+*Note* With regards to fork choice, block headers are interchangeable with
+blocks. The spec is likely to move to headers for reduced overhead in test
+vectors and better encapsulation. Full implementations store blocks as part of
+their database and will often use full blocks when dealing with production fork
+choice.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
@@ -291,7 +312,9 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 #### `filter_block_tree`
 
-*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made by the recursive logic in this function) MUST set `block_root` to `store.justified_checkpoint`.
+*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
+by the recursive logic in this function) MUST set `block_root` to
+`store.justified_checkpoint`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
@@ -407,17 +430,20 @@ def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint:
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
 
 ##### `is_head_late`
+
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
 ##### `is_shuffling_stable`
+
 ```python
 def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
@@ -511,9 +537,9 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         return head_root
 ```
 
-*Note*: The ordering of conditions is a suggestion only. Implementations are free to
-optimize by re-ordering the conditions from least to most expensive and by returning early if
-any of the early conditions are `False`.
+*Note*: The ordering of conditions is a suggestion only. Implementations are
+free to optimize by re-ordering the conditions from least to most expensive and
+by returning early if any of the early conditions are `False`.
 
 #### Pull-up tip helpers
 
@@ -716,7 +742,9 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
 
 #### `on_attester_slashing`
 
-*Note*: `on_attester_slashing` should be called while syncing and a client MUST maintain the equivocation set of `AttesterSlashing`s from at least the latest finalized checkpoint.
+*Note*: `on_attester_slashing` should be called while syncing and a client MUST
+maintain the equivocation set of `AttesterSlashing`s from at least the latest
+finalized checkpoint.
 
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:

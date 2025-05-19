@@ -1,9 +1,9 @@
-from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
+from eth2spec.test.context import expect_assertion_error, spec_state_test, with_eip7441_and_later
 from eth2spec.test.helpers.eip7441 import (
-    set_as_first_proposal,
     compute_whisk_k_commitment,
+    register_tracker,
+    set_as_first_proposal,
     set_registration,
-    register_tracker
 )
 
 
@@ -17,17 +17,17 @@ def set_as_first_proposal_and_proposer(spec, state, proposer_index):
 
 
 def run_process_whisk_registration(spec, state, body, valid=True):
-    yield 'pre', state
-    yield 'body', body
+    yield "pre", state
+    yield "body", body
 
     if not valid:
         expect_assertion_error(lambda: spec.process_whisk_registration(state, body))
-        yield 'post', None
+        yield "post", None
         return
 
     spec.process_whisk_registration(state, body)
 
-    yield 'post', state
+    yield "post", state
 
 
 IDENTITY_R = 1
@@ -85,6 +85,7 @@ def test_first_proposal_invalid_proof(spec, state):
     set_registration(body, OTHER_K, OTHER_R)
     body.whisk_tracker.k_r_G = spec.BLSG1Point()
     yield from run_process_whisk_registration(spec, state, body, valid=False)
+
 
 # Second proposal
 

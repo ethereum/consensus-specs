@@ -1,9 +1,9 @@
 from eth2spec.test.context import (
     PHASE0,
-    spec_test,
     single_phase,
-    with_presets,
+    spec_test,
     with_phases,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (
@@ -27,7 +27,7 @@ def create_valid_beacon_state(spec):
         signed=True,
     )
 
-    eth1_block_hash = b'\x12' * 32
+    eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
     return spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
@@ -38,9 +38,9 @@ def run_is_valid_genesis_state(spec, state, valid=True):
       - genesis ('state')
       - is_valid ('is_valid')
     """
-    yield 'genesis', state
+    yield "genesis", state
     is_valid = spec.is_valid_genesis_state(state)
-    yield 'is_valid', is_valid
+    yield "is_valid", is_valid
     assert is_valid == valid
 
 
@@ -50,7 +50,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
 @with_presets([MINIMAL], reason="too slow")
 def test_full_genesis_deposits(spec):
     if is_post_altair(spec):
-        yield 'description', 'meta', get_post_altair_description(spec)
+        yield "description", "meta", get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
 
@@ -63,7 +63,7 @@ def test_full_genesis_deposits(spec):
 @with_presets([MINIMAL], reason="too slow")
 def test_invalid_invalid_timestamp(spec):
     if is_post_altair(spec):
-        yield 'description', 'meta', get_post_altair_description(spec)
+        yield "description", "meta", get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
     state.genesis_time = spec.config.MIN_GENESIS_TIME - 1
@@ -77,7 +77,7 @@ def test_invalid_invalid_timestamp(spec):
 @with_presets([MINIMAL], reason="too slow")
 def test_extra_balance(spec):
     if is_post_altair(spec):
-        yield 'description', 'meta', get_post_altair_description(spec)
+        yield "description", "meta", get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE + 1
@@ -91,7 +91,7 @@ def test_extra_balance(spec):
 @with_presets([MINIMAL], reason="too slow")
 def test_one_more_validator(spec):
     if is_post_altair(spec):
-        yield 'description', 'meta', get_post_altair_description(spec)
+        yield "description", "meta", get_post_altair_description(spec)
 
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
     deposits, _, _ = prepare_full_genesis_deposits(
@@ -101,7 +101,7 @@ def test_one_more_validator(spec):
         signed=True,
     )
 
-    eth1_block_hash = b'\x12' * 32
+    eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 
@@ -114,7 +114,7 @@ def test_one_more_validator(spec):
 @with_presets([MINIMAL], reason="too slow")
 def test_invalid_not_enough_validator_count(spec):
     if is_post_altair(spec):
-        yield 'description', 'meta', get_post_altair_description(spec)
+        yield "description", "meta", get_post_altair_description(spec)
 
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     deposits, _, _ = prepare_full_genesis_deposits(
@@ -124,7 +124,7 @@ def test_invalid_not_enough_validator_count(spec):
         signed=True,
     )
 
-    eth1_block_hash = b'\x12' * 32
+    eth1_block_hash = b"\x12" * 32
     eth1_timestamp = spec.config.MIN_GENESIS_TIME
     state = spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
 

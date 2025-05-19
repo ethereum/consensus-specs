@@ -1,10 +1,6 @@
 # Capella -- Fork Choice
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -12,18 +8,18 @@
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 This is the modification of the fork choice according to the Capella upgrade.
 
-Unless stated explicitly, all prior functionality from [Bellatrix](../bellatrix/fork-choice.md) is inherited.
+Unless stated explicitly, all prior functionality from
+[Bellatrix](../bellatrix/fork-choice.md) is inherited.
 
 ## Custom types
 
@@ -31,12 +27,14 @@ Unless stated explicitly, all prior functionality from [Bellatrix](../bellatrix/
 
 ### `ExecutionEngine`
 
-*Note*: The `notify_forkchoice_updated` function is modified in the `ExecutionEngine` protocol at the Capella upgrade.
+*Note*: The `notify_forkchoice_updated` function is modified in the
+`ExecutionEngine` protocol at the Capella upgrade.
 
 #### `notify_forkchoice_updated`
 
-The only change made is to the `PayloadAttributes` container through the addition of `withdrawals`.
-Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
+The only change made is to the `PayloadAttributes` container through the
+addition of `withdrawals`. Otherwise, `notify_forkchoice_updated` inherits all
+prior functionality.
 
 ```python
 def notify_forkchoice_updated(self: ExecutionEngine,
@@ -49,7 +47,7 @@ def notify_forkchoice_updated(self: ExecutionEngine,
 
 ## Helpers
 
-### Extended `PayloadAttributes`
+### Modified `PayloadAttributes`
 
 `PayloadAttributes` is extended with the `withdrawals` field.
 
@@ -66,7 +64,8 @@ class PayloadAttributes(object):
 
 ### `on_block`
 
-*Note*: The only modification is the deletion of the verification of merge transition block conditions.
+*Note*: The only modification is the deletion of the verification of merge
+transition block conditions.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:

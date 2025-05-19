@@ -1,5 +1,5 @@
 import re
-from typing import TypeVar, Dict
+from typing import TypeVar, Dict, Union, List
 import textwrap
 from functools import reduce
 
@@ -82,13 +82,28 @@ def objects_to_spec(preset_name: str,
 
     functions = reduce(lambda fns, builder: builder.implement_optimizations(fns), builders, spec_object.functions)
     functions_spec = '\n\n\n'.join(functions.values())
+    ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
 
     # Access global dict of config vars for runtime configurables
+    # Ignore variable between quotes and doubles quotes
     for name in spec_object.config_vars.keys():
-        functions_spec = re.sub(r"\b%s\b" % name, 'config.' + name, functions_spec)
+        functions_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, functions_spec)
+        ordered_class_objects_spec = re.sub(r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, ordered_class_objects_spec)
 
-    def format_config_var(name: str, vardef: VariableDefinition) -> str:
-        if vardef.type_name is None:
+    def format_config_var(name: str, vardef) -> str:
+        if isinstance(vardef, list):
+            # A special case for list of records.
+            indent = " " * 4
+            lines = [f"{name}=("]
+            for d in vardef:
+                line = indent*2 + "frozendict({\n"
+                for k, v in d.items():
+                    line += indent * 3 + f'"{k}": {v},\n'
+                line += indent*2 + "}),"
+                lines.append(line)
+            lines.append(indent + "),")
+            return "\n".join(lines)
+        elif vardef.type_name is None:
             out = f'{name}={vardef.value},'
         else:
             out = f'{name}={vardef.type_name}({vardef.value}),'
@@ -96,10 +111,16 @@ def objects_to_spec(preset_name: str,
             out += f'  # {vardef.comment}'
         return out
 
+    def format_config_var_param(value):
+        if isinstance(value, list):
+            # A special case for list of records.
+            return "tuple[frozendict[str, Any], ...]"
+        elif isinstance(value, VariableDefinition):
+            return value.type_name if value.type_name is not None else "int"
+
     config_spec = 'class Configuration(NamedTuple):\n'
     config_spec += '    PRESET_BASE: str\n'
-    config_spec += '\n'.join(f'    {k}: {v.type_name if v.type_name is not None else "int"}'
-                             for k, v in spec_object.config_vars.items())
+    config_spec += '\n'.join(f'    {k}: {format_config_var_param(v)}' for k, v in spec_object.config_vars.items())
     config_spec += '\n\n\nconfig = Configuration(\n'
     config_spec += f'    PRESET_BASE="{preset_name}",\n'
     config_spec += '\n'.join('    ' + format_config_var(k, v) for k, v in spec_object.config_vars.items())
@@ -140,7 +161,6 @@ def objects_to_spec(preset_name: str,
     constant_vars_spec = '# Constant vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.constant_vars.items())
     preset_dep_constant_vars_spec = '# Preset computed constants\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_dep_constant_vars.items())
     preset_vars_spec = '# Preset vars\n' + '\n'.join(format_constant(k, v) for k, v in spec_object.preset_vars.items())
-    ordered_class_objects_spec = '\n\n\n'.join(ordered_class_objects.values())
     ssz_dep_constants = '\n'.join(map(lambda x: '%s = %s' % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants))
     ssz_dep_constants_verification = '\n'.join(map(lambda x: 'assert %s == %s' % (x, spec_object.ssz_dep_constants[x]), filtered_ssz_dep_constants))
     func_dep_presets_verification = '\n'.join(map(lambda x: 'assert %s == %s  # noqa: E501' % (x, spec_object.func_dep_presets[x]), filtered_hardcoded_func_dep_presets))
@@ -266,13 +286,16 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     )
 
 
-def parse_config_vars(conf: Dict[str, str]) -> Dict[str, str]:
+def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, List[Dict[str, str]]]]:
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: Dict[str, str] = dict()
+    out: Dict[str, Union[str, List[Dict[str, str]]]] = dict()
     for k, v in conf.items():
-        if isinstance(v, str) and (v.startswith("0x") or k == 'PRESET_BASE' or k == 'CONFIG_NAME'):
+        if isinstance(v, list):
+            # A special case for list of records
+            out[k] = v
+        elif isinstance(v, str) and (v.startswith("0x") or k == "PRESET_BASE" or k == "CONFIG_NAME"):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
             out[k] = f"'{v}'"

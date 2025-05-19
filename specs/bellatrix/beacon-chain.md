@@ -1,20 +1,16 @@
 # Bellatrix -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Preset](#preset)
+  - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
-  - [Updated penalty values](#updated-penalty-values)
 - [Configuration](#configuration)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
-  - [Extended containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
   - [New containers](#new-containers)
@@ -45,61 +41,64 @@
   - [Epoch processing](#epoch-processing)
     - [Slashings](#slashings)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix upgrade.
+This upgrade adds transaction execution to the beacon chain as part of Bellatrix
+upgrade.
 
 Additionally, this upgrade introduces the following minor changes:
-* Penalty parameter updates to their planned maximally punitive values
+
+- Penalty parameter updates to their planned maximally punitive values
 
 ## Custom types
 
 *Note*: The `Transaction` type is a stub which is not final.
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction|
-| `ExecutionAddress` | `Bytes20` | Address of account on the execution layer |
+| Name               | SSZ equivalent                        | Description                                                                                                                                       |
+| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
+| `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
 
 ## Preset
 
+### Rewards and penalties
+
+Bellatrix updates a few configuration values to move penalty parameters to their
+final, maximum security values.
+
+*Note*: The spec does *not* override previous configuration values but instead
+creates new values and replaces usage throughout.
+
+| Name                                         | Value                          |
+| -------------------------------------------- | ------------------------------ |
+| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`    | `uint64(2**5)` (= 32)          |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)`                    |
+
 ### Execution
 
-| Name | Value |
-| - | - |
-| `MAX_BYTES_PER_TRANSACTION` | `uint64(2**30)` (= 1,073,741,824) |
-| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576) |
-| `BYTES_PER_LOGS_BLOOM` | `uint64(2**8)` (= 256) |
-| `MAX_EXTRA_DATA_BYTES` | `2**5` (= 32) |
-
-### Updated penalty values
-
-Bellatrix updates a few configuration values to move penalty parameters to their final, maximum security values.
-
-*Note*: The spec does *not* override previous configuration values but instead creates new values and replaces usage throughout.
-
-| Name | Value |
-| - | - |
-| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX` | `uint64(2**5)` (= 32) |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)` |
+| Name                           | Value                             |
+| ------------------------------ | --------------------------------- |
+| `MAX_BYTES_PER_TRANSACTION`    | `uint64(2**30)` (= 1,073,741,824) |
+| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576)     |
+| `BYTES_PER_LOGS_BLOOM`         | `uint64(2**8)` (= 256)            |
+| `MAX_EXTRA_DATA_BYTES`         | `2**5` (= 32)                     |
 
 ## Configuration
 
 ### Transition settings
 
-| Name | Value |
-| - | - |
-| `TERMINAL_TOTAL_DIFFICULTY` | `58750000000000000000000` (Estimated: Sept 15, 2022)|
-| `TERMINAL_BLOCK_HASH` | `Hash32()` |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH` |
+| Name                                   | Value                                                |
+| -------------------------------------- | ---------------------------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
 
 ## Containers
 
-### Extended containers
+### Modified containers
 
 #### `BeaconBlockBody`
 
@@ -248,7 +247,8 @@ def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
 
 #### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The function `get_inactivity_penalty_deltas` is modified to use `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
+*Note*: The function `get_inactivity_penalty_deltas` is modified to use
+`INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -272,7 +272,8 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 #### Modified `slash_validator`
 
-*Note*: The function `slash_validator` is modified to use `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`.
+*Note*: The function `slash_validator` is modified to use
+`MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
 def slash_validator(state: BeaconState,
@@ -316,17 +317,21 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-The implementation-dependent `ExecutionEngine` protocol encapsulates the execution sub-system logic via:
+The implementation-dependent `ExecutionEngine` protocol encapsulates the
+execution sub-system logic via:
 
-* a state object `self.execution_state` of type `ExecutionState`
-* a notification function `self.notify_new_payload` which may apply changes to the `self.execution_state`
+- a state object `self.execution_state` of type `ExecutionState`
+- a notification function `self.notify_new_payload` which may apply changes to
+  the `self.execution_state`
 
-The body of these functions are implementation dependent.
-The Engine API may be used to implement this and similarly defined functions via an external execution engine.
+The body of these functions are implementation dependent. The Engine API may be
+used to implement this and similarly defined functions via an external execution
+engine.
 
 #### `notify_new_payload`
 
-`notify_new_payload` is a function accessed through the `EXECUTION_ENGINE` module which instantiates the `ExecutionEngine` protocol.
+`notify_new_payload` is a function accessed through the `EXECUTION_ENGINE`
+module which instantiates the `ExecutionEngine` protocol.
 
 ```python
 def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -370,7 +375,9 @@ def verify_and_notify_new_payload(self: ExecutionEngine,
 
 ### Block processing
 
-*Note*: The call to the `process_execution_payload` must happen before the call to the `process_randao` as the former depends on the `randao_mix` computed with the reveal of the previous block.
+*Note*: The call to the `process_execution_payload` must happen before the call
+to the `process_randao` as the former depends on the `randao_mix` computed with
+the reveal of the previous block.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
@@ -423,7 +430,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Slashings
 
-*Note*: The function `process_slashings` is modified to use `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX`.
+*Note*: The function `process_slashings` is modified to use
+`PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX`.
 
 ```python
 def process_slashings(state: BeaconState) -> None:

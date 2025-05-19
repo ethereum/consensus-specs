@@ -1,4 +1,5 @@
 from random import Random
+
 from eth2spec.utils.ssz.ssz_typing import uint256
 
 
@@ -16,10 +17,7 @@ class PowChain:
         return self.blocks[offset - 1]
 
     def to_dict(self):
-        return {
-            block.block_hash: block
-            for block in self.blocks
-        }
+        return {block.block_hash: block for block in self.blocks}
 
 
 def prepare_random_pow_block(spec, rng=Random(3131)):

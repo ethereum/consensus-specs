@@ -1,12 +1,8 @@
 # Data Availability Sampling -- Sampling
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Data Availability Sampling](#data-availability-sampling)
 - [GossipSub](#gossipsub)
@@ -19,8 +15,7 @@
     - [Stage 1: Pulling missing samples from known peers](#stage-1-pulling-missing-samples-from-known-peers)
     - [Stage 2: Pulling missing data from validators with custody.](#stage-2-pulling-missing-data-from-validators-with-custody)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Data Availability Sampling
 
@@ -46,37 +41,49 @@ TODO
 
 ### DAS during network instability
 
-The GossipSub based retrieval of samples may not always work.
-In such event, a node can move through below stages until it recovers data availability.
+The GossipSub based retrieval of samples may not always work. In such event, a
+node can move through below stages until it recovers data availability.
 
 #### Stage 0: Waiting on missing samples
 
-Wait for the sample to re-broadcast. Someone may be slow with publishing, or someone else is able to do the work.
+Wait for the sample to re-broadcast. Someone may be slow with publishing, or
+someone else is able to do the work.
 
 Any node can do the following work to keep the network healthy:
-- Common: Listen on a horizontal subnet, chunkify the block data in samples, and propagate the samples to vertical subnets.
-- Extreme: Listen on enough vertical subnets, reconstruct the missing samples by recovery, and propagate the recovered samples.
 
-This is not a requirement, but should improve the network stability with little resources, and without any central party.
+- Common: Listen on a horizontal subnet, chunkify the block data in samples, and
+  propagate the samples to vertical subnets.
+- Extreme: Listen on enough vertical subnets, reconstruct the missing samples by
+  recovery, and propagate the recovered samples.
+
+This is not a requirement, but should improve the network stability with little
+resources, and without any central party.
 
 #### Stage 1: Pulling missing samples from known peers
 
-The more realistic option, to execute when a sample is missing, is to query any node that is known to hold it.
-Since *consensus identity is disconnected from network identity*, there is no direct way to contact custody holders
-without explicitly asking for the data.
+The more realistic option, to execute when a sample is missing, is to query any
+node that is known to hold it. Since *consensus identity is disconnected from
+network identity*, there is no direct way to contact custody holders without
+explicitly asking for the data.
 
-However, *network identities* are still used to build a backbone for each vertical subnet.
-These nodes should have received the samples, and can serve a buffer of them on demand.
-Although serving these is not directly incentivised, it is little work:
-1. Buffer any message you see on the backbone vertical subnets, for a buffer of up to two weeks.
-2. Serve the samples on request. An individual sample is just expected to be `~ 0.5 KB`, and does not require any pre-processing to serve.
+However, *network identities* are still used to build a backbone for each
+vertical subnet. These nodes should have received the samples, and can serve a
+buffer of them on demand. Although serving these is not directly incentivised,
+it is little work:
 
-A validator SHOULD make a `DASQuery` request to random peers, until failing more than the configured failure-rate.
+1. Buffer any message you see on the backbone vertical subnets, for a buffer of
+   up to two weeks.
+2. Serve the samples on request. An individual sample is just expected to be
+   `~ 0.5 KB`, and does not require any pre-processing to serve.
 
-TODO: detailed failure-mode spec. Stop after trying e.g. 3 peers for any sample in a configured time window (after the gossip period).
+A validator SHOULD make a `DASQuery` request to random peers, until failing more
+than the configured failure-rate.
+
+TODO: detailed failure-mode spec. Stop after trying e.g. 3 peers for any sample
+in a configured time window (after the gossip period).
 
 #### Stage 2: Pulling missing data from validators with custody.
 
-Pulling samples directly from nodes with validators that have a custody responsibility,
-without revealing their identity to the network, is an open problem.
-
+Pulling samples directly from nodes with validators that have a custody
+responsibility, without revealing their identity to the network, is an open
+problem.

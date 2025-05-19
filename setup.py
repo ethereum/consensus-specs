@@ -3,6 +3,7 @@ import copy
 import json
 import logging
 import os
+import re
 import string
 import sys
 import warnings
@@ -11,7 +12,7 @@ from collections import OrderedDict
 from distutils import dir_util
 from distutils.util import convert_path
 from functools import lru_cache
-from marko.block import Heading, FencedCode, LinkRefDef, BlankLine
+from marko.block import Heading, FencedCode, HTMLBlock, BlankLine
 from marko.ext.gfm import gfm
 from marko.ext.gfm.elements import Table
 from marko.inline import CodeSpan
@@ -26,7 +27,6 @@ sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
     PHASE0,
-    ETH2_SPEC_COMMENT_PREFIX,
 )
 from pysetup.helpers import (
     combine_spec_objects,
@@ -150,17 +150,6 @@ ALL_CURDLEPROOFS_CRS = {
 
 
 @lru_cache(maxsize=None)
-def _get_eth2_spec_comment(child: LinkRefDef) -> Optional[str]:
-    _, _, title = child._parse_info
-    if not (title[0] == "(" and title[len(title)-1] == ")"):
-        return None
-    title = title[1:len(title)-1]
-    if not title.startswith(ETH2_SPEC_COMMENT_PREFIX):
-        return None
-    return title[len(ETH2_SPEC_COMMENT_PREFIX):].strip()
-
-
-@lru_cache(maxsize=None)
 def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -209,6 +198,29 @@ def parse_markdown(content: str):
     return gfm.parse(content)
 
 
+def check_yaml_matches_spec(var_name, yaml, value_def):
+    """
+    This function performs a sanity check for presets & configs. To a certain degree, it ensures
+    that the values in the specifications match those in the yaml files.
+    """
+    if var_name == "TERMINAL_BLOCK_HASH":
+        # This is just Hash32() in the specs, that's fine
+        return
+
+    # We use a var in the definition of a new var, replace usages
+    # Reverse sort so that overridden values come first
+    updated_value = value_def.value
+    for var in sorted(yaml.keys(), reverse=True):
+        if var in updated_value:
+            updated_value = updated_value.replace(var, yaml[var])
+    try:
+        assert yaml[var_name] == repr(eval(updated_value)), \
+            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
+    except NameError:
+        # Okay it's probably something more serious, let's ignore
+        pass
+
+
 def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
     functions: Dict[str, str] = {}
     protocols: Dict[str, ProtocolDefinition] = {}
@@ -227,6 +239,8 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
     current_name = None
     should_skip = False
+    list_of_records = None
+    list_of_records_name = None
     for child in document.children:
         if isinstance(child, BlankLine):
             continue
@@ -267,6 +281,62 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                 ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
             else:
                 raise Exception("unrecognized python code element: " + source)
+        elif isinstance(child, Table) and list_of_records is not None:
+            list_of_records_header = None
+            for i, row in enumerate(child.children):
+                # This will start as an empty list when there is a <!-- list-of-records --> comment,
+                # which indicates that the next table is a list-of-records. After we're done parsing
+                # the table, we will reset this to None.
+                if list_of_records is not None:
+                    if i == 0:
+                        # Save the table header, this will be used for field names
+                        # Skip the last item, which is the description
+                        list_of_records_header = [
+                            # Convert the titles to SNAKE_CASE
+                            re.sub(r'\s+', '_', value.children[0].children.upper())
+                            for value in row.children[:-1]
+                        ]
+                    else:
+                        # Add the row entry to our list of records
+                        list_of_records.append({
+                            list_of_records_header[i]: value.children[0].children
+                            for i, value in enumerate(row.children[:-1])
+                        })
+
+            # Make a type map from the spec definition
+            # We'll apply this to the file config (ie mainnet.yaml)
+            type_map: dict[str,str] = {}
+            pattern = re.compile(r'^(\w+)\(.*\)$')
+            for entry in list_of_records:
+                for k, v in entry.items():
+                    m = pattern.match(v)
+                    if m:
+                        type_map[k] = m.group(1)
+
+            # Apply the types to the file config
+            list_of_records_config: list[dict[str,str]] = []
+            for entry in config[list_of_records_name]:
+                new_entry: dict[str,str] = {}
+                for k, v in entry.items():
+                    ctor = type_map.get(k)
+                    if ctor:
+                        new_entry[k] = f"{ctor}({v})"
+                    else:
+                        new_entry[k] = v
+                list_of_records_config.append(new_entry)
+
+            # For mainnet, check that the spec config & file config are the same
+            # For minimal, we expect this to be different; just use the file config
+            if preset_name == "mainnet":
+                assert list_of_records == list_of_records_config, \
+                    f"list of records mismatch: {list_of_records} vs {list_of_records_config}"
+            elif preset_name == "minimal":
+                list_of_records = list_of_records_config
+
+            # Set the config variable and reset the global variable
+            config_vars[list_of_records_name] = list_of_records
+            list_of_records = None
+
         elif isinstance(child, Table):
             for row in child.children:
                 cells = row.children
@@ -312,8 +382,12 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 
                     value_def = _parse_value(name, value)
                     if name in preset:
+                        if preset_name == "mainnet":
+                            check_yaml_matches_spec(name, preset, value_def)
                         preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
                     elif name in config:
+                        if preset_name == "mainnet":
+                            check_yaml_matches_spec(name, config, value_def)
                         config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
                     else:
                         if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
@@ -324,10 +398,17 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
                         else:
                             constant_vars[name] = value_def
 
-        elif isinstance(child, LinkRefDef):
-            comment = _get_eth2_spec_comment(child)
-            if comment == "skip":
+        elif isinstance(child, HTMLBlock):
+            if child.body.strip() == "<!-- eth2spec: skip -->":
                 should_skip = True
+            # Handle list-of-records tables
+            match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", child.body.strip())
+            if match:
+                # Initialize list-of-records, in the next iteration this will indicate that the
+                # table is a list-of-records and must be parsed differently.
+                list_of_records = []
+                # Use regex to extract the desired configuration list name
+                list_of_records_name = match.group(1).upper()
 
     # Load KZG trusted setup from files
     if any('KZG_SETUP' in name for name in constant_vars):
@@ -363,7 +444,7 @@ def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], pr
 @lru_cache(maxsize=None)
 def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
     """
-    Loads the a directory of preset files, merges the result into one preset.
+    Loads a directory of preset files, merges the result into one preset.
     """
     preset = {}
     for fork_file in preset_files:

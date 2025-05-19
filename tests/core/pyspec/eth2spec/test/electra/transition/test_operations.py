@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
     with_presets,
 )
@@ -13,15 +13,21 @@ from eth2spec.test.helpers.fork_transition import (
     run_transition_with_operation,
 )
 
-
 #
 # DepositRequest
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_ELECTRA_PRE_POST_FORKS])
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_deposit_request_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_deposit_request_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a DEPOSIT_REQUEST right *after* the transition
     """
@@ -41,17 +47,17 @@ def test_transition_with_deposit_request_right_after_fork(state, fork_epoch, spe
 # WithdrawalRequest
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66)
-                  for pre, post in AFTER_ELECTRA_PRE_POST_FORKS])
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66)
+        for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
+    ]
+)
 @with_presets([MINIMAL], reason="too slow")
 @always_bls
 def test_transition_with_full_withdrawal_request_right_after_fork(
-    state,
-    fork_epoch,
-    spec,
-    post_spec,
-    pre_tag,
-    post_tag
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
     """
     Create a WITHDRAWAL_REQUEST right *after* the transition
@@ -72,16 +78,16 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
 # ConsolidationRequest
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_ELECTRA_PRE_POST_FORKS])
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
+    ]
+)
 @always_bls
 def test_transition_with_consolidation_request_right_after_fork(
-    state,
-    fork_epoch,
-    spec,
-    post_spec,
-    pre_tag,
-    post_tag
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
     """
     Create a CONSOLIDATION_REQUEST right *after* the transition

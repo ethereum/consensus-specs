@@ -1,10 +1,6 @@
 # Capella -- The Beacon Chain
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -19,7 +15,7 @@
     - [`BLSToExecutionChange`](#blstoexecutionchange)
     - [`SignedBLSToExecutionChange`](#signedblstoexecutionchange)
     - [`HistoricalSummary`](#historicalsummary)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -39,58 +35,59 @@
     - [Modified `process_operations`](#modified-process_operations)
     - [New `process_bls_to_execution_change`](#new-process_bls_to_execution_change)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-Capella is a consensus-layer upgrade containing a number of features related
-to validator withdrawals. Including:
+Capella is a consensus-layer upgrade containing a number of features related to
+validator withdrawals. Including:
 
-* Automatic withdrawals of `withdrawable` validators.
-* Partial withdrawals sweep for validators with 0x01 withdrawal
-  credentials and balances in excess of `MAX_EFFECTIVE_BALANCE`.
-* Operation to change from `BLS_WITHDRAWAL_PREFIX` to
-  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable withdrawals for a validator.
+- Automatic withdrawals of `withdrawable` validators.
+- Partial withdrawals sweep for validators with 0x01 withdrawal credentials and
+  balances in excess of `MAX_EFFECTIVE_BALANCE`.
+- Operation to change from `BLS_WITHDRAWAL_PREFIX` to
+  `ETH1_ADDRESS_WITHDRAWAL_PREFIX` versioned withdrawal credentials to enable
+  withdrawals for a validator.
 
-Another new feature is the new independent state and block historical accumulators
-that replace the original singular historical roots. With these accumulators, it becomes possible to validate
-the entire block history that led up to that particular state without any additional information
-beyond the state and the blocks.
+Another new feature is the new independent state and block historical
+accumulators that replace the original singular historical roots. With these
+accumulators, it becomes possible to validate the entire block history that led
+up to that particular state without any additional information beyond the state
+and the blocks.
 
 ## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `WithdrawalIndex` | `uint64` | an index of a `Withdrawal` |
+| Name              | SSZ equivalent | Description                |
+| ----------------- | -------------- | -------------------------- |
+| `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                             | Value                      |
+| -------------------------------- | -------------------------- |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
 ## Preset
 
 ### Max operations per block
 
-| Name | Value |
-| - | - |
+| Name                           | Value         |
+| ------------------------------ | ------------- |
 | `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
 
 ### Execution
 
-| Name | Value | Description |
-| - | - | - |
+| Name                          | Value                 | Description                                           |
+| ----------------------------- | --------------------- | ----------------------------------------------------- |
 | `MAX_WITHDRAWALS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | Maximum amount of withdrawals allowed in each payload |
 
 ### Withdrawals processing
 
-| Name | Value |
-| - | - |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2**14 ) |
+| Name                                   | Value                |
+| -------------------------------------- | -------------------- |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2\*\*14 ) |
 
 ## Containers
 
@@ -135,7 +132,7 @@ class HistoricalSummary(Container):
     state_summary_root: Root
 ```
 
-### Extended Containers
+### Modified containers
 
 #### `ExecutionPayload`
 
@@ -294,7 +291,8 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 ### Epoch processing
 
-*Note*: The function `process_historical_summaries_update` replaces `process_historical_roots_update` in Capella.
+*Note*: The function `process_historical_summaries_update` replaces
+`process_historical_roots_update` in Capella.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -403,8 +401,9 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 #### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to use the new `ExecutionPayloadHeader` type
-and removed the `is_merge_transition_complete` check.
+*Note*: The function `process_execution_payload` is modified to use the new
+`ExecutionPayloadHeader` type and removed the `is_merge_transition_complete`
+check.
 
 ```python
 def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
@@ -440,7 +439,8 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### Modified `process_operations`
 
-*Note*: The function `process_operations` is modified to process `BLSToExecutionChange` operations included in the block.
+*Note*: The function `process_operations` is modified to process
+`BLSToExecutionChange` operations included in the block.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:

@@ -1,10 +1,6 @@
 # Release Procedure
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Open a Release Pull Request](#open-a-release-pull-request)
@@ -21,8 +17,7 @@
 - [Click the Release Buttons](#click-the-release-buttons)
 - [Make an Announcement](#make-an-announcement)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -130,7 +125,7 @@ cp -r presets ../consensus-spec-tests
 cp -r configs ../consensus-spec-tests
 ```
 
-Next, use `make gen_all` to generate all the reference tests. The following command will run all
+Next, use `make reftests` to generate all the reference tests. The following command will run all
 generators in parallel for maximum speed. The console output is saved to a file so we can check for
 errors afterwards.
 
@@ -148,7 +143,7 @@ errors afterwards.
 > to do this. Note that the "Bundle Reference Tests" section can be skipped if this route is taken.
 
 ```bash
-make --jobs gen_all 2>&1 | tee ../consensustestgen.log
+make reftests verbose=true 2>&1 | tee ../consensustestgen.log
 ```
 
 Next, check for errors by searching for "ERROR" in test logfile.

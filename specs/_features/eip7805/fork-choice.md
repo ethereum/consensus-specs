@@ -1,9 +1,6 @@
 # EIP-7805 -- Fork Choice
 
-## Table of contents
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -11,13 +8,13 @@
 - [Fork choice](#fork-choice)
   - [Helpers](#helpers)
     - [Modified `Store`](#modified-store)
+  - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
     - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
     - [New `get_attester_head`](#new-get_attester_head)
       - [Modified `get_proposer_head`](#modified-get_proposer_head)
     - [New `on_inclusion_list`](#new-on_inclusion_list)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -27,8 +24,8 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name                   | Value                           |  Unit   | Duration  |
+| ---------------------- | ------------------------------- | :-----: | :-------: |
 | `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
 
 ## Fork choice
@@ -37,7 +34,8 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 #### Modified `Store`
 
-**Note:** `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
+*Note*: `Store` is modified to track the seen inclusion lists and inclusion list
+equivocators.
 
 ```python
 @dataclass
@@ -62,6 +60,34 @@ class Store(object):
     unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)
 ```
 
+### Modified `get_forkchoice_store`
+
+```python
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_epoch = get_current_epoch(anchor_state)
+    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
+    return Store(
+        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
+        genesis_time=anchor_state.genesis_time,
+        justified_checkpoint=justified_checkpoint,
+        finalized_checkpoint=finalized_checkpoint,
+        unrealized_justified_checkpoint=justified_checkpoint,
+        unrealized_finalized_checkpoint=finalized_checkpoint,
+        proposer_boost_root=proposer_boost_root,
+        equivocating_indices=set(),
+        blocks={anchor_root: copy(anchor_block)},
+        block_states={anchor_root: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        unrealized_justifications={anchor_root: justified_checkpoint},
+        # [New in EIP-7805]
+        unsatisfied_inclusion_list_blocks=set(),
+    )
+```
+
 #### New `validate_inclusion_lists`
 
 ```python
@@ -74,9 +100,6 @@ def validate_inclusion_lists(store: Store,
     invalid when appended to the end of the payload unless the block is full.
     """
     # pylint: disable=unused-argument
-
-    # Verify inclusion list is a valid length
-    assert len(inclusion_list_transactions) <= MAX_TRANSACTIONS_PER_INCLUSION_LIST * INCLUSION_LIST_COMMITTEE_SIZE
 
     # Verify inclusion list transactions are present in the execution payload
     contains_all_txs = all(tx in execution_payload.transactions for tx in inclusion_list_transactions)
@@ -100,7 +123,8 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
 
 ##### Modified `get_proposer_head`
 
-The implementation of `get_proposer_head` is modified to also account for `store.unsatisfied_inclusion_list_blocks`.
+The implementation of `get_proposer_head` is modified to also account for
+`store.unsatisfied_inclusion_list_blocks`.
 
 ```python
 def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
@@ -149,7 +173,8 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 
 #### New `on_inclusion_list`
 
-`on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
+`on_inclusion_list` is called to import `signed_inclusion_list` to the fork
+choice store.
 
 ```python
 def on_inclusion_list(

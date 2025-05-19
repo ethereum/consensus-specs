@@ -1,21 +1,17 @@
 # Capella Light Client -- Full Node
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Capella upgrade.
+This upgrade adds information about the execution payload to light client data
+as part of the Capella upgrade.
 
 ## Helper functions
 

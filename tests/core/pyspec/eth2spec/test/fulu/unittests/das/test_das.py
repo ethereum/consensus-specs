@@ -1,8 +1,9 @@
 import random
+
 from eth2spec.test.context import (
     expect_assertion_error,
-    spec_test,
     single_phase,
+    spec_test,
     with_config_overrides,
     with_fulu_and_later,
 )
@@ -13,7 +14,7 @@ from eth2spec.test.helpers.blob import (
 
 def chunks(lst, n):
     """Helper that splits a list into N sized chunks."""
-    return [lst[i:i + n] for i in range(0, len(lst), n)]
+    return [lst[i : i + n] for i in range(0, len(lst), n)]
 
 
 @with_fulu_and_later
@@ -36,8 +37,8 @@ def test_compute_matrix(spec):
         extended_blob = []
         for entry in row:
             extended_blob.extend(spec.cell_to_coset_evals(entry.cell))
-        blob_part = extended_blob[0:len(extended_blob) // 2]
-        blob = b''.join([spec.bls_field_to_bytes(x) for x in blob_part])
+        blob_part = extended_blob[0 : len(extended_blob) // 2]
+        blob = b"".join([spec.bls_field_to_bytes(x) for x in blob_part])
         assert blob == input_blobs[blob_index]
 
 
@@ -121,10 +122,12 @@ def test_get_extended_sample_count__upper_bound_exceed(spec):
 
 @with_fulu_and_later
 @spec_test
-@with_config_overrides({
-    'NUMBER_OF_COLUMNS': 128,
-    'SAMPLES_PER_SLOT': 16,
-})
+@with_config_overrides(
+    {
+        "NUMBER_OF_COLUMNS": 128,
+        "SAMPLES_PER_SLOT": 16,
+    }
+)
 @single_phase
 def test_get_extended_sample_count__table_in_spec(spec):
     table = dict(
@@ -142,4 +145,7 @@ def test_get_extended_sample_count__table_in_spec(spec):
         }
     )
     for allowed_failures, expected_extended_sample_count in table.items():
-        assert spec.get_extended_sample_count(allowed_failures=allowed_failures) == expected_extended_sample_count
+        assert (
+            spec.get_extended_sample_count(allowed_failures=allowed_failures)
+            == expected_extended_sample_count
+        )

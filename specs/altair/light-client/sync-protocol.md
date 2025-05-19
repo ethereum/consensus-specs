@@ -1,10 +1,6 @@
 # Altair Light Client -- Sync Protocol
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
@@ -41,48 +37,50 @@
   - [`process_light_client_finality_update`](#process_light_client_finality_update)
   - [`process_light_client_optimistic_update`](#process_light_client_optimistic_update)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-The beacon chain is designed to be light client friendly for constrained environments to
-access Ethereum with reasonable safety and liveness.
-Such environments include resource-constrained devices (e.g. phones for trust-minimized wallets)
-and metered VMs (e.g. blockchain VMs for cross-chain bridges).
+The beacon chain is designed to be light client friendly for constrained
+environments to access Ethereum with reasonable safety and liveness. Such
+environments include resource-constrained devices (e.g. phones for
+trust-minimized wallets) and metered VMs (e.g. blockchain VMs for cross-chain
+bridges).
 
 This document suggests a minimal light client design for the beacon chain that
-uses sync committees introduced in [this beacon chain extension](../beacon-chain.md).
+uses sync committees introduced in
+[this beacon chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
+
 - [Full node](./full-node.md)
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `FinalityBranch` | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]` | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState` |
-| `NextSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `next_sync_committee` within `BeaconState` |
+| Name                         | SSZ equivalent                                              | Description                                                       |
+| ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
+| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
 
 ## Constants
 
-| Name | Value |
-| - | - |
-| `FINALIZED_ROOT_GINDEX` | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54) |
-| `NEXT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55) |
+| Name                            | Value                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55)           |
 
 ## Preset
 
 ### Misc
 
-| Name | Value | Unit | Duration |
-| - | - | - | - |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1` | validators | |
-| `UPDATE_TIMEOUT` | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots | ~27.3 hours |
+| Name                              | Value                                                | Unit       | Duration    |
+| --------------------------------- | ---------------------------------------------------- | ---------- | ----------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |             |
+| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      | ~27.3 hours |
 
 ## Containers
 
@@ -94,7 +92,9 @@ class LightClientHeader(Container):
     beacon: BeaconBlockHeader
 ```
 
-Future upgrades may introduce additional fields to this structure, and validate them by extending [`is_valid_light_client_header`](#is_valid_light_client_header).
+Future upgrades may introduce additional fields to this structure, and validate
+them by extending
+[`is_valid_light_client_header`](#is_valid_light_client_header).
 
 ### `LightClientBootstrap`
 
@@ -326,7 +326,10 @@ def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
 
 ## Light client initialization
 
-A light client maintains its state in a `store` object of type `LightClientStore`. `initialize_light_client_store` initializes a new `store` with a received `LightClientBootstrap` derived from a given `trusted_block_root`.
+A light client maintains its state in a `store` object of type
+`LightClientStore`. `initialize_light_client_store` initializes a new `store`
+with a received `LightClientBootstrap` derived from a given
+`trusted_block_root`.
 
 ### `initialize_light_client_store`
 
@@ -356,11 +359,19 @@ def initialize_light_client_store(trusted_block_root: Root,
 
 ## Light client state updates
 
-- A light client receives objects of type `LightClientUpdate`, `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
-    - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
-    - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
-    - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
-- `process_light_client_store_force_update` MAY be called based on use case dependent heuristics if light client sync appears stuck.
+- A light client receives objects of type `LightClientUpdate`,
+  `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
+  - **`update: LightClientUpdate`**: Every `update` triggers
+    `process_light_client_update(store, update, current_slot, genesis_validators_root)`
+    where `current_slot` is the current slot based on a local clock.
+  - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update`
+    triggers
+    `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
+  - **`optimistic_update: LightClientOptimisticUpdate`**: Every
+    `optimistic_update` triggers
+    `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
+- `process_light_client_store_force_update` MAY be called based on use case
+  dependent heuristics if light client sync appears stuck.
 
 ### `validate_light_client_update`
 

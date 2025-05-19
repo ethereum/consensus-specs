@@ -1,24 +1,24 @@
 # Deneb Light Client -- Sync Protocol
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This upgrade updates light client data to include the Deneb changes to the [`ExecutionPayload`](../beacon-chain.md) structure. It extends the [Capella Light Client specifications](../../capella/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Capella based deployments to Deneb.
+This upgrade updates light client data to include the Deneb changes to the
+[`ExecutionPayload`](../beacon-chain.md) structure. It extends the
+[Capella Light Client specifications](../../capella/light-client/sync-protocol.md).
+The [fork document](./fork.md) explains how to upgrade existing Capella based
+deployments to Deneb.
 
 Additional documents describes the impact of the upgrade on certain roles:
+
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 

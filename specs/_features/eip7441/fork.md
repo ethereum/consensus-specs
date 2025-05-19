@@ -1,19 +1,14 @@
 # EIP-7441 -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
 - [Fork to EIP-7441](#fork-to-eip-7441)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -45,11 +40,17 @@ Warning: this configuration is not definitive.
 
 ## Fork to EIP-7441
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7441_FORK_EPOCH`, an irregular state change is made to upgrade to Whisk. `EIP7441_FORK_EPOCH` must be a multiple of `RUN_DURATION_IN_EPOCHS`.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == EIP7441_FORK_EPOCH`, an irregular state
+change is made to upgrade to Whisk. `EIP7441_FORK_EPOCH` must be a multiple of
+`RUN_DURATION_IN_EPOCHS`.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP7441_FORK_EPOCH * SLOTS_PER_EPOCH`.
+The upgrade occurs after the completion of the inner loop of `process_slots`
+that sets `state.slot` equal to `EIP7441_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
-This ensures that we drop right into the beginning of the shuffling phase but without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle all the setup ourselves in `upgrade_to_whisk()` below.
+This ensures that we drop right into the beginning of the shuffling phase but
+without `process_whisk_epoch()` triggering for this Whisk run. Hence we handle
+all the setup ourselves in `upgrade_to_whisk()` below.
 
 ```python
 def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:

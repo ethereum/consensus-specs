@@ -1,12 +1,8 @@
 # Sharding -- The Beacon Chain
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
   - [Glossary](#glossary)
@@ -25,7 +21,7 @@
     - [`BuilderBlockBidWithRecipientAddress`](#builderblockbidwithrecipientaddress)
     - [`ShardedCommitmentsContainer`](#shardedcommitmentscontainer)
     - [`ShardSample`](#shardsample)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
     - [`BuilderBlockData`](#builderblockdata)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -42,69 +38,75 @@
     - [Sharded data](#sharded-data)
     - [Execution payload](#execution-payload)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the extensions made to the Phase 0 design of The Beacon Chain to support data sharding,
-based on the ideas [here](https://notes.ethereum.org/@dankrad/new_sharding) and more broadly [here](https://arxiv.org/abs/1809.09044),
-using KZG10 commitments to commit to data to remove any need for fraud proofs (and hence, safety-critical synchrony assumptions) in the design.
+This document describes the extensions made to the Phase 0 design of The Beacon
+Chain to support data sharding, based on the ideas
+[here](https://notes.ethereum.org/@dankrad/new_sharding) and more broadly
+[here](https://arxiv.org/abs/1809.09044), using KZG10 commitments to commit to
+data to remove any need for fraud proofs (and hence, safety-critical synchrony
+assumptions) in the design.
 
 ### Glossary
 
 - **Data**: A list of KZG points, to translate a byte string into
-- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2 transactions.
+- **Blob**: Data with commitments and meta-data, like a flattened bundle of L2
+  transactions.
 
 ## Constants
 
-The following values are (non-configurable) constants used throughout the specification.
+The following values are (non-configurable) constants used throughout the
+specification.
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
+| Name                        | Value                 | Notes               |
+| --------------------------- | --------------------- | ------------------- |
 | `FIELD_ELEMENTS_PER_SAMPLE` | `uint64(2**4)` (= 16) | 31 * 16 = 496 bytes |
 
 ### Domain types
 
-| Name | Value |
-| - | - |
+| Name                  | Value                      |
+| --------------------- | -------------------------- |
 | `DOMAIN_SHARD_SAMPLE` | `DomainType('0x10000000')` |
 
 ## Preset
 
 ### Misc
 
-| Name | Value | Notes |
-| - | - | - |
-| `MAX_SHARDS` | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes) |
-| `ACTIVE_SHARDS` | `uint64(2**8)` (= 256) | Initial shard count |
-| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16) | TODO: Need to define what happens if there were more blocks without builder blocks |
+| Name                                         | Value                     | Notes                                                                              |
+| -------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| `MAX_SHARDS`                                 | `uint64(2**12)` (= 4,096) | Theoretical max shard count (used to determine data structure sizes)               |
+| `ACTIVE_SHARDS`                              | `uint64(2**8)` (= 256)    | Initial shard count                                                                |
+| `MAX_PROPOSER_BLOCKS_BETWEEN_BUILDER_BLOCKS` | `uint64(2**4)` (= 16)     | TODO: Need to define what happens if there were more blocks without builder blocks |
 
 ### Time parameters
 
-With the introduction of builder blocks the number of slots per epoch is doubled (it counts beacon blocks and builder blocks).
+With the introduction of builder blocks the number of slots per epoch is doubled
+(it counts beacon blocks and builder blocks).
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name              | Value                 | Unit  |   Duration   |
+| ----------------- | --------------------- | :---: | :----------: |
 | `SLOTS_PER_EPOCH` | `uint64(2**6)` (= 64) | slots | 8:32 minutes |
 
 ### Shard blob samples
 
-| Name | Value | Notes |
-| - | - | - |
+| Name               | Value                  | Notes                     |
+| ------------------ | ---------------------- | ------------------------- |
 | `SAMPLES_PER_BLOB` | `uint64(2**9)` (= 512) | 248 * 512 = 126,976 bytes |
 
 ## Configuration
 
-Note: Some preset variables may become run-time configurable for testnets, but default to a preset while the spec is unstable.
-E.g. `ACTIVE_SHARDS` and `SAMPLES_PER_BLOB`.
+*Note*: Some preset variables may become run-time configurable for testnets, but
+default to a preset while the spec is unstable. E.g. `ACTIVE_SHARDS` and
+`SAMPLES_PER_BLOB`.
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
+| Name               | Value       |  Unit   | Duration  |
+| ------------------ | ----------- | :-----: | :-------: |
 | `SECONDS_PER_SLOT` | `uint64(8)` | seconds | 8 seconds |
 
 ## Containers
@@ -175,7 +177,7 @@ class ShardSample(Container):
     signature: BLSSignature
 ```
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 

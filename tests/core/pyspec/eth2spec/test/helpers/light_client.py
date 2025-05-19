@@ -1,45 +1,48 @@
+from math import floor
+
 from eth2spec.test.helpers.constants import (
-    CAPELLA, DENEB, ELECTRA,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
 )
 from eth2spec.test.helpers.fork_transition import (
     transition_across_forks,
 )
-from eth2spec.test.helpers.forks import (
-    is_post_capella, is_post_deneb, is_post_electra
-)
+from eth2spec.test.helpers.forks import is_post_capella, is_post_deneb, is_post_electra
 from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
 )
-from math import floor
 
 
 def latest_finalized_root_gindex(spec):
-    if hasattr(spec, 'FINALIZED_ROOT_GINDEX_ELECTRA'):
+    if hasattr(spec, "FINALIZED_ROOT_GINDEX_ELECTRA"):
         return spec.FINALIZED_ROOT_GINDEX_ELECTRA
     return spec.FINALIZED_ROOT_GINDEX
 
 
 def latest_current_sync_committee_gindex(spec):
-    if hasattr(spec, 'CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA'):
+    if hasattr(spec, "CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA"):
         return spec.CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
     return spec.CURRENT_SYNC_COMMITTEE_GINDEX
 
 
 def latest_next_sync_committee_gindex(spec):
-    if hasattr(spec, 'NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA'):
+    if hasattr(spec, "NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA"):
         return spec.NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
     return spec.NEXT_SYNC_COMMITTEE_GINDEX
 
 
 def latest_normalize_merkle_branch(spec, branch, gindex):
-    if hasattr(spec, 'normalize_merkle_branch'):
+    if hasattr(spec, "normalize_merkle_branch"):
         return spec.normalize_merkle_branch(branch, gindex)
     return branch
 
 
 def compute_start_slot_at_sync_committee_period(spec, sync_committee_period):
-    return spec.compute_start_slot_at_epoch(sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    return spec.compute_start_slot_at_epoch(
+        sync_committee_period * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+    )
 
 
 def compute_start_slot_at_next_sync_committee_period(spec, state):
@@ -54,7 +57,9 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None, 
     assert signature_slot > state.slot
 
     # Ensure correct sync committee and fork version are selected
-    signature_spec, signature_state, _ = transition_across_forks(spec, state, signature_slot, phases)
+    signature_spec, signature_state, _ = transition_across_forks(
+        spec, state, signature_slot, phases
+    )
 
     # Fetch sync committee
     committee_indices = compute_committee_indices(signature_state)
@@ -80,14 +85,16 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None, 
     return sync_aggregate, signature_slot
 
 
-def create_update(spec,
-                  attested_state,
-                  attested_block,
-                  finalized_block,
-                  with_next,
-                  with_finality,
-                  participation_rate,
-                  signature_slot=None):
+def create_update(
+    spec,
+    attested_state,
+    attested_block,
+    finalized_block,
+    with_next,
+    with_finality,
+    participation_rate,
+    signature_slot=None,
+):
     num_participants = floor(spec.SYNC_COMMITTEE_SIZE * participation_rate)
 
     update = spec.LightClientUpdate()
@@ -97,15 +104,18 @@ def create_update(spec,
     if with_next:
         update.next_sync_committee = attested_state.next_sync_committee
         update.next_sync_committee_branch = spec.compute_merkle_proof(
-            attested_state, latest_next_sync_committee_gindex(spec))
+            attested_state, latest_next_sync_committee_gindex(spec)
+        )
 
     if with_finality:
         update.finalized_header = spec.block_to_light_client_header(finalized_block)
         update.finality_branch = spec.compute_merkle_proof(
-            attested_state, latest_finalized_root_gindex(spec))
+            attested_state, latest_finalized_root_gindex(spec)
+        )
 
     update.sync_aggregate, update.signature_slot = get_sync_aggregate(
-        spec, attested_state, num_participants, signature_slot=signature_slot)
+        spec, attested_state, num_participants, signature_slot=signature_slot
+    )
 
     return update
 
@@ -124,10 +134,9 @@ def needs_upgrade_to_electra(spec, new_spec):
 
 def check_merkle_branch_equal(spec, new_spec, data, upgraded, gindex):
     if is_post_electra(new_spec):
-        assert (
-            new_spec.normalize_merkle_branch(upgraded, gindex)
-            == new_spec.normalize_merkle_branch(data, gindex)
-        )
+        assert new_spec.normalize_merkle_branch(
+            upgraded, gindex
+        ) == new_spec.normalize_merkle_branch(data, gindex)
     else:
         assert upgraded == data
 

@@ -1,12 +1,8 @@
 # EIP-6800 -- Fork Logic
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
@@ -17,8 +13,7 @@
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -28,10 +23,10 @@ This document describes the process of the eip6800 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `EIP6800_FORK_VERSION` | `Version('0x05000000')` |
-| `EIP6800_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP6800_FORK_VERSION` | `Version('0x05000000')`               |
+| `EIP6800_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -63,16 +58,24 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 The fork is triggered at epoch `EIP6800_FORK_EPOCH`.
 
-Note that for the pure eip6800 networks, we don't apply `upgrade_to_eip6800` since it starts with the eip6800 version logic.
+Note that for the pure eip6800 networks, we don't apply `upgrade_to_eip6800`
+since it starts with the eip6800 version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP6800_FORK_EPOCH`,
-an irregular state change is made to upgrade to eip6800.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == EIP6800_FORK_EPOCH`, an irregular state
+change is made to upgrade to eip6800.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `EIP6800_FORK_EPOCH * SLOTS_PER_EPOCH`.
-Care must be taken when transitioning through the fork boundary as implementations will need a modified [state transition function](../../phase0/beacon-chain.md#beacon-chain-state-transition-function) that deviates from the Phase 0 document.
-In particular, the outer `state_transition` function defined in the Phase 0 document will not expose the precise fork slot to execute the upgrade in the presence of skipped slots at the fork boundary. Instead, the logic must be within `process_slots`.
+The upgrade occurs after the completion of the inner loop of `process_slots`
+that sets `state.slot` equal to `EIP6800_FORK_EPOCH * SLOTS_PER_EPOCH`. Care
+must be taken when transitioning through the fork boundary as implementations
+will need a modified
+[state transition function](../../phase0/beacon-chain.md#beacon-chain-state-transition-function)
+that deviates from the Phase 0 document. In particular, the outer
+`state_transition` function defined in the Phase 0 document will not expose the
+precise fork slot to execute the upgrade in the presence of skipped slots at the
+fork boundary. Instead, the logic must be within `process_slots`.
 
 ```python
 def upgrade_to_eip6800(pre: deneb.BeaconState) -> BeaconState:
