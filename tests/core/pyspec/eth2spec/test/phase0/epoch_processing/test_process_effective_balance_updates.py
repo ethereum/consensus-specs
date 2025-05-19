@@ -23,7 +23,7 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
     run_process_slots_up_to_epoch_boundary(spec, state)
     yield "pre_epoch", state
     run_epoch_processing_to(
-        spec, state, "process_effective_balance_updates", disable_slots_processing=True
+        spec, state, "process_effective_balance_updates", enable_slots_processing=False
     )
     # Set some edge cases for balances
     max = (

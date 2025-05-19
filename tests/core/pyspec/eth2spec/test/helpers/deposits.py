@@ -457,7 +457,7 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
 
     run_process_slots_up_to_epoch_boundary(spec, state)
     yield "pre_epoch", state
-    run_epoch_processing_to(spec, state, "process_pending_deposits", disable_slots_processing=True)
+    run_epoch_processing_to(spec, state, "process_pending_deposits", enable_slots_processing=False)
 
     yield "pre", state
     spec.process_pending_deposits(state)
