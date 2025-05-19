@@ -139,15 +139,13 @@ advertise the updated `custody_group_count` after
 custody groups as a result of this change. After
 `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to respond
 to any `DataColumnSidecar` request within the retention period. If the node's
-custody requirements are decreased, the node should continue custodying the
-original custody groups for `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. This
-ensures the custody groups the node was required to custody are available for
-the entire retention period. After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
-epochs, the node SHOULD update their `custody_group_count` to reflect their new
-custody requirement and MAY prune data which is no longer required to be
-custodied. Nodes SHOULD be able to appropriately handle multiple changes to
-custody requirements within the same retention period (e.g., an increase in one
-epoch and a decrease in the next epoch).
+custody requirements are decreased, the node MAY update its
+`custody_group_count` to reflect this. However, it SHOULD NOT prune existing
+custody columns until after the usual period of
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. Nodes SHOULD be able to
+appropriately handle multiple changes to custody requirements within the same
+retention period (e.g., an increase in one epoch and a decrease in the next
+epoch).
 
 ### Block and sidecar proposal
 
