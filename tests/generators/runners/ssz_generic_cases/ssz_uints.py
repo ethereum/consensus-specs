@@ -22,15 +22,17 @@ def valid_cases():
         mode = RandomizationMode.mode_random
         byte_len = uint_type.type_byte_length()
         yield f"uint_{byte_len * 8}_last_byte_empty", valid_test_case(
-            lambda: uint_type((2 ** ((byte_len - 1) * 8)) - 1)
+            lambda uint_type=uint_type, byte_len=byte_len: uint_type(
+                (2 ** ((byte_len - 1) * 8)) - 1
+            )
         )
         for variation in range(5):
             yield f"uint_{byte_len * 8}_{mode.to_name()}_{variation}", valid_test_case(
-                lambda: uint_case_fn(rng, mode, uint_type)
+                lambda rng=rng, mode=mode, uint_type=uint_type: uint_case_fn(rng, mode, uint_type)
             )
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f"uint_{byte_len * 8}_{mode.to_name()}", valid_test_case(
-                lambda: uint_case_fn(rng, mode, uint_type)
+                lambda rng=rng, mode=mode, uint_type=uint_type: uint_case_fn(rng, mode, uint_type)
             )
 
 
@@ -38,15 +40,17 @@ def invalid_cases():
     for uint_type in UINT_TYPES:
         byte_len = uint_type.type_byte_length()
         yield f"uint_{byte_len * 8}_one_too_high", invalid_test_case(
-            lambda: (2 ** (byte_len * 8)).to_bytes(byte_len + 1, "little")
+            lambda byte_len=byte_len: (2 ** (byte_len * 8)).to_bytes(byte_len + 1, "little")
         )
     for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
         byte_len = uint_type.type_byte_length()
         yield f"uint_{byte_len * 8}_one_byte_longer", invalid_test_case(
-            lambda: (2 ** (byte_len * 8) - 1).to_bytes(byte_len + 1, "little")
+            lambda byte_len=byte_len: (2 ** (byte_len * 8) - 1).to_bytes(byte_len + 1, "little")
         )
     for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
         byte_len = uint_type.type_byte_length()
         yield f"uint_{byte_len * 8}_one_byte_shorter", invalid_test_case(
-            lambda: (2 ** ((byte_len - 1) * 8) - 1).to_bytes(byte_len - 1, "little")
+            lambda byte_len=byte_len: (2 ** ((byte_len - 1) * 8) - 1).to_bytes(
+                byte_len - 1, "little"
+            )
         )

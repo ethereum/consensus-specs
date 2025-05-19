@@ -37,7 +37,7 @@ def valid_cases():
             RandomizationMode.mode_max,
         ]:
             yield f"bitvec_{size}_{mode.to_name()}", valid_test_case(
-                lambda: bitvector_case_fn(rng, mode, size)
+                lambda rng=rng, mode=mode, size=size: bitvector_case_fn(rng, mode, size)
             )
 
 
@@ -66,7 +66,7 @@ def invalid_cases():
             RandomizationMode.mode_max,
         ]:
             yield f"bitvec_{typ_size}_{mode.to_name()}_{test_size}", invalid_test_case(
-                lambda: serialize(
+                lambda rng=rng, mode=mode, test_size=test_size, typ_size=typ_size: serialize(
                     bitvector_case_fn(rng, mode, test_size, invalid_making_pos=typ_size)
                 )
             )
