@@ -37,11 +37,11 @@ def get_process_calls(spec):
     ]
 
 
-def run_epoch_processing_to(spec, state, process_name: str, disable_slots_processing=False):
+def run_epoch_processing_to(spec, state, process_name: str, enable_slots_processing=True):
     """
     Processes to the next epoch transition, up to, but not including, the sub-transition named ``process_name``
     """
-    if not disable_slots_processing:
+    if enable_slots_processing:
         run_process_slots_up_to_epoch_boundary(spec, state)
 
     # process components of epoch transition before final-updates
@@ -94,7 +94,7 @@ def run_epoch_processing_with(spec, state, process_name: str):
     """
     run_process_slots_up_to_epoch_boundary(spec, state)
     yield "pre_epoch", state
-    run_epoch_processing_to(spec, state, process_name, disable_slots_processing=True)
+    run_epoch_processing_to(spec, state, process_name, enable_slots_processing=False)
     yield "pre", state
     getattr(spec, process_name)(state)
     yield "post", state
