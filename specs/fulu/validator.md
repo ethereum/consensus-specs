@@ -134,7 +134,7 @@ when syncing.
 
 A node SHOULD dynamically adjust its custody groups (without any input from the
 user) following any changes to the total effective balances of attached
-validators. If the node's custody requirements are increased, it should only
+validators. If the node's custody requirements are increased, it SHOULD only
 advertise the updated `custody_group_count` after
 `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. The node SHOULD NOT backfill
 custody groups as a result of this change. After
