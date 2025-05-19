@@ -1,19 +1,20 @@
-from eth_hash.auto import keccak
 from hashlib import sha256
-from trie import HexaryTrie
+
+from eth_hash.auto import keccak
 from rlp import encode
 from rlp.sedes import big_endian_int, Binary, List
+from trie import HexaryTrie
 
-from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.debug.random_value import get_random_bytes_list
-from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
-    is_post_electra,
     is_post_eip7732,
+    is_post_electra,
 )
+from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_execution_payload_header(spec, state, execution_payload):

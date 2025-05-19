@@ -2,8 +2,8 @@ from eth2spec.test.context import (
     PHASE0,
     single_phase,
     spec_test,
-    with_presets,
     with_phases,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.deposits import (

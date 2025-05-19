@@ -1,5 +1,4 @@
-from eth2spec.test.helpers.forks import is_post_electra
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
 
 
 def get_expected_withdrawals(spec, state):

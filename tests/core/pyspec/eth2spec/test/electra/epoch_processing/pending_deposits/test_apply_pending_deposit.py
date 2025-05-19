@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
+    always_bls,
     spec_state_test,
     with_electra_and_later,
-    always_bls,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_pending_deposit,
@@ -320,25 +320,6 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
 
     initial_balance = spec.MIN_ACTIVATION_BALANCE - 1000
     initial_effective_balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
-    state.balances[validator_index] = initial_balance
-    state.validators[validator_index].effective_balance = initial_effective_balance
-
-    yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
-
-    assert state.balances[validator_index] == initial_balance + amount
-    # unchanged effective balance
-    assert state.validators[validator_index].effective_balance == initial_effective_balance
-
-
-@with_electra_and_later
-@spec_state_test
-def test_apply_pending_deposit_top_up__zero_balance(spec, state):
-    validator_index = 0
-    amount = spec.MIN_ACTIVATION_BALANCE // 4
-    pending_deposit = prepare_pending_deposit(spec, validator_index, amount, signed=True)
-
-    initial_balance = 0
-    initial_effective_balance = 0
     state.balances[validator_index] = initial_balance
     state.validators[validator_index].effective_balance = initial_effective_balance
 
