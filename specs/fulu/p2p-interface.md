@@ -8,8 +8,6 @@
 - [Modifications in Fulu](#modifications-in-fulu)
   - [Preset](#preset)
   - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
@@ -61,16 +59,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                          | The number of data column sidecar subnets used in the gossipsub protocol  |
 | `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
-
-### Containers
-
-#### `DataColumnsByRootIdentifier`
-
-```python
-class DataColumnsByRootIdentifier(Container):
-    block_root: Root
-    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
-```
 
 ### Helpers
 
@@ -419,7 +407,8 @@ Request Content:
 
 ```
 (
-  List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  block_roots: List[Root, MAX_REQUEST_BLOCKS_DENEB],
+  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
 
@@ -431,12 +420,11 @@ Response Content:
 )
 ```
 
-Requests data column sidecars by block root and column indices. The response is
-a list of `DataColumnSidecar` whose length is less than or equal to
-`requested_columns_count`, where
-`requested_columns_count = sum(len(r.columns) for r in request)`. It may be less
-in the case that the responding peer is missing blocks or sidecars.
-
+Requests data column sidecars by column indices for each block root. The
+response is a flattened list of `DataColumnSidecar` whose length is less than or
+equal to `requested_columns_count`, where
+`requested_columns_count = len(request.block_roots) * len(request.columns)`. It
+may be less in the case that the responding peer is missing blocks or sidecars.
 Before consuming the next response chunk, the response reader SHOULD verify the
 data column sidecar is well-formatted through `verify_data_column_sidecar`, has
 valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
