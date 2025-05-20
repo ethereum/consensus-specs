@@ -1,9 +1,9 @@
-from eth2spec.test.context import spec_state_test, with_eip7441_and_later, expect_assertion_error
+from eth2spec.test.context import expect_assertion_error, spec_state_test, with_eip7441_and_later
 from eth2spec.test.helpers.eip7441 import (
-    set_as_first_proposal,
     compute_whisk_k_commitment,
-    set_registration,
     register_tracker,
+    set_as_first_proposal,
+    set_registration,
 )
 
 

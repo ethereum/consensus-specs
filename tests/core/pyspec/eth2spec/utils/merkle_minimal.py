@@ -1,6 +1,6 @@
-from eth2spec.utils.hash_function import hash
 from math import log2
 
+from eth2spec.utils.hash_function import hash
 
 ZERO_BYTES32 = b"\x00" * 32
 

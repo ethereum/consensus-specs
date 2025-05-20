@@ -2,7 +2,7 @@
 requires = [
   "marko==2.1.3",
   "ruamel.yaml==0.18.10",
-  "setuptools==80.4.0",
+  "setuptools==80.7.1",
   "wheel==0.45.1",
   "deepdiff==8.5.0",
 ]
@@ -24,10 +24,10 @@ dependencies = [
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.3.8",
   "py_ecc==7.0.1",
-  "pycryptodome==3.22.0",
+  "pycryptodome==3.23.0",
   "remerkleable==0.1.28",
   "ruamel.yaml==0.18.10",
-  "setuptools==80.4.0",
+  "setuptools==80.7.1",
   "trie==3.1.0",
 ]
 
@@ -40,6 +40,7 @@ test = [
 lint = [
   "black==25.1.0",
   "codespell==2.4.1",
+  "isort==6.0.1",
   "mdformat-gfm-alerts==1.0.1",
   "mdformat-gfm==0.4.1",
   "mdformat-toc==0.3.0",
@@ -57,9 +58,20 @@ generator = [
 docs = [
   "mdx-truly-sane-lists==1.3",
   "mkdocs-awesome-pages-plugin==2.10.1",
-  "mkdocs-material==9.6.13",
+  "mkdocs-material==9.6.14",
   "mkdocs==1.6.1",
 ]
 
 [tool.black]
 line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+combine_as_imports = true
+known_first_party = ["eth2spec"]
+order_by_type = false
+skip_glob = [
+  "tests/core/pyspec/eth2spec/*/mainnet.py",
+  "tests/core/pyspec/eth2spec/*/minimal.py",
+]

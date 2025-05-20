@@ -1,9 +1,9 @@
-from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.context import (
     spec_state_test,
     with_electra_and_later,
     with_presets,
 )
+from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,

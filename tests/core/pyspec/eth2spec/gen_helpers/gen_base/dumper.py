@@ -1,7 +1,8 @@
-from eth2spec.test import context
 from eth_utils import encode_hex
 from ruamel.yaml import YAML
 from snappy import compress
+
+from eth2spec.test import context
 
 from .gen_typing import TestCase
 

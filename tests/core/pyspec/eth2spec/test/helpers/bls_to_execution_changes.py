@@ -1,5 +1,5 @@
+from eth2spec.test.helpers.keys import privkeys, pubkey_to_privkey, pubkeys
 from eth2spec.utils import bls
-from eth2spec.test.helpers.keys import pubkeys, privkeys, pubkey_to_privkey
 
 
 def get_signed_address_change(

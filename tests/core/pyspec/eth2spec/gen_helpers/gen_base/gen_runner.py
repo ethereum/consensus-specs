@@ -3,7 +3,6 @@ import shutil
 import threading
 import time
 import uuid
-
 from typing import Any, Iterable
 
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -18,7 +17,7 @@ from eth2spec.test.exceptions import SkippedTest
 
 from .args import parse_arguments
 from .dumper import Dumper
-from .gen_typing import TestCase, TestProvider
+from .gen_typing import TestCase
 from .utils import install_sigint_handler, time_since
 
 # Flag that the runner does NOT run test via pytest
@@ -51,23 +50,32 @@ def get_shared_prefix(test_cases, min_segments=3):
 def execute_test(test_case: TestCase, dumper: Dumper):
     """Execute a test and write the outputs to storage."""
     meta: dict[str, Any] = {}
-    for name, kind, data in test_case.case_fn():
-        if kind == "meta":
-            meta[name] = data
-        else:
-            try:
-                method = getattr(dumper, f"dump_{kind}")
-            except AttributeError:
-                raise ValueError(f"Unknown kind {kind!r}")
-            method(test_case, name, data)
+    outputs: list[tuple[str, str, Any]] = []
+
+    try:
+        for name, kind, data in test_case.case_fn():
+            if kind == "meta":
+                meta[name] = data
+            else:
+                method = getattr(dumper, f"dump_{kind}", None)
+                if method is None:
+                    raise ValueError(f"Unknown kind {kind!r}")
+                outputs.append((name, kind, data))
+    except SkippedTest:
+        # Bail without writing any files
+        raise
+
+    for name, kind, data in outputs:
+        method = getattr(dumper, f"dump_{kind}")
+        method(test_case, name, data)
 
     if meta:
         dumper.dump_meta(test_case, meta)
 
 
-def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
+def run_generator(input_test_cases: Iterable[TestCase]):
     start_time = time.time()
-    args = parse_arguments(generator_name)
+    args = parse_arguments()
 
     # Bail here if we are checking modules.
     if args.modcheck:
@@ -85,24 +93,26 @@ def run_generator(generator_name: str, test_providers: Iterable[TestProvider]):
     install_sigint_handler(console)
 
     test_cases = []
-    for tprov in test_providers:
-        for test_case in tprov.make_cases():
-            # Check if the test case should be filtered out
-            if len(args.presets) != 0 and test_case.preset_name not in args.presets:
-                debug_print(f"Filtered: {test_case.get_identifier()}")
-                continue
-            if len(args.forks) != 0 and test_case.fork_name not in args.forks:
-                debug_print(f"Filtered: {test_case.get_identifier()}")
-                continue
-            if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
-                debug_print(f"Filtered: {test_case.get_identifier()}")
-                continue
+    for test_case in input_test_cases:
+        # Check if the test case should be filtered out
+        if len(args.runners) != 0 and test_case.runner_name not in args.runners:
+            debug_print(f"Filtered: {test_case.get_identifier()}")
+            continue
+        if len(args.presets) != 0 and test_case.preset_name not in args.presets:
+            debug_print(f"Filtered: {test_case.get_identifier()}")
+            continue
+        if len(args.forks) != 0 and test_case.fork_name not in args.forks:
+            debug_print(f"Filtered: {test_case.get_identifier()}")
+            continue
+        if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
+            debug_print(f"Filtered: {test_case.get_identifier()}")
+            continue
 
-            # Set the output dir and add this to out list
-            test_case.set_output_dir(args.output_dir)
-            if test_case.dir.exists():
-                shutil.rmtree(test_case.dir)
-            test_cases.append(test_case)
+        # Set the output dir and add this to out list
+        test_case.set_output_dir(args.output_dir)
+        if test_case.dir.exists():
+            shutil.rmtree(test_case.dir)
+        test_cases.append(test_case)
 
     if len(test_cases) == 0:
         return

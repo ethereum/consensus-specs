@@ -15,7 +15,8 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md)
+and is under active development.
 
 ## Configuration
 

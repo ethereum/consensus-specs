@@ -1,7 +1,8 @@
-from typing import Any, Dict, List, Set
 from dataclasses import dataclass
+from typing import Any, Dict, List, Set
 
 from eth_utils import encode_hex
+
 from eth2spec.test.helpers.constants import (
     ALTAIR,
 )
