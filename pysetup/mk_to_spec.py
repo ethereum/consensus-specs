@@ -10,7 +10,7 @@ from functools import lru_cache
 from marko.block import BlankLine, Heading, FencedCode, HTMLBlock, Document
 from marko.element import Element
 from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table
+from marko.ext.gfm.elements import Table, TableRow, TableCell
 from marko.inline import CodeSpan
 
 from .typing import ProtocolDefinition, VariableDefinition, SpecObject
@@ -86,7 +86,7 @@ class MarkdownToSpec:
             document = parse_markdown(source_file.read())
             return iter(document.children)
 
-    def _process_child(self, child: Element):
+    def _process_child(self, child: Element) -> None:
         # Skip blank lines
         if isinstance(child, BlankLine):
             return
@@ -102,13 +102,13 @@ class MarkdownToSpec:
             case HTMLBlock():
                 self._process_html_block(child)
 
-    def _process_heading(self, heading: Heading):
+    def _process_heading(self, heading: Heading) -> None:
         """
         Extracts the section name from the heading and updates current_heading_name for context.
         """
         self.current_heading_name = _get_name_from_heading(heading)
 
-    def _process_code_block(self, code_block: FencedCode):
+    def _process_code_block(self, code_block: FencedCode) -> None:
         """
         Processes a FencedCode block:
         - Checks if the code block is Python.
@@ -134,7 +134,7 @@ class MarkdownToSpec:
         else:
             raise Exception("unrecognized python code element: " + source)
 
-    def _process_code_def(self, source: str, fn: ast.FunctionDef):
+    def _process_code_def(self, source: str, fn: ast.FunctionDef) -> None:
         """
         Processes a function definition node from the AST and stores its source code representation.
         If the function is a method (i.e., has a self type), it is added to the protocol functions for that type.
@@ -151,7 +151,7 @@ class MarkdownToSpec:
         else:
             self._add_protocol_function(self_type_name, fn.name, source)
 
-    def _add_protocol_function(self, protocol_name: str, function_name: str, function_def: str):
+    def _add_protocol_function(self, protocol_name: str, function_name: str, function_def: str) -> None:
         """
         Adds a function definition to the protocol functions dictionary.
         """
@@ -161,10 +161,23 @@ class MarkdownToSpec:
                 functions={})
         self.spec["protocols"][protocol_name].functions[function_name] = function_def
 
-    def _add_dataclass(self, source, cls: ast.ClassDef):
+    def _add_dataclass(self, source, cls: ast.ClassDef) -> None:
         self.spec["dataclasses"][cls.name] = source
 
-    def _process_code_class(self, source, cls: ast.ClassDef):
+    def _process_code_class(self, source, cls: ast.ClassDef) -> None:
+        """
+        Processes an AST class definition node, validates its consistency with the current heading,
+        and updates the spec dictionary with the class source code.
+        Args:
+            source (str): The source code of the class.
+            cls (ast.ClassDef): The AST node representing the class definition.
+        Raises:
+            Exception: If the class name does not match the current heading name.
+            AssertionError: If the parent class is not 'Container' when a parent class is present.
+        Side Effects:
+            Updates self.spec["ssz_objects"] with the class source code, keyed by class name.
+        """
+
         class_name, parent_class = _get_class_info_from_ast(cls)
 
         # check consistency with spec
@@ -175,7 +188,7 @@ class MarkdownToSpec:
             assert parent_class == "Container"
         self.spec["ssz_objects"][class_name] = source
 
-    def _process_table(self, child: HTMLBlock):
+    def _process_table(self, table: Table):
         """
         Handles standard tables (not list-of-records).
         Iterates over rows, extracting variable names, values, and descriptions.
@@ -184,7 +197,7 @@ class MarkdownToSpec:
         Handles special cases for predefined types and function-dependent presets.
         """
 
-        for row in child.children:
+        for row in table.children:
             if len(row.children) < 2:
                 continue
 
@@ -210,7 +223,7 @@ class MarkdownToSpec:
             if description is not None and description.startswith("<!-- predefined -->"):
                 self.spec["func_dep_presets"][name] = value
 
-            # It is a constant and not a generalized index
+            # It is a constant and not a generalized index, and not a function-dependent preset
             value_def = _parse_value(name, value)
             # It is a preset
             if name in self.preset:
@@ -237,7 +250,7 @@ class MarkdownToSpec:
                     self.spec["constant_vars"][name] = value_def
 
     @staticmethod
-    def _get_table_row_fields(row: Element) -> tuple[str, str, Optional[str]]:
+    def _get_table_row_fields(row: TableRow) -> tuple[str, str, Optional[str]]:
         """
         Extracts the name, value, and description fields from a table row element.
         Description can be None.
@@ -599,7 +612,7 @@ def check_yaml_matches_spec(var_name, yaml, value_def):
         # Okay it's probably something more serious, let's ignore
         pass
 
-def _has_decorator(decorateable: ast.expr, name: str) -> bool:
+def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:
     return any(_is_decorator(d, name) for d in decorateable.decorator_list)
 
 def _is_decorator(decorator: ast.expr, name: str) -> bool:
