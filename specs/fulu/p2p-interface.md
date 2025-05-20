@@ -420,12 +420,11 @@ Response Content:
 )
 ```
 
-Requests data column sidecars by column indices for each block root. The response is
-a flattened list of `DataColumnSidecar` whose length is less than or equal to
-`requested_columns_count`, where
-`requested_columns_count = len(request.block_roots) * len(request.columns)`. It may be less
-in the case that the responding peer is missing blocks or sidecars.
-
+Requests data column sidecars by column indices for each block root. The
+response is a flattened list of `DataColumnSidecar` whose length is less than or
+equal to `requested_columns_count`, where
+`requested_columns_count = len(request.block_roots) * len(request.columns)`. It
+may be less in the case that the responding peer is missing blocks or sidecars.
 Before consuming the next response chunk, the response reader SHOULD verify the
 data column sidecar is well-formatted through `verify_data_column_sidecar`, has
 valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
