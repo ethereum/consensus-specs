@@ -407,7 +407,7 @@ Request Content:
 
 ```
 (
-  blocks: List[Root, MAX_REQUEST_BLOCKS_DENEB],
+  block_roots: List[Root, MAX_REQUEST_BLOCKS_DENEB],
   columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
@@ -420,10 +420,10 @@ Response Content:
 )
 ```
 
-Requests data column sidecars by column indices for each of the root in blocks. The response is
+Requests data column sidecars by column indices for each block root. The response is
 a flattened list of `DataColumnSidecar` whose length is less than or equal to
 `requested_columns_count`, where
-`requested_columns_count = request.blocks * request.columns`. It may be less
+`requested_columns_count = len(request.block_roots) * len(request.columns)`. It may be less
 in the case that the responding peer is missing blocks or sidecars.
 
 Before consuming the next response chunk, the response reader SHOULD verify the
