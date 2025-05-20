@@ -75,8 +75,6 @@ class MarkdownToSpec:
         """
         self._get_next_element()
 
-    
-
     def _parse_document(self, file_name: Path) -> Iterator[Element]:
         """
         Opens the markdown file, parses its content into a document object using _parse_markdown,
@@ -123,7 +121,7 @@ class MarkdownToSpec:
 
         module = ast.parse(source)
         # AST container of the first definition in the block
-        first_def = module.body[0] 
+        first_def = module.body[0]
 
         if isinstance(first_def, ast.FunctionDef):
             self._process_code_def(clean_source, first_def)
@@ -145,7 +143,7 @@ class MarkdownToSpec:
         """
 
         self_type_name = _get_self_type_from_source(fn)
-        
+
         if self_type_name is None:
             self.spec["functions"][fn.name] = source
         else:
