@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional, List
+from typing import Dict, List, NamedTuple, Optional
 
 
 class ProtocolDefinition(NamedTuple):

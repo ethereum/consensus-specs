@@ -1,5 +1,5 @@
-from .base import BaseSpecBuilder
 from ..constants import EIP7805
+from .base import BaseSpecBuilder
 
 
 class EIP7805SpecBuilder(BaseSpecBuilder):
