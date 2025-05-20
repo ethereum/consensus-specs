@@ -2,7 +2,7 @@ import ast
 import json
 from pathlib import Path
 import string
-from typing import Dict, Optional, Tuple, Iterator
+from typing import Dict, Optional, Tuple, Iterator, cast
 import re
 from functools import lru_cache
 
@@ -16,13 +16,13 @@ from marko.inline import CodeSpan
 from .typing import ProtocolDefinition, VariableDefinition, SpecObject
 
 class MarkdownToSpec:
-    def __init__(self, file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name: str):
+    def __init__(self, file_name: Path, preset: Dict[str, str], config: Dict[str, str | Dict[str, str]], preset_name: str):
         self.preset = preset
         self.config = config
         self.preset_name = preset_name
 
         # Use a single dict to hold all SpecObject fields
-        self.spec = {
+        self.spec: dict[str, dict] = {
             "functions": {},
             "protocols": {},
             "custom_types": {},
@@ -159,10 +159,10 @@ class MarkdownToSpec:
                 functions={})
         self.spec["protocols"][protocol_name].functions[function_name] = function_def
 
-    def _add_dataclass(self, source, cls: ast.ClassDef) -> None:
+    def _add_dataclass(self, source: str, cls: ast.ClassDef) -> None:
         self.spec["dataclasses"][cls.name] = source
 
-    def _process_code_class(self, source, cls: ast.ClassDef) -> None:
+    def _process_code_class(self, source: str, cls: ast.ClassDef) -> None:
         """
         Processes an AST class definition node, validates its consistency with the current heading,
         and updates the spec dictionary with the class source code.
@@ -186,7 +186,7 @@ class MarkdownToSpec:
             assert parent_class == "Container"
         self.spec["ssz_objects"][class_name] = source
 
-    def _process_table(self, table: Table):
+    def _process_table(self, table: Table) -> None:
         """
         Handles standard tables (not list-of-records).
         Iterates over rows, extracting variable names, values, and descriptions.
@@ -195,7 +195,7 @@ class MarkdownToSpec:
         Handles special cases for predefined types and function-dependent presets.
         """
 
-        for row in table.children:
+        for row in cast(list[TableRow], table.children):
             if len(row.children) < 2:
                 continue
 
@@ -253,7 +253,7 @@ class MarkdownToSpec:
         Extracts the name, value, and description fields from a table row element.
         Description can be None.
         """
-        cells = row.children
+        cells = cast(list[TableCell], row.children)
         name_cell = cells[0]
         name = name_cell.children[0].children
 
@@ -275,7 +275,7 @@ class MarkdownToSpec:
 
         return name, value, description
 
-    def _process_list_of_records_table(self, child, list_of_records_name):
+    def _process_list_of_records_table(self, table: Table, list_of_records_name: str) -> None:
         """
         Handles tables marked as 'list-of-records'.
         Extracts headers and rows, mapping field names and types.
@@ -292,7 +292,7 @@ class MarkdownToSpec:
         The method _process_html_block calls this method when it encounters a comment
         of the form `<!-- list-of-records:name -->`.
         """
-        list_of_records_spec = self._extract_list_of_records_spec(child)
+        list_of_records_spec = self._extract_list_of_records_spec(table)
 
         # Make a type map from the spec definition
         type_map = self._make_list_of_records_type_map(list_of_records_spec)
@@ -327,14 +327,14 @@ class MarkdownToSpec:
         return type_map
 
     @staticmethod
-    def _extract_list_of_records_spec(child) -> list[dict[str, str]]:
+    def _extract_list_of_records_spec(table: Table) -> list[dict[str, str]]:
         """
         Extracts the list of records from a table element.
         Returns a list of dicts, each representing a row with field names as keys.
         """
 
         # Save the table header, used for field names (skip last item: description)
-        header_row = child.children[0]
+        header_row = cast(TableRow, table.children[0])
         list_of_records_spec_header = [
             re.sub(r'\s+', '_', value.children[0].children.upper())
             for value in header_row.children[:-1]
@@ -346,7 +346,7 @@ class MarkdownToSpec:
                 list_of_records_spec_header[j]: value.children[0].children
                 for j, value in enumerate(row.children[:-1])
             }
-            for row in child.children[1:]
+            for row in table.children[1:]
         ]
 
         return list_of_records_spec
@@ -370,13 +370,13 @@ class MarkdownToSpec:
             list_of_records_config_file.append(new_entry)
         return list_of_records_config_file
 
-    def _process_html_block(self, child):
+    def _process_html_block(self, html: HTMLBlock) -> None:
         """
         Handles HTML comments for skip logic and list-of-records detection.
         Sets flags or state variables for the next iteration.
         """
 
-        body = child.body.strip()
+        body = html.body.strip()
 
         # This comment marks that we should skip the next element
         if body == "<!-- eth2spec: skip -->":
@@ -394,7 +394,7 @@ class MarkdownToSpec:
                     f"expected table after list-of-records comment, got {type(table_element)}")
             self._process_list_of_records_table(table_element, match.group(1).upper())
 
-    def _finalize_types(self):
+    def _finalize_types(self) -> None:
         """
         Processes all_custom_types into custom_types and preset_dep_custom_types.
         Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
@@ -420,7 +420,7 @@ class MarkdownToSpec:
             else:
                 self.spec["custom_types"][name] = value
 
-    def _build_spec_object(self):
+    def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
         """
@@ -505,7 +505,7 @@ def _is_constant_id(name: str) -> bool:
     return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
 
 @lru_cache(maxsize=None)
-def _load_kzg_trusted_setups(preset_name):
+def _load_kzg_trusted_setups(preset_name: str) -> Tuple[list[str], list[str], list[str]]:
     trusted_setups_file_path = str(Path(__file__).parent.parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
 
     with open(trusted_setups_file_path, 'r') as f:
@@ -517,7 +517,7 @@ def _load_kzg_trusted_setups(preset_name):
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
 @lru_cache(maxsize=None)
-def _load_curdleproofs_crs(preset_name):
+def _load_curdleproofs_crs(preset_name: str) -> Dict[str, list[str]]:
     """
     NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
     """
@@ -588,7 +588,7 @@ def parse_markdown(content: str) -> Document:
     return gfm.parse(content)
 
 
-def check_yaml_matches_spec(var_name, yaml, value_def):
+def check_yaml_matches_spec(var_name: str, yaml: Dict[str, str], value_def: VariableDefinition) -> None:
     """
     This function performs a sanity check for presets & configs. To a certain degree, it ensures
     that the values in the specifications match those in the yaml files.
