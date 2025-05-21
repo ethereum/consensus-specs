@@ -1,8 +1,10 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
-from eth2spec.utils.ssz.ssz_typing import Bitvector
-from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
-from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+
+from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_typing import Bitvector
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def bitvector_case_fn(
@@ -35,7 +37,7 @@ def valid_cases():
             RandomizationMode.mode_max,
         ]:
             yield f"bitvec_{size}_{mode.to_name()}", valid_test_case(
-                lambda: bitvector_case_fn(rng, mode, size)
+                lambda rng=rng, mode=mode, size=size: bitvector_case_fn(rng, mode, size)
             )
 
 
@@ -64,7 +66,7 @@ def invalid_cases():
             RandomizationMode.mode_max,
         ]:
             yield f"bitvec_{typ_size}_{mode.to_name()}_{test_size}", invalid_test_case(
-                lambda: serialize(
+                lambda rng=rng, mode=mode, test_size=test_size, typ_size=typ_size: serialize(
                     bitvector_case_fn(rng, mode, test_size, invalid_making_pos=typ_size)
                 )
             )

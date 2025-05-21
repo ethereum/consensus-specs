@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
     Any,
     Callable,
@@ -6,8 +8,6 @@ from typing import (
     Optional,
     Tuple,
 )
-from dataclasses import dataclass
-from pathlib import Path
 
 # Elements: name, out_kind, data
 #

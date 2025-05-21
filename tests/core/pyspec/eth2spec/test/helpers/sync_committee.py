@@ -3,11 +3,11 @@ from collections import Counter
 from eth2spec.test.context import (
     expect_assertion_error,
 )
-from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.block_processing import run_block_processing_to
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils import bls
 
 

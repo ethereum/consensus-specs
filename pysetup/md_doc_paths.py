@@ -1,19 +1,18 @@
 import os
 
 from .constants import (
-    PHASE0,
     ALTAIR,
     BELLATRIX,
     CAPELLA,
     DENEB,
-    ELECTRA,
-    FULU,
     EIP6800,
     EIP7441,
     EIP7732,
     EIP7805,
+    ELECTRA,
+    FULU,
+    PHASE0,
 )
-
 
 PREVIOUS_FORK_OF = {
     PHASE0: None,
@@ -31,13 +30,9 @@ PREVIOUS_FORK_OF = {
 
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
 
-IGNORE_SPEC_FILES = [
-    "specs/phase0/deposit-contract.md"
-]
+IGNORE_SPEC_FILES = ["specs/phase0/deposit-contract.md"]
 
-EXTRA_SPEC_FILES = {
-    BELLATRIX: "sync/optimistic.md"
-}
+EXTRA_SPEC_FILES = {BELLATRIX: "sync/optimistic.md"}
 
 DEFAULT_ORDER = (
     "beacon-chain",
@@ -62,10 +57,10 @@ def is_post_fork(a, b) -> bool:
 
 
 def get_fork_directory(fork):
-    dir1 = f'specs/{fork}'
+    dir1 = f"specs/{fork}"
     if os.path.exists(dir1):
         return dir1
-    dir2 = f'specs/_features/{fork}'
+    dir2 = f"specs/_features/{fork}"
     if os.path.exists(dir2):
         return dir2
     raise FileNotFoundError(f"No directory found for fork: {fork}")
@@ -90,7 +85,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
                     filepath = os.path.join(root, filename)
                     filepaths.append(filepath)
                 for filepath in sorted(filepaths, key=sort_key):
-                    if filepath.endswith('.md') and filepath not in IGNORE_SPEC_FILES:
+                    if filepath.endswith(".md") and filepath not in IGNORE_SPEC_FILES:
                         md_doc_paths += filepath + "\n"
             # Append extra files if any
             if fork in EXTRA_SPEC_FILES:

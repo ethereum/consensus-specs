@@ -1,17 +1,17 @@
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with,
-    run_epoch_processing_to,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_electra_and_later,
+)
+from eth2spec.test.helpers.epoch_processing import (
+    run_epoch_processing_to,
+    run_epoch_processing_with,
 )
 from eth2spec.test.helpers.state import (
     next_epoch_with_full_participation,
 )
 from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential_with_balance,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 #  ***********************

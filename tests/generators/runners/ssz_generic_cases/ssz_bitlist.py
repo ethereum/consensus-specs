@@ -1,8 +1,10 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
-from eth2spec.utils.ssz.ssz_typing import Bitlist
-from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
-from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
+
+from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth2spec.utils.ssz.ssz_impl import serialize
+from eth2spec.utils.ssz.ssz_typing import Bitlist
+
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):
@@ -28,7 +30,7 @@ def valid_cases():
                 RandomizationMode.mode_max,
             ]:
                 yield f"bitlist_{size}_{mode.to_name()}_{variation}", valid_test_case(
-                    lambda: bitlist_case_fn(rng, mode, size)
+                    lambda rng=rng, mode=mode, size=size: bitlist_case_fn(rng, mode, size)
                 )
 
 
@@ -51,5 +53,7 @@ def invalid_cases():
         (512, 513),
     ]:
         yield f"bitlist_{typ_limit}_but_{test_limit}", invalid_test_case(
-            lambda: serialize(bitlist_case_fn(rng, RandomizationMode.mode_max_count, test_limit))
+            lambda rng=rng, test_limit=test_limit: serialize(
+                bitlist_case_fn(rng, RandomizationMode.mode_max_count, test_limit)
+            )
         )

@@ -1,18 +1,13 @@
 import random
+
 from eth2spec.test.context import (
     ForkMeta,
     with_fork_metas,
 )
-from eth2spec.test.helpers.random import (
-    randomize_state,
-)
+from eth2spec.test.helpers.attestations import next_slots_with_attestations
 from eth2spec.test.helpers.constants import (
     ALL_PRE_POST_FORKS,
 )
-from eth2spec.test.helpers.state import (
-    next_epoch_via_signed_block,
-)
-from eth2spec.test.helpers.attestations import next_slots_with_attestations
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
     no_blocks,
@@ -21,6 +16,12 @@ from eth2spec.test.helpers.fork_transition import (
     state_transition_across_slots,
     transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
+)
+from eth2spec.test.helpers.random import (
+    randomize_state,
+)
+from eth2spec.test.helpers.state import (
+    next_epoch_via_signed_block,
 )
 
 

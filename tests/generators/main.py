@@ -3,7 +3,6 @@ import os
 
 from eth2spec.gen_helpers.gen_base import gen_runner
 
-
 if __name__ == "__main__":
     current_dir = os.path.dirname(__file__)
     runners_dir = os.path.join(current_dir, "runners")

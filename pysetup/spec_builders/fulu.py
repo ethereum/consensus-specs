@@ -1,7 +1,7 @@
 from typing import Dict
 
-from .base import BaseSpecBuilder
 from ..constants import FULU
+from .base import BaseSpecBuilder
 
 
 class FuluSpecBuilder(BaseSpecBuilder):
@@ -9,14 +9,13 @@ class FuluSpecBuilder(BaseSpecBuilder):
 
     @classmethod
     def imports(cls, preset_name: str):
-        return f'''
+        return f"""
 from eth2spec.electra import {preset_name} as electra
-'''
-
+"""
 
     @classmethod
     def classes(cls):
-        return f'''
+        return f"""
 class PolynomialCoeff(list):
     def __init__(self, coeffs: Sequence[BLSFieldElement]):
         if len(coeffs) > FIELD_ELEMENTS_PER_EXT_BLOB:
@@ -40,7 +39,7 @@ class CosetEvals(list):
         if len(evals) != FIELD_ELEMENTS_PER_CELL:
             raise ValueError("expected FIELD_ELEMENTS_PER_CELL coeffs")
         super().__init__(evals)
-'''
+"""
 
     @classmethod
     def sundry_functions(cls) -> str:
@@ -53,5 +52,7 @@ def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSide
     @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
         return {
-            'KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH': spec_object.preset_vars['KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH'].value,
+            "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH": spec_object.preset_vars[
+                "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH"
+            ].value,
         }

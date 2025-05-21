@@ -37,8 +37,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in
-[Fulu -- Beacon Chain](./beacon-chain.md) and \[Fulu -- Data Availability
-Sampling Core\] are requisite for this document and used throughout.
+[Fulu -- Beacon Chain](./beacon-chain.md) and
+[Fulu -- Data Availability Sampling Core](./das-core.md) are requisite for this
+document and used throughout.
 
 ## Configuration
 
@@ -115,8 +116,7 @@ one validator attached, and with the sum of the effective balances of all
 attached validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per
 slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum
-of `NUMBER_OF_CUSTODY_GROUPS`. The node SHOULD dynamically adjust its custody
-groups following any changes to the effective balances of attached validators.
+of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
@@ -130,15 +130,23 @@ This higher custody is advertised in the node's Metadata by setting a higher
 `custody_group_count`. As with the regular custody requirement, a node with
 validators MAY still choose to custody, advertise and serve more than this
 minimum. As with the regular custody requirement, a node MUST backfill columns
-when syncing. In addition, when the validator custody requirement increases, due
-to an increase in the total effective balance of the attached validators, a node
-MUST backfill columns from the new custody groups. However, a node MAY wait to
-advertise a higher custody in its Metadata and ENR until backfilling is
-complete.
+when syncing.
 
-*Note*: The node SHOULD manage validator custody (and any changes during its
-lifetime) without any input from the user, for example by using existing signals
-about validator metadata to compute the required custody.
+A node SHOULD dynamically adjust its custody groups (without any input from the
+user) following any changes to the total effective balances of attached
+validators. If the node's custody requirements are increased, it SHOULD only
+advertise the updated `custody_group_count` after
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. The node SHOULD NOT backfill
+custody groups as a result of this change. After
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to respond
+to any `DataColumnSidecar` request within the retention period. If the node's
+custody requirements are decreased, the node MAY update its
+`custody_group_count` to reflect this. However, it SHOULD NOT prune existing
+custody columns until after the usual period of
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. Nodes SHOULD be able to
+appropriately handle multiple changes to custody requirements within the same
+retention period (e.g., an increase in one epoch and a decrease in the next
+epoch).
 
 ### Block and sidecar proposal
 

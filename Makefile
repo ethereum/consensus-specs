@@ -13,7 +13,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	eip6800   \
 	eip7441   \
 	eip7732   \
-  eip7805
+	eip7805
 
 # A list of fake targets.
 .PHONY: \
@@ -36,14 +36,14 @@ NORM = $(shell tput sgr0)
 
 # Print target descriptions.
 help:
-	@echo "make $(BOLD)clean$(NORM)         -- delete all untracked files"
-	@echo "make $(BOLD)coverage$(NORM)      -- run pyspec tests with coverage"
-	@echo "make $(BOLD)kzg_setups$(NORM)    -- generate trusted setups"
-	@echo "make $(BOLD)lint$(NORM)          -- run the linters"
-	@echo "make $(BOLD)pyspec$(NORM)        -- build python specifications"
-	@echo "make $(BOLD)reftests$(NORM)      -- generate reference tests"
-	@echo "make $(BOLD)serve_docs$(NORM)    -- start a local docs web server"
-	@echo "make $(BOLD)test$(NORM)          -- run pyspec tests"
+	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
+	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
+	@echo "make $(BOLD)kzg_setups$(NORM) -- generate trusted setups"
+	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
+	@echo "make $(BOLD)pyspec$(NORM)     -- build python specifications"
+	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
+	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
+	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
 
 ###############################################################################
 # Virtual Environment
@@ -59,7 +59,7 @@ MDFORMAT_VENV = $(VENV)/bin/mdformat
 $(VENV):
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
-	@$(PIP_VENV) install --quiet uv==0.5.24
+	@$(PIP_VENV) install --quiet --upgrade uv
 
 ###############################################################################
 # Specification
@@ -186,7 +186,8 @@ MARKDOWN_FILES = $(CURDIR)/README.md \
 lint: pyspec
 	@$(MDFORMAT_VENV) --number --wrap=80 $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m black $(CURDIR)/tests
+	@$(PYTHON_VENV) -m isort --quiet $(CURDIR)/tests $(CURDIR)/pysetup
+	@$(PYTHON_VENV) -m black --quiet $(CURDIR)/tests $(CURDIR)/pysetup
 	@$(PYTHON_VENV) -m pylint --rcfile $(PYLINT_CONFIG) $(PYLINT_SCOPE)
 	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
 

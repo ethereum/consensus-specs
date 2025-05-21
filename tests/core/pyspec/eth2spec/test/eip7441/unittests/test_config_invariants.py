@@ -1,5 +1,4 @@
-from eth2spec.test.context import spec_test, with_eip7441_and_later
-from eth2spec.test.context import single_phase
+from eth2spec.test.context import single_phase, spec_test, with_eip7441_and_later
 
 
 # Note: remove once whisk is rebased on top of deneb
