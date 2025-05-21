@@ -3,10 +3,10 @@ from random import Random
 from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
+    with_custom_state,
     with_deneb_and_later,
 )
 from eth2spec.test.helpers.blob import (
-    get_max_blob_count,
     get_sample_blob_tx,
 )
 from eth2spec.test.helpers.execution_payload import (
@@ -406,12 +406,13 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 
 
 @with_deneb_and_later
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec, state) + 1
+        spec, blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)) + 1
     )
 
     execution_payload.transactions = [opaque_tx]

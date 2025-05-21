@@ -3,9 +3,9 @@ import random
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases_from_except,
+    with_custom_state,
 )
 from eth2spec.test.helpers.blob import (
-    get_max_blob_count,
     get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
@@ -86,40 +86,61 @@ def test_one_blob_two_txs(spec, state):
 
 
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state)
+        spec,
+        state,
+        blob_count=1,
+        tx_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)),
     )
 
 
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state) + 1, valid=False
+        spec,
+        state,
+        blob_count=1,
+        tx_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)) + 1,
+        valid=False,
     )
 
 
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec, state))
+    yield from run_block_with_blobs(
+        spec, state, blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state))
+    )
 
 
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec, state), tx_count=2, valid=False
+        spec,
+        state,
+        blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)),
+        tx_count=2,
+        valid=False,
     )
 
 
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec, state) + 1, valid=False
+        spec,
+        state,
+        blob_count=spec.get_max_blobs_per_block(spec.get_current_epoch(state)) + 1,
+        valid=False,
     )
 
 

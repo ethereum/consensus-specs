@@ -204,9 +204,9 @@ specification.
 
 ### Execution
 
-| Name                          | Value       | Description                                                                                                      |
-| ----------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| Name                          | Value       | Description                                                                                                                                |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* *[Deprecated in EIP7892]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
@@ -1260,7 +1260,7 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA  # [Modified in Electra:EIP7691]
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
     assert execution_engine.verify_and_notify_new_payload(

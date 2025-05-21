@@ -10,6 +10,7 @@ class DenebSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
+from frozendict import frozendict
 from eth2spec.capella import {preset_name} as capella
 """
 

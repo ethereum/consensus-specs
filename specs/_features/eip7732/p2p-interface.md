@@ -143,7 +143,7 @@ regards to the `ExecutionPayload` are removed:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(compute_epoch_at_slot(signed_beacon_block.message.slot))`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
   `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
