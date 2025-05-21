@@ -85,8 +85,8 @@ def test_one_blob_two_txs(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=2)
 
 
-@with_custom_state(set_slot=True)
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
     yield from run_block_with_blobs(
@@ -97,8 +97,8 @@ def test_one_blob_max_txs(spec, state):
     )
 
 
-@with_custom_state(set_slot=True)
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
     yield from run_block_with_blobs(
@@ -110,8 +110,8 @@ def test_invalid_one_blob_max_plus_one_txs(spec, state):
     )
 
 
-@with_custom_state(set_slot=True)
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
@@ -119,8 +119,8 @@ def test_max_blobs_per_block(spec, state):
     )
 
 
-@with_custom_state(set_slot=True)
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
     yield from run_block_with_blobs(
@@ -132,8 +132,8 @@ def test_invalid_max_blobs_per_block_two_txs(spec, state):
     )
 
 
-@with_custom_state(set_slot=True)
 @with_all_phases_from_except(DENEB, [EIP7732])
+@with_custom_state(set_slot=True)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
