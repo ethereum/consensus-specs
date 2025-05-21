@@ -112,7 +112,8 @@ test: pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		$(CURDIR)/tests/infra $(PYSPEC_DIR)/eth2spec
+		$(CURDIR)/tests/infra \
+		$(PYSPEC_DIR)/eth2spec
 
 ###############################################################################
 # Coverage
