@@ -1,40 +1,46 @@
 import ast
 import json
-from pathlib import Path
-import string
-from typing import Dict, Optional, Tuple, Iterator, cast
 import re
+import string
 from functools import lru_cache
+from pathlib import Path
+from typing import cast, Dict, Iterator, Optional, Tuple
 
-
-from marko.block import BlankLine, Heading, FencedCode, HTMLBlock, Document
+from marko.block import BlankLine, Document, FencedCode, Heading, HTMLBlock
 from marko.element import Element
 from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table, TableRow, TableCell
+from marko.ext.gfm.elements import Table, TableCell, TableRow
 from marko.inline import CodeSpan
 
-from .typing import ProtocolDefinition, VariableDefinition, SpecObject
+from .typing import ProtocolDefinition, SpecObject, VariableDefinition
+
 
 class MarkdownToSpec:
-    def __init__(self, file_name: Path, preset: Dict[str, str], config: Dict[str, str | Dict[str, str]], preset_name: str):
+    def __init__(
+        self,
+        file_name: Path,
+        preset: Dict[str, str],
+        config: Dict[str, str | Dict[str, str]],
+        preset_name: str,
+    ):
         self.preset = preset
         self.config = config
         self.preset_name = preset_name
 
         # Use a single dict to hold all SpecObject fields
         self.spec: dict[str, dict] = {
-            "functions": {},
-            "protocols": {},
-            "custom_types": {},
-            "preset_dep_custom_types": {},
-            "constant_vars": {},
-            "preset_dep_constant_vars": {},
-            "preset_vars": {},
             "config_vars": {},
-            "ssz_dep_constants": {},
-            "func_dep_presets": {},
-            "ssz_objects": {},
+            "constant_vars": {},
+            "custom_types": {},
             "dataclasses": {},
+            "func_dep_presets": {},
+            "functions": {},
+            "preset_dep_constant_vars": {},
+            "preset_dep_custom_types": {},
+            "preset_vars": {},
+            "protocols": {},
+            "ssz_dep_constants": {},
+            "ssz_objects": {},
         }
 
         self.all_custom_types: Dict[str, str] = {}
@@ -61,7 +67,6 @@ class MarkdownToSpec:
         Returns the next element in the document.
         If the end of the document is reached, returns None.
         """
-
         try:
             while isinstance(result := next(self.document_iterator), BlankLine):
                 pass
@@ -149,14 +154,15 @@ class MarkdownToSpec:
         else:
             self._add_protocol_function(self_type_name, fn.name, source)
 
-    def _add_protocol_function(self, protocol_name: str, function_name: str, function_def: str) -> None:
+    def _add_protocol_function(
+        self, protocol_name: str, function_name: str, function_def: str
+    ) -> None:
         """
         Adds a function definition to the protocol functions dictionary.
         """
 
         if protocol_name not in self.spec["protocols"]:
-            self.spec["protocols"][protocol_name] = ProtocolDefinition(
-                functions={})
+            self.spec["protocols"][protocol_name] = ProtocolDefinition(functions={})
         self.spec["protocols"][protocol_name].functions[function_name] = function_def
 
     def _add_dataclass(self, source: str, cls: ast.ClassDef) -> None:
@@ -208,7 +214,9 @@ class MarkdownToSpec:
             # If it is not a constant, check if it is a custom type
             if not _is_constant_id(name):
                 # Check for short type declarations
-                if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
+                if value.startswith(
+                    ("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")
+                ):
                     self.all_custom_types[name] = value
                 continue
 
@@ -228,21 +236,27 @@ class MarkdownToSpec:
                 if self.preset_name == "mainnet":
                     check_yaml_matches_spec(name, self.preset, value_def)
 
-                self.spec["preset_vars"][name] = VariableDefinition(value_def.type_name, self.preset[name], value_def.comment, None)
+                self.spec["preset_vars"][name] = VariableDefinition(
+                    value_def.type_name, self.preset[name], value_def.comment, None
+                )
 
             # It is a config variable
             elif name in self.config:
                 if self.preset_name == "mainnet":
                     check_yaml_matches_spec(name, self.config, value_def)
 
-                self.spec["config_vars"][name] = VariableDefinition(value_def.type_name, self.config[name], value_def.comment, None)
+                self.spec["config_vars"][name] = VariableDefinition(
+                    value_def.type_name, self.config[name], value_def.comment, None
+                )
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
-                if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
+                if name in ("ENDIANNESS", "KZG_ENDIANNESS"):
                     # Deal with mypy Literal typing check
-                    value_def = _parse_value(name, value, type_hint='Final')
-                if any(k in value for k in self.preset) or any(k in value for k in self.spec["preset_dep_constant_vars"]):
+                    value_def = _parse_value(name, value, type_hint="Final")
+                if any(k in value for k in self.preset) or any(
+                    k in value for k in self.spec["preset_dep_constant_vars"]
+                ):
                     self.spec["preset_dep_constant_vars"][name] = value_def
                 else:
                     self.spec["constant_vars"][name] = value_def
@@ -305,8 +319,9 @@ class MarkdownToSpec:
         # For mainnet, check that the spec config & file config are the same
         # For minimal, we expect this to be different; just use the file config
         if self.preset_name == "mainnet":
-            assert list_of_records_spec == list_of_records_config_file, \
-                f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
+            assert (
+                list_of_records_spec == list_of_records_config_file
+            ), f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
 
         # Set the config variable
         self.spec["config_vars"][list_of_records_name] = list_of_records_config_file
@@ -318,7 +333,7 @@ class MarkdownToSpec:
         from field name to type name, based on values of the form 'TypeName(...)'.
         """
         type_map: dict[str, str] = {}
-        pattern = re.compile(r'^(\w+)\(.*\)$')
+        pattern = re.compile(r"^(\w+)\(.*\)$")
         for entry in list_of_records:
             for k, v in entry.items():
                 m = pattern.match(v)
@@ -336,7 +351,7 @@ class MarkdownToSpec:
         # Save the table header, used for field names (skip last item: description)
         header_row = cast(TableRow, table.children[0])
         list_of_records_spec_header = [
-            re.sub(r'\s+', '_', value.children[0].children.upper())
+            re.sub(r"\s+", "_", value.children[0].children.upper())
             for value in header_row.children[:-1]
         ]
 
@@ -385,13 +400,13 @@ class MarkdownToSpec:
         # Handle list-of-records tables
         # This comment marks that the next table is a list-of-records
         # e.g. <!-- list-of-records: <name> -->
-        match = re.match(
-            r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
+        match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
         if match:
             table_element = self._get_next_element()
             if not isinstance(table_element, Table):
                 raise Exception(
-                    f"expected table after list-of-records comment, got {type(table_element)}")
+                    f"expected table after list-of-records comment, got {type(table_element)}"
+                )
             self._process_list_of_records_table(table_element, match.group(1).upper())
 
     def _finalize_types(self) -> None:
@@ -400,13 +415,13 @@ class MarkdownToSpec:
         Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
         """
         # Update KZG trusted setup if needed
-        if any('KZG_SETUP' in name for name in self.spec["constant_vars"]):
+        if any("KZG_SETUP" in name for name in self.spec["constant_vars"]):
             _update_constant_vars_with_kzg_setups(
                 self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
 
         # Update CURDLEPROOFS CRS if needed
-        if any('CURDLEPROOFS_CRS' in name for name in self.spec["constant_vars"]):
+        if any("CURDLEPROOFS_CRS" in name for name in self.spec["constant_vars"]):
             _update_constant_vars_with_curdleproofs_crs(
                 self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
@@ -415,7 +430,9 @@ class MarkdownToSpec:
         self.spec["custom_types"] = {}
         self.spec["preset_dep_custom_types"] = {}
         for name, value in self.all_custom_types.items():
-            if any(k in value for k in self.preset) or any(k in value for k in self.spec["preset_dep_constant_vars"]):
+            if any(k in value for k in self.preset) or any(
+                k in value for k in self.spec["preset_dep_constant_vars"]
+            ):
                 self.spec["preset_dep_custom_types"][name] = value
             else:
                 self.spec["custom_types"][name] = value
@@ -425,19 +442,20 @@ class MarkdownToSpec:
         Returns the SpecObject using all collected data.
         """
         return SpecObject(
-            functions=self.spec["functions"],
-            protocols=self.spec["protocols"],
-            custom_types=self.spec["custom_types"],
-            preset_dep_custom_types=self.spec["preset_dep_custom_types"],
-            constant_vars=self.spec["constant_vars"],
-            preset_dep_constant_vars=self.spec["preset_dep_constant_vars"],
-            preset_vars=self.spec["preset_vars"],
             config_vars=self.spec["config_vars"],
-            ssz_dep_constants=self.spec["ssz_dep_constants"],
-            func_dep_presets=self.spec["func_dep_presets"],
-            ssz_objects=self.spec["ssz_objects"],
+            constant_vars=self.spec["constant_vars"],
+            custom_types=self.spec["custom_types"],
             dataclasses=self.spec["dataclasses"],
+            func_dep_presets=self.spec["func_dep_presets"],
+            functions=self.spec["functions"],
+            preset_dep_constant_vars=self.spec["preset_dep_constant_vars"],
+            preset_dep_custom_types=self.spec["preset_dep_custom_types"],
+            preset_vars=self.spec["preset_vars"],
+            protocols=self.spec["protocols"],
+            ssz_dep_constants=self.spec["ssz_dep_constants"],
+            ssz_objects=self.spec["ssz_objects"],
         )
+
 
 @lru_cache(maxsize=None)
 def _get_name_from_heading(heading: Heading) -> Optional[str]:
@@ -465,7 +483,7 @@ def _get_self_type_from_source(fn: ast.FunctionDef) -> Optional[str]:
     args = fn.args.args
     if len(args) == 0:
         return None
-    if args[0].arg != 'self':
+    if args[0].arg != "self":
         return None
     if args[0].annotation is None:
         return None
@@ -500,86 +518,104 @@ def _is_constant_id(name: str) -> bool:
         bool: True if the name is a valid constant identifier, False otherwise.
     """
 
-    if name[0] not in string.ascii_uppercase + '_':
+    if name[0] not in string.ascii_uppercase + "_":
         return False
-    return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
+    return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
+
 
 @lru_cache(maxsize=None)
 def _load_kzg_trusted_setups(preset_name: str) -> Tuple[list[str], list[str], list[str]]:
-    trusted_setups_file_path = str(Path(__file__).parent.parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
+    trusted_setups_file_path = (
+        str(Path(__file__).parent.parent)
+        + "/presets/"
+        + preset_name
+        + "/trusted_setups/trusted_setup_4096.json"
+    )
 
-    with open(trusted_setups_file_path, 'r') as f:
+    with open(trusted_setups_file_path, "r") as f:
         json_data = json.load(f)
-        trusted_setup_G1_monomial = json_data['g1_monomial']
-        trusted_setup_G1_lagrange = json_data['g1_lagrange']
-        trusted_setup_G2_monomial = json_data['g2_monomial']
+        trusted_setup_G1_monomial = json_data["g1_monomial"]
+        trusted_setup_G1_lagrange = json_data["g1_lagrange"]
+        trusted_setup_G2_monomial = json_data["g2_monomial"]
 
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
+
 
 @lru_cache(maxsize=None)
 def _load_curdleproofs_crs(preset_name: str) -> Dict[str, list[str]]:
     """
     NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
     """
-    file_path = str(Path(__file__).parent.parent) + '/presets/' + preset_name + '/trusted_setups/curdleproofs_crs.json'
+    file_path = (
+        str(Path(__file__).parent.parent)
+        + "/presets/"
+        + preset_name
+        + "/trusted_setups/curdleproofs_crs.json"
+    )
 
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         json_data = json.load(f)
 
     return json_data
 
 
 ALL_KZG_SETUPS = {
-    'minimal': _load_kzg_trusted_setups('minimal'),
-    'mainnet': _load_kzg_trusted_setups('mainnet')
+    "minimal": _load_kzg_trusted_setups("minimal"),
+    "mainnet": _load_kzg_trusted_setups("mainnet"),
 }
 
 ALL_CURDLEPROOFS_CRS = {
-    'minimal': _load_curdleproofs_crs('minimal'),
-    'mainnet': _load_curdleproofs_crs('mainnet'),
+    "minimal": _load_curdleproofs_crs("minimal"),
+    "mainnet": _load_curdleproofs_crs("mainnet"),
 }
 
+
 @lru_cache(maxsize=None)
-def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
+def _parse_value(
+    name: str, typed_value: str, type_hint: Optional[str] = None
+) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
         comment = "noqa: E501"
 
     typed_value = typed_value.strip()
-    if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
-    i = typed_value.index('(')
+    if "(" not in typed_value:
+        return VariableDefinition(
+            type_name=None, value=typed_value, comment=comment, type_hint=type_hint
+        )
+    i = typed_value.index("(")
     type_name = typed_value[:i]
 
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
+    return VariableDefinition(
+        type_name=type_name, value=typed_value[i + 1 : -1], comment=comment, type_hint=type_hint
+    )
 
 
 def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name):
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
-    preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(
-        preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'].value,
-        str(kzg_setups[0]),
-        comment, None
+    preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
+        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(kzg_setups[0]), comment, None
     )
-    preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(
-        preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'].value,
-        str(kzg_setups[1]),
-        comment, None
+    preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"] = VariableDefinition(
+        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(kzg_setups[1]), comment, None
     )
-    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(
-        constant_vars['KZG_SETUP_G2_MONOMIAL'].value,
-        str(kzg_setups[2]),
-        comment, None
+    constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
+        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
     )
 
 
-def _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_constant_vars, preset_name):
+def _update_constant_vars_with_curdleproofs_crs(
+    constant_vars, preset_dep_constant_vars, preset_name
+):
     comment = "noqa: E501"
-    constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
+    constant_vars["CURDLEPROOFS_CRS"] = VariableDefinition(
         None,
-        'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
-        comment, None
+        "curdleproofs.CurdleproofsCrs.from_json(json.dumps("
+        + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace("0x", "")
+        + "))",
+        comment,
+        None,
     )
 
 
@@ -588,7 +624,9 @@ def parse_markdown(content: str) -> Document:
     return gfm.parse(content)
 
 
-def check_yaml_matches_spec(var_name: str, yaml: Dict[str, str], value_def: VariableDefinition) -> None:
+def check_yaml_matches_spec(
+    var_name: str, yaml: Dict[str, str], value_def: VariableDefinition
+) -> None:
     """
     This function performs a sanity check for presets & configs. To a certain degree, it ensures
     that the values in the specifications match those in the yaml files.
@@ -604,17 +642,22 @@ def check_yaml_matches_spec(var_name: str, yaml: Dict[str, str], value_def: Vari
         if var in updated_value:
             updated_value = updated_value.replace(var, yaml[var])
     try:
-        assert yaml[var_name] == repr(eval(updated_value)), \
-            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
+        assert yaml[var_name] == repr(
+            eval(updated_value)
+        ), f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
     except NameError:
         # Okay it's probably something more serious, let's ignore
         pass
 
+
 def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:
     return any(_is_decorator(d, name) for d in decorateable.decorator_list)
 
+
 def _is_decorator(decorator: ast.expr, name: str) -> bool:
-    return (isinstance(decorator, ast.Name) and decorator.id == name) or \
-            (isinstance(decorator, ast.Attribute) and decorator.attr == name) or \
-            (isinstance(decorator, ast.Call) and decorator.func.id == name) or \
-            (isinstance(decorator, ast.Subscript) and decorator.value.id == name)
+    return (
+        (isinstance(decorator, ast.Name) and decorator.id == name)
+        or (isinstance(decorator, ast.Attribute) and decorator.attr == name)
+        or (isinstance(decorator, ast.Call) and decorator.func.id == name)
+        or (isinstance(decorator, ast.Subscript) and decorator.value.id == name)
+    )
