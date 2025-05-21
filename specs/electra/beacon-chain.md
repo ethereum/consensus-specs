@@ -16,6 +16,7 @@
   - [Withdrawals processing](#withdrawals-processing)
   - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -200,6 +201,12 @@ specification.
 | `MAX_PENDING_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16) | *[New in Electra:EIP6110]* Maximum number of pending deposits to process per epoch |
 
 ## Configuration
+
+### Execution
+
+| Name                          | Value       | Description                                                                                                                                |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MAX_BLOBS_PER_BLOCK_ELECTRA` | `uint64(9)` | *[New in Electra:EIP7691]* *[Deprecated in EIP7892]* Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 

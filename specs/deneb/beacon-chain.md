@@ -9,6 +9,7 @@
 - [Preset](#preset)
   - [Execution](#execution)
 - [Configuration](#configuration)
+  - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
   - [Blob schedule](#blob-schedule)
 - [Containers](#containers)
@@ -81,6 +82,12 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
 
 ## Configuration
+
+### Execution
+
+| Name                  | Value       | Description                                                                                                                              |
+| --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | *[New in Deneb:EIP4844]* *[Deprecated in EIP7892]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 ### Validator cycle
 
