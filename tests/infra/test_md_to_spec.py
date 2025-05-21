@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from pysetup.mk_to_spec import MarkdownToSpec
+from pysetup.md_to_spec import MarkdownToSpec
 
 
 @pytest.fixture

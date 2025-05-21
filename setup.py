@@ -47,7 +47,7 @@ from pysetup.typing import (
     SpecObject,
     VariableDefinition,
 )
-from pysetup.mk_to_spec import MarkdownToSpec
+from pysetup.md_to_spec import MarkdownToSpec
 
 # Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
 warnings.filterwarnings('ignore', message='Normalizing .* to .*')
