@@ -4,7 +4,7 @@ import re
 import string
 from functools import lru_cache
 from pathlib import Path
-from typing import cast, Dict, Iterator, Optional, Tuple
+from typing import cast, Dict, Iterator, Mapping, Optional, Tuple
 
 from marko.block import BlankLine, Document, FencedCode, Heading, HTMLBlock
 from marko.element import Element
@@ -19,10 +19,13 @@ class MarkdownToSpec:
     def __init__(
         self,
         file_name: Path,
-        preset: Dict[str, str],
-        config: Dict[str, str | Dict[str, str]],
+        preset: dict[str, str],
+        config: dict[str, str | list[dict[str, str]]],
         preset_name: str,
     ):
+        """
+        Initializes the MarkdownToSpec instance.
+        """
         self.preset = preset
         self.config = config
         self.preset_name = preset_name
@@ -50,12 +53,7 @@ class MarkdownToSpec:
 
     def run(self) -> SpecObject:
         """
-        Orchestrates the parsing and processing of the markdown spec file.
-        - Calls _parse_document()
-        - Iterates over self.document.children and processes each child
-        - Calls _finalize_types() and _build_spec_object() after processing
-        Returns:
-            SpecObject: The constructed specification object.
+        Parses the markdown spec file and returns the SpecObject.
         """
         while (child := self._get_next_element()) is not None:
             self._process_child(child)
@@ -64,8 +62,7 @@ class MarkdownToSpec:
 
     def _get_next_element(self) -> Optional[Element]:
         """
-        Returns the next element in the document.
-        If the end of the document is reached, returns None.
+        Returns the next non-blank element in the document.
         """
         try:
             while isinstance(result := next(self.document_iterator), BlankLine):
@@ -82,14 +79,15 @@ class MarkdownToSpec:
 
     def _parse_document(self, file_name: Path) -> Iterator[Element]:
         """
-        Opens the markdown file, parses its content into a document object using _parse_markdown,
-        and stores the parsed document in self.document.
+        Parses the markdown file into document elements.
         """
         with open(file_name) as source_file:
             document = parse_markdown(source_file.read())
             return iter(document.children)
 
     def _process_child(self, child: Element) -> None:
+        """Processes a child Markdown element by dispatching to the appropriate handler based on its type."""
+
         # Skip blank lines
         if isinstance(child, BlankLine):
             return
@@ -113,10 +111,8 @@ class MarkdownToSpec:
 
     def _process_code_block(self, code_block: FencedCode) -> None:
         """
-        Processes a FencedCode block:
-        - Checks if the code block is Python.
+        Processes a FencedCode block, ignoring non-Python code.
         - Extracts source code and determines if it is a function, dataclass, or class.
-        - Updates the appropriate dictionary (functions, protocols, dataclasses, ssz_objects).
         """
         if code_block.lang != "python":
             return
@@ -139,14 +135,8 @@ class MarkdownToSpec:
 
     def _process_code_def(self, source: str, fn: ast.FunctionDef) -> None:
         """
-        Processes a function definition node from the AST and stores its source code representation.
-        If the function is a method (i.e., has a self type), it is added to the protocol functions for that type.
-        Otherwise, it is stored as a standalone function.
-        Args:
-            source (str): The source code of the function definition.
-            fn (ast.FunctionDef): The AST node representing the function definition.
+        Processes a function definition and stores it in the spec.
         """
-
         self_type_name = _get_self_type_from_source(fn)
 
         if self_type_name is None:
@@ -160,7 +150,6 @@ class MarkdownToSpec:
         """
         Adds a function definition to the protocol functions dictionary.
         """
-
         if protocol_name not in self.spec["protocols"]:
             self.spec["protocols"][protocol_name] = ProtocolDefinition(functions={})
         self.spec["protocols"][protocol_name].functions[function_name] = function_def
@@ -170,18 +159,8 @@ class MarkdownToSpec:
 
     def _process_code_class(self, source: str, cls: ast.ClassDef) -> None:
         """
-        Processes an AST class definition node, validates its consistency with the current heading,
-        and updates the spec dictionary with the class source code.
-        Args:
-            source (str): The source code of the class.
-            cls (ast.ClassDef): The AST node representing the class definition.
-        Raises:
-            Exception: If the class name does not match the current heading name.
-            AssertionError: If the parent class is not 'Container' when a parent class is present.
-        Side Effects:
-            Updates self.spec["ssz_objects"] with the class source code, keyed by class name.
+        Processes a class definition and updates the spec.
         """
-
         class_name, parent_class = _get_class_info_from_ast(cls)
 
         # check consistency with spec
@@ -194,13 +173,8 @@ class MarkdownToSpec:
 
     def _process_table(self, table: Table) -> None:
         """
-        Handles standard tables (not list-of-records).
-        Iterates over rows, extracting variable names, values, and descriptions.
-        Determines if the variable is a constant, preset, config, or custom type.
-        Updates the corresponding dictionaries.
-        Handles special cases for predefined types and function-dependent presets.
+        Processes a table and updates the spec with its data.
         """
-
         for row in cast(list[TableRow], table.children):
             if len(row.children) < 2:
                 continue
@@ -245,9 +219,13 @@ class MarkdownToSpec:
                 if self.preset_name == "mainnet":
                     check_yaml_matches_spec(name, self.config, value_def)
 
-                self.spec["config_vars"][name] = VariableDefinition(
-                    value_def.type_name, self.config[name], value_def.comment, None
-                )
+                config_value = self.config[name]
+                if isinstance(config_value, str):
+                    self.spec["config_vars"][name] = VariableDefinition(
+                        value_def.type_name, config_value, value_def.comment, None
+                    )
+                else:
+                    raise ValueError(f"Variable {name} should be a string in the config file.")
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
@@ -265,7 +243,6 @@ class MarkdownToSpec:
     def _get_table_row_fields(row: TableRow) -> tuple[str, str, Optional[str]]:
         """
         Extracts the name, value, and description fields from a table row element.
-        Description can be None.
         """
         cells = cast(list[TableCell], row.children)
         name_cell = cells[0]
@@ -292,9 +269,6 @@ class MarkdownToSpec:
     def _process_list_of_records_table(self, table: Table, list_of_records_name: str) -> None:
         """
         Handles tables marked as 'list-of-records'.
-        Extracts headers and rows, mapping field names and types.
-        Applies type mapping to config entries.
-        Validates or updates the config variable as needed based on preset_name.
         Updates config_vars with the processed list.
 
         Example of input:
@@ -374,7 +348,11 @@ class MarkdownToSpec:
         Returns a new list of dicts with types applied.
         """
         list_of_records_config_file: list[dict[str, str]] = []
-        for entry in self.config[list_of_records_name]:
+        entries = self.config[list_of_records_name]
+        if not isinstance(entries, list):
+            raise ValueError(f"Expected a dict for {list_of_records_name} in config file")
+
+        for entry in entries:
             new_entry = {}
             for k, v in entry.items():
                 ctor = type_map.get(k)
@@ -390,7 +368,6 @@ class MarkdownToSpec:
         Handles HTML comments for skip logic and list-of-records detection.
         Sets flags or state variables for the next iteration.
         """
-
         body = html.body.strip()
 
         # This comment marks that we should skip the next element
@@ -423,7 +400,7 @@ class MarkdownToSpec:
         # Update CURDLEPROOFS CRS if needed
         if any("CURDLEPROOFS_CRS" in name for name in self.spec["constant_vars"]):
             _update_constant_vars_with_curdleproofs_crs(
-                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
+                self.spec["constant_vars"], self.preset_name
             )
 
         # Split all_custom_types into custom_types and preset_dep_custom_types
@@ -471,14 +448,6 @@ def _get_source_from_code_block(block: FencedCode) -> str:
 
 
 @lru_cache(maxsize=None)
-def _get_function_name_from_source(source: str) -> str:
-    fn = ast.parse(source).body[0]
-    if not isinstance(fn, ast.FunctionDef):
-        raise Exception("expected function definition")
-    return fn.name
-
-
-@lru_cache(maxsize=None)
 def _get_self_type_from_source(fn: ast.FunctionDef) -> Optional[str]:
     args = fn.args.args
     if len(args) == 0:
@@ -508,16 +477,8 @@ def _get_class_info_from_ast(cls: ast.ClassDef) -> Tuple[str, Optional[str]]:
 @lru_cache(maxsize=None)
 def _is_constant_id(name: str) -> bool:
     """
-    Check if the given name follows the convention for constant identifiers.
-    A valid constant identifier must:
-    - Start with an uppercase ASCII letter or an underscore ('_').
-    - All subsequent characters (if any) must be uppercase ASCII letters, underscores, or digits.
-    Args:
-        name (str): The identifier name to check.
-    Returns:
-        bool: True if the name is a valid constant identifier, False otherwise.
+    Checks if the given name follows the convention for constant identifiers.
     """
-
     if name[0] not in string.ascii_uppercase + "_":
         return False
     return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
@@ -591,7 +552,11 @@ def _parse_value(
     )
 
 
-def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name):
+def _update_constant_vars_with_kzg_setups(
+    constant_vars: dict[str, VariableDefinition],
+    preset_dep_constant_vars: dict[str, VariableDefinition],
+    preset_name: str,
+) -> None:
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
     preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
@@ -606,8 +571,8 @@ def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_var
 
 
 def _update_constant_vars_with_curdleproofs_crs(
-    constant_vars, preset_dep_constant_vars, preset_name
-):
+    constant_vars: dict[str, VariableDefinition], preset_name: str
+) -> None:
     comment = "noqa: E501"
     constant_vars["CURDLEPROOFS_CRS"] = VariableDefinition(
         None,
@@ -625,7 +590,7 @@ def parse_markdown(content: str) -> Document:
 
 
 def check_yaml_matches_spec(
-    var_name: str, yaml: Dict[str, str], value_def: VariableDefinition
+    var_name: str, yaml: Mapping[str, str | list[dict[str, str]]], value_def: VariableDefinition
 ) -> None:
     """
     This function performs a sanity check for presets & configs. To a certain degree, it ensures
@@ -640,7 +605,12 @@ def check_yaml_matches_spec(
     updated_value = value_def.value
     for var in sorted(yaml.keys(), reverse=True):
         if var in updated_value:
-            updated_value = updated_value.replace(var, yaml[var])
+            value = yaml[var]
+            if isinstance(value, str):
+                updated_value = updated_value.replace(var, value)
+
+            else:
+                raise ValueError(f"Variable {var} should be a string in the yaml file.")
     try:
         assert yaml[var_name] == repr(
             eval(updated_value)
