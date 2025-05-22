@@ -682,4 +682,3 @@ setup(
     py_modules=["eth2spec"],
     cmdclass=commands,
 )
-
