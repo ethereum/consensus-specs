@@ -249,4 +249,4 @@ kzg_setups: pyspec
 
 # Delete all untracked files.
 clean:
-	rm -fR venv .mypy_cache  build eth2spec.egg-info pysetup/__pycache__ pysetup/spec_builders/__pycache__
+	@git clean -fdX
