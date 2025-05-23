@@ -14,6 +14,8 @@ from eth2spec.test.helpers.fulu.fork import (
 )
 from eth2spec.test.helpers.state import next_slot
 
+from tests.core.pyspec.eth2spec.test.helpers.state import simulate_lookahead
+
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
 @spec_test
@@ -26,12 +28,7 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
 
     # Calculate the current and next epoch lookahead by simulating the state progression
     # with empty slots and calling `get_beacon_proposer_index` (how it was done pre-Fulu)
-    pre_fork_proposers = []
-    simulation_state = state.copy()
-    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
-        proposer_index = spec.get_beacon_proposer_index(simulation_state)
-        pre_fork_proposers.append(proposer_index)
-        next_slot(spec, simulation_state)
+    pre_fork_proposers = simulate_lookahead(spec, state)
 
     # Upgrade to Fulu
     spec = phases[FULU]
