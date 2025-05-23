@@ -48,7 +48,8 @@ class MarkdownToSpec:
 
         self.all_custom_types: Dict[str, str] = {}
 
-        self.document_iterator: Iterator[Element] = self._parse_document(file_name)
+        self.document_iterator: Iterator[Element] = self._parse_document(
+            file_name)
         self.current_heading_name: str | None = None
 
     def run(self) -> SpecObject:
@@ -151,7 +152,8 @@ class MarkdownToSpec:
         Adds a function definition to the protocol functions dictionary.
         """
         if protocol_name not in self.spec["protocols"]:
-            self.spec["protocols"][protocol_name] = ProtocolDefinition(functions={})
+            self.spec["protocols"][protocol_name] = ProtocolDefinition(
+                functions={})
         self.spec["protocols"][protocol_name].functions[function_name] = function_def
 
     def _add_dataclass(self, source: str, cls: ast.ClassDef) -> None:
@@ -165,7 +167,8 @@ class MarkdownToSpec:
 
         # check consistency with spec
         if class_name != self.current_heading_name:
-            raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
+            raise Exception(
+                f"class_name {class_name} != current_name {self.current_heading_name}")
 
         if parent_class:
             assert parent_class == "Container"
@@ -189,7 +192,8 @@ class MarkdownToSpec:
             if not _is_constant_id(name):
                 # Check for short type declarations
                 if value.startswith(
-                    ("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")
+                    ("uint", "Bytes", "ByteList", "Union",
+                     "Vector", "List", "ByteVector")
                 ):
                     self.all_custom_types[name] = value
                 continue
@@ -225,7 +229,8 @@ class MarkdownToSpec:
                         value_def.type_name, config_value, value_def.comment, None
                     )
                 else:
-                    raise ValueError(f"Variable {name} should be a string in the config file.")
+                    raise ValueError(
+                        f"Variable {name} should be a string in the config file.")
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
@@ -272,10 +277,11 @@ class MarkdownToSpec:
         Updates config_vars with the processed list.
 
         Example of input:
-            | Epoch                       | Max Blobs Per Block | Description                      |
-            | --------------------------- | ------------------- | -------------------------------- |
-            | `Epoch(269568)` **Deneb**   | `uint64(6)`         | The limit is set to `6` blobs    |
-            | `Epoch(364032)` **Electra** | `uint64(9)`         | The limit is raised to `9` blobs |
+            | Name   | Calories      | Description   |
+            | ------ | ------------- | ------------- |
+            | Apple  | `uint64(96)`  | 5.3oz serving |
+            | Orange | `uint64(75)`  | 5.6oz serving |
+            | Banana | `uint64(111)` | 4.4oz serving |
 
         The method _process_html_block calls this method when it encounters a comment
         of the form `<!-- list-of-records:name -->`.
@@ -350,7 +356,8 @@ class MarkdownToSpec:
         list_of_records_config_file: list[dict[str, str]] = []
         entries = self.config[list_of_records_name]
         if not isinstance(entries, list):
-            raise ValueError(f"Expected a dict for {list_of_records_name} in config file")
+            raise ValueError(
+                f"Expected a dict for {list_of_records_name} in config file")
 
         for entry in entries:
             new_entry = {}
@@ -377,14 +384,16 @@ class MarkdownToSpec:
         # Handle list-of-records tables
         # This comment marks that the next table is a list-of-records
         # e.g. <!-- list-of-records: <name> -->
-        match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
+        match = re.match(
+            r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
         if match:
             table_element = self._get_next_element()
             if not isinstance(table_element, Table):
                 raise Exception(
                     f"expected table after list-of-records comment, got {type(table_element)}"
                 )
-            self._process_list_of_records_table(table_element, match.group(1).upper())
+            self._process_list_of_records_table(
+                table_element, match.group(1).upper())
 
     def _finalize_types(self) -> None:
         """
@@ -548,7 +557,8 @@ def _parse_value(
     type_name = typed_value[:i]
 
     return VariableDefinition(
-        type_name=type_name, value=typed_value[i + 1 : -1], comment=comment, type_hint=type_hint
+        type_name=type_name, value=typed_value[i +
+                                               1: -1], comment=comment, type_hint=type_hint
     )
 
 
@@ -560,13 +570,16 @@ def _update_constant_vars_with_kzg_setups(
     comment = "noqa: E501"
     kzg_setups = ALL_KZG_SETUPS[preset_name]
     preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(kzg_setups[0]), comment, None
+        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(
+            kzg_setups[0]), comment, None
     )
     preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(kzg_setups[1]), comment, None
+        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(
+            kzg_setups[1]), comment, None
     )
     constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
-        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
+        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(
+            kzg_setups[2]), comment, None
     )
 
 
@@ -610,7 +623,8 @@ def check_yaml_matches_spec(
                 updated_value = updated_value.replace(var, value)
 
             else:
-                raise ValueError(f"Variable {var} should be a string in the yaml file.")
+                raise ValueError(
+                    f"Variable {var} should be a string in the yaml file.")
     try:
         assert yaml[var_name] == repr(
             eval(updated_value)
