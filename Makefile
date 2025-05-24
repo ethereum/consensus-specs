@@ -249,4 +249,4 @@ kzg_setups: pyspec
 
 # Delete all untracked files.
 clean:
-	@git clean -fdX
+	@git clean -fdx
