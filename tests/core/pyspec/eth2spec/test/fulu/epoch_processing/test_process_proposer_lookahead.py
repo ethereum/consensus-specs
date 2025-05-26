@@ -14,9 +14,9 @@ def test_next_epoch_proposer_lookahead_shifted_to_front(spec, state):
     initial_lookahead = state.proposer_lookahead.copy()
 
     # Run epoch processing
-    yield 'pre', state
+    yield "pre", state
     next_epoch(spec, state)
-    yield 'post', state
+    yield "post", state
 
     # Verify lookahead was shifted correctly
     assert (
@@ -34,9 +34,9 @@ def test_proposer_lookahead_in_state_matches_computed_lookahead(spec, state):
     next_epoch(spec, state)
 
     # Run epoch processing
-    yield 'pre', state
+    yield "pre", state
     next_epoch(spec, state)
-    yield 'post', state
+    yield "post", state
 
     # Verify lookahead in state matches the lookahead computed on the fly
     computed_lookahead = spec.initialize_proposer_lookahead(state)
