@@ -65,8 +65,13 @@ if __name__ == "__main__":
     _new_electra_mods = {**_new_electra_mods_1, **_new_electra_mods_2}
     electra_mods = combine_mods(_new_electra_mods, deneb_mods)
 
-    # No additional Fulu specific sanity tests
-    fulu_mods = electra_mods
+    _new_fulu_mods = {
+        key: "eth2spec.test.fulu.sanity.test_" + key
+        for key in [
+            "effective_balance_increase_changes_lookahead",
+        ]
+    }
+    fulu_mods = combine_mods(_new_fulu_mods, electra_mods)
 
     all_mods = {
         PHASE0: phase_0_mods,

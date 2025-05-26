@@ -35,9 +35,18 @@ def run_test_effective_balance_increase_changes_lookahead(spec, state, expect_lo
     # Calculate the lookahead of next epoch
     next_epoch_lookahead = simulate_lookahead(spec, state)[spec.SLOTS_PER_EPOCH :]
 
+    blocks = []
+    yield "pre", state
+
     # Process 1-epoch worth of blocks with attestations
     for _ in range(spec.SLOTS_PER_EPOCH):
-        _ = state_transition_with_full_block(spec, state, fill_cur_epoch=True, fill_prev_epoch=True)
+        block = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
+        blocks.append(block)
+
+    yield "blocks", blocks
+    yield "post", state
 
     # Calculate the actual lookahead
     actual_lookahead = simulate_lookahead(spec, state)[: spec.SLOTS_PER_EPOCH]
@@ -54,12 +63,12 @@ def test_effective_balance_increase_changes_lookahead(spec, state):
     if spec.fork == ELECTRA:
         # Pre-EIP-7917, effective balance changes due to attestation rewards
         # changes the next epoch's lookahead
-        run_test_effective_balance_increase_changes_lookahead(
-            spec, state, expect_lookahead_changed=True
-        )
+        expect_lookahead_changed = True
     else:
         # Post-EIP-7917, effective balance changes due to attestation rewards
         # do not change the next epoch's lookahead
-        run_test_effective_balance_increase_changes_lookahead(
-            spec, state, expect_lookahead_changed=False
-        )
+        expect_lookahead_changed = False
+
+    yield from run_test_effective_balance_increase_changes_lookahead(
+        spec, state, expect_lookahead_changed=expect_lookahead_changed
+    )

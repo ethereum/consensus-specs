@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Fulu specific epoch processing tests
     _new_fulu_mods = {
         key: "eth2spec.test.fulu.epoch_processing.test_" + key
-        for key in ["process_proposer_lookahead", "effective_balance_increase_changes_lookahead"]
+        for key in ["process_proposer_lookahead"]
     }
     fulu_mods = combine_mods(_new_fulu_mods, electra_mods)
 
