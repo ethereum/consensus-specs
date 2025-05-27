@@ -30,6 +30,10 @@ class MarkdownToSpec:
         self.config = config
         self.preset_name = preset_name
 
+        self.document_iterator: Iterator[Element] = self._parse_document(file_name)
+        self.all_custom_types: Dict[str, str] = {}
+        self.current_heading_name: str | None = None
+
         # Use a single dict to hold all SpecObject fields
         self.spec: dict[str, dict] = {
             "config_vars": {},
@@ -45,11 +49,6 @@ class MarkdownToSpec:
             "ssz_dep_constants": {},
             "ssz_objects": {},
         }
-
-        self.all_custom_types: Dict[str, str] = {}
-
-        self.document_iterator: Iterator[Element] = self._parse_document(file_name)
-        self.current_heading_name: str | None = None
 
     def run(self) -> SpecObject:
         """
