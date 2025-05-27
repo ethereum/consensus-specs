@@ -195,9 +195,3 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE:
-  # Deneb
-  - EPOCH: 269568
-    MAX_BLOBS_PER_BLOCK: 6
-  # Electra
-  - EPOCH: 364032
-    MAX_BLOBS_PER_BLOCK: 9
