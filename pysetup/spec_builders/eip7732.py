@@ -1,7 +1,7 @@
 from typing import Dict, Set
 
-from .base import BaseSpecBuilder
 from ..constants import EIP7732
+from .base import BaseSpecBuilder
 
 
 class EIP7732SpecBuilder(BaseSpecBuilder):
@@ -9,28 +9,31 @@ class EIP7732SpecBuilder(BaseSpecBuilder):
 
     @classmethod
     def imports(cls, preset_name: str):
-        return f'''
+        return f"""
 from eth2spec.electra import {preset_name} as electra
-'''
+"""
 
     @classmethod
     def sundry_functions(cls) -> str:
-        return '''
+        return """
 def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
     o = GeneralizedIndex(1)
     for i in indices:
         o = GeneralizedIndex(o * bit_floor(i) + (i - bit_floor(i)))
-    return o'''
-
+    return o"""
 
     @classmethod
     def deprecate_constants(cls) -> Set[str]:
-        return set([
-            'EXECUTION_PAYLOAD_GINDEX',
-        ])
+        return set(
+            [
+                "EXECUTION_PAYLOAD_GINDEX",
+            ]
+        )
 
     @classmethod
     def deprecate_presets(cls) -> Set[str]:
-        return set([
-            'KZG_COMMITMENT_INCLUSION_PROOF_DEPTH',
-        ])
+        return set(
+            [
+                "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
+            ]
+        )

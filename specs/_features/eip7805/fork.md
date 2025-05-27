@@ -24,7 +24,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7805_FORK_VERSION` | `Version('0x10000000')`               |
+| `EIP7805_FORK_VERSION` | `Version('0x0a000000')`               |
 | `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
@@ -57,8 +57,9 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == EIP7805_FORK_EPOCH`,
-an irregular state change is made to upgrade to EIP-7805.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == EIP7805_FORK_EPOCH`, an irregular state
+change is made to upgrade to EIP-7805.
 
 ```python
 def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:

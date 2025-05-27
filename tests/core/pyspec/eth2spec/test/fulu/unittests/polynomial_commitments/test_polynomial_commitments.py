@@ -1,8 +1,9 @@
 import random
+
 from eth2spec.test.context import (
-    spec_test,
-    single_phase,
     expect_assertion_error,
+    single_phase,
+    spec_test,
     with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (

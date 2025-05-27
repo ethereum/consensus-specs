@@ -45,11 +45,18 @@
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations that are essential for the implementation of the EIP-4844 feature in the Deneb specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations.
+This document specifies basic polynomial operations and KZG polynomial
+commitment operations that are essential for the implementation of the EIP-4844
+feature in the Deneb specification. The implementations are not optimized for
+performance, but readability. All practical implementations should optimize the
+polynomial operations.
 
-Functions flagged as "Public method" MUST be provided by the underlying KZG library as public functions. All other functions are private functions used internally by the KZG library.
+Functions flagged as "Public method" MUST be provided by the underlying KZG
+library as public functions. All other functions are private functions used
+internally by the KZG library.
 
-Public functions MUST accept raw bytes as input and perform the required cryptographic normalization before invoking any internal functions.
+Public functions MUST accept raw bytes as input and perform the required
+cryptographic normalization before invoking any internal functions.
 
 ## Custom types
 
@@ -104,10 +111,10 @@ Public functions MUST accept raw bytes as input and perform the required cryptog
 
 ### Bit-reversal permutation
 
-All polynomials (which are always given in Lagrange form) should be interpreted as being in
-bit-reversal permutation. In practice, clients can implement this by storing the lists
-`KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal permutation, so these functions only
-have to be called once at startup.
+All polynomials (which are always given in Lagrange form) should be interpreted
+as being in bit-reversal permutation. In practice, clients can implement this by
+storing the lists `KZG_SETUP_G1_LAGRANGE` and roots of unity in bit-reversal
+permutation, so these functions only have to be called once at startup.
 
 #### `is_power_of_two`
 
@@ -147,7 +154,8 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 
 #### `multi_exp`
 
-This function performs a multi-scalar multiplication between `points` and `integers`. `points` can either be in G1 or G2.
+This function performs a multi-scalar multiplication between `points` and
+`integers`. `points` can either be in G1 or G2.
 
 ```python
 def multi_exp(points: Sequence[TPoint],

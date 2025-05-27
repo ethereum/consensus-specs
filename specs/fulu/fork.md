@@ -79,12 +79,14 @@ def initialize_proposer_lookahead(
 
 The fork is triggered at epoch `FULU_FORK_EPOCH`.
 
-Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it starts with Fulu version logic.
+Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it
+starts with Fulu version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == FULU_FORK_EPOCH`,
-an irregular state change is made to upgrade to Fulu.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == FULU_FORK_EPOCH`, an irregular state
+change is made to upgrade to Fulu.
 
 ```python
 def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:

@@ -27,25 +27,20 @@ jobs:
           path: 'consensus-specs'
           ref: ${{ inputs.ref || 'dev' }}
       - name: Setup Python
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12.4'
           cache: ''
       - name: Generate tests
         run: |
           cd consensus-specs
-          make -j$(nproc) gen_all 2>&1 | tee ../consensustestgen.log
+          make reftests verbose=true 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
-          find . -type d -empty -delete
       - name: Check for errors
         run: |
           if grep -q "\[ERROR\]" consensustestgen.log; then
             echo "There is an error in the log"
-            exit 1
-          fi
-          if find . -type f -name "INCOMPLETE" | grep -q "INCOMPLETE"; then
-            echo "There is an INCOMPLETE file"
             exit 1
           fi
       - name: Archive configurations

@@ -1,9 +1,16 @@
 import random
 
+from eth2spec.debug.random_value import (
+    get_random_ssz_object,
+    RandomizationMode,
+)
 from eth2spec.test.context import (
     spec_state_test,
     with_fulu_and_later,
     with_test_suite_name,
+)
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -11,13 +18,6 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
-)
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
-from eth2spec.debug.random_value import (
-    RandomizationMode,
-    get_random_ssz_object,
 )
 
 
@@ -82,7 +82,7 @@ def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
-    blob_count = spec.config.MAX_BLOBS_PER_BLOCK_FULU // 2
+    blob_count = spec.get_max_blobs_per_block(spec.get_current_epoch(state)) // 2
     rng = random.Random(2222)
     yield from _run_blob_kzg_commitments_merkle_proof_test(
         spec, state, rng=rng, blob_count=blob_count
@@ -93,7 +93,7 @@ def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__max_blobs(spec, state):
-    max_blobs = spec.config.MAX_BLOBS_PER_BLOCK_FULU
+    max_blobs = spec.get_max_blobs_per_block(spec.get_current_epoch(state))
     rng = random.Random(3333)
     yield from _run_blob_kzg_commitments_merkle_proof_test(
         spec, state, rng=rng, blob_count=max_blobs

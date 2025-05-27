@@ -12,9 +12,9 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
+    prepare_pending_withdrawal,
     run_withdrawals_processing,
     set_compounding_withdrawal_credential_with_balance,
-    prepare_pending_withdrawal,
 )
 
 
