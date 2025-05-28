@@ -4,7 +4,6 @@ requires = [
   "ruamel.yaml==0.18.10",
   "setuptools==80.7.1",
   "wheel==0.45.1",
-  "deepdiff==8.5.0",
 ]
 
 [project]

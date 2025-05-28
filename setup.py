@@ -1,9 +1,6 @@
-import ast
 import copy
-import json
 import logging
 import os
-import re
 import string
 import sys
 import warnings
@@ -20,8 +17,8 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from setuptools import setup, find_packages, Command
 from setuptools.command.build_py import build_py
-from typing import Dict, List, Sequence, Optional, Tuple
-from deepdiff import DeepDiff
+from typing import Dict, List, Sequence, Optional, Tuple, cast
+from pysetup.md_to_spec import MarkdownToSpec
 
 pysetup_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, pysetup_path)
@@ -43,11 +40,8 @@ from pysetup.spec_builders import (
 )
 from pysetup.typing import (
     BuildTarget,
-    ProtocolDefinition,
     SpecObject,
-    VariableDefinition,
 )
-from pysetup.md_to_spec import MarkdownToSpec
 
 # Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
 warnings.filterwarnings('ignore', message='Normalizing .* to .*')
@@ -59,389 +53,8 @@ class PyspecFilter(logging.Filter):
 logging.getLogger().addFilter(PyspecFilter())
 
 
-@lru_cache(maxsize=None)
-def _get_name_from_heading(heading: Heading) -> Optional[str]:
-    last_child = heading.children[-1]
-    if isinstance(last_child, CodeSpan):
-        return last_child.children
-    return None
-
-
-@lru_cache(maxsize=None)
-def _get_source_from_code_block(block: FencedCode) -> str:
-    return block.children[0].children.strip()
-
-
-@lru_cache(maxsize=None)
-def _get_function_name_from_source(source: str) -> str:
-    fn = ast.parse(source).body[0]
-    return fn.name
-
-
-@lru_cache(maxsize=None)
-def _get_self_type_from_source(source: str) -> Optional[str]:
-    fn = ast.parse(source).body[0]
-    args = fn.args.args
-    if len(args) == 0:
-        return None
-    if args[0].arg != 'self':
-        return None
-    if args[0].annotation is None:
-        return None
-    return args[0].annotation.id
-
-
-@lru_cache(maxsize=None)
-def _get_class_info_from_source(source: str) -> Tuple[str, Optional[str]]:
-    class_def = ast.parse(source).body[0]
-    base = class_def.bases[0]
-    if isinstance(base, ast.Name):
-        parent_class = base.id
-    elif isinstance(base, ast.Subscript):
-        parent_class = base.value.id
-    else:
-        # NOTE: SSZ definition derives from earlier phase...
-        # e.g. `phase0.SignedBeaconBlock`
-        # TODO: check for consistency with other phases
-        parent_class = None
-    return class_def.name, parent_class
-
-
-@lru_cache(maxsize=None)
-def _is_constant_id(name: str) -> bool:
-    if name[0] not in string.ascii_uppercase + '_':
-        return False
-    return all(map(lambda c: c in string.ascii_uppercase + '_' + string.digits, name[1:]))
-
-
-@lru_cache(maxsize=None)
-def _load_kzg_trusted_setups(preset_name):
-    trusted_setups_file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/trusted_setup_4096.json'
-
-    with open(trusted_setups_file_path, 'r') as f:
-        json_data = json.load(f)
-        trusted_setup_G1_monomial = json_data['g1_monomial']
-        trusted_setup_G1_lagrange = json_data['g1_lagrange']
-        trusted_setup_G2_monomial = json_data['g2_monomial']
-
-    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
-
-@lru_cache(maxsize=None)
-def _load_curdleproofs_crs(preset_name):
-    """
-    NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
-    """
-    file_path = str(Path(__file__).parent) + '/presets/' + preset_name + '/trusted_setups/curdleproofs_crs.json'
-
-    with open(file_path, 'r') as f:
-        json_data = json.load(f)
-
-    return json_data
-
-
-ALL_KZG_SETUPS = {
-    'minimal': _load_kzg_trusted_setups('minimal'),
-    'mainnet': _load_kzg_trusted_setups('mainnet')
-}
-
-ALL_CURDLEPROOFS_CRS = {
-    'minimal': _load_curdleproofs_crs('minimal'),
-    'mainnet': _load_curdleproofs_crs('mainnet'),
-}
-
-
-@lru_cache(maxsize=None)
-def _parse_value(name: str, typed_value: str, type_hint: Optional[str] = None) -> VariableDefinition:
-    comment = None
-    if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
-        comment = "noqa: E501"
-
-    typed_value = typed_value.strip()
-    if '(' not in typed_value:
-        return VariableDefinition(type_name=None, value=typed_value, comment=comment, type_hint=type_hint)
-    i = typed_value.index('(')
-    type_name = typed_value[:i]
-
-    return VariableDefinition(type_name=type_name, value=typed_value[i+1:-1], comment=comment, type_hint=type_hint)
-
-
-def _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name):
-    comment = "noqa: E501"
-    kzg_setups = ALL_KZG_SETUPS[preset_name]
-    preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'] = VariableDefinition(
-        preset_dep_constant_vars['KZG_SETUP_G1_MONOMIAL'].value,
-        str(kzg_setups[0]),
-        comment, None
-    )
-    preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'] = VariableDefinition(
-        preset_dep_constant_vars['KZG_SETUP_G1_LAGRANGE'].value,
-        str(kzg_setups[1]),
-        comment, None
-    )
-    constant_vars['KZG_SETUP_G2_MONOMIAL'] = VariableDefinition(
-        constant_vars['KZG_SETUP_G2_MONOMIAL'].value,
-        str(kzg_setups[2]),
-        comment, None
-    )
-
-
-def _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_constant_vars, preset_name):
-    comment = "noqa: E501"
-    constant_vars['CURDLEPROOFS_CRS'] = VariableDefinition(
-        None,
-        'curdleproofs.CurdleproofsCrs.from_json(json.dumps(' + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace('0x', '') + '))',
-        comment, None
-    )
-
-
-@lru_cache(maxsize=None)
-def parse_markdown(content: str):
-    return gfm.parse(content)
-
-
-def check_yaml_matches_spec(var_name, yaml, value_def):
-    """
-    This function performs a sanity check for presets & configs. To a certain degree, it ensures
-    that the values in the specifications match those in the yaml files.
-    """
-    if var_name == "TERMINAL_BLOCK_HASH":
-        # This is just Hash32() in the specs, that's fine
-        return
-
-    # We use a var in the definition of a new var, replace usages
-    # Reverse sort so that overridden values come first
-    updated_value = value_def.value
-    for var in sorted(yaml.keys(), reverse=True):
-        if var in updated_value:
-            updated_value = updated_value.replace(var, yaml[var])
-    try:
-        assert yaml[var_name] == repr(eval(updated_value)), \
-            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
-    except NameError:
-        # Okay it's probably something more serious, let's ignore
-        pass
-
-def get_spec_new(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
+def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str | list[dict[str, str]]], preset_name: str) -> SpecObject:
     return MarkdownToSpec(file_name, preset, config, preset_name).run()
-
-def get_spec(file_name: Path, preset: Dict[str, str], config: Dict[str, str], preset_name=str) -> SpecObject:
-    functions: Dict[str, str] = {}
-    protocols: Dict[str, ProtocolDefinition] = {}
-    constant_vars: Dict[str, VariableDefinition] = {}
-    preset_dep_constant_vars: Dict[str, VariableDefinition] = {}
-    preset_vars: Dict[str, VariableDefinition] = {}
-    config_vars: Dict[str, VariableDefinition] = {}
-    ssz_dep_constants: Dict[str, str] = {}
-    func_dep_presets: Dict[str, str] = {}
-    ssz_objects: Dict[str, str] = {}
-    dataclasses: Dict[str, str] = {}
-    all_custom_types: Dict[str, str] = {}
-
-    with open(file_name) as source_file:
-        document = parse_markdown(source_file.read())
-
-    current_name = None
-    should_skip = False
-    list_of_records = None
-    list_of_records_name = None
-    for child in document.children:
-        if isinstance(child, BlankLine):
-            continue
-        if should_skip:
-            should_skip = False
-            continue
-        if isinstance(child, Heading):
-            current_name = _get_name_from_heading(child)
-        elif isinstance(child, FencedCode):
-            if child.lang != "python":
-                continue
-            source = _get_source_from_code_block(child)
-            if source.startswith("def"):
-                current_name = _get_function_name_from_source(source)
-                self_type_name = _get_self_type_from_source(source)
-                function_def = "\n".join(line.rstrip() for line in source.splitlines())
-                if self_type_name is None:
-                    functions[current_name] = function_def
-                else:
-                    if self_type_name not in protocols:
-                        protocols[self_type_name] = ProtocolDefinition(functions={})
-                    protocols[self_type_name].functions[current_name] = function_def
-            elif source.startswith("@dataclass"):
-                dataclasses[ast.parse(source).body[0].name] = "\n".join(line.rstrip() for line in source.splitlines())
-            elif source.startswith("class"):
-                class_name, parent_class = _get_class_info_from_source(source)
-                # check consistency with spec
-                try:
-                    assert class_name == current_name
-                except Exception:
-                    print('class_name', class_name)
-                    print('current_name', current_name)
-                    raise
-
-                if parent_class:
-                    assert parent_class == "Container"
-                # NOTE: trim whitespace from spec
-                ssz_objects[current_name] = "\n".join(line.rstrip() for line in source.splitlines())
-            else:
-                raise Exception("unrecognized python code element: " + source)
-        elif isinstance(child, Table) and list_of_records is not None:
-            list_of_records_header = None
-            for i, row in enumerate(child.children):
-                # This will start as an empty list when there is a <!-- list-of-records --> comment,
-                # which indicates that the next table is a list-of-records. After we're done parsing
-                # the table, we will reset this to None.
-                if list_of_records is not None:
-                    if i == 0:
-                        # Save the table header, this will be used for field names
-                        # Skip the last item, which is the description
-                        list_of_records_header = [
-                            # Convert the titles to SNAKE_CASE
-                            re.sub(r'\s+', '_', value.children[0].children.upper())
-                            for value in row.children[:-1]
-                        ]
-                    else:
-                        # Add the row entry to our list of records
-                        list_of_records.append({
-                            list_of_records_header[i]: value.children[0].children
-                            for i, value in enumerate(row.children[:-1])
-                        })
-
-            # Make a type map from the spec definition
-            # We'll apply this to the file config (ie mainnet.yaml)
-            type_map: dict[str,str] = {}
-            pattern = re.compile(r'^(\w+)\(.*\)$')
-            for entry in list_of_records:
-                for k, v in entry.items():
-                    m = pattern.match(v)
-                    if m:
-                        type_map[k] = m.group(1)
-
-            # Apply the types to the file config
-            list_of_records_config: list[dict[str,str]] = []
-            for entry in config[list_of_records_name]:
-                new_entry: dict[str,str] = {}
-                for k, v in entry.items():
-                    ctor = type_map.get(k)
-                    if ctor:
-                        new_entry[k] = f"{ctor}({v})"
-                    else:
-                        new_entry[k] = v
-                list_of_records_config.append(new_entry)
-
-            # For mainnet, check that the spec config & file config are the same
-            # For minimal, we expect this to be different; just use the file config
-            if preset_name == "mainnet":
-                assert list_of_records == list_of_records_config, \
-                    f"list of records mismatch: {list_of_records} vs {list_of_records_config}"
-            elif preset_name == "minimal":
-                list_of_records = list_of_records_config
-
-            # Set the config variable and reset the global variable
-            config_vars[list_of_records_name] = list_of_records
-            list_of_records = None
-
-        elif isinstance(child, Table):
-            for row in child.children:
-                cells = row.children
-                if len(cells) >= 2:
-                    name_cell = cells[0]
-                    name = name_cell.children[0].children
-
-                    value_cell = cells[1]
-                    value = value_cell.children[0].children
-
-                    description = None
-                    if len(cells) >= 3:
-                        description_cell = cells[2]
-                        if len(description_cell.children) > 0:
-                            description = description_cell.children[0].children
-                            if isinstance(description, list):
-                                # marko parses `**X**` as a list containing a X
-                                description = description[0].children
-
-                    if isinstance(name, list):
-                        # marko parses `[X]()` as a list containing a X
-                        name = name[0].children
-                    if isinstance(value, list):
-                        # marko parses `**X**` as a list containing a X
-                        value = value[0].children
-
-                    # Skip types that have been defined elsewhere
-                    if description is not None and description.startswith("<!-- predefined-type -->"):
-                        continue
-
-                    if not _is_constant_id(name):
-                        # Check for short type declarations
-                        if value.startswith(("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")):
-                            all_custom_types[name] = value
-                        continue
-
-                    if value.startswith("get_generalized_index"):
-                        ssz_dep_constants[name] = value
-                        continue
-
-                    if description is not None and description.startswith("<!-- predefined -->"):
-                        func_dep_presets[name] = value
-
-                    value_def = _parse_value(name, value)
-                    if name in preset:
-                        if preset_name == "mainnet":
-                            check_yaml_matches_spec(name, preset, value_def)
-                        preset_vars[name] = VariableDefinition(value_def.type_name, preset[name], value_def.comment, None)
-                    elif name in config:
-                        if preset_name == "mainnet":
-                            check_yaml_matches_spec(name, config, value_def)
-                        config_vars[name] = VariableDefinition(value_def.type_name, config[name], value_def.comment, None)
-                    else:
-                        if name in ('ENDIANNESS', 'KZG_ENDIANNESS'):
-                            # Deal with mypy Literal typing check
-                            value_def = _parse_value(name, value, type_hint='Final')
-                        if any(k in value for k in preset) or any(k in value for k in preset_dep_constant_vars):
-                            preset_dep_constant_vars[name] = value_def
-                        else:
-                            constant_vars[name] = value_def
-
-        elif isinstance(child, HTMLBlock):
-            if child.body.strip() == "<!-- eth2spec: skip -->":
-                should_skip = True
-            # Handle list-of-records tables
-            match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", child.body.strip())
-            if match:
-                # Initialize list-of-records, in the next iteration this will indicate that the
-                # table is a list-of-records and must be parsed differently.
-                list_of_records = []
-                # Use regex to extract the desired configuration list name
-                list_of_records_name = match.group(1).upper()
-
-    # Load KZG trusted setup from files
-    if any('KZG_SETUP' in name for name in constant_vars):
-        _update_constant_vars_with_kzg_setups(constant_vars, preset_dep_constant_vars, preset_name)
-
-    if any('CURDLEPROOFS_CRS' in name for name in constant_vars):
-        _update_constant_vars_with_curdleproofs_crs(constant_vars, preset_dep_constant_vars, preset_name)
-
-    custom_types: Dict[str, str] = {}
-    preset_dep_custom_types: Dict[str, str] = {}
-    for name, value in all_custom_types.items():
-        if any(k in value for k in preset) or any(k in value for k in preset_dep_constant_vars):
-            preset_dep_custom_types[name] = value
-        else:
-            custom_types[name] = value
-
-    return SpecObject(
-        functions=functions,
-        protocols=protocols,
-        custom_types=custom_types,
-        preset_dep_custom_types=preset_dep_custom_types,
-        constant_vars=constant_vars,
-        preset_dep_constant_vars=preset_dep_constant_vars,
-        preset_vars=preset_vars,
-        config_vars=config_vars,
-        ssz_dep_constants=ssz_dep_constants,
-        func_dep_presets=func_dep_presets,
-        ssz_objects=ssz_objects,
-        dataclasses=dataclasses,
-    )
 
 
 @lru_cache(maxsize=None)
@@ -460,11 +73,11 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return parse_config_vars(preset)
+    return cast(Dict[str, str], parse_config_vars(preset))
 
 
 @lru_cache(maxsize=None)
-def load_config(config_path: Path) -> Dict[str, str]:
+def load_config(config_path: Path) -> Dict[str, str | List[Dict[str, str]]]:
     """
     Loads the given configuration file.
     """
@@ -480,10 +93,7 @@ def build_spec(fork: str,
                config_file: Path) -> str:
     preset = load_preset(tuple(preset_files))
     config = load_config(config_file)
-    all_specs = [get_spec_new(spec, preset, config, preset_name) for spec in source_files]
-    all_specs_old = [get_spec(spec, preset, config, preset_name) for spec in source_files]
-
-    assert DeepDiff(all_specs, all_specs_old, ignore_order=True) == {}, f"specs differ: {DeepDiff(all_specs, all_specs_old, ignore_order=True)}"
+    all_specs = [get_spec(spec, preset, config, preset_name) for spec in source_files]
 
     spec_object = all_specs[0]
     for value in all_specs[1:]:
