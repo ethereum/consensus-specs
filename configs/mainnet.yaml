@@ -194,4 +194,4 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # Blob Scheduling
 # ---------------------------------------------------------------
 
-BLOB_SCHEDULE:
+BLOB_SCHEDULE: []

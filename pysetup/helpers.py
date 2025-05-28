@@ -384,10 +384,7 @@ def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, List[Dict[st
     """
     out: Dict[str, Union[str, List[Dict[str, str]]]] = dict()
     for k, v in conf.items():
-        if v == "":
-            # When a list of records is empty
-            out[k] = []
-        elif isinstance(v, list):
+        if isinstance(v, list):
             # A special case for list of records
             out[k] = v
         elif isinstance(v, str) and (
