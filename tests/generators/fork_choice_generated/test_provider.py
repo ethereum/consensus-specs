@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Tuple
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart, TestProvider
+from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart
 from eth2spec.test.context import spec_test
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.test.helpers.fork_choice import (
@@ -21,6 +21,12 @@ import random
 
 BLS_ACTIVE = False
 GENERATOR_NAME = 'fork_choice_generated'
+
+
+@dataclass
+class TestProvider:
+    prepare: callable
+    make_cases: callable
 
 
 @dataclass
