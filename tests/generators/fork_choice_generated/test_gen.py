@@ -1,5 +1,6 @@
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base import settings
+from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from ruamel.yaml import YAML
 
 from instance_generator import (
@@ -14,7 +15,7 @@ from test_provider import GENERATOR_NAME, create_providers
 def run_test_group(test_name, test_type, instances_path,
                    initial_seed, nr_variations, nr_mutations,
                    with_attester_slashings, with_invalid_messages,
-                   debug=False, arg_parser=None):
+                   debug=False, args=None):
     if test_type == 'block_tree':
         solutions = _load_block_tree_instances(instances_path)
         if not with_attester_slashings and not with_invalid_messages:
@@ -33,10 +34,15 @@ def run_test_group(test_name, test_type, instances_path,
     
     providers = create_providers(test_name, forks, presets, debug, initial_seed,
                                     solutions, nr_variations, nr_mutations, test_kind)
-    gen_runner.run_generator(GENERATOR_NAME, providers, arg_parser)
+    def test_cases_fn():
+        for p in providers:
+            p.prepare()
+            yield from p.make_cases()
+    
+    gen_runner.run_generator(test_cases_fn(), args)
 
 
-def run_test_config(test_gen_config, debug=False, arg_parser=None):
+def run_test_config(test_gen_config, debug=False, args=None):
     for test_name, params in test_gen_config.items():
         print(test_name)
         test_type = params['test_type']
@@ -50,11 +56,11 @@ def run_test_config(test_gen_config, debug=False, arg_parser=None):
         run_test_group(test_name, test_type, instances_path,
                        initial_seed, nr_variations, nr_mutations,
                        with_attester_slashings, with_invalid_messages,
-                       debug=debug, arg_parser=arg_parser)
+                       debug=debug, args=args)
 
 
 def main():
-    arg_parser = gen_runner.create_arg_parser(GENERATOR_NAME)
+    arg_parser = create_arg_parser()
 
     arg_parser.add_argument(
         '--fc-gen-debug',
@@ -93,7 +99,7 @@ def main():
         settings.GENERATOR_MODE = settings.MODE_SINGLE_PROCESS
         print('generating tests in single process mode')
     
-    run_test_config(test_gen_config, debug = args.fc_gen_debug, arg_parser=arg_parser)
+    run_test_config(test_gen_config, debug = args.fc_gen_debug, args=args)
 
 if __name__ == "__main__":
     main()
