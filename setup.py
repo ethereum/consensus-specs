@@ -9,12 +9,8 @@ from distutils import dir_util
 from distutils.util import convert_path
 from functools import lru_cache
 from pathlib import Path
-from typing import cast, Dict, List, Optional, Sequence, Tuple
+from typing import cast, Dict, List, Sequence
 
-from marko.block import BlankLine, FencedCode, Heading, HTMLBlock
-from marko.ext.gfm import gfm
-from marko.ext.gfm.elements import Table
-from marko.inline import CodeSpan
 from ruamel.yaml import YAML
 from setuptools import Command, find_packages, setup
 from setuptools.command.build_py import build_py
