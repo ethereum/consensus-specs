@@ -117,20 +117,21 @@ class MarkdownToSpec:
             return
 
         source = _get_source_from_code_block(code_block)
-        clean_source = "\n".join(line.rstrip() for line in source.splitlines())
-
         module = ast.parse(source)
-        # AST container of the first definition in the block
-        first_def = module.body[0]
 
-        if isinstance(first_def, ast.FunctionDef):
-            self._process_code_def(clean_source, first_def)
-        elif isinstance(first_def, ast.ClassDef) and _has_decorator(first_def, "dataclass"):
-            self._add_dataclass(clean_source, first_def)
-        elif isinstance(first_def, ast.ClassDef):
-            self._process_code_class(clean_source, first_def)
-        else:
-            raise Exception("unrecognized python code element: " + source)
+        # AST element for each top level defintion of the module
+        for element in module.body:
+            element_source = ast.unparse(element)
+            clean_source = "\n".join(line.rstrip() for line in element_source.splitlines())
+
+            if isinstance(element, ast.FunctionDef):
+                self._process_code_def(clean_source, element)
+            elif isinstance(element, ast.ClassDef) and _has_decorator(element, "dataclass"):
+                self._add_dataclass(clean_source, element)
+            elif isinstance(element, ast.ClassDef):
+                self._process_code_class(clean_source, element)
+            else:
+                raise Exception("unrecognized python code element: " + source)
 
     def _process_code_def(self, source: str, fn: ast.FunctionDef) -> None:
         """
