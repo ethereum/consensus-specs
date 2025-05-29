@@ -12,6 +12,7 @@
 - [Fork to Fulu](#fork-to-fulu)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
+  - [Upgrading the state for a BPO Fork](#upgrading-the-state-for-a-bpo-fork)
 
 <!-- mdformat-toc end -->
 
@@ -130,6 +131,26 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
     )
+
+    return post
+```
+
+### Upgrading the state for a BPO Fork
+
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) > FULU_FORK_EPOCH` and
+`compute_fork_version(compute_epoch_at(state.slot-1)) != compute_fork_version(compute_epoch_at_slot(state.slot))`,
+an irregular state change is made to upgrade to o a BPO fork post fulu.
+
+```python
+def upgrade_to_bpo(pre: BeaconState) -> BeaconState:
+    epoch = electra.get_current_epoch(pre)
+    post = pre
+    post.fork = Fork(
+            previous_version=pre.fork.current_version,
+            current_version=compute_fork_version(epoch),
+            epoch=epoch,
+        )
 
     return post
 ```
