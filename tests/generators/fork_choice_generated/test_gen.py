@@ -93,17 +93,22 @@ def main():
         help='If set generates tests in the multi-processing mode',
     )
 
+    # change default value for `threads` to detect whether it is explicitly set
+    default_threads = arg_parser.get_default('threads')
+    arg_parser.set_defaults(threads=0)
+
     args = arg_parser.parse_args()
 
     with open(args.fc_gen_config, 'r') as f:
         yaml = YAML(typ='safe')
         test_gen_config = yaml.load(f)
     
-    if args.fc_gen_multi_processing:
-        settings.GENERATOR_MODE = settings.MODE_MULTIPROCESSING
+    if args.fc_gen_multi_processing or args.threads != 0:
+        if args.threads == 0:
+            args.threads = default_threads
         print('generating tests in multi-processing mode')
     else:
-        settings.GENERATOR_MODE = settings.MODE_SINGLE_PROCESS
+        args.threads = 1
         print('generating tests in single process mode')
     
     run_test_config(test_gen_config, debug = args.fc_gen_debug, args=args)
