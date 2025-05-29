@@ -85,13 +85,15 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
     # Filter out too old attestastions (TODO relax condition for Deneb)
     eligible_attestations = _get_eligible_attestations(spec, state, attestations)
 
-    # Prepare attestations
-    attestation_in_block = eligible_attestations[:spec.MAX_ATTESTATIONS]
-
     # Create a block with attestations
     block = build_empty_block(spec, state)
     block.body.randao_reveal = _compute_pseudo_randao_reveal(
         spec, block.proposer_index, spec.get_current_epoch(state))
+
+    # Prepare attestations
+    limit = type(block.body.attestations).limit()
+    attestation_in_block = eligible_attestations[:limit]
+
     for a in attestation_in_block:
         block.body.attestations.append(a)
 

@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.constants import ALTAIR, DENEB
+from eth2spec.test.helpers.constants import ALTAIR, DENEB, ELECTRA
 from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base import settings
@@ -9,7 +9,7 @@ from typing import Iterable
 from test_provider import create_providers
 
 
-forks = [DENEB]
+forks = [ELECTRA]
 presets = [MINIMAL]
 
 
