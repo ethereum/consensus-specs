@@ -16,6 +16,7 @@
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
   - [`get_custody_groups`](#get_custody_groups)
+  - [`get_bpo_fork_version`](#get_bpo_fork_version)
   - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
@@ -134,12 +135,13 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 ```
 
 ### `get_bpo_fork_version`
+
 ```python
 def get_bpo_fork_version(epoch: Epoch) -> uint64:
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True )
-        if epoch >= entry["EPOCH"]
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
             return entry["FORK_VERSION"]
-    return FORK_VERSION_FULU
+    return FULU_FORK_VERSION
 ```
 
 ### `get_max_blobs_per_block`
