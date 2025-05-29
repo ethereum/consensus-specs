@@ -1,15 +1,22 @@
+from eth2spec.test.helpers.constants import ALTAIR, DENEB
+from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base import settings
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from ruamel.yaml import YAML
+from typing import Iterable
 
-from instance_generator import (
-    forks,
-    presets,
-    _load_block_tree_instances,
-    _load_block_cover_instances,
-)
-from test_provider import GENERATOR_NAME, create_providers
+from test_provider import create_providers
+
+
+forks = [DENEB]
+presets = [MINIMAL]
+
+
+def _load_instances(instance_path: str) -> Iterable[dict]:
+    yaml = YAML(typ='safe')
+    solutions = yaml.load(open(instance_path, 'r'))
+    return solutions
 
 
 def run_test_group(test_name, test_type, instances_path,
@@ -17,7 +24,7 @@ def run_test_group(test_name, test_type, instances_path,
                    with_attester_slashings, with_invalid_messages,
                    debug=False, args=None):
     if test_type == 'block_tree':
-        solutions = _load_block_tree_instances(instances_path)
+        solutions = _load_instances(instances_path)
         if not with_attester_slashings and not with_invalid_messages:
             test_kind = 'block_tree_test'
         elif with_attester_slashings and not with_invalid_messages:
@@ -27,7 +34,7 @@ def run_test_group(test_name, test_type, instances_path,
         else:
             test_kind = 'attestet_slashing_and_invalid_message_test'
     elif test_type == 'block_cover':
-        solutions = _load_block_cover_instances(instances_path)
+        solutions = _load_instances(instances_path)
         test_kind = 'block_cover_test'
     else:
         raise ValueError(f'Unsupported test type: {test_type}')
