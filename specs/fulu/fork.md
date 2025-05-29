@@ -40,7 +40,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     Return the fork version at the given ``epoch``.
     """
     if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
+        return get_bpo_fork_version(epoch)
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:

@@ -133,6 +133,15 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
     return sorted(custody_groups)
 ```
 
+### `get_bpo_fork_version`
+```python
+def get_bpo_fork_version(epoch: Epoch) -> uint64:
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True )
+        if epoch >= entry["EPOCH"]
+            return entry["FORK_VERSION"]
+    return FORK_VERSION_FULU
+```
+
 ### `get_max_blobs_per_block`
 
 ```python
