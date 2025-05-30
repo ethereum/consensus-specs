@@ -88,7 +88,7 @@ predicate epoch_trans_p(var BSt: b, var opt SML: sml, var BSt: r) =
        (r.cje = b.e /\ sml.source = b.cje /\ sml.target = b.e)
        \/ (r.cje = b.e - 1 /\ sml.source = b.pje /\ sml.target = b.e-1)
      else
-       r.cje = b.cje       
+       r.cje = b.cje
      endif;
 
 function var bool: etclo(array[0..maxE] of var BSt: sts, int: sz) =

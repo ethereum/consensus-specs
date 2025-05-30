@@ -50,7 +50,7 @@ class PlainFCTestCase(TestCase):
         self.test_dna = test_dna
         self.bls_active = bls_active
         self.debug = debug
-    
+
     def mutation_case_fn(self):
         spec = spec_targets[self.preset_name][self.fork_name]
 
@@ -68,7 +68,7 @@ class PlainFCTestCase(TestCase):
             test_vector = events_to_test_vector(events)
             mops = MutationOps(start_time, seconds_per_slot)
             mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
-            
+
             test_data.meta['mut_seed'] = mut_seed
             test_data.meta['mutations'] = mutations
 
@@ -78,10 +78,10 @@ class PlainFCTestCase(TestCase):
             #     spec, store, test_data, mutated_events, self.debug, generator_mode=True, bls_active=self.bls_active)
             return (spec_test(yield_test_parts))(
                 spec, store, test_data, mutated_events, generator_mode=True, bls_active=self.bls_active)
-    
+
     def plain_case_fn(self) -> Iterable[TestCasePart]:
         yield from self.call_instantiator(test_data_only=False)
-    
+
     def call_instantiator(self, test_data_only) -> Iterable[TestCasePart]:
         phase, preset = self.fork_name, self.preset_name
         bls_active, debug = self.bls_active, self.debug
@@ -144,22 +144,22 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
 
         for k,v in test_data.meta.items():
             yield k, 'meta', v
-        
+
         yield 'anchor_state', test_data.anchor_state
         yield 'anchor_block', test_data.anchor_block
 
         for message in test_data.blocks:
             block = message.payload
             yield get_block_file_name(block), block
-        
+
         for message in test_data.atts:
             attestation = message.payload
             yield get_attestation_file_name(attestation), attestation
-        
+
         for message in test_data.slashings:
             attester_slashing = message.payload
             yield get_attester_slashing_file_name(attester_slashing), attester_slashing
-        
+
         test_steps = []
         scheduler = MessageScheduler(spec, store)
 
@@ -269,7 +269,7 @@ def create_providers(test_name: str, /,
         rnd = random.Random(initial_seed)
         seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
         seeds[0] = initial_seed
-    
+
     for fork_name in forks:
         for preset_name in presets:
             for i, solution in enumerate(solutions):

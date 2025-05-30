@@ -252,13 +252,13 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
 
     def slot_to_time(slot):
         return slot * spec.config.SECONDS_PER_SLOT + genesis_time
-    
+
     def add_tick_step(time):
         test_events.append(('tick', time, None))
-    
+
     def add_message_step(kind, message):
         test_events.append((kind, message.payload, message.valid))
-    
+
     add_tick_step(slot_to_time(test_data.anchor_state.slot))
     slot = test_data.anchor_state.slot
 
@@ -287,7 +287,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
 
     if slot is None or slot_to_time(slot) < test_data.store_final_time:
         add_tick_step(test_data.store_final_time)
-    
+
     return test_events
 
 
@@ -319,9 +319,9 @@ def _add_block(spec, store, signed_block, test_steps):
         valid = True
     except AssertionError:
         valid = False
-    
+
     test_steps.append({'block': get_block_file_name(signed_block), 'valid': valid})
-    
+
     if valid:
         # An on_block step implies receiving block's attestations
         for attestation in signed_block.message.body.attestations:
@@ -353,15 +353,15 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
     for message in test_data.blocks:
         block = message.payload
         yield get_block_file_name(block), block.encode_bytes()
-    
+
     for message in test_data.atts:
         attestation = message.payload
         yield get_attestation_file_name(attestation), attestation.encode_bytes()
-    
+
     for message in test_data.slashings:
         attester_slashing = message.payload
         yield get_attester_slashing_file_name(attester_slashing), attester_slashing.encode_bytes()
-    
+
     test_steps = []
 
     def try_add_mesage(runner, message):

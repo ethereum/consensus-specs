@@ -143,7 +143,7 @@ def runt_tests_parallel(tests_dir, num_proc=settings.NUM_PROCESS):
             run_test(test_info)
         except Exception as e:
             raise e
-    
+
     tests = list(gather_tests(tests_dir))
     with Pool(processes=num_proc) as pool:
         for _ in tqdm(pool.imap(runner, tests), total=len(tests)):
