@@ -1,7 +1,6 @@
 from eth2spec.test.helpers.constants import ALTAIR, DENEB, ELECTRA
 from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from eth2spec.gen_helpers.gen_base import gen_runner
-from eth2spec.gen_helpers.gen_base import settings
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from ruamel.yaml import YAML
 from typing import Iterable

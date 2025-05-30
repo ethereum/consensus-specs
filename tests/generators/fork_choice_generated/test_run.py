@@ -1,6 +1,7 @@
 import argparse
 from collections import namedtuple
 from glob import glob
+import os
 from pathlib import Path
 from pathos.multiprocessing import ProcessingPool as Pool
 from ruamel.yaml import YAML
@@ -9,7 +10,6 @@ from tqdm import tqdm
 from typing import Iterable
 
 
-from eth2spec.gen_helpers.gen_base import settings
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.utils import bls
 
@@ -137,7 +137,7 @@ def gather_tests(tests_dir) -> Iterable[TestInfo]:
                 yield TestInfo(preset, fork, test_dir)
 
 
-def runt_tests_parallel(tests_dir, num_proc=settings.NUM_PROCESS):
+def runt_tests_parallel(tests_dir, num_proc=os.cpu_count()):
     def runner(test_info: TestInfo):
         try:
             run_test(test_info)
