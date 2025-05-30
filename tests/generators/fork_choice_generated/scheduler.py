@@ -33,15 +33,15 @@ class MessageScheduler:
     def is_early_message(self, item: QueueItem) -> bool:
         current_slot = self.spec.get_current_slot(self.store)
         return item.effective_slot < current_slot or any(root not in self.store.blocks for root in item.dependencies)
-    
+
     def enque_message(self, item: QueueItem):
         self.message_queue.append(item)
-    
+
     def drain_queue(self, ) -> list[QueueItem]:
         messages = self.message_queue[:]
         self.message_queue.clear()
         return messages
-    
+
     def process_queue(self) -> tuple[bool, list]:
         applied_events = []
         updated = False
@@ -69,7 +69,7 @@ class MessageScheduler:
                 continue
             else:
                 return applied_events
-    
+
     def process_tick(self, time) -> list:
         applied_events = []
         SECONDS_PER_SLOT = self.spec.config.SECONDS_PER_SLOT
@@ -98,7 +98,7 @@ class MessageScheduler:
             return True
         except AssertionError:
             return False
-    
+
     def process_block_messages(self, signed_block):
         block = signed_block.message
         for attestation in block.body.attestations:

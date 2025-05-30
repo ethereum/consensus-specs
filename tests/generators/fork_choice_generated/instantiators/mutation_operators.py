@@ -80,16 +80,16 @@ class MutationOps:
         self.start_time = int(start_time)
         self.seconds_per_slot = int(seconds_per_slot)
         self.shift_bounds = shift_bounds
-    
+
     def apply_shift(self, tv, idx, delta):
         return mut_shift_(tv, idx, delta)
-    
+
     def apply_drop(self, tv, idx):
         return mut_drop_(tv, idx)
-    
+
     def apply_dup_shift(self, tv, idx, delta):
         return mut_dup_(tv, idx, delta)
-    
+
     def apply_mutation(self, tv, op_kind, *params):
         if op_kind == 'shift':
             return self.apply_shift(tv, *params)
@@ -99,7 +99,7 @@ class MutationOps:
             return self.apply_drop(tv, *params)
         else:
             assert False
-    
+
     def rand_shift(self, time: int, rnd: random.Random) -> int:
         assert time >= self.start_time
         neg_shift, pos_shift = self.shift_bounds
@@ -109,7 +109,7 @@ class MutationOps:
             return rnd.randint(min_shift, 0)
         else:
             return rnd.randint(1, max_shift)
-    
+
     def rand_mutation(self, tv, rnd: random.Random):
         idx = rnd.choice(range(len(tv)))
         op_kind = rnd.choice(['shift', 'drop', 'dup_shift'])
@@ -119,7 +119,7 @@ class MutationOps:
         else:
             params = idx,
         return op_kind, *params
-    
+
     def rand_mutations(self, tv, num, rnd: random.Random):
         mutations = []
         for _ in range(num):

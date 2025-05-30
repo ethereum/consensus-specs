@@ -43,7 +43,7 @@ def solve_block_tree(number_of_blocks: int,
         solutions = instance.solve(all_solutions=True)
     else:
         solutions = instance.solve(nr_solutions=number_of_solutions)
-    
+
     return [{'block_parents': s.parent} for s in solutions]
 
 
