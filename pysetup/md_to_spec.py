@@ -119,7 +119,7 @@ class MarkdownToSpec:
         source = _get_source_from_code_block(code_block)
         module = ast.parse(source)
 
-        # AST element for each top level defintion of the module
+        # AST element for each top level definition of the module
         for element in module.body:
             element_source = ast.unparse(element)
             clean_source = "\n".join(line.rstrip() for line in element_source.splitlines())
