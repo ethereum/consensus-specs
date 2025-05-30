@@ -1,5 +1,5 @@
-from .base import BaseSpecBuilder
 from ..constants import PHASE0
+from .base import BaseSpecBuilder
 
 
 class Phase0SpecBuilder(BaseSpecBuilder):
@@ -7,7 +7,7 @@ class Phase0SpecBuilder(BaseSpecBuilder):
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
-        return '''from lru import LRU
+        return """from lru import LRU
 from dataclasses import (
     dataclass,
     field,
@@ -23,13 +23,13 @@ from eth2spec.utils.ssz.ssz_typing import (
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
-'''
+"""
 
     @classmethod
     def preparations(cls) -> str:
-        return  '''
+        return """
 SSZObject = TypeVar('SSZObject', bound=View)
-'''
+"""
 
     @classmethod
     def sundry_functions(cls) -> str:

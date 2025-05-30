@@ -91,7 +91,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 #### New `validate_inclusion_lists`
 
 ```python
-def validate_inclusion_lists(store: Store,
+def validate_inclusion_lists(_store: Store,
                              inclusion_list_transactions: Sequence[Transaction],
                              execution_payload: ExecutionPayload) -> None:
     """
@@ -99,8 +99,6 @@ def validate_inclusion_lists(store: Store,
     when all transactions are present in payload or when any missing transactions are found to be
     invalid when appended to the end of the payload unless the block is full.
     """
-    # pylint: disable=unused-argument
-
     # Verify inclusion list transactions are present in the execution payload
     contains_all_txs = all(tx in execution_payload.transactions for tx in inclusion_list_transactions)
     if contains_all_txs:

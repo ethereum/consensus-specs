@@ -73,9 +73,10 @@ def execute_test(test_case: TestCase, dumper: Dumper):
         dumper.dump_meta(test_case, meta)
 
 
-def run_generator(input_test_cases: Iterable[TestCase]):
+def run_generator(input_test_cases: Iterable[TestCase], args=None):
     start_time = time.time()
-    args = parse_arguments()
+    if args is None:
+        args = parse_arguments()
 
     # Bail here if we are checking modules.
     if args.modcheck:

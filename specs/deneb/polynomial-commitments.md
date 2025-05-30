@@ -158,9 +158,8 @@ This function performs a multi-scalar multiplication between `points` and
 `integers`. `points` can either be in G1 or G2.
 
 ```python
-def multi_exp(points: Sequence[TPoint],
-              integers: Sequence[uint64]) -> Sequence[TPoint]:
-    # pylint: disable=unused-argument
+def multi_exp(_points: Sequence[TPoint],
+              _integers: Sequence[uint64]) -> Sequence[TPoint]:
     ...
 ```
 

@@ -176,32 +176,28 @@ class LightClientStore(object):
 ### `finalized_root_gindex_at_slot`
 
 ```python
-def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def finalized_root_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return FINALIZED_ROOT_GINDEX
 ```
 
 ### `current_sync_committee_gindex_at_slot`
 
 ```python
-def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def current_sync_committee_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return CURRENT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### `next_sync_committee_gindex_at_slot`
 
 ```python
-def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def next_sync_committee_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return NEXT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### `is_valid_light_client_header`
 
 ```python
-def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    # pylint: disable=unused-argument
+def is_valid_light_client_header(_header: LightClientHeader) -> bool:
     return True
 ```
 

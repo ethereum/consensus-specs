@@ -2,7 +2,7 @@ name: Nightly mainnet tests
 
 defaults:
   run:
-    shell: zsh {0}
+    shell: zsh -e {0}
 
 on:
   workflow_dispatch:
