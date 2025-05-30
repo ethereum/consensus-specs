@@ -1396,7 +1396,7 @@ def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence
 ```python
 def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
-    output = set()  # type: Set[ValidatorIndex]
+    output: Set[ValidatorIndex] = set()
     for a in attestations:
         output = output.union(get_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))
