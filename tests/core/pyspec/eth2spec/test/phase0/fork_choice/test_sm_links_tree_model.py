@@ -1,23 +1,12 @@
 import random
-from pathlib import Path
-from minizinc import (
-    Instance,
-    Model,
-    Solver,
-)
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
-    with_presets,
 )
 from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.attestations import (
-    next_epoch_with_attestations,
-    next_slots_with_attestations,
-    state_transition_with_full_block,
-    get_valid_attestation_at_slot,
     get_valid_attestation,
 )
 from eth2spec.test.helpers.attester_slashings import (
@@ -33,13 +22,10 @@ from eth2spec.test.helpers.fork_choice import (
     output_store_checks,
 )
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
     transition_to,
     next_slot,
-    next_epoch,
 )
 from eth2spec.test.helpers.block import (
-    build_empty_block_for_next_slot,
     build_empty_block,
     sign_block,
 )
