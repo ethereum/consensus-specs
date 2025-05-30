@@ -38,14 +38,14 @@ def run_test_group(test_name, test_type, instances_path,
         test_kind = 'block_cover_test'
     else:
         raise ValueError(f'Unsupported test type: {test_type}')
-    
+
     providers = create_providers(test_name, forks, presets, debug, initial_seed,
                                     solutions, nr_variations, nr_mutations, test_kind)
     def test_cases_fn():
         for p in providers:
             p.prepare()
             yield from p.make_cases()
-    
+
     gen_runner.run_generator(test_cases_fn(), args)
 
 
@@ -102,7 +102,7 @@ def main():
     with open(args.fc_gen_config, 'r') as f:
         yaml = YAML(typ='safe')
         test_gen_config = yaml.load(f)
-    
+
     if args.fc_gen_multi_processing or args.threads != 0:
         if args.threads == 0:
             args.threads = default_threads
@@ -110,7 +110,7 @@ def main():
     else:
         args.threads = 1
         print('generating tests in single process mode')
-    
+
     run_test_config(test_gen_config, debug = args.fc_gen_debug, args=args)
 
 if __name__ == "__main__":

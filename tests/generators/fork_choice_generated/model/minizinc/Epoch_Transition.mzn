@@ -24,7 +24,7 @@ predicate trans(0..maxE: from, 0..maxE: to) =
     var EPOCH: e = epochs[from]; var EPOCH: cje = cjes[from]; var EPOCH: pje = pjes[from];
     var EPOCH: ne = epochs[to]; var EPOCH: ncje = cjes[to]; var EPOCH: npje = pjes[to];
     var bool: curr_link = ex_link(cje, e); var bool: prev_link = (e > 0) -> ex_link(pje, e-1);
-  } in 
+  } in
     ((curr_link /\ ncje == e)
       \/ (prev_link /\ ncje == e-1)
       \/ (ncje == cje))
