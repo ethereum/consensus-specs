@@ -227,6 +227,11 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
     epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
-    last_epoch_proposers = compute_proposer_indices(state, epoch, get_seed(state, epoch, DOMAIN_BEACON_PROPOSER), get_active_validator_indices(state, epoch))
+    last_epoch_proposers = compute_proposer_indices(
+        state,
+        epoch,
+        get_seed(state, epoch, DOMAIN_BEACON_PROPOSER),
+        get_active_validator_indices(state, epoch),
+    )
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```
