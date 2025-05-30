@@ -163,7 +163,7 @@ class BeaconState(Container):
 ```python
 def compute_proposer_indices(state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
-    Return the proposer indices for the given `epoch`.
+    Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
     seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]

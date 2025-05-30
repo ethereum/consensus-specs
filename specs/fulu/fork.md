@@ -63,7 +63,7 @@ def initialize_proposer_lookahead(
 ) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the full available lookahead starting from current epoch.
-    Used to initialize the `proposer_lookahead` field in the beacon state at genesis and after forks.
+    Used to initialize the ``proposer_lookahead`` field in the beacon state at genesis and after forks.
     """
     current_epoch = get_current_epoch(state)
     lookahead = []
