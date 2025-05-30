@@ -1,9 +1,8 @@
 from eth2spec.test.context import (
-    with_phases,
     spec_test,
+    with_phases,
     with_state,
 )
-from eth2spec.test.utils import with_meta_tags
 from eth2spec.test.helpers.constants import (
     ELECTRA,
     FULU,
@@ -13,7 +12,7 @@ from eth2spec.test.helpers.fulu.fork import (
     run_fork_test,
 )
 from eth2spec.test.helpers.state import next_slot
-
+from eth2spec.test.utils import with_meta_tags
 from tests.core.pyspec.eth2spec.test.helpers.state import simulate_lookahead
 
 

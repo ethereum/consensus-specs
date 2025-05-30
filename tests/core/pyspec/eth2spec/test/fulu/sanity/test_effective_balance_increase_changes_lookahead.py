@@ -2,18 +2,17 @@ from eth2spec.test.context import (
     spec_state_test,
     with_phases,
 )
+from eth2spec.test.helpers.attestations import (
+    state_transition_with_full_block,
+)
+from eth2spec.test.helpers.constants import ELECTRA, FULU
 from eth2spec.test.helpers.state import (
     next_epoch,
+    simulate_lookahead,
 )
 from eth2spec.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
 )
-from eth2spec.test.helpers.attestations import (
-    state_transition_with_full_block,
-)
-
-from eth2spec.test.helpers.constants import ELECTRA, FULU
-from eth2spec.test.helpers.state import simulate_lookahead
 
 
 def run_test_effective_balance_increase_changes_lookahead(spec, state, expect_lookahead_changed):

@@ -19,10 +19,9 @@ from eth2spec.test.helpers.forks import (
     is_post_eip7441,
     is_post_eip7732,
     is_post_electra,
+    is_post_fulu,
 )
 from eth2spec.test.helpers.keys import pubkeys
-
-from eth2spec.test.helpers.forks import is_post_fulu
 
 
 def build_mock_validator(spec, i: int, balance: int):

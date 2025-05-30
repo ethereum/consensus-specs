@@ -89,7 +89,15 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
 
 #### `BeaconState`
 
-*Note*: The `BeaconState` container is extended with the `proposer_lookahead` field, which is a list of validator indices covering the full lookahead period, starting from the beginning of the current epoch. For example, `proposer_lookahead[0]` is the validator index for the first proposer in the current epoch, `proposer_lookahead[1]` is the validator index for the next proposer in the current epoch, and so forth. The length of the `proposer_lookahead` list is `(MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH`, reflecting how far ahead proposer indices are computed based on the `MIN_SEED_LOOKAHEAD` parameter.
+*Note*: The `BeaconState` container is extended with the `proposer_lookahead`
+field, which is a list of validator indices covering the full lookahead period,
+starting from the beginning of the current epoch. For example,
+`proposer_lookahead[0]` is the validator index for the first proposer in the
+current epoch, `proposer_lookahead[1]` is the validator index for the next
+proposer in the current epoch, and so forth. The length of the
+`proposer_lookahead` list is `(MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH`,
+reflecting how far ahead proposer indices are computed based on the
+`MIN_SEED_LOOKAHEAD` parameter.
 
 ```python
 class BeaconState(Container):
@@ -166,7 +174,8 @@ def compute_proposer_indices(state: BeaconState, epoch: Epoch, seed: Bytes32, in
 
 #### Modified `get_beacon_proposer_index`
 
-*Note*: The function `get_beacon_proposer_index` is modified to use the pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
+*Note*: The function `get_beacon_proposer_index` is modified to use the
+pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
@@ -180,7 +189,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 
 #### Modified `process_epoch`
 
-*Note*: The function `process_epoch` is modified in Fulu to call `process_proposer_lookahead` to update the `proposer_lookahead` in the beacon state.
+*Note*: The function `process_epoch` is modified in Fulu to call
+`process_proposer_lookahead` to update the `proposer_lookahead` in the beacon
+state.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -203,7 +214,11 @@ def process_epoch(state: BeaconState) -> None:
 
 #### New `process_proposer_lookahead`
 
-*Note*: This function updates the `proposer_lookahead` field in the beacon state by shifting out proposer indices from the earliest epoch and appending new proposer indices for the latest epoch. With `MIN_SEED_LOOKAHEAD` set to `1`, this means that at the start of epoch `N`, the proposer lookahead for epoch `N+1` will be computed and included in the beacon state's lookahead.
+*Note*: This function updates the `proposer_lookahead` field in the beacon state
+by shifting out proposer indices from the earliest epoch and appending new
+proposer indices for the latest epoch. With `MIN_SEED_LOOKAHEAD` set to `1`,
+this means that at the start of epoch `N`, the proposer lookahead for epoch
+`N+1` will be computed and included in the beacon state's lookahead.
 
 ```python
 def process_proposer_lookahead(state: BeaconState) -> None:
