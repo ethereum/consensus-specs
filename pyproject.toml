@@ -12,7 +12,7 @@ dynamic = ["version"]
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
   "curdleproofs==0.1.2",
   "eth-typing==5.2.1",
