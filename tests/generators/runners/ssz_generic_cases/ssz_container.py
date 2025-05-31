@@ -1,5 +1,5 @@
+from collections.abc import Callable, Sequence
 from random import Random
-from typing import Callable, Dict, Sequence, Tuple, Type
 
 from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
 from eth2spec.utils.ssz.ssz_impl import serialize
@@ -60,13 +60,13 @@ class BitsStruct(Container):
     E: Bitvector[8]
 
 
-def container_case_fn(rng: Random, mode: RandomizationMode, typ: Type[View], chaos: bool = False):
+def container_case_fn(rng: Random, mode: RandomizationMode, typ: type[View], chaos: bool = False):
     return get_random_ssz_object(
         rng, typ, max_bytes_length=2000, max_list_length=2000, mode=mode, chaos=chaos
     )
 
 
-PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
+PRESET_CONTAINERS: dict[str, tuple[type[View], Sequence[int]]] = {
     "SingleFieldTestStruct": (SingleFieldTestStruct, []),
     "SmallTestStruct": (SmallTestStruct, []),
     "FixedTestStruct": (FixedTestStruct, []),

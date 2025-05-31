@@ -1,6 +1,5 @@
 from enum import Enum
 from random import Random
-from typing import Type
 
 from eth2spec.utils.ssz.ssz_typing import (
     BasicView,
@@ -46,7 +45,7 @@ class RandomizationMode(Enum):
 
 def get_random_ssz_object(
     rng: Random,
-    typ: Type[View],
+    typ: type[View],
     max_bytes_length: int,
     max_list_length: int,
     mode: RandomizationMode,

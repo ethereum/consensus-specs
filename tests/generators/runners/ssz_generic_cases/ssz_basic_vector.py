@@ -1,5 +1,4 @@
 from random import Random
-from typing import Dict, Type
 
 from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
 from eth2spec.utils.ssz.ssz_impl import serialize
@@ -19,7 +18,7 @@ from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def basic_vector_case_fn(
-    rng: Random, mode: RandomizationMode, elem_type: Type[BasicView], length: int
+    rng: Random, mode: RandomizationMode, elem_type: type[BasicView], length: int
 ):
     return get_random_ssz_object(
         rng,
@@ -31,7 +30,7 @@ def basic_vector_case_fn(
     )
 
 
-BASIC_TYPES: Dict[str, Type[BasicView]] = {
+BASIC_TYPES: dict[str, type[BasicView]] = {
     "bool": boolean,
     "uint8": uint8,
     "uint16": uint16,

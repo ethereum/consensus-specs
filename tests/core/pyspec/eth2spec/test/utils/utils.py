@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import View
@@ -77,7 +77,7 @@ def vector_test(description: str = None):
     return runner
 
 
-def with_meta_tags(tags: Dict[str, Any]):
+def with_meta_tags(tags: dict[str, Any]):
     """
     Decorator factory, yields meta tags (key, value) pairs to the output of the function.
     Useful to build test-vector annotations with.

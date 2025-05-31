@@ -1,4 +1,3 @@
-from typing import Dict
 
 from ..constants import ALTAIR, OPTIMIZED_BLS_AGGREGATE_PUBKEYS
 from .base import BaseSpecBuilder
@@ -39,7 +38,7 @@ def compute_merkle_proof(object: SSZObject,
     return build_proof(object.get_backing(), index)"""
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         return {
             "FINALIZED_ROOT_GINDEX": "GeneralizedIndex(105)",
             "CURRENT_SYNC_COMMITTEE_GINDEX": "GeneralizedIndex(54)",
@@ -47,7 +46,7 @@ def compute_merkle_proof(object: SSZObject,
         }
 
     @classmethod
-    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+    def implement_optimizations(cls, functions: dict[str, str]) -> dict[str, str]:
         if "eth_aggregate_pubkeys" in functions:
             functions["eth_aggregate_pubkeys"] = OPTIMIZED_BLS_AGGREGATE_PUBKEYS.strip()
         return functions

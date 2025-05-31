@@ -1,4 +1,3 @@
-from typing import Optional
 
 from eth2spec.test.context import (
     spec_configured_state_test,
@@ -30,7 +29,7 @@ def run_validate_merge_block(spec, pow_chain, beacon_block, valid=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    def get_pow_block(hash: spec.Bytes32) -> Optional[spec.PowBlock]:
+    def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock | None:
         for block in pow_chain:
             if block.block_hash == hash:
                 return block

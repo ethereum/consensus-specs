@@ -1,7 +1,7 @@
 import re
 import textwrap
 from functools import reduce
-from typing import Dict, List, TypeVar, Union
+from typing import TypeVar
 
 from .constants import CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
 from .md_doc_paths import PREVIOUS_FORK_OF
@@ -23,8 +23,8 @@ def collect_prev_forks(fork: str) -> list[str]:
 
 
 def requires_mypy_type_ignore(value: str) -> bool:
-    return value.startswith(("ByteVector")) or (
-        value.startswith(("Vector")) and any(k in value for k in ["ceillog2", "floorlog2"])
+    return value.startswith("ByteVector") or (
+        value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"])
     )
 
 
@@ -34,13 +34,13 @@ def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
 
 
 def objects_to_spec(
-    preset_name: str, spec_object: SpecObject, fork: str, ordered_class_objects: Dict[str, str]
+    preset_name: str, spec_object: SpecObject, fork: str, ordered_class_objects: dict[str, str]
 ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
 
-    def gen_new_type_definitions(custom_types: Dict[str, str]) -> str:
+    def gen_new_type_definitions(custom_types: dict[str, str]) -> str:
         return "\n\n".join(
             [
                 (
@@ -247,8 +247,8 @@ def objects_to_spec(
 
 
 def combine_protocols(
-    old_protocols: Dict[str, ProtocolDefinition], new_protocols: Dict[str, ProtocolDefinition]
-) -> Dict[str, ProtocolDefinition]:
+    old_protocols: dict[str, ProtocolDefinition], new_protocols: dict[str, ProtocolDefinition]
+) -> dict[str, ProtocolDefinition]:
     for key, value in new_protocols.items():
         if key not in old_protocols:
             old_protocols[key] = value
@@ -261,7 +261,7 @@ def combine_protocols(
 T = TypeVar("T")
 
 
-def combine_dicts(old_dict: Dict[str, T], new_dict: Dict[str, T]) -> Dict[str, T]:
+def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T]:
     return {**old_dict, **new_dict}
 
 
@@ -305,7 +305,7 @@ ignored_dependencies = [
 ]
 
 
-def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
+def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[str, str]) -> None:
     """
     Determines which SSZ Object is dependent on which other and orders them appropriately
     """
@@ -332,7 +332,7 @@ def dependency_order_class_objects(objects: Dict[str, str], custom_types: Dict[s
                 objects[item] = objects.pop(item)
 
 
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: dict[str, str], new_objects: dict[str, str]) -> dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -378,11 +378,11 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     )
 
 
-def parse_config_vars(conf: Dict[str, str]) -> Dict[str, Union[str, List[Dict[str, str]]]]:
+def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, str]]]:
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: Dict[str, Union[str, List[Dict[str, str]]]] = dict()
+    out: dict[str, str | list[dict[str, str]]] = dict()
     for k, v in conf.items():
         if isinstance(v, list):
             # A special case for list of records

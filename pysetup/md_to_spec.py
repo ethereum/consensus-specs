@@ -2,9 +2,10 @@ import ast
 import json
 import re
 import string
-from functools import lru_cache
+from collections.abc import Iterator, Mapping
+from functools import cache
 from pathlib import Path
-from typing import cast, Dict, Iterator, Mapping, Optional, Tuple
+from typing import cast
 
 from marko.block import BlankLine, Document, FencedCode, Heading, HTMLBlock
 from marko.element import Element
@@ -31,7 +32,7 @@ class MarkdownToSpec:
         self.preset_name = preset_name
 
         self.document_iterator: Iterator[Element] = self._parse_document(file_name)
-        self.all_custom_types: Dict[str, str] = {}
+        self.all_custom_types: dict[str, str] = {}
         self.current_heading_name: str | None = None
 
         # Use a single dict to hold all SpecObject fields
@@ -59,7 +60,7 @@ class MarkdownToSpec:
         self._finalize_types()
         return self._build_spec_object()
 
-    def _get_next_element(self) -> Optional[Element]:
+    def _get_next_element(self) -> Element | None:
         """
         Returns the next non-blank element in the document.
         """
@@ -240,7 +241,7 @@ class MarkdownToSpec:
                     self.spec["constant_vars"][name] = value_def
 
     @staticmethod
-    def _get_table_row_fields(row: TableRow) -> tuple[str, str, Optional[str]]:
+    def _get_table_row_fields(row: TableRow) -> tuple[str, str, str | None]:
         """
         Extracts the name, value, and description fields from a table row element.
         """
@@ -435,21 +436,21 @@ class MarkdownToSpec:
         )
 
 
-@lru_cache(maxsize=None)
-def _get_name_from_heading(heading: Heading) -> Optional[str]:
+@cache
+def _get_name_from_heading(heading: Heading) -> str | None:
     last_child = heading.children[-1]
     if isinstance(last_child, CodeSpan):
         return last_child.children
     return None
 
 
-@lru_cache(maxsize=None)
+@cache
 def _get_source_from_code_block(block: FencedCode) -> str:
     return block.children[0].children.strip()
 
 
-@lru_cache(maxsize=None)
-def _get_self_type_from_source(fn: ast.FunctionDef) -> Optional[str]:
+@cache
+def _get_self_type_from_source(fn: ast.FunctionDef) -> str | None:
     args = fn.args.args
     if len(args) == 0:
         return None
@@ -460,8 +461,8 @@ def _get_self_type_from_source(fn: ast.FunctionDef) -> Optional[str]:
     return args[0].annotation.id
 
 
-@lru_cache(maxsize=None)
-def _get_class_info_from_ast(cls: ast.ClassDef) -> Tuple[str, Optional[str]]:
+@cache
+def _get_class_info_from_ast(cls: ast.ClassDef) -> tuple[str, str | None]:
     base = cls.bases[0]
     if isinstance(base, ast.Name):
         parent_class = base.id
@@ -475,7 +476,7 @@ def _get_class_info_from_ast(cls: ast.ClassDef) -> Tuple[str, Optional[str]]:
     return cls.name, parent_class
 
 
-@lru_cache(maxsize=None)
+@cache
 def _is_constant_id(name: str) -> bool:
     """
     Checks if the given name follows the convention for constant identifiers.
@@ -485,8 +486,8 @@ def _is_constant_id(name: str) -> bool:
     return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
 
 
-@lru_cache(maxsize=None)
-def _load_kzg_trusted_setups(preset_name: str) -> Tuple[list[str], list[str], list[str]]:
+@cache
+def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], list[str]]:
     trusted_setups_file_path = (
         str(Path(__file__).parent.parent)
         + "/presets/"
@@ -494,7 +495,7 @@ def _load_kzg_trusted_setups(preset_name: str) -> Tuple[list[str], list[str], li
         + "/trusted_setups/trusted_setup_4096.json"
     )
 
-    with open(trusted_setups_file_path, "r") as f:
+    with open(trusted_setups_file_path) as f:
         json_data = json.load(f)
         trusted_setup_G1_monomial = json_data["g1_monomial"]
         trusted_setup_G1_lagrange = json_data["g1_lagrange"]
@@ -503,8 +504,8 @@ def _load_kzg_trusted_setups(preset_name: str) -> Tuple[list[str], list[str], li
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
 
-@lru_cache(maxsize=None)
-def _load_curdleproofs_crs(preset_name: str) -> Dict[str, list[str]]:
+@cache
+def _load_curdleproofs_crs(preset_name: str) -> dict[str, list[str]]:
     """
     NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
     """
@@ -515,7 +516,7 @@ def _load_curdleproofs_crs(preset_name: str) -> Dict[str, list[str]]:
         + "/trusted_setups/curdleproofs_crs.json"
     )
 
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         json_data = json.load(f)
 
     return json_data
@@ -532,9 +533,9 @@ ALL_CURDLEPROOFS_CRS = {
 }
 
 
-@lru_cache(maxsize=None)
+@cache
 def _parse_value(
-    name: str, typed_value: str, type_hint: Optional[str] = None
+    name: str, typed_value: str, type_hint: str | None = None
 ) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -585,7 +586,7 @@ def _update_constant_vars_with_curdleproofs_crs(
     )
 
 
-@lru_cache(maxsize=None)
+@cache
 def parse_markdown(content: str) -> Document:
     return gfm.parse(content)
 

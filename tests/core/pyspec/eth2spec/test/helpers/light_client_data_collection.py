@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set
+from typing import Any
 
 from eth_utils import encode_hex
 
@@ -32,7 +32,7 @@ def _next_epoch_boundary_slot(spec, slot):
 
 
 @dataclass(frozen=True)
-class BlockID(object):
+class BlockID:
     slot: Any
     root: Any
 
@@ -65,49 +65,49 @@ def get_lc_update_attested_block_id(update):
 
 
 @dataclass
-class ForkedBeaconState(object):
+class ForkedBeaconState:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedSignedBeaconBlock(object):
+class ForkedSignedBeaconBlock:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedLightClientHeader(object):
+class ForkedLightClientHeader:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedLightClientBootstrap(object):
+class ForkedLightClientBootstrap:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedLightClientUpdate(object):
+class ForkedLightClientUpdate:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedLightClientFinalityUpdate(object):
+class ForkedLightClientFinalityUpdate:
     spec: Any
     data: Any
 
 
 @dataclass
-class ForkedLightClientOptimisticUpdate(object):
+class ForkedLightClientOptimisticUpdate:
     spec: Any
     data: Any
 
 
 @dataclass
-class CachedLightClientData(object):
+class CachedLightClientData:
     # Sync committee branches at block's post-state
     current_sync_committee_branch: Any  # CurrentSyncCommitteeBranch
     next_sync_committee_branch: Any  # NextSyncCommitteeBranch
@@ -122,11 +122,11 @@ class CachedLightClientData(object):
 
 
 @dataclass
-class LightClientDataCache(object):
+class LightClientDataCache:
     # Cached data for creating future `LightClientUpdate` instances.
     # Key is the block ID of which the post state was used to get the data.
     # Data stored for the finalized head block and all non-finalized blocks.
-    data: Dict[BlockID, CachedLightClientData]
+    data: dict[BlockID, CachedLightClientData]
 
     # Light client data for the latest slot that was signed by at least
     # `MIN_SYNC_COMMITTEE_PARTICIPANTS`. May be older than head
@@ -137,17 +137,17 @@ class LightClientDataCache(object):
 
 
 @dataclass
-class LightClientDataDB(object):
-    headers: Dict[Any, ForkedLightClientHeader]  # Root -> ForkedLightClientHeader
-    current_branches: Dict[Any, Any]  # Slot -> CurrentSyncCommitteeBranch
-    sync_committees: Dict[Any, Any]  # SyncCommitteePeriod -> SyncCommittee
-    best_updates: Dict[
+class LightClientDataDB:
+    headers: dict[Any, ForkedLightClientHeader]  # Root -> ForkedLightClientHeader
+    current_branches: dict[Any, Any]  # Slot -> CurrentSyncCommitteeBranch
+    sync_committees: dict[Any, Any]  # SyncCommitteePeriod -> SyncCommittee
+    best_updates: dict[
         Any, ForkedLightClientUpdate
     ]  # SyncCommitteePeriod -> ForkedLightClientUpdate
 
 
 @dataclass
-class LightClientDataStore(object):
+class LightClientDataStore:
     spec: Any
 
     # Cached data to accelerate creating light client data
@@ -158,18 +158,18 @@ class LightClientDataStore(object):
 
 
 @dataclass
-class LightClientDataCollectionTest(object):
-    steps: List[Dict[str, Any]]
-    files: Set[str]
+class LightClientDataCollectionTest:
+    steps: list[dict[str, Any]]
+    files: set[str]
 
     # Fork schedule
     phases: Any
 
     # History access
-    blocks: Dict[Any, ForkedSignedBeaconBlock]  # Block root -> ForkedSignedBeaconBlock
-    finalized_block_roots: Dict[Any, Any]  # Slot -> Root
-    states: Dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
-    finalized_checkpoint_states: Dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
+    blocks: dict[Any, ForkedSignedBeaconBlock]  # Block root -> ForkedSignedBeaconBlock
+    finalized_block_roots: dict[Any, Any]  # Slot -> Root
+    states: dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
+    finalized_checkpoint_states: dict[Any, ForkedBeaconState]  # State root -> ForkedBeaconState
     latest_finalized_epoch: Any  # Epoch
     latest_finalized_bid: BlockID
     historical_tail_slot: Any  # Slot

@@ -1,5 +1,5 @@
 import random
-from typing import Iterable
+from collections.abc import Iterable
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal

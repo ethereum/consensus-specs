@@ -1,6 +1,3 @@
-from typing import (
-    Dict,
-)
 
 from .constants import (
     ALL_PHASES,
@@ -24,7 +21,7 @@ for fork in ALL_EXECUTABLE_SPEC_NAMES:
     )
 
 # this is the only output of this file
-spec_targets: Dict[PresetBaseName, Dict[SpecForkName, Spec]] = {
+spec_targets: dict[PresetBaseName, dict[SpecForkName, Spec]] = {
     MINIMAL: {fork: eval(f"spec_{fork}_minimal") for fork in ALL_EXECUTABLE_SPEC_NAMES},
     MAINNET: {fork: eval(f"spec_{fork}_mainnet") for fork in ALL_EXECUTABLE_SPEC_NAMES},
 }

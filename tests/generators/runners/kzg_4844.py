@@ -2,8 +2,8 @@
 KZG test vectors generator for EIP-4844
 """
 
-from functools import lru_cache
-from typing import Iterable
+from collections.abc import Iterable
+from functools import cache
 
 from eth_utils import encode_hex
 
@@ -29,12 +29,12 @@ from eth2spec.test.utils.kzg_tests import (
 ###############################################################################
 
 
-@lru_cache(maxsize=None)
+@cache
 def cached_blob_to_kzg_commitment(blob):
     return spec.blob_to_kzg_commitment(blob)
 
 
-@lru_cache(maxsize=None)
+@cache
 def cached_compute_blob_kzg_proof(blob, commitment):
     return spec.compute_blob_kzg_proof(blob, commitment)
 

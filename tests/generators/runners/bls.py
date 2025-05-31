@@ -2,7 +2,7 @@
 BLS test vectors generator
 """
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import milagro_bls_binding as milagro_bls
 from eth_utils import encode_hex

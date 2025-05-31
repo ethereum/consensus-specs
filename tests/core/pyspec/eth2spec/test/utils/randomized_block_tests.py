@@ -4,8 +4,8 @@ Utility code to generate randomized block tests
 
 import sys
 import warnings
+from collections.abc import Callable
 from random import Random
-from typing import Callable
 
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,

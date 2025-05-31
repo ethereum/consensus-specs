@@ -1,4 +1,3 @@
-from typing import List
 
 from lru import LRU
 
@@ -131,7 +130,7 @@ def get_valid_attestation(
     return attestation
 
 
-def sign_aggregate_attestation(spec, state, attestation_data, participants: List[int]):
+def sign_aggregate_attestation(spec, state, attestation_data, participants: list[int]):
     signatures = []
     for validator_index in participants:
         privkey = privkeys[validator_index]

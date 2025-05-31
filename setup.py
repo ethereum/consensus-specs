@@ -4,11 +4,12 @@ import os
 import string
 import warnings
 from collections import OrderedDict
+from collections.abc import Sequence
 from distutils import dir_util
 from distutils.util import convert_path
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
-from typing import cast, Dict, List, Sequence
+from typing import cast
 
 from ruamel.yaml import YAML
 from setuptools import Command, find_packages, setup
@@ -46,15 +47,15 @@ logging.getLogger().addFilter(PyspecFilter())
 
 def get_spec(
     file_name: Path,
-    preset: Dict[str, str],
-    config: Dict[str, str | list[dict[str, str]]],
+    preset: dict[str, str],
+    config: dict[str, str | list[dict[str, str]]],
     preset_name: str,
 ) -> SpecObject:
     return MarkdownToSpec(file_name, preset, config, preset_name).run()
 
 
-@lru_cache(maxsize=None)
-def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
+@cache
+def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
     """
     Loads a directory of preset files, merges the result into one preset.
     """
@@ -69,11 +70,11 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return cast(Dict[str, str], parse_config_vars(preset))
+    return cast(dict[str, str], parse_config_vars(preset))
 
 
-@lru_cache(maxsize=None)
-def load_config(config_path: Path) -> Dict[str, str | List[Dict[str, str]]]:
+@cache
+def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
     """
     Loads the given configuration file.
     """
@@ -118,9 +119,9 @@ class PySpecCommand(Command):
 
     spec_fork: str
     md_doc_paths: str
-    parsed_md_doc_paths: List[str]
+    parsed_md_doc_paths: list[str]
     build_targets: str
-    parsed_build_targets: List[BuildTarget]
+    parsed_build_targets: list[BuildTarget]
     out_dir: str
 
     # The format is (long option, short option, description).
@@ -264,7 +265,7 @@ commands = {
     "pyspecdev": PyspecDevCommand,
 }
 
-with open("README.md", "rt", encoding="utf8") as f:
+with open("README.md", encoding="utf8") as f:
     readme = f.read()
 
 # How to use "VERSION.txt" file:

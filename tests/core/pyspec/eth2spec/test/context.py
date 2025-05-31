@@ -1,8 +1,9 @@
 import importlib
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
-from typing import Any, Callable, Dict, Sequence
+from typing import Any
 
 import pytest
 from lru import LRU
@@ -643,7 +644,7 @@ class quoted_str(str):
     pass
 
 
-def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Get dict of basic types from a dict of SSZ objects.
     """

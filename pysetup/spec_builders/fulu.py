@@ -1,4 +1,3 @@
-from typing import Dict
 
 from ..constants import FULU
 from .base import BaseSpecBuilder
@@ -51,7 +50,7 @@ def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSide
 """
 
     @classmethod
-    def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
+    def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:
         return {
             "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH": spec_object.preset_vars[
                 "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH"
