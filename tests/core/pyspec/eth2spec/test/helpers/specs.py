@@ -1,4 +1,3 @@
-
 from .constants import (
     ALL_PHASES,
     EIP7441,

@@ -1,4 +1,3 @@
-
 from ..constants import CAPELLA
 from .base import BaseSpecBuilder
 

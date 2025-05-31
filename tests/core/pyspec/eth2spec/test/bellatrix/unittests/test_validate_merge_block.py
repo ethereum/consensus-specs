@@ -1,4 +1,3 @@
-
 from eth2spec.test.context import (
     spec_configured_state_test,
     spec_state_test,

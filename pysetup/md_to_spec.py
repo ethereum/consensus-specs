@@ -534,9 +534,7 @@ ALL_CURDLEPROOFS_CRS = {
 
 
 @cache
-def _parse_value(
-    name: str, typed_value: str, type_hint: str | None = None
-) -> VariableDefinition:
+def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
         comment = "noqa: E501"

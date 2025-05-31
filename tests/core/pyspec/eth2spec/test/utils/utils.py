@@ -44,7 +44,7 @@ def vector_test(description: str = None):
                     elif isinstance(value, bytes):
                         yield key, "ssz", value
                     elif isinstance(value, list) and all(
-                        [isinstance(el, (View, bytes)) for el in value]
+                        [isinstance(el, View | bytes) for el in value]
                     ):
                         for i, el in enumerate(value):
                             if isinstance(el, View):

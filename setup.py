@@ -153,14 +153,14 @@ class PySpecCommand(Command):
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
             if len(self.md_doc_paths) == 0:
                 raise Exception(
-                    'no markdown files specified, and spec fork "%s" is unknown', self.spec_fork
+                    f"No markdown files specified, and spec fork {self.spec_fork!r} is unknown"
                 )
 
         self.parsed_md_doc_paths = self.md_doc_paths.split()
 
         for filename in self.parsed_md_doc_paths:
             if not os.path.exists(filename):
-                raise Exception('Pyspec markdown input file "%s" does not exist.' % filename)
+                raise Exception(f"Pyspec markdown input file {filename!r} does not exist")
 
         self.parsed_build_targets = []
         for target in self.build_targets.split():
@@ -168,19 +168,18 @@ class PySpecCommand(Command):
             data = target.split(":")
             if len(data) != 3:
                 raise Exception(
-                    'invalid target, expected "name:preset_dir:config_file" format, but got: %s'
-                    % target
+                    f"invalid target, expected 'name:preset_dir:config_file' format, but got: {target}"
                 )
             name, preset_dir_path, config_path = data
             if any((c not in string.digits + string.ascii_letters) for c in name):
-                raise Exception('invalid target name: "%s"' % name)
+                raise Exception(f"invalid target name: {name!r}")
             if not os.path.exists(preset_dir_path):
-                raise Exception('Preset dir "%s" does not exist' % preset_dir_path)
+                raise Exception(f"Preset dir {preset_dir_path!r} does not exist")
             _, _, preset_file_names = next(os.walk(preset_dir_path))
             preset_paths = [(Path(preset_dir_path) / name) for name in preset_file_names]
 
             if not os.path.exists(config_path):
-                raise Exception('Config file "%s" does not exist' % config_path)
+                raise Exception(f"Config file {config_path!r} does not exist")
             self.parsed_build_targets.append(BuildTarget(name, preset_paths, Path(config_path)))
 
     def run(self):
@@ -216,7 +215,7 @@ class BuildPyCommand(build_py):
     """Customize the build command to run the spec-builder on setup.py build"""
 
     def initialize_options(self):
-        super(BuildPyCommand, self).initialize_options()
+        super().initialize_options()
 
     def run_pyspec_cmd(self, spec_fork: str, **opts):
         cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
@@ -230,7 +229,7 @@ class BuildPyCommand(build_py):
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
-        super(BuildPyCommand, self).run()
+        super().run()
 
 
 class PyspecDevCommand(Command):

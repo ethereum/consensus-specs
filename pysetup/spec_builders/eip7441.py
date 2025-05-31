@@ -1,4 +1,3 @@
-
 from ..constants import EIP7441
 from .base import BaseSpecBuilder
 

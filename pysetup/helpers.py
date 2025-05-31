@@ -89,11 +89,9 @@ def objects_to_spec(
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
     for name in spec_object.config_vars.keys():
-        functions_spec = re.sub(
-            r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, functions_spec
-        )
+        functions_spec = re.sub(rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, functions_spec)
         ordered_class_objects_spec = re.sub(
-            r"(?<!['\"])\b%s\b(?!['\"])" % name, "config." + name, ordered_class_objects_spec
+            rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, ordered_class_objects_spec
         )
 
     def format_config_var(name: str, vardef) -> str:
@@ -202,17 +200,17 @@ def objects_to_spec(
         format_constant(k, v) for k, v in spec_object.preset_vars.items()
     )
     ssz_dep_constants = "\n".join(
-        map(lambda x: "%s = %s" % (x, hardcoded_ssz_dep_constants[x]), hardcoded_ssz_dep_constants)
+        map(lambda x: f"{x} = {hardcoded_ssz_dep_constants[x]}", hardcoded_ssz_dep_constants)
     )
     ssz_dep_constants_verification = "\n".join(
         map(
-            lambda x: "assert %s == %s" % (x, spec_object.ssz_dep_constants[x]),
+            lambda x: f"assert {x} == {spec_object.ssz_dep_constants[x]}",
             filtered_ssz_dep_constants,
         )
     )
     func_dep_presets_verification = "\n".join(
         map(
-            lambda x: "assert %s == %s  # noqa: E501" % (x, spec_object.func_dep_presets[x]),
+            lambda x: f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501",
             filtered_hardcoded_func_dep_presets,
         )
     )

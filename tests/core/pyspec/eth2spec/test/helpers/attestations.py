@@ -1,4 +1,3 @@
-
 from lru import LRU
 
 from eth2spec.test.context import expect_assertion_error

@@ -1,4 +1,3 @@
-
 from ..constants import ELECTRA
 from .base import BaseSpecBuilder
 

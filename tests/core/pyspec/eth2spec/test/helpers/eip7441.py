@@ -1,4 +1,3 @@
-
 from curdleproofs import GenerateWhiskTrackerProof, WhiskTracker
 from eth_typing import BLSPubkey
 from py_arkworks_bls12381 import G1Point, Scalar

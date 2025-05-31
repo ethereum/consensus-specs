@@ -123,7 +123,7 @@ def deltas_name_to_flag_index(spec, deltas_name):
         return spec.TIMELY_HEAD_FLAG_INDEX
     elif "target" in deltas_name:
         return spec.TIMELY_TARGET_FLAG_INDEX
-    raise ValueError("Wrong deltas_name %s" % deltas_name)
+    raise ValueError(f"Wrong deltas_name {deltas_name}")
 
 
 def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn, deltas_name):

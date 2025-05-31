@@ -428,8 +428,7 @@ def _iter_temporal(spec, description):
     numeric = _resolve_ref(description)
     if isinstance(numeric, Callable):
         numeric = numeric(spec)
-    for i in range(numeric):
-        yield i
+    yield from range(numeric)
 
 
 def _compute_statistics(scenario):

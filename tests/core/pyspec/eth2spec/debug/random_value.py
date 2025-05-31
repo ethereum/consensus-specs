@@ -88,7 +88,7 @@ def get_random_ssz_object(
             return typ(b"\xff" * typ.type_byte_length())
         else:
             return typ(get_random_bytes_list(rng, typ.type_byte_length()))
-    elif issubclass(typ, (boolean, uint)):
+    elif issubclass(typ, boolean | uint):
         # Basic types
         if mode == RandomizationMode.mode_zero:
             return get_min_basic_value(typ)
@@ -96,7 +96,7 @@ def get_random_ssz_object(
             return get_max_basic_value(typ)
         else:
             return get_random_basic_value(rng, typ)
-    elif issubclass(typ, (Vector, Bitvector)):
+    elif issubclass(typ, Vector | Bitvector):
         elem_type = typ.element_cls() if issubclass(typ, Vector) else boolean
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
