@@ -222,8 +222,9 @@ def case_eth_fast_aggregate_verify():
         def get_inputs():
             return [], MESSAGES[-1], G2_POINT_AT_INFINITY
 
-        yield "eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature", get_test_runner(
-            get_inputs
+        yield (
+            "eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature",
+            get_test_runner(get_inputs),
         )
 
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...

@@ -184,8 +184,9 @@ def case_verify_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
-        yield f"verify_kzg_proof_case_incorrect_proof_point_at_infinity_{index}", get_test_runner(
-            get_inputs
+        yield (
+            f"verify_kzg_proof_case_incorrect_proof_point_at_infinity_{index}",
+            get_test_runner(get_inputs),
         )
 
     # Correct `G1_POINT_AT_INFINITY` proof for zero poly
@@ -198,8 +199,9 @@ def case_verify_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
-        yield f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly_{index}", get_test_runner(
-            get_inputs
+        yield (
+            f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly_{index}",
+            get_test_runner(get_inputs),
         )
 
     # Correct `G1_POINT_AT_INFINITY` proof for poly of all twos
@@ -212,8 +214,9 @@ def case_verify_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return commitment, z, y, proof
 
-        yield f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly_{index}", get_test_runner(
-            get_inputs
+        yield (
+            f"verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly_{index}",
+            get_test_runner(get_inputs),
         )
 
     # Edge case: Invalid commitment
@@ -378,8 +381,9 @@ def case_verify_blob_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
-        yield "verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity",
+            get_test_runner(get_inputs),
         )
 
     # Correct `G1_POINT_AT_INFINITY` proof and commitment for zero poly
@@ -391,8 +395,9 @@ def case_verify_blob_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
-        yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly",
+            get_test_runner(get_inputs),
         )
 
     # Correct `G1_POINT_AT_INFINITY` proof for all twos poly
@@ -404,8 +409,9 @@ def case_verify_blob_kzg_proof():
             proof = spec.G1_POINT_AT_INFINITY
             return blob, commitment, proof
 
-        yield "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly",
+            get_test_runner(get_inputs),
         )
 
     # Edge case: Invalid blob
@@ -496,8 +502,9 @@ def case_verify_blob_kzg_proof_batch():
             proofs = [bls_add_one(proofs[0])] + proofs[1:]
             return blobs, commitments, proofs
 
-        yield "verify_blob_kzg_proof_batch_case_incorrect_proof_add_one", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_batch_case_incorrect_proof_add_one",
+            get_test_runner(get_inputs),
         )
 
     # Incorrect `G1_POINT_AT_INFINITY` proof
@@ -510,8 +517,9 @@ def case_verify_blob_kzg_proof_batch():
             proofs = [spec.G1_POINT_AT_INFINITY]
             return blobs, commitments, proofs
 
-        yield "verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity",
+            get_test_runner(get_inputs),
         )
 
     # Edge case: Invalid blobs
@@ -542,8 +550,9 @@ def case_verify_blob_kzg_proof_batch():
             commitments = [commitment] + commitments[1:]
             return blobs, commitments, proofs
 
-        yield f"verify_blob_kzg_proof_batch_case_invalid_commitment_{index}", get_test_runner(
-            get_inputs
+        yield (
+            f"verify_blob_kzg_proof_batch_case_invalid_commitment_{index}",
+            get_test_runner(get_inputs),
         )
 
     # Edge case: Invalid proof
@@ -589,8 +598,9 @@ def case_verify_blob_kzg_proof_batch():
             commitments = commitments[:-1]
             return blobs, commitments, proofs
 
-        yield "verify_blob_kzg_proof_batch_case_commitment_length_different", get_test_runner(
-            get_inputs
+        yield (
+            "verify_blob_kzg_proof_batch_case_commitment_length_different",
+            get_test_runner(get_inputs),
         )
 
     # Edge case: Proof length different

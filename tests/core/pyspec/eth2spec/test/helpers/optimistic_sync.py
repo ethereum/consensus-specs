@@ -132,9 +132,9 @@ def add_optimistic_block(
         while el_block_hash != payload_status.latest_valid_hash and el_block_hash != spec.Bytes32():
             current_block_root = current_block.hash_tree_root()
             assert current_block_root in mega_store.block_payload_statuses
-            mega_store.block_payload_statuses[current_block_root].status = (
-                PayloadStatusV1Status.INVALID
-            )
+            mega_store.block_payload_statuses[
+                current_block_root
+            ].status = PayloadStatusV1Status.INVALID
             # Get parent
             current_block = mega_store.fc_store.blocks[current_block.parent_root]
             el_block_hash = current_block.body.execution_payload.block_hash

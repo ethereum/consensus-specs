@@ -294,9 +294,9 @@ class MarkdownToSpec:
         # For mainnet, check that the spec config & file config are the same
         # For minimal, we expect this to be different; just use the file config
         if self.preset_name == "mainnet":
-            assert (
-                list_of_records_spec == list_of_records_config_file
-            ), f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
+            assert list_of_records_spec == list_of_records_config_file, (
+                f"list of records mismatch: {list_of_records_spec} vs {list_of_records_config_file}"
+            )
 
         # Set the config variable
         self.spec["config_vars"][list_of_records_name] = list_of_records_config_file
@@ -613,9 +613,9 @@ def check_yaml_matches_spec(
             else:
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
     try:
-        assert yaml[var_name] == repr(
-            eval(updated_value)
-        ), f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
+        assert yaml[var_name] == repr(eval(updated_value)), (
+            f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
+        )
     except NameError:
         # Okay it's probably something more serious, let's ignore
         pass

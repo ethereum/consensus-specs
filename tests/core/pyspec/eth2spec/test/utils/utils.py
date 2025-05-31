@@ -23,7 +23,6 @@ def vector_test(description: str = None):
         #   - "ssz": raw SSZ bytes
         #   - "data": a python structure to be encoded by the user.
         def entry(*args, **kw):
-
             def generator_mode():
                 if description is not None:
                     # description can be explicit

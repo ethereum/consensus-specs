@@ -182,8 +182,9 @@ def run_get_inclusion_delay_deltas(spec, state):
     """
     if is_post_altair(spec):
         # No inclusion_delay_deltas
-        yield "inclusion_delay_deltas", Deltas(
-            rewards=[0] * len(state.validators), penalties=[0] * len(state.validators)
+        yield (
+            "inclusion_delay_deltas",
+            Deltas(rewards=[0] * len(state.validators), penalties=[0] * len(state.validators)),
         )
         return
 
