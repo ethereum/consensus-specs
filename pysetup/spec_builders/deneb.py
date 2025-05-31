@@ -15,7 +15,7 @@ from eth2spec.capella import {preset_name} as capella
 
     @classmethod
     def classes(cls):
-        return f"""
+        return """
 class BLSFieldElement(bls.Scalar):
     pass
 

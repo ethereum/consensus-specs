@@ -1,4 +1,4 @@
-from typing import Dict, Set
+from typing import Set
 
 from ..constants import EIP7732
 from .base import BaseSpecBuilder

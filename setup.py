@@ -2,7 +2,6 @@ import copy
 import logging
 import os
 import string
-import sys
 import warnings
 from collections import OrderedDict
 from distutils import dir_util
@@ -15,8 +14,6 @@ from ruamel.yaml import YAML
 from setuptools import Command, find_packages, setup
 from setuptools.command.build_py import build_py
 
-from pysetup.md_to_spec import MarkdownToSpec
-
 from pysetup.constants import (
     PHASE0,
 )
@@ -27,6 +24,7 @@ from pysetup.helpers import (
     parse_config_vars,
 )
 from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.md_to_spec import MarkdownToSpec
 from pysetup.spec_builders import spec_builders
 from pysetup.typing import (
     BuildTarget,

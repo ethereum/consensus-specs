@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Dict, Sequence, Set
+from typing import Dict, Set
 
 
 class BaseSpecBuilder(ABC):

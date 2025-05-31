@@ -419,7 +419,7 @@ def case_recover_cells_and_kzg_proofs():
             cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
             return cell_indices, cells
 
-        yield f"recover_cells_and_kzg_proofs_case_valid_no_missing", get_test_runner(get_inputs)
+        yield "recover_cells_and_kzg_proofs_case_valid_no_missing", get_test_runner(get_inputs)
 
     # Valid: Half missing cells (every other cell)
     if True:
@@ -431,7 +431,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell",
+            "recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell",
             get_test_runner(get_inputs),
         )
 
@@ -445,7 +445,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_valid_half_missing_first_half",
+            "recover_cells_and_kzg_proofs_case_valid_half_missing_first_half",
             get_test_runner(get_inputs),
         )
 
@@ -459,7 +459,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_valid_half_missing_second_half",
+            "recover_cells_and_kzg_proofs_case_valid_half_missing_second_half",
             get_test_runner(get_inputs),
         )
 
@@ -470,7 +470,7 @@ def case_recover_cells_and_kzg_proofs():
             return [], []
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_all_cells_are_missing",
+            "recover_cells_and_kzg_proofs_case_invalid_all_cells_are_missing",
             get_test_runner(get_inputs),
         )
 
@@ -484,7 +484,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_more_than_half_missing",
+            "recover_cells_and_kzg_proofs_case_invalid_more_than_half_missing",
             get_test_runner(get_inputs),
         )
 
@@ -498,7 +498,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext_blob",
+            "recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext_blob",
             get_test_runner(get_inputs),
         )
 
@@ -513,7 +513,7 @@ def case_recover_cells_and_kzg_proofs():
             cell_indices[0] = int(spec.CELLS_PER_EXT_BLOB)
             return cell_indices, partial_cells
 
-        yield f"recover_cells_and_kzg_proofs_case_invalid_cell_index", get_test_runner(get_inputs)
+        yield "recover_cells_and_kzg_proofs_case_invalid_cell_index", get_test_runner(get_inputs)
 
     # Edge case: Invalid cell
     for index, cell in enumerate(INVALID_INDIVIDUAL_CELL_BYTES):
@@ -540,7 +540,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells",
+            "recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells",
             get_test_runner(get_inputs),
         )
 
@@ -556,7 +556,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_indices",
+            "recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_indices",
             get_test_runner(get_inputs),
         )
 
@@ -577,7 +577,7 @@ def case_recover_cells_and_kzg_proofs():
             return cell_indices, partial_cells
 
         yield (
-            f"recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index",
+            "recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index",
             get_test_runner(get_inputs),
         )
 

@@ -16,7 +16,7 @@ from eth2spec.electra import {preset_name} as electra
 
     @classmethod
     def classes(cls):
-        return f"""
+        return """
 class PolynomialCoeff(list):
     def __init__(self, coeffs: Sequence[BLSFieldElement]):
         if len(coeffs) > FIELD_ELEMENTS_PER_EXT_BLOB:

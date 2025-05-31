@@ -18,7 +18,6 @@ from .helpers.constants import (
     CAPELLA,
     DENEB,
     EIP7441,
-    EIP7732,
     ELECTRA,
     FULU,
     LIGHT_CLIENT_TESTING_FORKS,
