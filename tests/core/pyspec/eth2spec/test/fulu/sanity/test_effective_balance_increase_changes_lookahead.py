@@ -67,7 +67,7 @@ def run_test_with_randao_setup_epochs(spec, state, randao_setup_epochs):
         # do not change the next epoch's lookahead
         expect_lookahead_changed = False
 
-    run_test_effective_balance_increase_changes_lookahead(
+    yield from run_test_effective_balance_increase_changes_lookahead(
         spec, state, randao_setup_epochs, expect_lookahead_changed=expect_lookahead_changed
     )
 
@@ -81,7 +81,7 @@ def test_effective_balance_increase_changes_lookahead(spec, state):
     for randao_setup_epochs in range(4, 20):
         try:
             state_copy = state.copy()
-            yield run_test_with_randao_setup_epochs(spec, state_copy, randao_setup_epochs)
+            yield from run_test_with_randao_setup_epochs(spec, state_copy, randao_setup_epochs)
             return
         except AssertionError:
             # If the randao_setup_epochs is not the right one to make the test pass,
