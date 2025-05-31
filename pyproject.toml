@@ -37,7 +37,6 @@ test = [
   "pytest==8.3.5",
 ]
 lint = [
-  "black==25.1.0",
   "codespell==2.4.1",
   "isort==6.0.1",
   "mdformat-gfm-alerts==1.0.2",
@@ -46,6 +45,7 @@ lint = [
   "mdformat==0.7.22",
   "mypy==1.15.0",
   "pylint==3.3.7",
+  "ruff==0.11.12",
 ]
 generator = [
   "filelock==3.18.0",
@@ -61,7 +61,7 @@ docs = [
   "mkdocs==1.6.1",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 100
 
 [tool.isort]
