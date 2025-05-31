@@ -1,7 +1,6 @@
 from random import Random
 
 from eth2spec.test.context import (
-    BELLATRIX,
     spec_state_test,
     with_all_phases_from_except,
     with_phases,

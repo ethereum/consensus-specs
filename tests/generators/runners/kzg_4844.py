@@ -50,7 +50,7 @@ def case_blob_to_kzg_commitment():
             try:
                 commitment = None
                 commitment = cached_blob_to_kzg_commitment(blob)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -85,7 +85,7 @@ def case_compute_kzg_proof():
             try:
                 proof, y = None, None
                 proof, y = spec.compute_kzg_proof(blob, z)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -131,7 +131,7 @@ def case_verify_kzg_proof():
             try:
                 ok = None
                 ok = spec.verify_kzg_proof(commitment, z, y, proof)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -275,7 +275,7 @@ def case_compute_blob_kzg_proof():
             try:
                 proof = None
                 proof = cached_compute_blob_kzg_proof(blob, commitment)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -333,7 +333,7 @@ def case_verify_blob_kzg_proof():
             try:
                 ok = None
                 ok = spec.verify_blob_kzg_proof(blob, commitment, proof)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -457,7 +457,7 @@ def case_verify_blob_kzg_proof_batch():
             try:
                 ok = None
                 ok = spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
-            except:
+            except Exception:
                 pass
             return [
                 (

@@ -78,7 +78,7 @@ def case_eth_aggregate_pubkeys():
             try:
                 aggregate_pubkey = None
                 aggregate_pubkey = spec.eth_aggregate_pubkeys(pubkeys)
-            except:
+            except Exception:
                 expect_exception(milagro_bls._AggregatePKs, pubkeys)
             if aggregate_pubkey is not None:
                 assert aggregate_pubkey == milagro_bls._AggregatePKs(pubkeys)
@@ -158,7 +158,7 @@ def case_eth_fast_aggregate_verify():
             try:
                 ok = None
                 ok = spec.eth_fast_aggregate_verify(pubkeys, message, aggregate_signature)
-            except:
+            except Exception:
                 pass
             return [
                 (

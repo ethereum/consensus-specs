@@ -47,7 +47,7 @@ def case_compute_cells():
             try:
                 cells = None
                 cells = spec.compute_cells(blob)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -82,7 +82,7 @@ def case_compute_cells_and_kzg_proofs():
             try:
                 cells, proofs = None, None
                 cells, proofs = cached_compute_cells_and_kzg_proofs(blob)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -122,7 +122,7 @@ def case_verify_cell_kzg_proof_batch():
             try:
                 ok = None
                 ok = spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -389,7 +389,7 @@ def case_recover_cells_and_kzg_proofs():
                 recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(
                     cell_indices, cells
                 )
-            except:
+            except Exception:
                 pass
             return [
                 (
