@@ -17,9 +17,6 @@ from setuptools.command.build_py import build_py
 
 from pysetup.md_to_spec import MarkdownToSpec
 
-pysetup_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, pysetup_path)
-
 from pysetup.constants import (
     PHASE0,
 )
