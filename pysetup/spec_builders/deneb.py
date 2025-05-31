@@ -1,5 +1,3 @@
-from typing import Dict
-
 from ..constants import DENEB
 from .base import BaseSpecBuilder
 
@@ -15,7 +13,7 @@ from eth2spec.capella import {preset_name} as capella
 
     @classmethod
     def classes(cls):
-        return f"""
+        return """
 class BLSFieldElement(bls.Scalar):
     pass
 
@@ -81,7 +79,7 @@ class NoopExecutionEngine(ExecutionEngine):
 EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
-    def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
+    def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:
         return {
             "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH": spec_object.preset_vars[
                 "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH"

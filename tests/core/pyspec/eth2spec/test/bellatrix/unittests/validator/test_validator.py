@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import Optional
 
 from eth2spec.test.context import (
     spec_state_test,
@@ -151,7 +150,7 @@ def test_prepare_execution_payload(spec, state):
         class TestEngine(spec.NoopExecutionEngine):
             def notify_forkchoice_updated(
                 self, head_block_hash, safe_block_hash, finalized_block_hash, payload_attributes
-            ) -> Optional[spec.PayloadId]:
+            ) -> spec.PayloadId | None:
                 return SAMPLE_PAYLOAD_ID
 
         payload_id = spec.prepare_execution_payload(

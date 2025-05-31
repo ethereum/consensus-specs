@@ -16,7 +16,6 @@ from eth2spec.utils.bls import BLS_MODULUS
 @spec_test
 @single_phase
 def test_fft(spec):
-
     # in this test we sample a random polynomial in coefficient form
     # then we apply an FFT to get evaluations over the roots of unity
     # we then apply an inverse FFT to the evaluations to get coefficients
@@ -53,7 +52,6 @@ def test_fft(spec):
 @spec_test
 @single_phase
 def test_coset_fft(spec):
-
     # in this test we sample a random polynomial in coefficient form
     # then we apply a Coset FFT to get evaluations over the coset of the roots of unity
     # we then apply an inverse Coset FFT to the evaluations to get coefficients
@@ -132,7 +130,6 @@ def test_verify_cell_kzg_proof_batch_zero_cells(spec):
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch(spec):
-
     # test with a single blob / commitment
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
@@ -184,7 +181,6 @@ def test_verify_cell_kzg_proof_batch(spec):
 @spec_test
 @single_phase
 def test_verify_cell_kzg_proof_batch_invalid(spec):
-
     # test with a single blob / commitment
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)

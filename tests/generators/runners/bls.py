@@ -2,7 +2,7 @@
 BLS test vectors generator
 """
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import milagro_bls_binding as milagro_bls
 from eth_utils import encode_hex
@@ -78,7 +78,7 @@ def case_eth_aggregate_pubkeys():
             try:
                 aggregate_pubkey = None
                 aggregate_pubkey = spec.eth_aggregate_pubkeys(pubkeys)
-            except:
+            except Exception:
                 expect_exception(milagro_bls._AggregatePKs, pubkeys)
             if aggregate_pubkey is not None:
                 assert aggregate_pubkey == milagro_bls._AggregatePKs(pubkeys)
@@ -158,7 +158,7 @@ def case_eth_fast_aggregate_verify():
             try:
                 ok = None
                 ok = spec.eth_fast_aggregate_verify(pubkeys, message, aggregate_signature)
-            except:
+            except Exception:
                 pass
             return [
                 (
@@ -222,8 +222,9 @@ def case_eth_fast_aggregate_verify():
         def get_inputs():
             return [], MESSAGES[-1], G2_POINT_AT_INFINITY
 
-        yield "eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature", get_test_runner(
-            get_inputs
+        yield (
+            "eth_fast_aggregate_verify_na_pubkeys_and_infinity_signature",
+            get_test_runner(get_inputs),
         )
 
     # Invalid pubkeys and signature -- len(pubkeys) == 0 and signature == 0x00...

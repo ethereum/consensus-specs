@@ -16,7 +16,7 @@ def install_sigint_handler(console: Console) -> None:
     signal.signal(signal.SIGINT, _handle_sigint)
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def format_seconds(seconds: int) -> str:
     """Convert seconds to a more readable time."""
     h, rem = divmod(seconds, 3600)

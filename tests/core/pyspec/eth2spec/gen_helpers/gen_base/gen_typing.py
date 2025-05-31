@@ -1,12 +1,9 @@
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Iterable,
     NewType,
-    Optional,
-    Tuple,
 )
 
 # Elements: name, out_kind, data
@@ -16,11 +13,11 @@ from typing import (
 #  - "cfg" for a spec config dictionary
 #  - "data" for generic
 #  - "ssz" for SSZ encoded bytes
-TestCasePart = NewType("TestCasePart", Tuple[str, str, Any])
+TestCasePart = NewType("TestCasePart", tuple[str, str, Any])
 
 
 @dataclass
-class TestCase(object):
+class TestCase:
     fork_name: str
     preset_name: str
     runner_name: str
@@ -28,7 +25,7 @@ class TestCase(object):
     suite_name: str
     case_name: str
     case_fn: Callable[[], Iterable[TestCasePart]]
-    dir: Optional[Path] = None
+    dir: Path | None = None
 
     def get_identifier(self):
         """Return the human readable identifier."""

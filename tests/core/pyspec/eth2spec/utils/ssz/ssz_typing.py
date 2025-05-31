@@ -1,3 +1,5 @@
+# ruff: noqa: F401
+
 from remerkleable.basic import (
     bit,
     boolean,

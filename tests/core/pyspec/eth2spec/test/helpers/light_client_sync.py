@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from eth_utils import encode_hex
 
@@ -28,8 +28,8 @@ from eth2spec.test.helpers.state import (
 )
 
 
-class LightClientSyncTest(object):
-    steps: List[Dict[str, Any]]
+class LightClientSyncTest:
+    steps: list[dict[str, Any]]
     genesis_validators_root: Any
     s_spec: Any
     store: Any

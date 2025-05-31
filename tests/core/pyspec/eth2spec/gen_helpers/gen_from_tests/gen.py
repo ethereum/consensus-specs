@@ -1,7 +1,8 @@
+from collections.abc import Iterable
 from importlib import import_module
 from inspect import getmembers, isfunction
 from pkgutil import walk_packages
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
@@ -21,7 +22,7 @@ def generate_from_tests(
     fork_name: SpecForkName,
     preset_name: PresetBaseName,
     bls_active: bool = True,
-    phase: Optional[str] = None,
+    phase: str | None = None,
 ) -> Iterable[TestCase]:
     """
     Generate a list of test cases by running tests from the given src in generator-mode.

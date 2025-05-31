@@ -50,7 +50,7 @@ def is_post_fork(a, b) -> bool:
     prev_fork = PREVIOUS_FORK_OF[a]
     if prev_fork == b:
         return True
-    elif prev_fork == None:
+    elif prev_fork is None:
         return False
     else:
         return is_post_fork(prev_fork, b)

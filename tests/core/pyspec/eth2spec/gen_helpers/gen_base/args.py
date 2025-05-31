@@ -6,7 +6,7 @@ import pathlib
 def create_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="generator",
-        description=f"Generate YAML test suite files.",
+        description="Generate YAML test suite files.",
     )
     parser.add_argument(
         "-o",

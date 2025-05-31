@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 from curdleproofs import GenerateWhiskTrackerProof, WhiskTracker
 from eth_typing import BLSPubkey
 from py_arkworks_bls12381 import G1Point, Scalar
@@ -37,7 +35,7 @@ def compute_whisk_initial_k_commitment_cached(i: int) -> BLSPubkey:
     return commitment
 
 
-def resolve_known_tracker(tracker: WhiskTracker) -> Optional[int]:
+def resolve_known_tracker(tracker: WhiskTracker) -> int | None:
     if tracker.k_r_G in whisk_initial_tracker_cache_by_k_r_G:
         return whisk_initial_tracker_cache_by_k_r_G[tracker.k_r_G]
     else:
@@ -58,7 +56,7 @@ def compute_whisk_tracker(k: int, r: int) -> WhiskTracker:
     return WhiskTracker(g1point_to_bytes(r_G), g1point_to_bytes(k_r_G))
 
 
-def compute_whisk_tracker_and_commitment(k: int, r: int) -> Tuple[WhiskTracker, BLSPubkey]:
+def compute_whisk_tracker_and_commitment(k: int, r: int) -> tuple[WhiskTracker, BLSPubkey]:
     k_G = G1 * Scalar(k)
     r_G = G1 * Scalar(r)
     k_r_G = r_G * Scalar(k)

@@ -1,9 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import (
-    Dict,
-    Optional,
-)
 
 from eth_utils import encode_hex
 
@@ -36,8 +32,8 @@ class PayloadStatusV1Status(Enum):
 @dataclass
 class PayloadStatusV1:
     status: PayloadStatusV1Status = PayloadStatusV1Status.VALID
-    latest_valid_hash: Optional[Bytes32] = None
-    validation_error: Optional[str] = None
+    latest_valid_hash: Bytes32 | None = None
+    validation_error: str | None = None
 
     @property
     def formatted_output(self):
@@ -52,11 +48,11 @@ class PayloadStatusV1:
         }
 
 
-class MegaStore(object):
+class MegaStore:
     spec = None
     fc_store = None
     opt_store = None
-    block_payload_statuses: Dict[Bytes32, PayloadStatusV1] = dict()
+    block_payload_statuses: dict[Bytes32, PayloadStatusV1] = dict()
 
     def __init__(self, spec, fc_store, opt_store):
         self.spec = spec
@@ -132,9 +128,9 @@ def add_optimistic_block(
         while el_block_hash != payload_status.latest_valid_hash and el_block_hash != spec.Bytes32():
             current_block_root = current_block.hash_tree_root()
             assert current_block_root in mega_store.block_payload_statuses
-            mega_store.block_payload_statuses[current_block_root].status = (
-                PayloadStatusV1Status.INVALID
-            )
+            mega_store.block_payload_statuses[
+                current_block_root
+            ].status = PayloadStatusV1Status.INVALID
             # Get parent
             current_block = mega_store.fc_store.blocks[current_block.parent_root]
             el_block_hash = current_block.body.execution_payload.block_hash

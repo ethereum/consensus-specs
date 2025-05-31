@@ -66,7 +66,11 @@ def test_genesis(spec, state):
     yield "steps", test_steps
 
     if is_post_altair(spec):
-        yield "description", "meta", f"Although it's not phase 0, we may use {spec.fork} spec to start testnets."
+        yield (
+            "description",
+            "meta",
+            f"Although it's not phase 0, we may use {spec.fork} spec to start testnets.",
+        )
 
 
 @with_altair_and_later

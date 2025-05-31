@@ -3,7 +3,8 @@ import shutil
 import threading
 import time
 import uuid
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box

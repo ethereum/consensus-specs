@@ -1,5 +1,3 @@
-from typing import Dict
-
 from ..constants import ELECTRA
 from .base import BaseSpecBuilder
 
@@ -15,7 +13,7 @@ from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 """
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         return {
             "FINALIZED_ROOT_GINDEX_ELECTRA": "GeneralizedIndex(169)",
             "CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA": "GeneralizedIndex(86)",

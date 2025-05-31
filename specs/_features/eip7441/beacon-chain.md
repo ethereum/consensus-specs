@@ -89,11 +89,11 @@ def bytes_to_bls_field(b: Bytes32) -> BLSFieldElement:
     return BLSFieldElement(field_element % BLS_MODULUS)
 ```
 
-| Name               | Value                                                                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `BLS_G1_GENERATOR` | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')  # noqa: E501` |
-| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513`                                                  |
-| `CURDLEPROOFS_CRS` | TBD                                                                                                                              |
+| Name               | Value                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `BLS_G1_GENERATOR` | `BLSG1Point('0x97f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb')` |
+| `BLS_MODULUS`      | `52435875175126190479447740508185965837690552500527637822603658699938581184513`                                    |
+| `CURDLEPROOFS_CRS` | TBD                                                                                                                |
 
 ### Curdleproofs and opening proofs
 

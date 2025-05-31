@@ -1,4 +1,5 @@
-from typing import Any, NamedTuple, Sequence
+from collections.abc import Sequence
+from typing import Any, NamedTuple
 
 from eth_utils import encode_hex
 

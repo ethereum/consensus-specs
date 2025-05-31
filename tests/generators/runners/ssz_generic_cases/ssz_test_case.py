@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 from eth2spec.debug.encode import encode
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize

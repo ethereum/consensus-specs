@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import View
@@ -23,7 +23,6 @@ def vector_test(description: str = None):
         #   - "ssz": raw SSZ bytes
         #   - "data": a python structure to be encoded by the user.
         def entry(*args, **kw):
-
             def generator_mode():
                 if description is not None:
                     # description can be explicit
@@ -45,7 +44,7 @@ def vector_test(description: str = None):
                     elif isinstance(value, bytes):
                         yield key, "ssz", value
                     elif isinstance(value, list) and all(
-                        [isinstance(el, (View, bytes)) for el in value]
+                        [isinstance(el, View | bytes) for el in value]
                     ):
                         for i, el in enumerate(value):
                             if isinstance(el, View):
@@ -78,7 +77,7 @@ def vector_test(description: str = None):
     return runner
 
 
-def with_meta_tags(tags: Dict[str, Any]):
+def with_meta_tags(tags: dict[str, Any]):
     """
     Decorator factory, yields meta tags (key, value) pairs to the output of the function.
     Useful to build test-vector annotations with.

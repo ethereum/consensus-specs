@@ -4,8 +4,8 @@ Utility code to generate randomized block tests
 
 import sys
 import warnings
+from collections.abc import Callable
 from random import Random
-from typing import Callable
 
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
@@ -428,8 +428,7 @@ def _iter_temporal(spec, description):
     numeric = _resolve_ref(description)
     if isinstance(numeric, Callable):
         numeric = numeric(spec)
-    for i in range(numeric):
-        yield i
+    yield from range(numeric)
 
 
 def _compute_statistics(scenario):
