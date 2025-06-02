@@ -136,13 +136,12 @@ A node SHOULD dynamically adjust its custody groups (without any input from the
 user) following any changes to the total effective balances of attached
 validators. If the node's custody requirements are increased, it SHOULD only
 advertise the updated `custody_group_count` after
-`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. The node MAY backfill
-custody groups as a result of this change. After
-`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to respond
-to any `DataColumnSidecar` request within the retention period. If the node's
-custody requirements are decreased, the node MAY update its
-`custody_group_count` to reflect this. However, it SHOULD NOT prune existing
-custody columns until after the usual period of
+`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. The node MAY backfill custody
+groups as a result of this change. After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+epochs, the node will be able to respond to any `DataColumnSidecar` request
+within the retention period. If the node's custody requirements are decreased,
+the node MAY update its `custody_group_count` to reflect this. However, it
+SHOULD NOT prune existing custody columns until after the usual period of
 `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs. Nodes SHOULD be able to
 appropriately handle multiple changes to custody requirements within the same
 retention period (e.g., an increase in one epoch and a decrease in the next
