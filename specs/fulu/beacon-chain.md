@@ -6,6 +6,10 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+  - [Blob schedule](#blob-schedule)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc)
+    - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -19,6 +23,35 @@
 and is under active development.
 
 ## Configuration
+
+### Blob schedule
+
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
+given epoch.
+
+*Note*: The blob schedule is to be determined.
+
+<!-- list-of-records:blob_schedule -->
+
+| Epoch | Max Blobs Per Block | Description |
+| ----- | ------------------- | ----------- |
+
+## Helper functions
+
+### Misc
+
+#### `get_max_blobs_per_block`
+
+```python
+def get_max_blobs_per_block(epoch: Epoch) -> uint64:
+    """
+    Return the maximum number of blobs that can be included in a block for a given epoch.
+    """
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["MAX_BLOBS_PER_BLOCK"]
+    return MAX_BLOBS_PER_BLOCK_ELECTRA
+```
 
 ## Beacon chain state transition function
 

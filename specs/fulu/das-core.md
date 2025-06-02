@@ -10,13 +10,11 @@
 - [Configuration](#configuration)
   - [Data size](#data-size)
   - [Custody setting](#custody-setting)
-  - [Blob schedule](#blob-schedule)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
   - [`get_custody_groups`](#get_custody_groups)
-  - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
@@ -70,18 +68,6 @@ specification.
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
-### Blob schedule
-
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
-given epoch.
-
-*Note*: The blob schedule is to be determined.
-
-<!-- list-of-records:blob_schedule -->
-
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
-
 ### Containers
 
 #### `DataColumnSidecar`
@@ -131,19 +117,6 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
 
     assert len(custody_groups) == len(set(custody_groups))
     return sorted(custody_groups)
-```
-
-### `get_max_blobs_per_block`
-
-```python
-def get_max_blobs_per_block(epoch: Epoch) -> uint64:
-    """
-    Return the maximum number of blobs that can be included in a block for a given epoch.
-    """
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return entry["MAX_BLOBS_PER_BLOCK"]
-    return MAX_BLOBS_PER_BLOCK_ELECTRA
 ```
 
 ### `compute_columns_for_custody_group`
