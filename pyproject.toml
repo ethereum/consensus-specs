@@ -64,9 +64,21 @@ line-length = 100
 
 [tool.ruff.lint]
 select = [
-  "F",  # pyflakes
-  "I",  # isort
-  "UP", # pyupgrade
+  "F",  # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "I",  # https://docs.astral.sh/ruff/rules/#isort-i
+  "PL", # https://docs.astral.sh/ruff/rules/#pylint-pl
+  "UP", # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+]
+ignore = [
+  "PLR0911", # https://docs.astral.sh/ruff/rules/too-many-return-statements/
+  "PLR0912", # https://docs.astral.sh/ruff/rules/too-many-branches/
+  "PLR0913", # https://docs.astral.sh/ruff/rules/too-many-arguments/
+  "PLR0915", # https://docs.astral.sh/ruff/rules/too-many-statements/
+  "PLR1714", # https://docs.astral.sh/ruff/rules/repeated-equality-comparison/
+  "PLR2004", # https://docs.astral.sh/ruff/rules/magic-value-comparison/
+  "PLW0128", # https://docs.astral.sh/ruff/rules/redeclared-assigned-name/
+  "PLW0603", # https://docs.astral.sh/ruff/rules/global-statement/
+  "PLW2901", # https://docs.astral.sh/ruff/rules/redefined-loop-name/
 ]
 
 [tool.ruff.lint.isort]

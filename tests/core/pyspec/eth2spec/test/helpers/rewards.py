@@ -158,11 +158,10 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                     assert rewards[index] > 0
                 else:
                     assert rewards[index] == 0
+            elif enough_for_reward:
+                assert rewards[index] > 0
             else:
-                if enough_for_reward:
-                    assert rewards[index] > 0
-                else:
-                    assert rewards[index] == 0
+                assert rewards[index] == 0
 
             assert penalties[index] == 0
         else:
@@ -275,29 +274,26 @@ def run_get_inactivity_penalty_deltas(spec, state):
                     assert penalties[index] == 0
                 else:
                     assert penalties[index] == base_penalty
+            elif is_post_altair(spec):
+                assert penalties[index] > 0
             else:
-                if is_post_altair(spec):
-                    assert penalties[index] > 0
-                else:
-                    assert penalties[index] > base_penalty
+                assert penalties[index] > base_penalty
+        elif not is_post_altair(spec):
+            assert penalties[index] == 0
+            continue
+        # post altair, this penalty is derived from the inactivity score
+        # regardless if the state is leaking or not...
+        elif index in matching_attesting_indices:
+            assert penalties[index] == 0
         else:
-            if not is_post_altair(spec):
-                assert penalties[index] == 0
-                continue
-            else:
-                # post altair, this penalty is derived from the inactivity score
-                # regardless if the state is leaking or not...
-                if index in matching_attesting_indices:
-                    assert penalties[index] == 0
-                else:
-                    # copied from spec:
-                    penalty_numerator = (
-                        state.validators[index].effective_balance * state.inactivity_scores[index]
-                    )
-                    penalty_denominator = (
-                        spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
-                    )
-                    assert penalties[index] == penalty_numerator // penalty_denominator
+            # copied from spec:
+            penalty_numerator = (
+                state.validators[index].effective_balance * state.inactivity_scores[index]
+            )
+            penalty_denominator = (
+                spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
+            )
+            assert penalties[index] == penalty_numerator // penalty_denominator
 
 
 def transition_state_to_leak(spec, state, epochs=None):

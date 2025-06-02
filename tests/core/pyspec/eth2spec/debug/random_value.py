@@ -111,10 +111,8 @@ def get_random_ssz_object(
         elif mode == RandomizationMode.mode_nil_count:
             length = 0
 
-        if (
-            typ.limit() < length
-        ):  # SSZ imposes a hard limit on lists, we can't put in more than that
-            length = typ.limit()
+        # SSZ imposes a hard limit on lists, we can't put in more than that
+        length = min(length, typ.limit())
 
         elem_type = typ.element_cls() if issubclass(typ, List) else boolean
         return typ(

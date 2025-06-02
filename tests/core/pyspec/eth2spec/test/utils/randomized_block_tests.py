@@ -219,10 +219,7 @@ def random_block(spec, state, signed_blocks, scenario_state):
             )
             _warn_if_empty_operations(block)
             return block
-    else:
-        raise AssertionError(
-            "could not find a block with an unslashed proposer, check ``state`` input"
-        )
+    raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
 
 SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
