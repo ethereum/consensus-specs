@@ -6,6 +6,12 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+  - [Blob schedule](#blob-schedule)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc)
+    - [New `BlobScheduleEntry`](#new-blobscheduleentry)
+    - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
+    - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -19,6 +25,87 @@
 and is under active development.
 
 ## Configuration
+
+### Blob schedule
+
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
+given epoch.
+
+*Note*: The blob schedule is to be determined.
+
+<!-- list-of-records:blob_schedule -->
+
+| Epoch | Max Blobs Per Block | Description |
+| ----- | ------------------- | ----------- |
+
+## Helper functions
+
+### Misc
+
+#### New `BlobScheduleEntry`
+
+```python
+@dataclass
+class BlobScheduleEntry(object):
+    epoch: Epoch
+    max_blobs_per_block: uint64
+```
+
+#### Modified `compute_fork_digest`
+
+*Note:* The `compute_fork_digest` helper is updated to account for
+Blob-Parameter-Only forks.
+
+```python
+def compute_fork_digest(
+  current_version: Version,
+  genesis_validators_root: Root,
+  current_epoch: Epoch,  # [New in Fulu:EIP7892]
+  blob_schedule: Sequence[BlobScheduleEntry]  # [New in Fulu:EIP7892]
+) -> ForkDigest:
+    """
+    Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``,
+    bitmasking blob parameters after ``ELECTRA_FORK_VERSION``.
+
+    This is a digest primarily used for domain separation on the p2p layer.
+    4-bytes suffices for practical separation of forks/chains.
+    """
+    base_digest = compute_fork_data_root(current_version, genesis_validators_root)[:4]
+
+    # Find the blob parameters applicable to this epoch
+    sorted_schedule = sorted(blob_schedule, key=lambda e: e.epoch, reverse=True)
+    blob_params = None
+    for entry in sorted_schedule:
+      if current_epoch >= entry.epoch:
+        blob_params = entry
+        break
+
+    # This check enables us to roll out the BPO mechanism without a concurrent parameter change
+    if blob_params is None:
+      return ForkDigest(base_digest)
+
+    # Safely bitmask blob parameters into the digest
+    assert 0 <= blob_params.max_blobs_per_block <= 0xFFFFFFFF
+    mask = blob_params.max_blobs_per_block.to_bytes(4, 'big')
+    masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
+    return ForkDigest(masked_digest)
+```
+
+#### New `get_max_blobs_per_block`
+
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
+given epoch.
+
+```python
+def get_max_blobs_per_block(epoch: Epoch) -> uint64:
+    """
+    Return the maximum number of blobs that can be included in a block for a given epoch.
+    """
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["MAX_BLOBS_PER_BLOCK"]
+    return MAX_BLOBS_PER_BLOCK_ELECTRA
+```
 
 ## Beacon chain state transition function
 

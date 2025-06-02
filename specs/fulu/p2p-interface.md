@@ -34,6 +34,7 @@
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody group count](#custody-group-count)
+      - [Next fork digest](#next-fork-digest)
 
 <!-- mdformat-toc end -->
 
@@ -492,3 +493,18 @@ column discovery.
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
 | `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+
+##### Next fork digest
+
+A new field is added to the ENR under the key `nfd`, short for _next fork
+digest_. This field communicates the digest of the next scheduled fork,
+regardless of whether it is a regular or a Blob-Parameters-Only fork.
+
+| Key   | Value                   |
+| :---- | :---------------------- |
+| `nfd` | SSZ Bytes4 `ForkDigest` |
+
+When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
+their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
+key, to form a more accurate view of the peer's intended next fork for the
+purposes of sustained peering.
