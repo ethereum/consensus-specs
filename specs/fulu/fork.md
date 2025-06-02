@@ -68,15 +68,7 @@ def initialize_proposer_lookahead(
     current_epoch = get_current_epoch(state)
     lookahead = []
     for i in range(MIN_SEED_LOOKAHEAD + 1):
-        epoch = Epoch(current_epoch + i)
-        lookahead.extend(
-            compute_proposer_indices(
-                state,
-                epoch,
-                get_seed(state, epoch, DOMAIN_BEACON_PROPOSER),
-                get_active_validator_indices(state, epoch),
-            )
-        )
+        lookahead.extend(compute_proposer_indices(state, Epoch(current_epoch + i)))
     return lookahead
 ```
 
