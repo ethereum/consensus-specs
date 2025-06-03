@@ -72,12 +72,14 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Deneb:EIP4844]*
 
+*Note*: `index` is the index of the blob in the block.
+
 ```python
 class BlobSidecar(Container):
-    index: BlobIndex  # Index of blob in block
+    index: BlobIndex
     blob: Blob
     kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
+    kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```

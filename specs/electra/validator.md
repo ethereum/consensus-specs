@@ -68,7 +68,8 @@ class GetPayloadResponse(object):
 ```python
 class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
-    aggregate: Attestation  # [Modified in Electra:EIP7549]
+    # [Modified in Electra:EIP7549]
+    aggregate: Attestation
     selection_proof: BLSSignature
 ```
 
@@ -76,7 +77,8 @@ class AggregateAndProof(Container):
 
 ```python
 class SignedAggregateAndProof(Container):
-    message: AggregateAndProof   # [Modified in Electra:EIP7549]
+    # [Modified in Electra:EIP7549]
+    message: AggregateAndProof
     signature: BLSSignature
 ```
 

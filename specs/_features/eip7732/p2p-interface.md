@@ -63,10 +63,10 @@ The `BlobSidecar` container is modified indirectly because the constant
 
 ```python
 class BlobSidecar(Container):
-    index: BlobIndex  # Index of blob in block
+    index: BlobIndex
     blob: Blob
     kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
+    kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
 ```

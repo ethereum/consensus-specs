@@ -366,7 +366,7 @@ spec.
 class Fork(Container):
     previous_version: Version
     current_version: Version
-    epoch: Epoch  # Epoch of latest fork
+    epoch: Epoch
 ```
 
 #### `ForkData`
@@ -390,14 +390,13 @@ class Checkpoint(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
-    effective_balance: Gwei  # Balance at stake
+    withdrawal_credentials: Bytes32
+    effective_balance: Gwei
     slashed: boolean
-    # Status epochs
-    activation_eligibility_epoch: Epoch  # When criteria for activation were met
+    activation_eligibility_epoch: Epoch
     activation_epoch: Epoch
     exit_epoch: Epoch
-    withdrawable_epoch: Epoch  # When validator can withdraw funds
+    withdrawable_epoch: Epoch
 ```
 
 #### `AttestationData`
@@ -406,9 +405,7 @@ class Validator(Container):
 class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
-    # LMD GHOST vote
     beacon_block_root: Root
-    # FFG vote
     source: Checkpoint
     target: Checkpoint
 ```
@@ -460,12 +457,14 @@ class DepositMessage(Container):
 
 #### `DepositData`
 
+*Note*: `signature` is over `DepositMessage`.
+
 ```python
 class DepositData(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature  # Signing over DepositMessage
+    signature: BLSSignature
 ```
 
 #### `BeaconBlockHeader`
@@ -516,9 +515,11 @@ class Attestation(Container):
 
 #### `Deposit`
 
+*Note*: `proof` is the Merkle path to the deposit root.
+
 ```python
 class Deposit(Container):
-    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]
     data: DepositData
 ```
 
@@ -526,7 +527,7 @@ class Deposit(Container):
 
 ```python
 class VoluntaryExit(Container):
-    epoch: Epoch  # Earliest epoch when voluntary exit can be processed
+    epoch: Epoch
     validator_index: ValidatorIndex
 ```
 
@@ -537,9 +538,8 @@ class VoluntaryExit(Container):
 ```python
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
+    eth1_data: Eth1Data
+    graffiti: Bytes32
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
@@ -564,33 +564,25 @@ class BeaconBlock(Container):
 
 ```python
 class BeaconState(Container):
-    # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
-    # History
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Attestations
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
-    previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
 ```
