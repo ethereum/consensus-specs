@@ -146,7 +146,11 @@ respond to any `DataColumnSidecar` request within the retention period. The
 updated `custody_group_count` SHOULD persist across node restarts.
 
 If a node's custody requirements decrease, it SHOULD NOT update the
-`custody_group_count` to reflect this reduction.
+`custody_group_count` to reflect this reduction. The node SHOULD continue to
+custody and advertise the previous (highest) `custody_group_count`. The node
+SHOULD continue to respond to any `DataColumnSidecar` request corresponding to
+the previous (highest) `custody_group_count`. The previous (highest)
+`custody_group_count` SHOULD persist across node restarts.
 
 Nodes SHOULD be capable of handling multiple changes to custody requirements
 within the same retention period (e.g., an increase in one epoch followed by a
