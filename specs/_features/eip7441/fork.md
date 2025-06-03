@@ -64,7 +64,6 @@ def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:
 
     epoch = get_current_epoch(pre)
     post = BeaconState(
-        # Versioning
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
@@ -73,51 +72,38 @@ def upgrade_to_eip7441(pre: capella.BeaconState) -> BeaconState:
             current_version=EIP7441_FORK_VERSION,
             epoch=epoch,
         ),
-        # History
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
-        # Registry
         validators=[],
         balances=pre.balances,
-        # Randomness
         randao_mixes=pre.randao_mixes,
-        # Slashings
         slashings=pre.slashings,
-        # Participation
         previous_epoch_participation=pre.previous_epoch_participation,
         current_epoch_participation=pre.current_epoch_participation,
-        # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        # Inactivity
         inactivity_scores=pre.inactivity_scores,
-        # Sync
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
-        # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
-        # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
-        # Whisk
-        whisk_proposer_trackers=[
-            WhiskTracker() for _ in range(PROPOSER_TRACKERS_COUNT)
-        ],  # [New in EIP7441]
-        whisk_candidate_trackers=[
-            WhiskTracker() for _ in range(CANDIDATE_TRACKERS_COUNT)
-        ],  # [New in EIP7441]
-        whisk_trackers=whisk_trackers,  # [New in EIP7441]
-        whisk_k_commitments=whisk_k_commitments,  # [New in EIP7441]
+        # [New in EIP7441]
+        whisk_proposer_trackers=[WhiskTracker() for _ in range(PROPOSER_TRACKERS_COUNT)],
+        # [New in EIP7441]
+        whisk_candidate_trackers=[WhiskTracker() for _ in range(CANDIDATE_TRACKERS_COUNT)],
+        # [New in EIP7441]
+        whisk_trackers=whisk_trackers,
+        # [New in EIP7441]
+        whisk_k_commitments=whisk_k_commitments,
     )
 
     # Do a candidate selection followed by a proposer selection so that we have proposers for the upcoming day

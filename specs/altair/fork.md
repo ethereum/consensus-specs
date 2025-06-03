@@ -88,7 +88,6 @@ def translate_participation(
 def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
     epoch = phase0.get_current_epoch(pre)
     post = BeaconState(
-        # Versioning
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
@@ -97,35 +96,27 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
             current_version=ALTAIR_FORK_VERSION,
             epoch=epoch,
         ),
-        # History
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
-        # Registry
         validators=pre.validators,
         balances=pre.balances,
-        # Randomness
         randao_mixes=pre.randao_mixes,
-        # Slashings
         slashings=pre.slashings,
-        # Participation
         previous_epoch_participation=[
             ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
         ],
         current_epoch_participation=[
             ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
         ],
-        # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        # Inactivity
         inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
     )
     # Fill in previous epoch participation from the pre state's pending attestations
