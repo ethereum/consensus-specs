@@ -1,7 +1,7 @@
+from collections.abc import Sequence
 from typing import (
     NewType,
     Protocol,
-    Sequence,
 )
 
 SpecForkName = NewType("SpecForkName", str)

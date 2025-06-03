@@ -70,7 +70,7 @@ def get_spec_for_fork_version(spec, fork_version, phases):
             fork_version_field = fork.upper() + "_FORK_VERSION"
         if fork_version == getattr(spec.config, fork_version_field):
             return phases[fork]
-    raise ValueError("Unknown fork version %s" % fork_version)
+    raise ValueError(f"Unknown fork version {fork_version}")
 
 
 def get_next_fork_transition(spec, epoch, phases):

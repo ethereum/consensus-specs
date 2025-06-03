@@ -292,9 +292,9 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
     )
     for validator_index in activation_indices:
         mock_deposit(spec, state, validator_index)
-        state.validators[validator_index].activation_eligibility_epoch = (
-            state.finalized_checkpoint.epoch
-        )
+        state.validators[
+            validator_index
+        ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
     # ready for ejection
     ejection_start_index = num_per_status * 2

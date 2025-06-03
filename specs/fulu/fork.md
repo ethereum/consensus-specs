@@ -9,6 +9,7 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
 - [Fork to Fulu](#fork-to-fulu)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -52,6 +53,23 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+#### New `initialize_proposer_lookahead`
+
+```python
+def initialize_proposer_lookahead(
+    state: electra.BeaconState
+) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
+    """
+    Return the proposer indices for the full available lookahead starting from current epoch.
+    Used to initialize the ``proposer_lookahead`` field in the beacon state at genesis and after forks.
+    """
+    current_epoch = get_current_epoch(state)
+    lookahead = []
+    for i in range(MIN_SEED_LOOKAHEAD + 1):
+        lookahead.extend(get_beacon_proposer_indices(state, Epoch(current_epoch + i)))
+    return lookahead
 ```
 
 ## Fork to Fulu
@@ -129,6 +147,7 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
+        proposer_lookahead=initialize_proposer_lookahead(pre),  # [New in Fulu:EIP7917]
     )
 
     return post

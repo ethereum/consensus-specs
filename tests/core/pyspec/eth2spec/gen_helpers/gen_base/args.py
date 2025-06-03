@@ -3,10 +3,10 @@ import os
 import pathlib
 
 
-def parse_arguments():
+def create_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="generator",
-        description=f"Generate YAML test suite files.",
+        description="Generate YAML test suite files.",
     )
     parser.add_argument(
         "-o",
@@ -70,4 +70,8 @@ def parse_arguments():
         default=os.cpu_count(),
         help="Generate tests with N threads. Defaults to core count.",
     )
-    return parser.parse_args()
+    return parser
+
+
+def parse_arguments():
+    return create_arg_parser().parse_args()
