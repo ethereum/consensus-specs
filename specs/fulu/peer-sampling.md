@@ -56,15 +56,19 @@ def get_extended_sample_count(allowed_failures: uint64) -> uint64:
         M = int(M)
         n = int(n)
         N = int(N)
-        return sum([math_comb(n, i) * math_comb(M - n, N - i) / math_comb(M, N)
-                    for i in range(k + 1)])
+        return sum(
+            [math_comb(n, i) * math_comb(M - n, N - i) / math_comb(M, N) for i in range(k + 1)]
+        )
 
     worst_case_missing = NUMBER_OF_COLUMNS // 2 + 1
-    false_positive_threshold = hypergeom_cdf(0, NUMBER_OF_COLUMNS,
-                                             worst_case_missing, SAMPLES_PER_SLOT)
+    false_positive_threshold = hypergeom_cdf(
+        0, NUMBER_OF_COLUMNS, worst_case_missing, SAMPLES_PER_SLOT
+    )
     for sample_count in range(SAMPLES_PER_SLOT, NUMBER_OF_COLUMNS + 1):
-        if hypergeom_cdf(allowed_failures, NUMBER_OF_COLUMNS,
-                         worst_case_missing, sample_count) <= false_positive_threshold:
+        if (
+            hypergeom_cdf(allowed_failures, NUMBER_OF_COLUMNS, worst_case_missing, sample_count)
+            <= false_positive_threshold
+        ):
             break
     return sample_count
 ```

@@ -119,8 +119,12 @@ slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum
 of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
-def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
-    total_node_balance = sum(state.validators[index].effective_balance for index in validator_indices)
+def get_validators_custody_requirement(
+    state: BeaconState, validator_indices: Sequence[ValidatorIndex]
+) -> uint64:
+    total_node_balance = sum(
+        state.validators[index].effective_balance for index in validator_indices
+    )
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
@@ -188,10 +192,9 @@ def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
@@ -205,14 +208,16 @@ def get_data_column_sidecars(
         for cells, proofs in cells_and_kzg_proofs:
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
-        sidecars.append(DataColumnSidecar(
-            index=column_index,
-            column=column_cells,
-            kzg_commitments=kzg_commitments,
-            kzg_proofs=column_proofs,
-            signed_block_header=signed_block_header,
-            kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
-        ))
+        sidecars.append(
+            DataColumnSidecar(
+                index=column_index,
+                column=column_cells,
+                kzg_commitments=kzg_commitments,
+                kzg_proofs=column_proofs,
+                signed_block_header=signed_block_header,
+                kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
+            )
+        )
     return sidecars
 ```
 
@@ -221,10 +226,9 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
@@ -234,13 +238,13 @@ def get_data_column_sidecars_from_block(
     signed_block_header = compute_signed_block_header(signed_block)
     kzg_commitments_inclusion_proof = compute_merkle_proof(
         signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
+        get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"),
     )
     return get_data_column_sidecars(
         signed_block_header,
         blob_kzg_commitments,
         kzg_commitments_inclusion_proof,
-        cells_and_kzg_proofs
+        cells_and_kzg_proofs,
     )
 ```
 
@@ -249,10 +253,9 @@ def get_data_column_sidecars_from_block(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
@@ -264,7 +267,7 @@ def get_data_column_sidecars_from_column_sidecar(
         sidecar.signed_block_header,
         sidecar.kzg_commitments,
         sidecar.kzg_commitments_inclusion_proof,
-        cells_and_kzg_proofs
+        cells_and_kzg_proofs,
     )
 ```
 

@@ -103,9 +103,11 @@ all related data structures and verifier code (along with tests) is specified in
 repository.
 
 ```python
-def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
-                             post_shuffle_trackers: Sequence[WhiskTracker],
-                             shuffle_proof: WhiskShuffleProof) -> bool:
+def IsValidWhiskShuffleProof(
+    pre_shuffle_trackers: Sequence[WhiskTracker],
+    post_shuffle_trackers: Sequence[WhiskTracker],
+    shuffle_proof: WhiskShuffleProof,
+) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -119,9 +121,9 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
 ```
 
 ```python
-def IsValidWhiskOpeningProof(tracker: WhiskTracker,
-                             k_commitment: BLSG1Point,
-                             tracker_proof: WhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(
+    tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof
+) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -185,12 +187,12 @@ class BeaconState(Container):
 def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
     proposer_seed = get_seed(
-        state,
-        Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)),
-        DOMAIN_PROPOSER_SELECTION
+        state, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)), DOMAIN_PROPOSER_SELECTION
     )
     for i in range(PROPOSER_TRACKERS_COUNT):
-        index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
+        index = compute_shuffled_index(
+            uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed
+        )
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
 ```
 
@@ -200,14 +202,18 @@ def select_whisk_candidate_trackers(state: BeaconState, epoch: Epoch) -> None:
     active_validator_indices = get_active_validator_indices(state, epoch)
     for i in range(CANDIDATE_TRACKERS_COUNT):
         seed = hash(get_seed(state, epoch, DOMAIN_CANDIDATE_SELECTION) + uint_to_bytes(uint64(i)))
-        candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
+        candidate_index = compute_proposer_index(
+            state, active_validator_indices, seed
+        )  # sample by effective balance
         state.whisk_candidate_trackers[i] = state.whisk_trackers[candidate_index]
 ```
 
 ```python
 def process_whisk_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
+    if (
+        next_epoch % EPOCHS_PER_SHUFFLING_PHASE == 0
+    ):  # select trackers at the start of shuffling phases
         select_whisk_proposer_trackers(state, next_epoch)
         select_whisk_candidate_trackers(state, next_epoch)
 ```
@@ -267,7 +273,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer is not slashed
     proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
-    process_whisk_opening_proof(state, block)   # [New in EIP7441]
+    process_whisk_opening_proof(state, block)  # [New in EIP7441]
 ```
 
 ### Whisk
@@ -339,7 +345,9 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
 
 ```python
 def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool:
-    return all([whisk_k_commitment != k_commitment for whisk_k_commitment in state.whisk_k_commitments])
+    return all(
+        [whisk_k_commitment != k_commitment for whisk_k_commitment in state.whisk_k_commitments]
+    )
 ```
 
 ```python
@@ -379,7 +387,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFieldElement:
     # hash `validator_index || counter`
-    return BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
+    return BLSFieldElement(
+        bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter))))
+    )
 ```
 
 ```python
@@ -403,10 +413,9 @@ def get_initial_tracker(k: BLSFieldElement) -> WhiskTracker:
 ```
 
 ```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
+def add_validator_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
@@ -427,6 +436,8 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
-    assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
+    assert (
+        state.latest_block_header.slot == state.slot
+    )  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
 ```

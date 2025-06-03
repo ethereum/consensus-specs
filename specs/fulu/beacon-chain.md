@@ -41,7 +41,9 @@ and is under active development.
 ##### Modified `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
+) -> None:
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -50,10 +52,12 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))  # [Modified in Fulu:EIP7892]
+    # [Modified in Fulu:EIP7892] Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+    ]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -150,7 +154,9 @@ class BeaconState(Container):
 #### New `compute_proposer_indices`
 
 ```python
-def compute_proposer_indices(state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+def compute_proposer_indices(
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -177,7 +183,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 #### New `get_beacon_proposer_indices`
 
 ```python
-def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+def get_beacon_proposer_indices(
+    state: BeaconState, epoch: Epoch
+) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -227,6 +235,8 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     # Shift out proposers in the first epoch
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
-    last_epoch_proposers = get_beacon_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1))
+    last_epoch_proposers = get_beacon_proposer_indices(
+        state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
+    )
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```
