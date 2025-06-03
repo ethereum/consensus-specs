@@ -83,13 +83,9 @@ as a reference throughout.
 
 ```python
 class SyncCommitteeMessage(Container):
-    # Slot to which this contribution pertains
     slot: Slot
-    # Block root for this signature
     beacon_block_root: Root
-    # Index of the validator that produced this signature
     validator_index: ValidatorIndex
-    # Signature by the validator over the block root of `slot`
     signature: BLSSignature
 ```
 
@@ -97,16 +93,10 @@ class SyncCommitteeMessage(Container):
 
 ```python
 class SyncCommitteeContribution(Container):
-    # Slot to which this contribution pertains
     slot: Slot
-    # Block root for this contribution
     beacon_block_root: Root
-    # The subcommittee this contribution pertains to out of the broader sync committee
     subcommittee_index: uint64
-    # A bit is set if a signature from the validator at the corresponding
-    # index in the subcommittee is present in the aggregate `signature`.
     aggregation_bits: Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
-    # Signature by the validator(s) over the block root of `slot`
     signature: BLSSignature
 ```
 

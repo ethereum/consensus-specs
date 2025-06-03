@@ -88,7 +88,7 @@ given epoch.
 
 ```python
 class DataColumnSidecar(Container):
-    index: ColumnIndex  # Index of column in extended matrix
+    index: ColumnIndex
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]

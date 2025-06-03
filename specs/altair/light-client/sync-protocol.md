@@ -88,7 +88,6 @@ Additional documents describe how the light client sync protocol can be used:
 
 ```python
 class LightClientHeader(Container):
-    # Beacon block header
     beacon: BeaconBlockHeader
 ```
 

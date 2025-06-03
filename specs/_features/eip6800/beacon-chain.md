@@ -58,33 +58,6 @@ eip6800 upgrade.
 
 ```python
 class ExecutionPayload(Container):
-    # Execution block header fields
-    parent_hash: Hash32
-    fee_recipient: ExecutionAddress  # 'beneficiary' in the yellow paper
-    state_root: Bytes32
-    receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
-    prev_randao: Bytes32  # 'difficulty' in the yellow paper
-    block_number: uint64  # 'number' in the yellow paper
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
-    execution_witness: ExecutionWitness  # [New in EIP6800]
-```
-
-#### `ExecutionPayloadHeader`
-
-```python
-class ExecutionPayloadHeader(Container):
-    # Execution block header fields
     parent_hash: Hash32
     fee_recipient: ExecutionAddress
     state_root: Bytes32
@@ -97,13 +70,38 @@ class ExecutionPayloadHeader(Container):
     timestamp: uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
     base_fee_per_gas: uint256
-    # Extra payload fields
-    block_hash: Hash32  # Hash of execution block
+    block_hash: Hash32
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+    # [New in EIP6800]
+    execution_witness: ExecutionWitness
+```
+
+#### `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
     blob_gas_used: uint64
     excess_data_gas: uint64
-    execution_witness_root: Root  # [New in EIP6800]
+    # [New in EIP6800]
+    execution_witness_root: Root
 ```
 
 ### New containers
@@ -113,9 +111,7 @@ class ExecutionPayloadHeader(Container):
 ```python
 class SuffixStateDiff(Container):
     suffix: Bytes1
-    # Null means not currently present
     current_value: Optional[Bytes32]
-    # Null means value not updated
     new_value: Optional[Bytes32]
 ```
 
@@ -123,10 +119,11 @@ class SuffixStateDiff(Container):
 
 #### `StemStateDiff`
 
+*Note*: `suffix_diffs` is only valid if the list is sorted by suffixes.
+
 ```python
 class StemStateDiff(Container):
     stem: Stem
-    # Valid only if list is sorted by suffixes
     suffix_diffs: List[SuffixStateDiff, VERKLE_WIDTH]
 ```
 
