@@ -61,32 +61,25 @@ def compute_fork_digest(
   current_version: Version,
   genesis_validators_root: Root,
   current_epoch: Epoch,  # [New in Fulu:EIP7892]
-  blob_schedule: Sequence[BlobScheduleEntry]  # [New in Fulu:EIP7892]
 ) -> ForkDigest:
     """
     Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``,
-    bitmasking blob parameters after ``ELECTRA_FORK_VERSION``.
+    with a XOR bitmask of the big-endian byte representation of current max_blobs_per_block.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
     base_digest = compute_fork_data_root(current_version, genesis_validators_root)[:4]
 
-    # Find the blob parameters applicable to this epoch
-    sorted_schedule = sorted(blob_schedule, key=lambda e: e.epoch, reverse=True)
-    blob_params = None
-    for entry in sorted_schedule:
-      if current_epoch >= entry.epoch:
-        blob_params = entry
-        break
+    if current_epoch < FULU_FORK_EPOCH:
+        return base_digest
 
-    # This check enables us to roll out the BPO mechanism without a concurrent parameter change
-    if blob_params is None:
-      return ForkDigest(base_digest)
+    # Find the blob parameters applicable to this epoch
+    max_blobs_per_block = get_max_blobs_per_block(current_epoch)
 
     # Safely bitmask blob parameters into the digest
-    assert 0 <= blob_params.max_blobs_per_block <= 0xFFFFFFFF
-    mask = blob_params.max_blobs_per_block.to_bytes(4, 'big')
+    # If Fulu is deployed with no concurrent blob parameter changes, we'll bitmask Electra's value.
+    mask = max_blobs_per_block.to_bytes(4, 'big')
     masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
     return ForkDigest(masked_digest)
 ```
