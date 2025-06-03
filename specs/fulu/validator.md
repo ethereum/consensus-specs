@@ -140,8 +140,8 @@ If the node's custody requirements are increased, it MAY backfill custody groups
 as a result of this change. In such cases, it SHOULD delay advertising the
 updated `custody_group_count` until the backfill is complete. If the node opts
 not to perform a backfill, it SHOULD only advertise the updated
-`custody_group_count` after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs.
-After `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to
+`custody_group_count` after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs;
+after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to
 respond to any `DataColumnSidecar` request within the retention period. The
 updated `custody_group_count` SHOULD persist across node restarts.
 
