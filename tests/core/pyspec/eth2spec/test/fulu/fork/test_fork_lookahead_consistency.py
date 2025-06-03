@@ -11,7 +11,6 @@ from eth2spec.test.helpers.fulu.fork import (
     FULU_FORK_TEST_META_TAGS,
     run_fork_test,
 )
-from eth2spec.test.helpers.state import next_slot
 from eth2spec.test.utils import with_meta_tags
 from tests.core.pyspec.eth2spec.test.helpers.state import simulate_lookahead
 
