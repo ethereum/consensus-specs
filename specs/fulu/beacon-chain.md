@@ -193,7 +193,7 @@ def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> List[Valida
     """
     Return the proposer indices for the given ``epoch``.
     """
-    indices = get_active_validator_indices(state, epoch)    
+    indices = get_active_validator_indices(state, epoch)
     seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
     return compute_proposer_indices(state, epoch, seed, indices)
 ```
