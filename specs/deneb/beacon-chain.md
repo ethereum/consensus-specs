@@ -344,9 +344,8 @@ def verify_and_notify_new_payload(
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = (
-        new_payload_request.parent_beacon_block_root
-    )  # [New in Deneb:EIP4788]
+    # [New in Deneb:EIP4788]
+    parent_beacon_block_root = new_payload_request.parent_beacon_block_root
 
     if b"" in execution_payload.transactions:
         return False
@@ -534,8 +533,8 @@ def process_registry_updates(state: BeaconState) -> None:
             index
             for index, validator in enumerate(state.validators)
             if is_eligible_for_activation(state, validator)
-            # Order by the sequence of activation_eligibility_epoch setting and then index
         ],
+        # Order by the sequence of activation_eligibility_epoch setting and then index
         key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
     )
     # Dequeued validators for activation up to activation churn limit

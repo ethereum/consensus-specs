@@ -174,9 +174,8 @@ def sample_data(slot: Slot, shard: Shard, extended_data: Sequence[Point]) -> Seq
 ```python
 def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommitment):
     domain_pos = reverse_bit_order(sample.index, sample_count)
-    sample_root_of_unity = (
-        ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK
-    )  # change point-level to sample-level domain
+    # Change point-level to sample-level domain
+    sample_root_of_unity = ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK
     x = sample_root_of_unity**domain_pos
     ys = reverse_bit_order_list(sample.data)
     assert check_multi_kzg_proof(commitment, sample.proof, x, ys)

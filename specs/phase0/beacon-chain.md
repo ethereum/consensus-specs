@@ -1743,8 +1743,8 @@ def process_registry_updates(state: BeaconState) -> None:
             index
             for index, validator in enumerate(state.validators)
             if is_eligible_for_activation(state, validator)
-            # Order by the sequence of activation_eligibility_epoch setting and then index
         ],
+        # Order by the sequence of activation_eligibility_epoch setting and then index
         key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
     )
     # Dequeued validators for activation up to churn limit
@@ -2050,9 +2050,8 @@ def apply_deposit(
             withdrawal_credentials=withdrawal_credentials,
             amount=amount,
         )
-        domain = compute_domain(
-            DOMAIN_DEPOSIT
-        )  # Fork-agnostic domain since deposits are valid across forks
+        # Fork-agnostic domain since deposits are valid across forks
+        domain = compute_domain(DOMAIN_DEPOSIT)
         signing_root = compute_signing_root(deposit_message, domain)
         if bls.Verify(pubkey, signing_root, signature):
             add_validator_to_registry(state, pubkey, withdrawal_credentials, amount)
@@ -2068,7 +2067,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the List length mix-in
+        # Add 1 for the List length mix-in
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )

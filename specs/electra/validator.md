@@ -198,10 +198,11 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
 
     return max(
         valid_votes,
+        # Tiebreak by smallest distance
         key=lambda v: (
             valid_votes.count(v),
             -valid_votes.index(v),
-        ),  # Tiebreak by smallest distance
+        ),
         default=default_vote,
     )
 ```

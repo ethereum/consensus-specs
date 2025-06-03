@@ -192,9 +192,8 @@ def verify_and_notify_new_payload(
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)
-    inclusion_list_transactions = (
-        new_payload_request.inclusion_list_transactions
-    )  # [New in EIP-7805]
+    # [New in EIP-7805]
+    inclusion_list_transactions = new_payload_request.inclusion_list_transactions
 
     if b"" in execution_payload.transactions:
         return False

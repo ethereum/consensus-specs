@@ -286,9 +286,8 @@ def slash_validator(
         validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
     )
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    slashing_penalty = (
-        validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
-    )  # [Modified in Bellatrix]
+    # [Modified in Bellatrix]
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX
     decrease_balance(state, slashed_index, slashing_penalty)
 
     # Apply proposer and whistleblower rewards
