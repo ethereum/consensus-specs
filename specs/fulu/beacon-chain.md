@@ -18,6 +18,7 @@
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_beacon_proposer_index`](#modified-get_beacon_proposer_index)
+    - [New `get_beacon_proposer_indices`](#new-get_beacon_proposer_indices)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [New `process_proposer_lookahead`](#new-process_proposer_lookahead)
@@ -161,14 +162,12 @@ class BeaconState(Container):
 #### New `compute_proposer_indices`
 
 ```python
-def compute_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+def compute_proposer_indices(state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
     seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
-    indices = get_active_validator_indices(state, epoch)
     return [compute_proposer_index(state, indices, seed) for seed in seeds]
 ```
 
@@ -185,6 +184,18 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     return state.proposer_lookahead[state.slot % SLOTS_PER_EPOCH]
+```
+
+#### New `get_beacon_proposer_indices`
+
+```python
+def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    indices = get_active_validator_indices(state, epoch)    
+    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+    return compute_proposer_indices(state, epoch, seed, indices)
 ```
 
 ### Epoch processing
@@ -228,6 +239,6 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     # Shift out proposers in the first epoch
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
-    last_epoch_proposers = compute_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1))
+    last_epoch_proposers = get_beacon_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1))
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```

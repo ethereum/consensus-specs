@@ -68,7 +68,7 @@ def initialize_proposer_lookahead(
     current_epoch = get_current_epoch(state)
     lookahead = []
     for i in range(MIN_SEED_LOOKAHEAD + 1):
-        lookahead.extend(compute_proposer_indices(state, Epoch(current_epoch + i)))
+        lookahead.extend(get_beacon_proposer_indices(state, Epoch(current_epoch + i)))
     return lookahead
 ```
 
