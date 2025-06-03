@@ -19,6 +19,7 @@ from eth2spec.test.helpers.forks import (
     is_post_eip7441,
     is_post_eip7732,
     is_post_electra,
+    is_post_fulu,
 )
 from eth2spec.test.helpers.keys import pubkeys
 
@@ -222,5 +223,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.latest_block_hash = (
             state.latest_execution_payload_header.block_hash
         )  # last block is full
+
+    if is_post_fulu(spec):
+        # Initialize proposer lookahead list
+        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
 
     return state
