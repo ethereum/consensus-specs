@@ -52,10 +52,8 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(
-        get_current_epoch(state)
-    )  # [Modified in Fulu:EIP7892]
+    # [Modified in Fulu:EIP7892] Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
