@@ -60,7 +60,7 @@ def reverse_bit_order(n: int, order: int):
     Reverse the bit order of an integer n
     """
     assert is_power_of_two(order)
-    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+    return int(("{:0" + str(order.bit_length() - 1) + "b}").format(n)[::-1], 2)
 ```
 
 #### `reverse_bit_order_list`
@@ -86,7 +86,7 @@ def das_fft_extension(data: Sequence[Point]) -> Sequence[Point]:
     such that the second output half of the IFFT is all zeroes.
     """
     poly = inverse_fft(data)
-    return fft(poly + [0]*len(poly))[1::2]
+    return fft(poly + [0] * len(poly))[1::2]
 ```
 
 ### Data recovery
@@ -119,11 +119,13 @@ def extend_data(data: Sequence[Point]) -> Sequence[Point]:
 
 ```python
 def unextend_data(extended_data: Sequence[Point]) -> Sequence[Point]:
-    return extended_data[:len(extended_data)//2]
+    return extended_data[: len(extended_data) // 2]
 ```
 
 ```python
-def check_multi_kzg_proof(commitment: BLSCommitment, proof: BLSCommitment, x: Point, ys: Sequence[Point]) -> bool:
+def check_multi_kzg_proof(
+    commitment: BLSCommitment, proof: BLSCommitment, x: Point, ys: Sequence[Point]
+) -> bool:
     """
     Run a KZG multi-proof check to verify that for the subgroup starting at x,
     the proof indeed complements the ys to match the commitment.
@@ -137,12 +139,12 @@ def construct_proofs(extended_data_as_poly: Sequence[Point]) -> Sequence[BLSComm
     Constructs proofs for samples of extended data (in polynomial form, 2nd half being zeroes).
     Use the FK20 multi-proof approach to construct proofs for a chunk length of POINTS_PER_SAMPLE.
     """
-    ... # Omitted for now, refer to KZG implementation resources.
+    ...  # Omitted for now, refer to KZG implementation resources.
 ```
 
 ```python
 def commit_to_data(data_as_poly: Sequence[Point]) -> BLSCommitment:
-    """Commit to a polynomial by """
+    """Commit to a polynomial by"""
 ```
 
 ```python
@@ -151,7 +153,7 @@ def sample_data(slot: Slot, shard: Shard, extended_data: Sequence[Point]) -> Seq
     assert sample_count <= MAX_SAMPLES_PER_BLOCK
     # get polynomial form of full extended data, second half will be all zeroes.
     poly = ifft(reverse_bit_order_list(extended_data))
-    assert all(v == 0 for v in poly[len(poly)//2:])
+    assert all(v == 0 for v in poly[len(poly) // 2 :])
     proofs = construct_proofs(poly)
     return [
         DASSample(
@@ -163,15 +165,18 @@ def sample_data(slot: Slot, shard: Shard, extended_data: Sequence[Point]) -> Seq
             proof=proofs[reverse_bit_order(i, sample_count)],
             # note: we leave the sample data as-is so it matches the original nicely.
             # The proof applies to `ys = reverse_bit_order_list(sample.data)`
-            data=extended_data[i*POINTS_PER_SAMPLE:(i+1)*POINTS_PER_SAMPLE]
-        ) for i in range(sample_count)
+            data=extended_data[i * POINTS_PER_SAMPLE : (i + 1) * POINTS_PER_SAMPLE],
+        )
+        for i in range(sample_count)
     ]
 ```
 
 ```python
 def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommitment):
     domain_pos = reverse_bit_order(sample.index, sample_count)
-    sample_root_of_unity = ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK  # change point-level to sample-level domain
+    sample_root_of_unity = (
+        ROOT_OF_UNITY**MAX_SAMPLES_PER_BLOCK
+    )  # change point-level to sample-level domain
     x = sample_root_of_unity**domain_pos
     ys = reverse_bit_order_list(sample.data)
     assert check_multi_kzg_proof(commitment, sample.proof, x, ys)
@@ -180,6 +185,8 @@ def verify_sample(sample: DASSample, sample_count: uint64, commitment: BLSCommit
 ```python
 def reconstruct_extended_data(samples: Sequence[Optional[DASSample]]) -> Sequence[Point]:
     # Instead of recovering with a point-by-point approach, recover the samples by recovering missing subgroups.
-    subgroups = [None if sample is None else reverse_bit_order_list(sample.data) for sample in samples]
+    subgroups = [
+        None if sample is None else reverse_bit_order_list(sample.data) for sample in samples
+    ]
     return recover_data(subgroups)
 ```

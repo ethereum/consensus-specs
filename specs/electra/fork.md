@@ -140,13 +140,14 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
 
     # [New in Electra:EIP7251]
     # add validators that are not yet active to pending balance deposits
-    pre_activation = sorted([
-        index for index, validator in enumerate(post.validators)
-        if validator.activation_epoch == FAR_FUTURE_EPOCH
-    ], key=lambda index: (
-        post.validators[index].activation_eligibility_epoch,
-        index
-    ))
+    pre_activation = sorted(
+        [
+            index
+            for index, validator in enumerate(post.validators)
+            if validator.activation_epoch == FAR_FUTURE_EPOCH
+        ],
+        key=lambda index: (post.validators[index].activation_eligibility_epoch, index),
+    )
 
     for index in pre_activation:
         balance = post.balances[index]
@@ -156,13 +157,15 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
         # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
         # and GENESIS_SLOT to distinguish from a pending deposit request
-        post.pending_deposits.append(PendingDeposit(
-            pubkey=validator.pubkey,
-            withdrawal_credentials=validator.withdrawal_credentials,
-            amount=balance,
-            signature=bls.G2_POINT_AT_INFINITY,
-            slot=GENESIS_SLOT,
-        ))
+        post.pending_deposits.append(
+            PendingDeposit(
+                pubkey=validator.pubkey,
+                withdrawal_credentials=validator.withdrawal_credentials,
+                amount=balance,
+                signature=bls.G2_POINT_AT_INFINITY,
+                slot=GENESIS_SLOT,
+            )
+        )
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):

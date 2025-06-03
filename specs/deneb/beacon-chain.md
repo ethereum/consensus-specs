@@ -231,9 +231,9 @@ attestation that contributes to justification of the contained chain for
 EIP-7045.
 
 ```python
-def get_attestation_participation_flag_indices(state: BeaconState,
-                                               data: AttestationData,
-                                               inclusion_delay: uint64) -> Sequence[int]:
+def get_attestation_participation_flag_indices(
+    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """
@@ -244,8 +244,12 @@ def get_attestation_participation_flag_indices(state: BeaconState,
 
     # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(state, data.target.epoch)
-    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(state, data.slot)
+    is_matching_target = is_matching_source and data.target.root == get_block_root(
+        state, data.target.epoch
+    )
+    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
+        state, data.slot
+    )
     assert is_matching_source
 
     participation_flag_indices = []
@@ -293,9 +297,9 @@ class NewPayloadRequest(object):
 `parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
-def is_valid_block_hash(self: ExecutionEngine,
-                        execution_payload: ExecutionPayload,
-                        parent_beacon_block_root: Root) -> bool:
+def is_valid_block_hash(
+    self: ExecutionEngine, execution_payload: ExecutionPayload, parent_beacon_block_root: Root
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
@@ -305,7 +309,9 @@ def is_valid_block_hash(self: ExecutionEngine,
 ##### `is_valid_versioned_hashes`
 
 ```python
-def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+def is_valid_versioned_hashes(
+    self: ExecutionEngine, new_payload_request: NewPayloadRequest
+) -> bool:
     """
     Return ``True`` if and only if the version hashes computed by the blob transactions of
     ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
@@ -319,9 +325,9 @@ def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPay
 `parent_beacon_block_root` parameter for EIP-4788.
 
 ```python
-def notify_new_payload(self: ExecutionEngine,
-                       execution_payload: ExecutionPayload,
-                       parent_beacon_block_root: Root) -> bool:
+def notify_new_payload(
+    self: ExecutionEngine, execution_payload: ExecutionPayload, parent_beacon_block_root: Root
+) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
@@ -331,15 +337,18 @@ def notify_new_payload(self: ExecutionEngine,
 ##### Modified `verify_and_notify_new_payload`
 
 ```python
-def verify_and_notify_new_payload(self: ExecutionEngine,
-                                  new_payload_request: NewPayloadRequest) -> bool:
+def verify_and_notify_new_payload(
+    self: ExecutionEngine, new_payload_request: NewPayloadRequest
+) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect to ``self.execution_state``.
     """
     execution_payload = new_payload_request.execution_payload
-    parent_beacon_block_root = new_payload_request.parent_beacon_block_root  # [New in Deneb:EIP4788]
+    parent_beacon_block_root = (
+        new_payload_request.parent_beacon_block_root
+    )  # [New in Deneb:EIP4788]
 
-    if b'' in execution_payload.transactions:
+    if b"" in execution_payload.transactions:
         return False
 
     # [Modified in Deneb:EIP4788]
@@ -379,7 +388,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == len(committee)
 
     # Participation flag indices
-    participation_flag_indices = get_attestation_participation_flag_indices(state, data, state.slot - data.slot)
+    participation_flag_indices = get_attestation_participation_flag_indices(
+        state, data, state.slot - data.slot
+    )
 
     # Verify signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
@@ -393,12 +404,16 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
-            if flag_index in participation_flag_indices and not has_flag(epoch_participation[index], flag_index):
+            if flag_index in participation_flag_indices and not has_flag(
+                epoch_participation[index], flag_index
+            ):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer
-    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward_denominator = (
+        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    )
     proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
@@ -413,7 +428,9 @@ assign the new fields in `ExecutionPayloadHeader` for EIP-4844. It is also
 modified to pass in the parent beacon block root to support EIP-4788.
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
+) -> None:
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -429,7 +446,9 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     # Verify the execution payload is valid
     # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
     # [Modified in Deneb:EIP4788] Pass `parent_beacon_block_root` to Execution Engine
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+    ]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -479,7 +498,9 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
     # Verify signature
     # [Modified in Deneb:EIP7044]
-    domain = compute_domain(DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root)
+    domain = compute_domain(
+        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
+    )
     signing_root = compute_signing_root(voluntary_exit, domain)
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
@@ -508,14 +529,18 @@ def process_registry_updates(state: BeaconState) -> None:
             initiate_validator_exit(state, ValidatorIndex(index))
 
     # Queue validators eligible for activation and not yet dequeued for activation
-    activation_queue = sorted([
-        index for index, validator in enumerate(state.validators)
-        if is_eligible_for_activation(state, validator)
-        # Order by the sequence of activation_eligibility_epoch setting and then index
-    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    activation_queue = sorted(
+        [
+            index
+            for index, validator in enumerate(state.validators)
+            if is_eligible_for_activation(state, validator)
+            # Order by the sequence of activation_eligibility_epoch setting and then index
+        ],
+        key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
+    )
     # Dequeued validators for activation up to activation churn limit
     # [Modified in Deneb:EIP7514]
-    for index in activation_queue[:get_validator_activation_churn_limit(state)]:
+    for index in activation_queue[: get_validator_activation_churn_limit(state)]:
         validator = state.validators[index]
         validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```

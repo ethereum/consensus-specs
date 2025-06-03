@@ -82,8 +82,7 @@ no longer in the beacon block body.
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     inner_gindex = get_generalized_index(
-        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-        blob_sidecar.index
+        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_sidecar.index
     )
     outer_gindex = get_generalized_index(
         BeaconBlockBody,

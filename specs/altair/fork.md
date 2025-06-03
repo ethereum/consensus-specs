@@ -67,12 +67,16 @@ precise fork slot to execute the upgrade in the presence of skipped slots at the
 fork boundary. Instead the logic must be within `process_slots`.
 
 ```python
-def translate_participation(state: BeaconState, pending_attestations: Sequence[phase0.PendingAttestation]) -> None:
+def translate_participation(
+    state: BeaconState, pending_attestations: Sequence[phase0.PendingAttestation]
+) -> None:
     for attestation in pending_attestations:
         data = attestation.data
         inclusion_delay = attestation.inclusion_delay
         # Translate attestation inclusion info to flag indices
-        participation_flag_indices = get_attestation_participation_flag_indices(state, data, inclusion_delay)
+        participation_flag_indices = get_attestation_participation_flag_indices(
+            state, data, inclusion_delay
+        )
 
         # Apply flags to all attesting validators
         epoch_participation = state.previous_epoch_participation
@@ -110,8 +114,12 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         # Slashings
         slashings=pre.slashings,
         # Participation
-        previous_epoch_participation=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))],
-        current_epoch_participation=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))],
+        previous_epoch_participation=[
+            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
+        ],
+        current_epoch_participation=[
+            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
+        ],
         # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,

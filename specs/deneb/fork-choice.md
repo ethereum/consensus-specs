@@ -53,7 +53,9 @@ valid blobs) received on the p2p network MUST NOT invalidate a block that is
 otherwise valid and available.
 
 ```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+def is_data_available(
+    beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]
+) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of

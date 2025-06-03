@@ -59,7 +59,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def initialize_proposer_lookahead(
-    state: electra.BeaconState
+    state: electra.BeaconState,
 ) -> List[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the full available lookahead starting from current epoch.

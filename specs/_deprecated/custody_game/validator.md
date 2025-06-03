@@ -92,10 +92,9 @@ for which the custody bit is one. The custody bit is computed using the custody
 secret:
 
 ```python
-def get_custody_secret(state: BeaconState,
-                       validator_index: ValidatorIndex,
-                       privkey: int,
-                       epoch: Epoch=None) -> BLSSignature:
+def get_custody_secret(
+    state: BeaconState, validator_index: ValidatorIndex, privkey: int, epoch: Epoch = None
+) -> BLSSignature:
     if epoch is None:
         epoch = get_current_epoch(state)
     period = get_custody_period_for_validator(validator_index, epoch)

@@ -97,7 +97,7 @@ def upgrade_to_eip6800(pre: deneb.BeaconState) -> BeaconState:
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
-        execution_witness_root=hash_tree_root(ExecutionWitness([], []))  # New in eip6800
+        execution_witness_root=hash_tree_root(ExecutionWitness([], [])),  # New in eip6800
     )
     post = BeaconState(
         # Versioning

@@ -326,8 +326,8 @@ def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlag
 
 ```python
 def is_valid_indexed_payload_attestation(
-        state: BeaconState,
-        indexed_payload_attestation: IndexedPayloadAttestation) -> bool:
+    state: BeaconState, indexed_payload_attestation: IndexedPayloadAttestation
+) -> bool:
     """
     Check if ``indexed_payload_attestation`` is not empty, has sorted and unique indices and has
     a valid aggregate signature.
@@ -395,7 +395,10 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     for index in committee_indices:
         committee = get_beacon_committee(state, attestation.data.slot, index)
         committee_attesters = set(
-            index for i, index in enumerate(committee) if attestation.aggregation_bits[committee_offset + i])
+            index
+            for i, index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        )
         output = output.union(committee_attesters)
         committee_offset += len(committee)
 
@@ -408,8 +411,9 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 #### `get_payload_attesting_indices`
 
 ```python
-def get_payload_attesting_indices(state: BeaconState, slot: Slot,
-                                  payload_attestation: PayloadAttestation) -> Set[ValidatorIndex]:
+def get_payload_attesting_indices(
+    state: BeaconState, slot: Slot, payload_attestation: PayloadAttestation
+) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``payload_attestation``.
     """
@@ -420,8 +424,9 @@ def get_payload_attesting_indices(state: BeaconState, slot: Slot,
 #### `get_indexed_payload_attestation`
 
 ```python
-def get_indexed_payload_attestation(state: BeaconState, slot: Slot,
-                                    payload_attestation: PayloadAttestation) -> IndexedPayloadAttestation:
+def get_indexed_payload_attestation(
+    state: BeaconState, slot: Slot, payload_attestation: PayloadAttestation
+) -> IndexedPayloadAttestation:
     """
     Return the indexed payload attestation corresponding to ``payload_attestation``.
     """
@@ -491,7 +496,9 @@ def process_withdrawals(state: BeaconState) -> None:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update pending partial withdrawals
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[partial_withdrawals_count:]
+    state.pending_partial_withdrawals = state.pending_partial_withdrawals[
+        partial_withdrawals_count:
+    ]
 
     # Update the next withdrawal index if this block contained withdrawals
     if len(withdrawals) != 0:
@@ -501,7 +508,9 @@ def process_withdrawals(state: BeaconState) -> None:
     # Update the next validator index to start the next withdrawal sweep
     if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
         # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex((withdrawals[-1].validator_index + 1) % len(state.validators))
+        next_validator_index = ValidatorIndex(
+            (withdrawals[-1].validator_index + 1) % len(state.validators)
+        )
         state.next_withdrawal_validator_index = next_validator_index
     else:
         # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
@@ -515,11 +524,14 @@ def process_withdrawals(state: BeaconState) -> None:
 ##### New `verify_execution_payload_header_signature`
 
 ```python
-def verify_execution_payload_header_signature(state: BeaconState,
-                                              signed_header: SignedExecutionPayloadHeader) -> bool:
+def verify_execution_payload_header_signature(
+    state: BeaconState, signed_header: SignedExecutionPayloadHeader
+) -> bool:
     # Check the signature
     builder = state.validators[signed_header.message.builder_index]
-    signing_root = compute_signing_root(signed_header.message, get_domain(state, DOMAIN_BEACON_BUILDER))
+    signing_root = compute_signing_root(
+        signed_header.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+    )
     return bls.Verify(builder.pubkey, signing_root, signed_header.signature)
 ```
 
@@ -563,7 +575,9 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
+    assert len(body.deposits) == min(
+        MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index
+    )
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
@@ -586,7 +600,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ###### `process_payload_attestation`
 
 ```python
-def process_payload_attestation(state: BeaconState, payload_attestation: PayloadAttestation) -> None:
+def process_payload_attestation(
+    state: BeaconState, payload_attestation: PayloadAttestation
+) -> None:
     # Check that the attestation is for the parent beacon block
     data = payload_attestation.data
     assert data.beacon_block_root == state.latest_block_header.parent_root
@@ -594,7 +610,9 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     assert data.slot + 1 == state.slot
 
     # Verify signature
-    indexed_payload_attestation = get_indexed_payload_attestation(state, data.slot, payload_attestation)
+    indexed_payload_attestation = get_indexed_payload_attestation(
+        state, data.slot, payload_attestation
+    )
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
 
     if state.slot % SLOTS_PER_EPOCH == 0:
@@ -605,7 +623,9 @@ def process_payload_attestation(state: BeaconState, payload_attestation: Payload
     # Return early if the attestation is for the wrong payload status
     payload_was_present = data.slot == state.latest_full_slot
     voted_present = data.payload_status == PAYLOAD_PRESENT
-    proposer_reward_denominator = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward_denominator = (
+        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    )
     proposer_index = get_beacon_proposer_index(state)
     if voted_present != payload_was_present:
         # Unset the flags in case they were set by an equivocating ptc attestation
@@ -664,7 +684,10 @@ def validate_merge_block(block: BeaconBlock) -> None:
     if TERMINAL_BLOCK_HASH != Hash32():
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert block.body.signed_execution_payload_header.message.parent_block_hash == TERMINAL_BLOCK_HASH
+        assert (
+            block.body.signed_execution_payload_header.message.parent_block_hash
+            == TERMINAL_BLOCK_HASH
+        )
         return
 
     # Modified in EIP-7732
@@ -684,9 +707,12 @@ def validate_merge_block(block: BeaconBlock) -> None:
 
 ```python
 def verify_execution_payload_envelope_signature(
-        state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope) -> bool:
+    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
+) -> bool:
     builder = state.validators[signed_envelope.message.builder_index]
-    signing_root = compute_signing_root(signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER))
+    signing_root = compute_signing_root(
+        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+    )
     return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
 ```
 
@@ -697,9 +723,12 @@ transition. It is called when importing a signed execution payload proposed by
 the builder of the current slot.
 
 ```python
-def process_execution_payload(state: BeaconState,
-                              signed_envelope: SignedExecutionPayloadEnvelope,
-                              execution_engine: ExecutionEngine, verify: bool = True) -> None:
+def process_execution_payload(
+    state: BeaconState,
+    signed_envelope: SignedExecutionPayloadEnvelope,
+    execution_engine: ExecutionEngine,
+    verify: bool = True,
+) -> None:
     # Verify signature
     if verify:
         assert verify_execution_payload_envelope_signature(state, signed_envelope)
@@ -716,7 +745,9 @@ def process_execution_payload(state: BeaconState,
     # Verify consistency with the committed header
     committed_header = state.latest_execution_payload_header
     assert envelope.builder_index == committed_header.builder_index
-    assert committed_header.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
+    assert committed_header.blob_kzg_commitments_root == hash_tree_root(
+        envelope.blob_kzg_commitments
+    )
 
     if not envelope.payload_withheld:
         # Verify the withdrawals root
@@ -735,8 +766,10 @@ def process_execution_payload(state: BeaconState,
         # Verify commitments are under limit
         assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
         # Verify the execution payload is valid
-        versioned_hashes = [kzg_commitment_to_versioned_hash(commitment)
-                            for commitment in envelope.blob_kzg_commitments]
+        versioned_hashes = [
+            kzg_commitment_to_versioned_hash(commitment)
+            for commitment in envelope.blob_kzg_commitments
+        ]
         requests = envelope.execution_requests
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
