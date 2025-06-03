@@ -1,7 +1,7 @@
 import hashlib
+from collections.abc import Iterable
 from inspect import getmembers, isclass
 from random import Random
-from typing import Iterable
 
 from eth2spec.debug import encode, random_value
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart
@@ -43,7 +43,7 @@ def deterministic_seed(**kwargs) -> int:
     """Need this since hash() is not deterministic between runs."""
     m = hashlib.sha256()
     for k, v in sorted(kwargs.items()):
-        m.update(f"{k}={v}".encode("utf-8"))
+        m.update(f"{k}={v}".encode())
     return int.from_bytes(m.digest()[:8], "little")
 
 

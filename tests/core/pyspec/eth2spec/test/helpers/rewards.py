@@ -123,7 +123,7 @@ def deltas_name_to_flag_index(spec, deltas_name):
         return spec.TIMELY_HEAD_FLAG_INDEX
     elif "target" in deltas_name:
         return spec.TIMELY_TARGET_FLAG_INDEX
-    raise ValueError("Wrong deltas_name %s" % deltas_name)
+    raise ValueError(f"Wrong deltas_name {deltas_name}")
 
 
 def run_attestation_component_deltas(spec, state, component_delta_fn, matching_att_fn, deltas_name):
@@ -158,11 +158,10 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
                     assert rewards[index] > 0
                 else:
                     assert rewards[index] == 0
+            elif enough_for_reward:
+                assert rewards[index] > 0
             else:
-                if enough_for_reward:
-                    assert rewards[index] > 0
-                else:
-                    assert rewards[index] == 0
+                assert rewards[index] == 0
 
             assert penalties[index] == 0
         else:
@@ -182,8 +181,9 @@ def run_get_inclusion_delay_deltas(spec, state):
     """
     if is_post_altair(spec):
         # No inclusion_delay_deltas
-        yield "inclusion_delay_deltas", Deltas(
-            rewards=[0] * len(state.validators), penalties=[0] * len(state.validators)
+        yield (
+            "inclusion_delay_deltas",
+            Deltas(rewards=[0] * len(state.validators), penalties=[0] * len(state.validators)),
         )
         return
 
@@ -274,29 +274,26 @@ def run_get_inactivity_penalty_deltas(spec, state):
                     assert penalties[index] == 0
                 else:
                     assert penalties[index] == base_penalty
+            elif is_post_altair(spec):
+                assert penalties[index] > 0
             else:
-                if is_post_altair(spec):
-                    assert penalties[index] > 0
-                else:
-                    assert penalties[index] > base_penalty
+                assert penalties[index] > base_penalty
+        elif not is_post_altair(spec):
+            assert penalties[index] == 0
+            continue
+        # post altair, this penalty is derived from the inactivity score
+        # regardless if the state is leaking or not...
+        elif index in matching_attesting_indices:
+            assert penalties[index] == 0
         else:
-            if not is_post_altair(spec):
-                assert penalties[index] == 0
-                continue
-            else:
-                # post altair, this penalty is derived from the inactivity score
-                # regardless if the state is leaking or not...
-                if index in matching_attesting_indices:
-                    assert penalties[index] == 0
-                else:
-                    # copied from spec:
-                    penalty_numerator = (
-                        state.validators[index].effective_balance * state.inactivity_scores[index]
-                    )
-                    penalty_denominator = (
-                        spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
-                    )
-                    assert penalties[index] == penalty_numerator // penalty_denominator
+            # copied from spec:
+            penalty_numerator = (
+                state.validators[index].effective_balance * state.inactivity_scores[index]
+            )
+            penalty_denominator = (
+                spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
+            )
+            assert penalties[index] == penalty_numerator // penalty_denominator
 
 
 def transition_state_to_leak(spec, state, epochs=None):

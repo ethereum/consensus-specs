@@ -1,5 +1,3 @@
-from typing import Dict
-
 from ..constants import EIP7441
 from .base import BaseSpecBuilder
 
@@ -16,7 +14,7 @@ import json
 """
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         constants = {
             "EXECUTION_PAYLOAD_GINDEX": "GeneralizedIndex(41)",
         }

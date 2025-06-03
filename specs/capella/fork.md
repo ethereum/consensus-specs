@@ -87,10 +87,10 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         base_fee_per_gas=pre.latest_execution_payload_header.base_fee_per_gas,
         block_hash=pre.latest_execution_payload_header.block_hash,
         transactions_root=pre.latest_execution_payload_header.transactions_root,
-        withdrawals_root=Root(),  # [New in Capella]
+        # [New in Capella]
+        withdrawals_root=Root(),
     )
     post = BeaconState(
-        # Versioning
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
@@ -99,42 +99,33 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
             current_version=CAPELLA_FORK_VERSION,
             epoch=epoch,
         ),
-        # History
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
-        # Registry
         validators=pre.validators,
         balances=pre.balances,
-        # Randomness
         randao_mixes=pre.randao_mixes,
-        # Slashings
         slashings=pre.slashings,
-        # Participation
         previous_epoch_participation=pre.previous_epoch_participation,
         current_epoch_participation=pre.current_epoch_participation,
-        # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        # Inactivity
         inactivity_scores=pre.inactivity_scores,
-        # Sync
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # Execution-layer
         latest_execution_payload_header=latest_execution_payload_header,
-        # Withdrawals
-        next_withdrawal_index=WithdrawalIndex(0),  # [New in Capella]
-        next_withdrawal_validator_index=ValidatorIndex(0),  # [New in Capella]
-        # Deep history valid from Capella onwards
-        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),  # [New in Capella]
+        # [New in Capella]
+        next_withdrawal_index=WithdrawalIndex(0),
+        # [New in Capella]
+        next_withdrawal_validator_index=ValidatorIndex(0),
+        # [New in Capella]
+        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),
     )
 
     return post

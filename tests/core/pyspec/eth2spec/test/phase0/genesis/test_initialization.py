@@ -21,10 +21,13 @@ def get_post_altair_description(spec):
 
 
 def eth1_init_data(eth1_block_hash, eth1_timestamp):
-    yield "eth1", {
-        "eth1_block_hash": "0x" + eth1_block_hash.hex(),
-        "eth1_timestamp": int(eth1_timestamp),
-    }
+    yield (
+        "eth1",
+        {
+            "eth1_block_hash": "0x" + eth1_block_hash.hex(),
+            "eth1_timestamp": int(eth1_timestamp),
+        },
+    )
 
 
 @with_phases([PHASE0])

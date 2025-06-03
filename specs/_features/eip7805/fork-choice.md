@@ -56,7 +56,9 @@ class Store(object):
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in EIP-7805]
     inclusion_lists: Dict[Tuple[Slot, Root], Set[InclusionList]] = field(default_factory=dict)
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(
+        default_factory=dict
+    )
     unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)
 ```
 
@@ -91,16 +93,20 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 #### New `validate_inclusion_lists`
 
 ```python
-def validate_inclusion_lists(_store: Store,
-                             inclusion_list_transactions: Sequence[Transaction],
-                             execution_payload: ExecutionPayload) -> None:
+def validate_inclusion_lists(
+    _store: Store,
+    inclusion_list_transactions: Sequence[Transaction],
+    execution_payload: ExecutionPayload,
+) -> None:
     """
     The ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either
     when all transactions are present in payload or when any missing transactions are found to be
     invalid when appended to the end of the payload unless the block is full.
     """
     # Verify inclusion list transactions are present in the execution payload
-    contains_all_txs = all(tx in execution_payload.transactions for tx in inclusion_list_transactions)
+    contains_all_txs = all(
+        tx in execution_payload.transactions for tx in inclusion_list_transactions
+    )
     if contains_all_txs:
         return
 
@@ -116,7 +122,6 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
     if head_root in store.unsatisfied_inclusion_list_blocks:
         return head_block.parent_root
     return head_root
-
 ```
 
 ##### Modified `get_proposer_head`
@@ -157,11 +162,22 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
-    reorg_prerequisites = all([shuffling_stable, ffg_competitive, finalization_ok,
-                               proposing_on_time, single_slot_reorg, head_weak, parent_strong])
+    reorg_prerequisites = all(
+        [
+            shuffling_stable,
+            ffg_competitive,
+            finalization_ok,
+            proposing_on_time,
+            single_slot_reorg,
+            head_weak,
+            parent_strong,
+        ]
+    )
 
     # Check that the head block is in the unsatisfied inclusion list blocks
-    inclusion_list_not_satisfied = head_root in store.unsatisfied_inclusion_list_blocks  # [New in EIP-7805]
+    inclusion_list_not_satisfied = (
+        head_root in store.unsatisfied_inclusion_list_blocks
+    )  # [New in EIP-7805]
 
     if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
         return parent_root
@@ -176,10 +192,11 @@ choice store.
 
 ```python
 def on_inclusion_list(
-        store: Store,
-        state: BeaconState,
-        signed_inclusion_list: SignedInclusionList,
-        inclusion_list_committee: Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]) -> None:
+    store: Store,
+    state: BeaconState,
+    signed_inclusion_list: SignedInclusionList,
+    inclusion_list_committee: Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE],
+) -> None:
     """
     Verify the inclusion list and import it into the fork choice store. If there exists more than
     one inclusion list in the store with the same slot and validator index, add the equivocator to
@@ -209,13 +226,18 @@ def on_inclusion_list(
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    is_before_freeze_deadline = get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    is_before_freeze_deadline = (
+        get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    )
 
     # Do not process inclusion lists from known equivocators
     if validator_index not in store.inclusion_list_equivocators[(message.slot, root)]:
-        if validator_index in [il.validator_index for il in store.inclusion_lists[(message.slot, root)]]:
+        if validator_index in [
+            il.validator_index for il in store.inclusion_lists[(message.slot, root)]
+        ]:
             validator_inclusion_list = [
-                il for il in store.inclusion_lists[(message.slot, root)]
+                il
+                for il in store.inclusion_lists[(message.slot, root)]
                 if il.validator_index == validator_index
             ][0]
             if validator_inclusion_list != message:

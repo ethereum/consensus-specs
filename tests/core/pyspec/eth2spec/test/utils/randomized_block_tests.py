@@ -4,8 +4,8 @@ Utility code to generate randomized block tests
 
 import sys
 import warnings
+from collections.abc import Callable
 from random import Random
-from typing import Callable
 
 from eth2spec.test.helpers.blob import (
     get_sample_blob_tx,
@@ -219,10 +219,7 @@ def random_block(spec, state, signed_blocks, scenario_state):
             )
             _warn_if_empty_operations(block)
             return block
-    else:
-        raise AssertionError(
-            "could not find a block with an unslashed proposer, check ``state`` input"
-        )
+    raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
 
 SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
@@ -428,8 +425,7 @@ def _iter_temporal(spec, description):
     numeric = _resolve_ref(description)
     if isinstance(numeric, Callable):
         numeric = numeric(spec)
-    for i in range(numeric):
-        yield i
+    yield from range(numeric)
 
 
 def _compute_statistics(scenario):
