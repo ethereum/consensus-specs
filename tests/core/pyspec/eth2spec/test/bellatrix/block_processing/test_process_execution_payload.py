@@ -19,7 +19,14 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import (
+    is_post_eip7732,
+    is_post_eip7805,
+)
+from eth2spec.test.helpers.inclusion_list import (
+    get_sample_inclusion_list,
+    run_with_inclusion_list,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
 
@@ -79,6 +86,15 @@ def run_execution_payload_processing(
             expect_assertion_error(
                 lambda: spec.process_execution_payload(state, signed_envelope, TestEngine())
             )
+        elif is_post_eip7805(spec):
+            inclusion_list = get_sample_inclusion_list(spec, state)
+            run_with_inclusion_list(
+                spec,
+                inclusion_list,
+                expect_assertion_error(
+                    lambda: spec.process_execution_payload(state, body, TestEngine())
+                ),
+            )
         else:
             expect_assertion_error(
                 lambda: spec.process_execution_payload(state, body, TestEngine())
@@ -88,6 +104,11 @@ def run_execution_payload_processing(
 
     if is_post_eip7732(spec):
         spec.process_execution_payload(state, signed_envelope, TestEngine())
+    elif is_post_eip7805(spec):
+        inclusion_list = get_sample_inclusion_list(spec, state)
+        run_with_inclusion_list(
+            spec, inclusion_list, spec.process_execution_payload(state, body, TestEngine())
+        )
     else:
         spec.process_execution_payload(state, body, TestEngine())
 

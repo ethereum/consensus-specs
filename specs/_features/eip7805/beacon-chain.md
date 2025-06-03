@@ -11,10 +11,12 @@
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
     - [`SignedInclusionList`](#signedinclusionlist)
+- [Helper functions](#helper-functions)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
+    - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
@@ -76,6 +78,8 @@ class SignedInclusionList(Container):
     signature: BLSSignature
 ```
 
+## Helper functions
+
 ### Predicates
 
 #### New `is_valid_inclusion_list_signature`
@@ -111,6 +115,34 @@ def get_inclusion_list_committee(state: BeaconState,
         indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
         for i in range(start, end)
     ]
+```
+
+#### New `get_inclusion_list_transactions`
+
+The abstract function `get_inclusion_list_transactions` returns a list of unique
+transactions from all valid and non-equivocating `InclusionList`s that were
+received in a timely manner on the p2p network for the given slot and for which
+the `inclusion_list_committee_root` in the `InclusionList` matches the one
+calculated based on the current state.
+
+A block MUST NOT be considered valid unless it contains all inclusion list
+transactions or cannot append any missing inclusion list transactions at the end
+of the payload.
+
+*Note*: Invalid or equivocating `InclusionList`s received on the p2p network
+MUST NOT invalidate a block that is otherwise valid and available.
+
+```python
+def get_inclusion_list_transactions(state: BeaconState, slot: Slot) -> Sequence[Transaction]:
+    """
+    # `retrieve_inclusion_list_transactions` is implementation and context dependent.
+    # It returns all unique transactions from valid, non-equivocating and timely
+    # `InclusionList`s for the given `slot`. These `InclusionList`s must also have an
+    # `inclusion_list_committee_root` that matches the one derived from the current `state`.
+    """
+    inclusion_list_transactions = retrieve_inclusion_list_transactions(state, slot)
+
+    return inclusion_list_transactions
 ```
 
 ## Beacon chain state transition function
@@ -153,7 +185,9 @@ def is_valid_block_hash(self: ExecutionEngine,
 ##### Modified `notify_new_payload`
 
 *Note*: The function `notify_new_payload` is modified to include the additional
-`inclusion_list_transactions`.
+`inclusion_list_transactions`. If the payload is valid but fails to satisfy the
+inclusion list constraints, it raises
+`AssertionError("INVALID_INCLUSION_LIST")`.
 
 ```python
 def notify_new_payload(self: ExecutionEngine,
@@ -163,11 +197,12 @@ def notify_new_payload(self: ExecutionEngine,
                        inclusion_list_transactions: Sequence[Transaction]) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
-    are valid with respect to ``self.execution_state``.
+    are valid with respect to ``self.execution_state``, and ``execution_payload`` satisfies
+    the inclusion list constraints.
+
+    Raise ``AssertionError("INVALID_INCLUSION_LIST")`` if ``execution_payload`` is valid but
+    fails to satisfy the inclusion list constraints.
     """
-    # TODO: move this outside of notify_new_payload.
-    # If execution client returns block does not satisfy inclusion list transactions, cache the block
-    # store.unsatisfied_inclusion_list_blocks.add(execution_payload.block_root)
     ...
 ```
 
@@ -227,16 +262,14 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
     # Verify the execution payload is valid
     versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
-    # Verify inclusion list transactions
-    inclusion_list_transactions: Sequence[Transaction] = []  # TODO: where do we get this?
-    # Verify the payload with the execution engine
+    inclusion_list_transactions = get_inclusion_list_transactions(state, state.slot) # [New in EIP-7805]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            inclusion_list_transactions=inclusion_list_transactions,
+            inclusion_list_transactions=inclusion_list_transactions, # [New in EIP-7805]
         )
     )
     # Cache execution payload header

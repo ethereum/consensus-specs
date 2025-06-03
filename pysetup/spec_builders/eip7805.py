@@ -12,6 +12,14 @@ from eth2spec.electra import {preset_name} as electra
 """
 
     @classmethod
+    def sundry_functions(cls) -> str:
+        return """
+def retrieve_inclusion_list_transactions(state: BeaconState, slot: Slot) -> Sequence[Transaction]:
+    # pylint: disable=unused-argument
+    return []
+"""
+
+    @classmethod
     def execution_engine_cls(cls) -> str:
         return """
 class NoopExecutionEngine(ExecutionEngine):
