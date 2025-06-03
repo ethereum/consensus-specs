@@ -52,23 +52,20 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
                     assert post_state.balances[index] == pre_state.balances[index]
                 else:
                     assert post_state.balances[index] < pre_state.balances[index]
+            elif index in attesting_indices:
+                assert post_state.balances[index] > pre_state.balances[index]
             else:
-                if index in attesting_indices:
-                    assert post_state.balances[index] > pre_state.balances[index]
-                else:
-                    assert post_state.balances[index] < pre_state.balances[index]
+                assert post_state.balances[index] < pre_state.balances[index]
+        elif spec.is_in_inactivity_leak(post_state):
+            if index in attesting_indices:
+                # If not proposer but participated optimally, should have exactly neutral balance
+                assert post_state.balances[index] == pre_state.balances[index]
+            else:
+                assert post_state.balances[index] < pre_state.balances[index]
+        elif index in attesting_indices:
+            assert post_state.balances[index] > pre_state.balances[index]
         else:
-            if spec.is_in_inactivity_leak(post_state):
-                if index in attesting_indices:
-                    # If not proposer but participated optimally, should have exactly neutral balance
-                    assert post_state.balances[index] == pre_state.balances[index]
-                else:
-                    assert post_state.balances[index] < pre_state.balances[index]
-            else:
-                if index in attesting_indices:
-                    assert post_state.balances[index] > pre_state.balances[index]
-                else:
-                    assert post_state.balances[index] < pre_state.balances[index]
+            assert post_state.balances[index] < pre_state.balances[index]
 
 
 @with_all_phases

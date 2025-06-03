@@ -1,5 +1,3 @@
-from typing import Dict, Set
-
 from ..constants import EIP7732
 from .base import BaseSpecBuilder
 
@@ -23,7 +21,7 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
     return o"""
 
     @classmethod
-    def deprecate_constants(cls) -> Set[str]:
+    def deprecate_constants(cls) -> set[str]:
         return set(
             [
                 "EXECUTION_PAYLOAD_GINDEX",
@@ -31,7 +29,7 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
         )
 
     @classmethod
-    def deprecate_presets(cls) -> Set[str]:
+    def deprecate_presets(cls) -> set[str]:
         return set(
             [
                 "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",

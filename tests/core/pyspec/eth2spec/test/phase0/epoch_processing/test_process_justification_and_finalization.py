@@ -31,15 +31,14 @@ def add_mock_attestations(
             raise Exception(
                 f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}"
             )
+    elif current_epoch == epoch:
+        epoch_participation = state.current_epoch_participation
+    elif previous_epoch == epoch:
+        epoch_participation = state.previous_epoch_participation
     else:
-        if current_epoch == epoch:
-            epoch_participation = state.current_epoch_participation
-        elif previous_epoch == epoch:
-            epoch_participation = state.previous_epoch_participation
-        else:
-            raise Exception(
-                f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}"
-            )
+        raise Exception(
+            f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}"
+        )
 
     total_balance = spec.get_total_active_balance(state)
     remaining_balance = int(total_balance * 2 // 3)  # can become negative

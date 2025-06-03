@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from importlib import import_module
-from typing import Iterable
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests, get_expected_modules

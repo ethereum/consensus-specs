@@ -1,5 +1,3 @@
-from typing import Dict
-
 from ..constants import EIP6800
 from .base import BaseSpecBuilder
 

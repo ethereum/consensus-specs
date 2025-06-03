@@ -16,8 +16,7 @@ def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None
     validator = state.validators[index]
     validator.withdrawable_epoch = withdrawable_epoch
     # set exit epoch as well to avoid interactions with other epoch process, e.g. forced ejections
-    if validator.exit_epoch > withdrawable_epoch:
-        validator.exit_epoch = withdrawable_epoch
+    validator.exit_epoch = min(validator.exit_epoch, withdrawable_epoch)
 
     if validator.withdrawal_credentials[0:1] == spec.BLS_WITHDRAWAL_PREFIX:
         validator.withdrawal_credentials = (

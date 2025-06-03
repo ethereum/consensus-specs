@@ -1,5 +1,4 @@
 from eth2spec.test.context import spec_state_test, with_fulu_and_later
-from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.state import next_epoch
 
 

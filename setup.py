@@ -2,23 +2,18 @@ import copy
 import logging
 import os
 import string
-import sys
 import warnings
 from collections import OrderedDict
+from collections.abc import Sequence
 from distutils import dir_util
 from distutils.util import convert_path
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
-from typing import cast, Dict, List, Sequence
+from typing import cast
 
 from ruamel.yaml import YAML
 from setuptools import Command, find_packages, setup
 from setuptools.command.build_py import build_py
-
-from pysetup.md_to_spec import MarkdownToSpec
-
-pysetup_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, pysetup_path)
 
 from pysetup.constants import (
     PHASE0,
@@ -30,6 +25,7 @@ from pysetup.helpers import (
     parse_config_vars,
 )
 from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.md_to_spec import MarkdownToSpec
 from pysetup.spec_builders import spec_builders
 from pysetup.typing import (
     BuildTarget,
@@ -51,15 +47,15 @@ logging.getLogger().addFilter(PyspecFilter())
 
 def get_spec(
     file_name: Path,
-    preset: Dict[str, str],
-    config: Dict[str, str | list[dict[str, str]]],
+    preset: dict[str, str],
+    config: dict[str, str | list[dict[str, str]]],
     preset_name: str,
 ) -> SpecObject:
     return MarkdownToSpec(file_name, preset, config, preset_name).run()
 
 
-@lru_cache(maxsize=None)
-def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
+@cache
+def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
     """
     Loads a directory of preset files, merges the result into one preset.
     """
@@ -74,11 +70,11 @@ def load_preset(preset_files: Sequence[Path]) -> Dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return cast(Dict[str, str], parse_config_vars(preset))
+    return cast(dict[str, str], parse_config_vars(preset))
 
 
-@lru_cache(maxsize=None)
-def load_config(config_path: Path) -> Dict[str, str | List[Dict[str, str]]]:
+@cache
+def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
     """
     Loads the given configuration file.
     """
@@ -123,9 +119,9 @@ class PySpecCommand(Command):
 
     spec_fork: str
     md_doc_paths: str
-    parsed_md_doc_paths: List[str]
+    parsed_md_doc_paths: list[str]
     build_targets: str
-    parsed_build_targets: List[BuildTarget]
+    parsed_build_targets: list[BuildTarget]
     out_dir: str
 
     # The format is (long option, short option, description).
@@ -157,14 +153,14 @@ class PySpecCommand(Command):
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
             if len(self.md_doc_paths) == 0:
                 raise Exception(
-                    'no markdown files specified, and spec fork "%s" is unknown', self.spec_fork
+                    f"No markdown files specified, and spec fork {self.spec_fork!r} is unknown"
                 )
 
         self.parsed_md_doc_paths = self.md_doc_paths.split()
 
         for filename in self.parsed_md_doc_paths:
             if not os.path.exists(filename):
-                raise Exception('Pyspec markdown input file "%s" does not exist.' % filename)
+                raise Exception(f"Pyspec markdown input file {filename!r} does not exist")
 
         self.parsed_build_targets = []
         for target in self.build_targets.split():
@@ -172,19 +168,18 @@ class PySpecCommand(Command):
             data = target.split(":")
             if len(data) != 3:
                 raise Exception(
-                    'invalid target, expected "name:preset_dir:config_file" format, but got: %s'
-                    % target
+                    f"invalid target, expected 'name:preset_dir:config_file' format, but got: {target}"
                 )
             name, preset_dir_path, config_path = data
             if any((c not in string.digits + string.ascii_letters) for c in name):
-                raise Exception('invalid target name: "%s"' % name)
+                raise Exception(f"invalid target name: {name!r}")
             if not os.path.exists(preset_dir_path):
-                raise Exception('Preset dir "%s" does not exist' % preset_dir_path)
+                raise Exception(f"Preset dir {preset_dir_path!r} does not exist")
             _, _, preset_file_names = next(os.walk(preset_dir_path))
             preset_paths = [(Path(preset_dir_path) / name) for name in preset_file_names]
 
             if not os.path.exists(config_path):
-                raise Exception('Config file "%s" does not exist' % config_path)
+                raise Exception(f"Config file {config_path!r} does not exist")
             self.parsed_build_targets.append(BuildTarget(name, preset_paths, Path(config_path)))
 
     def run(self):
@@ -220,7 +215,7 @@ class BuildPyCommand(build_py):
     """Customize the build command to run the spec-builder on setup.py build"""
 
     def initialize_options(self):
-        super(BuildPyCommand, self).initialize_options()
+        super().initialize_options()
 
     def run_pyspec_cmd(self, spec_fork: str, **opts):
         cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
@@ -234,7 +229,7 @@ class BuildPyCommand(build_py):
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
-        super(BuildPyCommand, self).run()
+        super().run()
 
 
 class PyspecDevCommand(Command):
@@ -269,7 +264,7 @@ commands = {
     "pyspecdev": PyspecDevCommand,
 }
 
-with open("README.md", "rt", encoding="utf8") as f:
+with open("README.md", encoding="utf8") as f:
     readme = f.read()
 
 # How to use "VERSION.txt" file:
