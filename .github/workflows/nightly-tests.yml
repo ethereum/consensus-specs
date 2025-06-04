@@ -18,6 +18,7 @@ on:
 
 jobs:
   tests:
+    timeout-minutes: 720  # 12 hours
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     strategy:
       fail-fast: false
