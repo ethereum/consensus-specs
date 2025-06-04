@@ -17,8 +17,8 @@
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
     - [New `BlobScheduleEntry`](#new-blobscheduleentry)
-    - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
     - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
+    - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_beacon_proposer_index`](#modified-get_beacon_proposer_index)
@@ -176,6 +176,22 @@ class BlobScheduleEntry(object):
     max_blobs_per_block: uint64
 ```
 
+#### New `get_max_blobs_per_block`
+
+*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
+given epoch.
+
+```python
+def get_max_blobs_per_block(epoch: Epoch) -> uint64:
+    """
+    Return the maximum number of blobs that can be included in a block for a given epoch.
+    """
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["MAX_BLOBS_PER_BLOCK"]
+    return MAX_BLOBS_PER_BLOCK_ELECTRA
+```
+
 #### Modified `compute_fork_digest`
 
 *Note:* The `compute_fork_digest` helper is updated to account for
@@ -207,22 +223,6 @@ def compute_fork_digest(
     mask = max_blobs_per_block.to_bytes(4, "big")
     masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
     return ForkDigest(masked_digest)
-```
-
-#### New `get_max_blobs_per_block`
-
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
-given epoch.
-
-```python
-def get_max_blobs_per_block(epoch: Epoch) -> uint64:
-    """
-    Return the maximum number of blobs that can be included in a block for a given epoch.
-    """
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return entry["MAX_BLOBS_PER_BLOCK"]
-    return MAX_BLOBS_PER_BLOCK_ELECTRA
 ```
 
 #### New `compute_proposer_indices`
