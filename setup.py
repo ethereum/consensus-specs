@@ -10,13 +10,10 @@ from distutils.util import convert_path
 from functools import cache
 from pathlib import Path
 from typing import cast
-from collections.abc import Sequence
 
 from ruamel.yaml import YAML
 from setuptools import Command, find_packages, setup
 from setuptools.command.build_py import build_py
-
-from pysetup.md_to_spec import MarkdownToSpec
 
 from pysetup.constants import (
     PHASE0,
@@ -221,7 +218,7 @@ class BuildPyCommand(build_py):
         super().initialize_options()
 
     def run_pyspec_cmd(self, spec_fork: str) -> None:
-        cmd_obj: PySpecCommand = cast(PySpecCommand, self.distribution.reinitialize_command("pyspec"))
+        cmd_obj = cast(PySpecCommand, self.distribution.reinitialize_command("pyspec"))
         cmd_obj.spec_fork = spec_fork
         cmd_obj.out_dir = os.path.join(self.build_lib, "eth2spec", spec_fork)
         self.run_command("pyspec")
