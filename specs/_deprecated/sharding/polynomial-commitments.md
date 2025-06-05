@@ -93,7 +93,7 @@ def reverse_bit_order(n: int, order: int) -> int:
     """
     assert is_power_of_two(order)
     # Convert n to binary with the same number of bits as "order" - 1, then reverse its bit order
-    return int(('{:0' + str(order.bit_length() - 1) + 'b}').format(n)[::-1], 2)
+    return int(("{:0" + str(order.bit_length() - 1) + "b}").format(n)[::-1], 2)
 ```
 
 #### `list_to_reverse_bit_order`
@@ -182,7 +182,7 @@ def low_degree_check(commitments: List[KZGCommitment]):
     # For an efficient implementation, B and Bprime should be precomputed
     def B(z):
         r = 1
-        for w in roots[:d + 1]:
+        for w in roots[: d + 1]:
             r = r * (z - w) % BLS_MODULUS
         return r
 
@@ -190,14 +190,18 @@ def low_degree_check(commitments: List[KZGCommitment]):
         r = 0
         for i in range(d + 1):
             m = 1
-            for w in roots[:i] + roots[i + 1:d + 1]:
+            for w in roots[:i] + roots[i + 1 : d + 1]:
                 m = m * (z - w) % BLS_MODULUS
             r = (r + m) % BLS_MODULUS
         return r
 
     coefs = []
     for i in range(K):
-        coefs.append( - (r_to_K - 1) * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i])) % BLS_MODULUS)
+        coefs.append(
+            -(r_to_K - 1)
+            * bls_modular_inverse(K * roots[i * (K - 1) % K] * (r - roots[i]))
+            % BLS_MODULUS
+        )
     for i in range(d + 1):
         coefs[i] = (coefs[i] + B(r) * bls_modular_inverse(Bprime(r) * (r - roots[i]))) % BLS_MODULUS
 
@@ -207,11 +211,13 @@ def low_degree_check(commitments: List[KZGCommitment]):
 #### `vector_lincomb`
 
 ```python
-def vector_lincomb(vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]) -> List[BLSFieldElement]:
+def vector_lincomb(
+    vectors: List[List[BLSFieldElement]], scalars: List[BLSFieldElement]
+) -> List[BLSFieldElement]:
     """
     Compute a linear combination of field element vectors.
     """
-    r = [0]*len(vectors[0])
+    r = [0] * len(vectors[0])
     for v, a in zip(vectors, scalars):
         for i, x in enumerate(v):
             r[i] = (r[i] + a * x) % BLS_MODULUS
@@ -225,7 +231,7 @@ def bytes_to_field_elements(block: bytes) -> List[BLSFieldElement]:
     """
     Slices a block into 31-byte chunks that can fit into field elements.
     """
-    sliced_block = [block[i:i + 31] for i in range(0, len(bytes), 31)]
+    sliced_block = [block[i : i + 31] for i in range(0, len(bytes), 31)]
     return [BLSFieldElement(int.from_bytes(x, "little")) for x in sliced_block]
 ```
 
@@ -234,7 +240,9 @@ def bytes_to_field_elements(block: bytes) -> List[BLSFieldElement]:
 #### `add_polynomials`
 
 ```python
-def add_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients) -> BLSPolynomialByCoefficients:
+def add_polynomials(
+    a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients
+) -> BLSPolynomialByCoefficients:
     """
     Sum the polynomials ``a`` and ``b`` given by their coefficients.
     """
@@ -245,7 +253,9 @@ def add_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficien
 #### `multiply_polynomials`
 
 ```python
-def multiply_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients) -> BLSPolynomialByCoefficients:
+def multiply_polynomials(
+    a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoefficients
+) -> BLSPolynomialByCoefficients:
     """
     Multiplies the polynomials `a` and `b` given by their coefficients
     """
@@ -259,7 +269,9 @@ def multiply_polynomials(a: BLSPolynomialByCoefficients, b: BLSPolynomialByCoeff
 #### `interpolate_polynomial`
 
 ```python
-def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement]) -> BLSPolynomialByCoefficients:
+def interpolate_polynomial(
+    xs: List[BLSFieldElement], ys: List[BLSFieldElement]
+) -> BLSPolynomialByCoefficients:
     """
     Lagrange interpolation
     """
@@ -282,7 +294,9 @@ def interpolate_polynomial(xs: List[BLSFieldElement], ys: List[BLSFieldElement])
 #### `evaluate_polynomial_in_evaluation_form`
 
 ```python
-def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: BLSFieldElement) -> BLSFieldElement:
+def evaluate_polynomial_in_evaluation_form(
+    poly: BLSPolynomialByEvaluations, x: BLSFieldElement
+) -> BLSFieldElement:
     """
     Evaluates a polynomial (in evaluation form) at an arbitrary point
     """
@@ -316,7 +330,9 @@ Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).
 #### `elliptic_curve_lincomb`
 
 ```python
-def elliptic_curve_lincomb(points: List[KZGCommitment], scalars: List[BLSFieldElement]) -> KZGCommitment:
+def elliptic_curve_lincomb(
+    points: List[KZGCommitment], scalars: List[BLSFieldElement]
+) -> KZGCommitment:
     """
     BLS multiscalar multiplication. This function can be optimized using Pippenger's algorithm and variants.
     This is a non-optimized implementation.
@@ -337,9 +353,10 @@ def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement
     This function is used to generate Fiat-Shamir challenges. The output is not uniform over the BLS field.
     """
     return (
-        (int.from_bytes(hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little"))
-        % BLS_MODULUS
-    )
+        int.from_bytes(
+            hash(hash_tree_root(x) + int.to_bytes(challenge_number, 32, "little")), "little"
+        )
+    ) % BLS_MODULUS
 ```
 
 ### KZG operations
@@ -347,35 +364,39 @@ def hash_to_bls_field(x: Container, challenge_number: uint64) -> BLSFieldElement
 #### `verify_kzg_proof`
 
 ```python
-def verify_kzg_proof(commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment) -> None:
+def verify_kzg_proof(
+    commitment: KZGCommitment, x: BLSFieldElement, y: BLSFieldElement, proof: KZGCommitment
+) -> None:
     """
     Check that `proof` is a valid KZG proof for the polynomial committed to by `commitment` evaluated
     at `x` equals `y`.
     """
     zero_poly = G2_SETUP[1].add(G2_SETUP[0].mult(x).neg())
 
-    assert (
-        bls.Pairing(proof, zero_poly)
-        == bls.Pairing(commitment.add(G1_SETUP[0].mult(y).neg), G2_SETUP[0])
+    assert bls.Pairing(proof, zero_poly) == bls.Pairing(
+        commitment.add(G1_SETUP[0].mult(y).neg), G2_SETUP[0]
     )
 ```
 
 #### `verify_kzg_multiproof`
 
 ```python
-def verify_kzg_multiproof(commitment: KZGCommitment,
-                          xs: List[BLSFieldElement],
-                          ys: List[BLSFieldElement],
-                          proof: KZGCommitment) -> None:
+def verify_kzg_multiproof(
+    commitment: KZGCommitment,
+    xs: List[BLSFieldElement],
+    ys: List[BLSFieldElement],
+    proof: KZGCommitment,
+) -> None:
     """
     Verify a KZG multiproof.
     """
-    zero_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, [0] * len(ys)))
-    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[:len(xs)], interpolate_polynomial(xs, ys))
+    zero_poly = elliptic_curve_lincomb(
+        G2_SETUP[: len(xs)], interpolate_polynomial(xs, [0] * len(ys))
+    )
+    interpolated_poly = elliptic_curve_lincomb(G2_SETUP[: len(xs)], interpolate_polynomial(xs, ys))
 
-    assert (
-        bls.Pairing(proof, zero_poly)
-        == bls.Pairing(commitment.add(interpolated_poly.neg()), G2_SETUP[0])
+    assert bls.Pairing(proof, zero_poly) == bls.Pairing(
+        commitment.add(interpolated_poly.neg()), G2_SETUP[0]
     )
 ```
 
@@ -387,8 +408,5 @@ def verify_degree_proof(commitment: KZGCommitment, degree_bound: uint64, proof: 
     Verifies that the commitment is of polynomial degree < degree_bound.
     """
 
-    assert (
-        bls.Pairing(proof, G2_SETUP[0])
-        == bls.Pairing(commitment, G2_SETUP[-degree_bound])
-    )
+    assert bls.Pairing(proof, G2_SETUP[0]) == bls.Pairing(commitment, G2_SETUP[-degree_bound])
 ```

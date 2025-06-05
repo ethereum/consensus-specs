@@ -1315,7 +1315,9 @@ should:
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
     node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    permutation_seed = hash(
+        uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
         1 << ATTESTATION_SUBNET_PREFIX_BITS,
@@ -1966,8 +1968,7 @@ epoch range, we use the worst case event of a very large validator size
 
 ```python
 MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
+    MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
 )
 ```
 

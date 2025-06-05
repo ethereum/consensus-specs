@@ -25,11 +25,18 @@ and a length.
 def get_new_dependencies(state: BeaconState) -> Set[DataCommitment]:
     return set(
         # Already confirmed during this epoch
-        [c.commitment for c in state.current_epoch_pending_headers if c.confirmed] +
+        [c.commitment for c in state.current_epoch_pending_headers if c.confirmed]
+        +
         # Already confirmed during previous epoch
-        [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed] +
+        [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed]
+        +
         # Confirmed in the epoch before the previous
-        [c for c in shard for shard in state.grandparent_epoch_confirmed_commitments if c != DataCommitment()]
+        [
+            c
+            for c in shard
+            for shard in state.grandparent_epoch_confirmed_commitments
+            if c != DataCommitment()
+        ]
     )
 ```
 

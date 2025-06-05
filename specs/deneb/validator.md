@@ -115,11 +115,13 @@ processed through any empty slots up to the assigned slot using
 beacon block root as an additional parameter to the `PayloadAttributes`.
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine) -> Optional[PayloadId]:
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
@@ -129,7 +131,9 @@ def prepare_execution_payload(state: BeaconState,
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),
-        parent_beacon_block_root=hash_tree_root(state.latest_block_header),  # [New in Deneb:EIP4788]
+        parent_beacon_block_root=hash_tree_root(
+            state.latest_block_header
+        ),  # [New in Deneb:EIP4788]
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
@@ -163,9 +167,9 @@ to the associated sidecar topic, the `blob_sidecar_{subnet_id}` pubsub topic.
 Each `sidecar` is obtained from:
 
 ```python
-def get_blob_sidecars(signed_block: SignedBeaconBlock,
-                      blobs: Sequence[Blob],
-                      blob_kzg_proofs: Sequence[KZGProof]) -> Sequence[BlobSidecar]:
+def get_blob_sidecars(
+    signed_block: SignedBeaconBlock, blobs: Sequence[Blob], blob_kzg_proofs: Sequence[KZGProof]
+) -> Sequence[BlobSidecar]:
     block = signed_block.message
     signed_block_header = compute_signed_block_header(signed_block)
     return [
@@ -177,7 +181,7 @@ def get_blob_sidecars(signed_block: SignedBeaconBlock,
             signed_block_header=signed_block_header,
             kzg_commitment_inclusion_proof=compute_merkle_proof(
                 block.body,
-                get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', index),
+                get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
             ),
         )
         for index, blob in enumerate(blobs)

@@ -34,6 +34,7 @@ def get_process_calls(spec):
             else ("process_participation_record_updates")
         ),
         "process_sync_committee_updates",  # altair
+        "process_proposer_lookahead",  # fulu
     ]
 
 

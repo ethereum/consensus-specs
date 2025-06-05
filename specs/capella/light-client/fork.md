@@ -52,7 +52,9 @@ def upgrade_lc_update_to_capella(pre: bellatrix.LightClientUpdate) -> LightClien
 ```
 
 ```python
-def upgrade_lc_finality_update_to_capella(pre: bellatrix.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_capella(
+    pre: bellatrix.LightClientFinalityUpdate,
+) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_capella(pre.attested_header),
         finalized_header=upgrade_lc_header_to_capella(pre.finalized_header),
@@ -63,7 +65,9 @@ def upgrade_lc_finality_update_to_capella(pre: bellatrix.LightClientFinalityUpda
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_capella(pre: bellatrix.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_capella(
+    pre: bellatrix.LightClientOptimisticUpdate,
+) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_capella(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,

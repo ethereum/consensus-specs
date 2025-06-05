@@ -69,9 +69,8 @@ current and next epoch.
 
 ```python
 def get_inclusion_committee_assignment(
-        state: BeaconState,
-        epoch: Epoch,
-        validator_index: ValidatorIndex) -> Optional[Slot]:
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with index ``validator_index``
     is a member of the ILC. Returns None if no assignment is found.
@@ -137,8 +136,11 @@ The validator creates the `signed_inclusion_list` as follows:
 
 ```python
 def get_inclusion_list_signature(
-        state: BeaconState, inclusion_list: InclusionList, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot))
+    state: BeaconState, inclusion_list: InclusionList, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot)
+    )
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -154,11 +156,13 @@ Set `attestation_data.beacon_block_root = get_attester_head(store, head_root)`.
 #### Modified beacon block root
 
 ```python
-def get_sync_committee_message(state: BeaconState,
-                               block_root: Root,
-                               validator_index: ValidatorIndex,
-                               privkey: int,
-                               store: Store) -> SyncCommitteeMessage:
+def get_sync_committee_message(
+    state: BeaconState,
+    block_root: Root,
+    validator_index: ValidatorIndex,
+    privkey: int,
+    store: Store,
+) -> SyncCommitteeMessage:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
     signing_root = compute_signing_root(block_root, domain)

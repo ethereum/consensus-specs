@@ -72,12 +72,14 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Deneb:EIP4844]*
 
+*Note*: `index` is the index of the blob in the block.
+
 ```python
 class BlobSidecar(Container):
-    index: BlobIndex  # Index of blob in block
+    index: BlobIndex
     blob: Blob
     kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
+    kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```
@@ -98,7 +100,9 @@ class BlobIdentifier(Container):
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments', blob_sidecar.index))
+    gindex = get_subtree_index(
+        get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", blob_sidecar.index)
+    )
     return is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
         branch=blob_sidecar.kzg_commitment_inclusion_proof,

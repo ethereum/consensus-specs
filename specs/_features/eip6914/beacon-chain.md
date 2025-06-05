@@ -44,10 +44,7 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     """
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
-    return (
-        epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX
-        and balance == 0
-    )
+    return epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX and balance == 0
 ```
 
 ## Beacon chain state transition function

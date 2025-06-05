@@ -41,7 +41,9 @@ and is under active development.
 ##### Modified `process_execution_payload`
 
 ```python
-def process_execution_payload(state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
+) -> None:
     payload = body.execution_payload
 
     # Verify consistency of the parent hash with respect to the previous execution payload header
@@ -50,10 +52,12 @@ def process_execution_payload(state: BeaconState, body: BeaconBlockBody, executi
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))  # [Modified in Fulu:EIP7892]
+    # [Modified in Fulu:EIP7892] Verify commitments are under limit
+    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
     # Verify the execution payload is valid
-    versioned_hashes = [kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments]
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+    ]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -102,46 +106,33 @@ reflecting how far ahead proposer indices are computed based on the
 
 ```python
 class BeaconState(Container):
-    # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
-    # History
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Participation
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # Inactivity
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    # Sync
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
-    # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
     deposit_requests_start_index: uint64
     deposit_balance_to_consume: Gwei
@@ -152,7 +143,8 @@ class BeaconState(Container):
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]  # [New in Fulu:EIP7917]
+    # [New in Fulu:EIP7917]
+    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
 ```
 
 ## Helper functions
@@ -162,7 +154,9 @@ class BeaconState(Container):
 #### New `compute_proposer_indices`
 
 ```python
-def compute_proposer_indices(state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+def compute_proposer_indices(
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -189,7 +183,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 #### New `get_beacon_proposer_indices`
 
 ```python
-def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+def get_beacon_proposer_indices(
+    state: BeaconState, epoch: Epoch
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -239,6 +235,8 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     # Shift out proposers in the first epoch
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
-    last_epoch_proposers = get_beacon_proposer_indices(state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1))
+    last_epoch_proposers = get_beacon_proposer_indices(
+        state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
+    )
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```

@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore", message="Normalizing .* to .*")
 
 # Ignore 'running' and 'creating' messages
 class PyspecFilter(logging.Filter):
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         return not record.getMessage().startswith(("running ", "creating "))
 
 
@@ -59,7 +59,7 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
     """
     Loads a directory of preset files, merges the result into one preset.
     """
-    preset = {}
+    preset: dict[str, str] = {}
     for fork_file in preset_files:
         yaml = YAML(typ="base")
         fork_preset: dict = yaml.load(fork_file)
@@ -101,7 +101,7 @@ def build_spec(
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
 
     # Ensure it's ordered after multiple forks
-    new_objects = {}
+    new_objects: dict[str, str] = {}
     while OrderedDict(new_objects) != OrderedDict(class_objects):
         new_objects = copy.deepcopy(class_objects)
         dependency_order_class_objects(
@@ -119,7 +119,7 @@ class PySpecCommand(Command):
 
     spec_fork: str
     md_doc_paths: str
-    parsed_md_doc_paths: list[str]
+    parsed_md_doc_paths: list[Path]
     build_targets: str
     parsed_build_targets: list[BuildTarget]
     out_dir: str
@@ -136,7 +136,7 @@ class PySpecCommand(Command):
         ("out-dir=", None, "Output directory to write spec package to"),
     ]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         """Set default values for options."""
         # Each user option must be listed here with their default value.
         self.spec_fork = PHASE0
@@ -147,7 +147,7 @@ class PySpecCommand(Command):
                 mainnet:presets/mainnet:configs/mainnet.yaml
         """
 
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         """Post-process options."""
         if len(self.md_doc_paths) == 0:
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
@@ -156,7 +156,7 @@ class PySpecCommand(Command):
                     f"No markdown files specified, and spec fork {self.spec_fork!r} is unknown"
                 )
 
-        self.parsed_md_doc_paths = self.md_doc_paths.split()
+        self.parsed_md_doc_paths = [Path(p) for p in self.md_doc_paths.split()]
 
         for filename in self.parsed_md_doc_paths:
             if not os.path.exists(filename):
@@ -182,7 +182,7 @@ class PySpecCommand(Command):
                 raise Exception(f"Config file {config_path!r} does not exist")
             self.parsed_build_targets.append(BuildTarget(name, preset_paths, Path(config_path)))
 
-    def run(self):
+    def run(self) -> None:
         if not self.dry_run:
             dir_util.mkpath(self.out_dir)
 
@@ -214,18 +214,16 @@ class PySpecCommand(Command):
 class BuildPyCommand(build_py):
     """Customize the build command to run the spec-builder on setup.py build"""
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         super().initialize_options()
 
-    def run_pyspec_cmd(self, spec_fork: str, **opts):
-        cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
+    def run_pyspec_cmd(self, spec_fork: str) -> None:
+        cmd_obj = cast(PySpecCommand, self.distribution.reinitialize_command("pyspec"))
         cmd_obj.spec_fork = spec_fork
         cmd_obj.out_dir = os.path.join(self.build_lib, "eth2spec", spec_fork)
-        for k, v in opts.items():
-            setattr(cmd_obj, k, v)
         self.run_command("pyspec")
 
-    def run(self):
+    def run(self) -> None:
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 
@@ -236,24 +234,21 @@ class PyspecDevCommand(Command):
     """Build the markdown files in-place to their source location for testing."""
 
     description = "Build the markdown files in-place to their source location for testing."
-    user_options = []
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         pass
 
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         pass
 
-    def run_pyspec_cmd(self, spec_fork: str, **opts):
-        cmd_obj: PySpecCommand = self.distribution.reinitialize_command("pyspec")
+    def run_pyspec_cmd(self, spec_fork: str) -> None:
+        cmd_obj = cast(PySpecCommand, self.distribution.reinitialize_command("pyspec"))
         cmd_obj.spec_fork = spec_fork
         eth2spec_dir = convert_path(self.distribution.package_dir["eth2spec"])
         cmd_obj.out_dir = os.path.join(eth2spec_dir, spec_fork)
-        for k, v in opts.items():
-            setattr(cmd_obj, k, v)
         self.run_command("pyspec")
 
-    def run(self):
+    def run(self) -> None:
         for spec_fork in spec_builders:
             self.run_pyspec_cmd(spec_fork=spec_fork)
 

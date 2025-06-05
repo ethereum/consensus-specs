@@ -63,10 +63,10 @@ The `BlobSidecar` container is modified indirectly because the constant
 
 ```python
 class BlobSidecar(Container):
-    index: BlobIndex  # Index of blob in block
+    index: BlobIndex
     blob: Blob
     kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof  # Allows for quick verification of kzg_commitment
+    kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
 ```
@@ -82,8 +82,7 @@ no longer in the beacon block body.
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     inner_gindex = get_generalized_index(
-        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-        blob_sidecar.index
+        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_sidecar.index
     )
     outer_gindex = get_generalized_index(
         BeaconBlockBody,
