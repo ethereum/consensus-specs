@@ -1,4 +1,4 @@
-name: Run test vector generation
+name: Generate reference tests
 
 defaults:
   run:
@@ -39,15 +39,10 @@ jobs:
       - name: Generate tests
         run: |
           cd consensus-specs
+          set -o pipefail
           make reftests verbose=true 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
-      - name: Check for errors
-        run: |
-          if grep -q "\[ERROR\]" consensustestgen.log; then
-            echo "There is an error in the log"
-            exit 1
-          fi
       - name: Archive configurations
         run: |
           cd consensus-spec-tests
