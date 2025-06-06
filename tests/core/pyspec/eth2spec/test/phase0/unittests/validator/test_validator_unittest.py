@@ -6,11 +6,12 @@ from eth2spec.test.context import (
     spec_state_test,
     spec_test,
     with_all_phases,
+    with_all_phases_from_to,
     with_phases,
 )
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
-from eth2spec.test.helpers.constants import PHASE0
+from eth2spec.test.helpers.constants import FULU, PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.forks import is_post_fulu
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -337,7 +338,7 @@ def test_get_block_signature(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_from_to(from_phase=PHASE0, to_phase=FULU, other_phases=[FULU])
 @spec_state_test
 def test_compute_fork_digest(spec, state):
     if is_post_fulu(spec):
