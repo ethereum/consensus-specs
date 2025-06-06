@@ -33,7 +33,7 @@ Or, to run a specific test function specify `k=<test-name>`:
 make test k=test_verify_kzg_proof
 ```
 
-Or, to run a specific test function under a single fork specify `k=<test-name>`:
+Or, to run all tests under a single fork specify `fork=<name>`:
 
 ```shell
 make test fork=phase0
