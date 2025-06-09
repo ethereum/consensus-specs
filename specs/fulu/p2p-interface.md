@@ -498,9 +498,12 @@ column discovery.
 
 ##### Next fork digest
 
-A new field is added to the ENR under the key `nfd`, short for _next fork
-digest_. This field communicates the digest of the next scheduled fork,
+A new entry is added to the ENR under the key `nfd`, short for _next fork
+digest_. This entry communicates the digest of the next scheduled fork,
 regardless of whether it is a regular or a Blob-Parameters-Only fork.
+
+If no next fork is scheduled, the `nfd` entry contains the default value for the
+type (i.e., the SSZ representation of a zero-filled array).
 
 | Key   | Value                   |
 | :---- | :---------------------- |
@@ -509,4 +512,5 @@ regardless of whether it is a regular or a Blob-Parameters-Only fork.
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
 their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
 key, to form a more accurate view of the peer's intended next fork for the
-purposes of sustained peering.
+purposes of sustained peering. A mismatch indicates that the node MUST
+disconnect from such peers at the fork boundary, but not sooner.
