@@ -205,9 +205,9 @@ def compute_fork_digest(
     # Find the blob parameters applicable to this epoch
     max_blobs_per_block = get_max_blobs_per_block(current_epoch)
 
-    # Safely bitmask blob parameters into the digest
-    # Despite the downcasting from uint64 to Bytes4, max_blobs_per_block is bounded by the
-    # MAX_BLOB_COMMITMENTS_PER_BLOCK constant
+    # Safely bitmask blob parameters into the digest. The downcasting from
+    # uint64 to Bytes4 is safe because max_blobs_per_block is bounded by
+    # MAX_BLOB_COMMITMENTS_PER_BLOCK which will always fit in Bytes4.
     mask = max_blobs_per_block.to_bytes(4, "big")
     masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
     return ForkDigest(masked_digest)
