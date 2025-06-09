@@ -1,6 +1,6 @@
-from eth2spec.test.context import with_all_phases, with_phases, spec_state_test
-from eth2spec.test.helpers.constants import PHASE0
 import eth2spec.test.helpers.rewards as rewards_helpers
+from eth2spec.test.context import spec_state_test, with_all_phases, with_phases
+from eth2spec.test.helpers.constants import PHASE0
 
 
 @with_all_phases

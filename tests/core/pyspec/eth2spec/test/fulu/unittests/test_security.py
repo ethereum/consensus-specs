@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    spec_test,
     single_phase,
+    spec_test,
     with_fulu_and_later,
     with_phases,
 )

@@ -1,9 +1,9 @@
-from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.context import (
     spec_state_test,
     with_electra_and_later,
     with_presets,
 )
+from eth2spec.test.helpers.constants import MAINNET
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
@@ -337,6 +337,37 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
     assert state.exit_balance_to_consume == churn_limit - existing_churn
     # Check earliest_exit_epoch
     assert state.earliest_exit_epoch == expected_exit_epoch
+
+
+@with_electra_and_later
+@spec_state_test
+def test_voluntary_exit_with_pending_deposit(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = spec.get_current_epoch(state)
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    validator = state.validators[validator_index]
+    privkey = pubkey_to_privkey[validator.pubkey]
+
+    voluntary_exit = spec.VoluntaryExit(
+        epoch=current_epoch,
+        validator_index=validator_index,
+    )
+    signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
+
+    # A pending deposit will not prevent an exit
+    state.pending_deposits = [
+        spec.PendingDeposit(
+            pubkey=validator.pubkey,
+            withdrawal_credentials=validator.withdrawal_credentials,
+            amount=spec.EFFECTIVE_BALANCE_INCREMENT,
+            signature=spec.bls.G2_POINT_AT_INFINITY,
+            slot=spec.GENESIS_SLOT,
+        )
+    ]
+
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
 
 @with_electra_and_later

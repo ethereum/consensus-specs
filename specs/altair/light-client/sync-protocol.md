@@ -41,13 +41,15 @@
 
 ## Introduction
 
-The beacon chain is designed to be light client friendly for constrained environments to
-access Ethereum with reasonable safety and liveness.
-Such environments include resource-constrained devices (e.g. phones for trust-minimized wallets)
-and metered VMs (e.g. blockchain VMs for cross-chain bridges).
+The beacon chain is designed to be light client friendly for constrained
+environments to access Ethereum with reasonable safety and liveness. Such
+environments include resource-constrained devices (e.g. phones for
+trust-minimized wallets) and metered VMs (e.g. blockchain VMs for cross-chain
+bridges).
 
 This document suggests a minimal light client design for the beacon chain that
-uses sync committees introduced in [this beacon chain extension](../beacon-chain.md).
+uses sync committees introduced in
+[this beacon chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
 
@@ -90,7 +92,9 @@ class LightClientHeader(Container):
     beacon: BeaconBlockHeader
 ```
 
-Future upgrades may introduce additional fields to this structure, and validate them by extending [`is_valid_light_client_header`](#is_valid_light_client_header).
+Future upgrades may introduce additional fields to this structure, and validate
+them by extending
+[`is_valid_light_client_header`](#is_valid_light_client_header).
 
 ### `LightClientBootstrap`
 
@@ -172,32 +176,28 @@ class LightClientStore(object):
 ### `finalized_root_gindex_at_slot`
 
 ```python
-def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def finalized_root_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return FINALIZED_ROOT_GINDEX
 ```
 
 ### `current_sync_committee_gindex_at_slot`
 
 ```python
-def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def current_sync_committee_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return CURRENT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### `next_sync_committee_gindex_at_slot`
 
 ```python
-def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
-    # pylint: disable=unused-argument
+def next_sync_committee_gindex_at_slot(_slot: Slot) -> GeneralizedIndex:
     return NEXT_SYNC_COMMITTEE_GINDEX
 ```
 
 ### `is_valid_light_client_header`
 
 ```python
-def is_valid_light_client_header(header: LightClientHeader) -> bool:
-    # pylint: disable=unused-argument
+def is_valid_light_client_header(_header: LightClientHeader) -> bool:
     return True
 ```
 
@@ -322,7 +322,10 @@ def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
 
 ## Light client initialization
 
-A light client maintains its state in a `store` object of type `LightClientStore`. `initialize_light_client_store` initializes a new `store` with a received `LightClientBootstrap` derived from a given `trusted_block_root`.
+A light client maintains its state in a `store` object of type
+`LightClientStore`. `initialize_light_client_store` initializes a new `store`
+with a received `LightClientBootstrap` derived from a given
+`trusted_block_root`.
 
 ### `initialize_light_client_store`
 
@@ -352,11 +355,19 @@ def initialize_light_client_store(trusted_block_root: Root,
 
 ## Light client state updates
 
-- A light client receives objects of type `LightClientUpdate`, `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
-  - **`update: LightClientUpdate`**: Every `update` triggers `process_light_client_update(store, update, current_slot, genesis_validators_root)` where `current_slot` is the current slot based on a local clock.
-  - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update` triggers `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
-  - **`optimistic_update: LightClientOptimisticUpdate`**: Every `optimistic_update` triggers `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
-- `process_light_client_store_force_update` MAY be called based on use case dependent heuristics if light client sync appears stuck.
+- A light client receives objects of type `LightClientUpdate`,
+  `LightClientFinalityUpdate` and `LightClientOptimisticUpdate`:
+  - **`update: LightClientUpdate`**: Every `update` triggers
+    `process_light_client_update(store, update, current_slot, genesis_validators_root)`
+    where `current_slot` is the current slot based on a local clock.
+  - **`finality_update: LightClientFinalityUpdate`**: Every `finality_update`
+    triggers
+    `process_light_client_finality_update(store, finality_update, current_slot, genesis_validators_root)`.
+  - **`optimistic_update: LightClientOptimisticUpdate`**: Every
+    `optimistic_update` triggers
+    `process_light_client_optimistic_update(store, optimistic_update, current_slot, genesis_validators_root)`.
+- `process_light_client_store_force_update` MAY be called based on use case
+  dependent heuristics if light client sync appears stuck.
 
 ### `validate_light_client_update`
 

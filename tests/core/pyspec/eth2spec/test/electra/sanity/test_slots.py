@@ -27,6 +27,26 @@ def run_epoch_processing(spec, state, pending_deposits=None, pending_consolidati
 
 @with_electra_and_later
 @spec_state_test
+def test_pending_deposit_extra_gwei(spec, state):
+    # Deposit where the amount has a little extra gwei
+    index = len(state.validators)
+    deposit = prepare_pending_deposit(
+        spec,
+        validator_index=index,
+        # The deposit amount includes some gwei (the +1 at the end)
+        amount=spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1),
+        signed=True,
+    )
+
+    yield from run_epoch_processing(spec, state, pending_deposits=[deposit])
+
+    # Check deposit balance is applied correctly
+    assert state.balances[index] == deposit.amount
+    assert state.validators[index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
 def test_multiple_pending_deposits_same_pubkey(spec, state):
     # Create multiple deposits with the same pubkey
     index = len(state.validators)

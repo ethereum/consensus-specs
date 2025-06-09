@@ -1,9 +1,0 @@
-# Minimal preset - EIP7732
-
-# Execution
-# ---------------------------------------------------------------
-# 2**1(= 2)
-PTC_SIZE: 2
-# 2**2 (= 4)
-MAX_PAYLOAD_ATTESTATIONS: 4
-KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732: 14

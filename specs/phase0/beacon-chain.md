@@ -139,8 +139,17 @@
 
 This document represents the specification for Phase 0 -- The Beacon Chain.
 
-At the core of Ethereum proof-of-stake is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of proof-of-stake, the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum proof-of-work chain. Activation as a validator happens when deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase 0).
+At the core of Ethereum proof-of-stake is a system chain called the "beacon
+chain". The beacon chain stores and manages the registry of validators. In the
+initial deployment phases of proof-of-stake, the only mechanism to become a
+validator is to make a one-way ETH transaction to a deposit contract on the
+Ethereum proof-of-work chain. Activation as a validator happens when deposit
+receipts are processed by the beacon chain, the activation balance is reached,
+and a queuing process is completed. Exit is either voluntary or done forcibly as
+a penalty for misbehavior. The primary source of load on the beacon chain is
+"attestations". Attestations are simultaneously availability votes for a shard
+block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
+0).
 
 ## Notation
 
@@ -168,7 +177,8 @@ We define the following Python custom types for type hinting and readability:
 
 ## Constants
 
-The following values are (non-configurable) constants used throughout the specification.
+The following values are (non-configurable) constants used throughout the
+specification.
 
 ### Misc
 
@@ -204,13 +214,19 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
 | `DOMAIN_APPLICATION_MASK`    | `DomainType('0x00000001')` |
 
-*Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in `DomainType` for application usage. This means for some `DomainType` `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK` **MUST** be non-zero. This expression for any other `DomainType` in the consensus specs **MUST** be zero.
+*Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in
+`DomainType` for application usage. This means for some `DomainType`
+`DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
+**MUST** be non-zero. This expression for any other `DomainType` in the
+consensus specs **MUST** be zero.
 
 ## Preset
 
-*Note*: The below configuration is bundled as a preset: a bundle of configuration variables which are expected to differ
-between different modes of operation, e.g. testing, but not generally between different networks.
-Additional preset configurations can be found in the [`configs`](../../configs) directory.
+*Note*: The below configuration is bundled as a preset: a bundle of
+configuration variables which are expected to differ between different modes of
+operation, e.g. testing, but not generally between different networks.
+Additional preset configurations can be found in the [`configs`](../../configs)
+directory.
 
 ### Misc
 
@@ -224,7 +240,13 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 | `HYSTERESIS_DOWNWARD_MULTIPLIER` | `uint64(1)`               |
 | `HYSTERESIS_UPWARD_MULTIPLIER`   | `uint64(5)`               |
 
-- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds
+  [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf);
+  with sufficient active validators (at least
+  `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures
+  committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness
+  with a Verifiable Delay Function (VDF) will improve committee robustness and
+  lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -266,9 +288,21 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 | `MIN_SLASHING_PENALTY_QUOTIENT`    | `uint64(2**7)` (= 128)         |
 | `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)`                    |
 
-- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`. Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes to provide a faster recovery in the event of an inactivity leak.
+- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where
+  `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it
+  takes the inactivity penalty to reduce the balance of non-participating
+  validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by
+  offline validators after `n` epochs is about
+  `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after
+  `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly
+  `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+  Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes
+  to provide a faster recovery in the event of an inactivity leak.
 
-- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet launch, resulting in one-third of the minimum accountable safety margin in the event of a finality attack. After Phase 0 mainnet stabilizes, this value will be upgraded to `3` to provide the maximal minimum accountable safety margin.
+- The `PROPORTIONAL_SLASHING_MULTIPLIER` is set to `1` at initial mainnet
+  launch, resulting in one-third of the minimum accountable safety margin in the
+  event of a finality attack. After Phase 0 mainnet stabilizes, this value will
+  be upgraded to `3` to provide the maximal minimum accountable safety margin.
 
 ### Max operations per block
 
@@ -282,9 +316,10 @@ Additional preset configurations can be found in the [`configs`](../../configs) 
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for illustrative purposes.
-Defaults for this more dynamic type of configuration are available with the presets in the [`configs`](../../configs) directory.
-Testnets and other types of chain instances may use a different configuration.
+*Note*: The default mainnet configuration values are included here for
+illustrative purposes. Defaults for this more dynamic type of configuration are
+available with the presets in the [`configs`](../../configs) directory. Testnets
+and other types of chain instances may use a different configuration.
 
 ### Genesis settings
 
@@ -315,9 +350,11 @@ Testnets and other types of chain instances may use a different configuration.
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md) containers.
+The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
+containers.
 
-*Note*: The definitions are ordered topologically to facilitate execution of the spec.
+*Note*: The definitions are ordered topologically to facilitate execution of the
+spec.
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
@@ -586,7 +623,8 @@ class SignedBeaconBlockHeader(Container):
 
 ## Helper functions
 
-*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
+*Note*: The definitions below are for specification purposes and are not
+necessarily optimal implementations.
 
 ### Math
 
@@ -619,7 +657,9 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 
 #### `uint_to_bytes`
 
-`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint` type object to bytes in `ENDIANNESS`-endian. The expected length of the output is the byte-length of the `uint` type.
+`def uint_to_bytes(n: uint) -> bytes` is a function for serializing the `uint`
+type object to bytes in `ENDIANNESS`-endian. The expected length of the output
+is the byte-length of the `uint` type.
 
 #### `bytes_to_uint64`
 
@@ -649,11 +689,16 @@ def saturating_sub(a: int, b: int) -> int:
 
 #### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../../ssz/simple-serialize.md#merkleization).
+`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
+objects into a single root by utilizing a hash tree structure, as defined in the
+[SSZ spec](../../ssz/simple-serialize.md#merkleization).
 
 #### BLS signatures
 
-The [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04) with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the following functions:
+The
+[IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
+with ciphersuite `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` defines the
+following functions:
 
 - `def Sign(privkey: int, message: Bytes) -> BLSSignature`
 - `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
@@ -1177,13 +1222,23 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-Before the Ethereum beacon chain genesis has been triggered, and for every Ethereum proof-of-work block, let `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
+Before the Ethereum beacon chain genesis has been triggered, and for every
+Ethereum proof-of-work block, let
+`candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`
+where:
 
 - `eth1_block_hash` is the hash of the Ethereum proof-of-work block
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
-- `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
+- `deposits` is the sequence of all deposits, ordered chronologically, up to
+  (and including) the block with hash `eth1_block_hash`
 
-Proof-of-work blocks must only be considered once they are at least `SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e. `eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`). Due to this constraint, if `GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the `genesis_time` can happen before the time/state is first known. Values should be configured to avoid this case.
+Proof-of-work blocks must only be considered once they are at least
+`SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE` seconds old (i.e.
+`eth1_timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= current_unix_time`).
+Due to this constraint, if
+`GENESIS_DELAY < SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE`, then the
+`genesis_time` can happen before the time/state is first known. Values should be
+configured to avoid this case.
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
@@ -1223,11 +1278,13 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash32,
     return state
 ```
 
-*Note*: The ETH1 block with `eth1_timestamp` meeting the minimum genesis active validator count criteria can also occur before `MIN_GENESIS_TIME`.
+*Note*: The ETH1 block with `eth1_timestamp` meeting the minimum genesis active
+validator count criteria can also occur before `MIN_GENESIS_TIME`.
 
 ### Genesis state
 
-Let `genesis_state = candidate_state` whenever `is_valid_genesis_state(candidate_state) is True` for the first time.
+Let `genesis_state = candidate_state` whenever
+`is_valid_genesis_state(candidate_state) is True` for the first time.
 
 ```python
 def is_valid_genesis_state(state: BeaconState) -> bool:
@@ -1244,7 +1301,11 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a signed block `signed_block` is defined as `state_transition(state, signed_block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid. State transitions that cause a `uint64` overflow or underflow are also considered invalid.
+The post-state corresponding to a pre-state `state` and a signed block
+`signed_block` is defined as `state_transition(state, signed_block)`. State
+transitions that trigger an unhandled exception (e.g. a failed `assert` or an
+out-of-range list access) are considered invalid. State transitions that cause a
+`uint64` overflow or underflow are also considered invalid.
 
 ```python
 def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> None:
@@ -1335,7 +1396,7 @@ def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence
 ```python
 def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
-    output = set()  # type: Set[ValidatorIndex]
+    output: Set[ValidatorIndex] = set()
     for a in attestations:
         output = output.union(get_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))

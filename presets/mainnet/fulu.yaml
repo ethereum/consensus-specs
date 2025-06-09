@@ -1,10 +1,13 @@
-# Mainnet preset - FULU
+# Mainnet preset - Fulu
 
-# Misc
+# Networking
 # ---------------------------------------------------------------
-# `uint64(2**6)` (= 64)
-FIELD_ELEMENTS_PER_CELL: 64
-# `uint64(2 * 4096)` (= 8192)
-FIELD_ELEMENTS_PER_EXT_BLOB: 8192
-# `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'))`
+# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments') (= 4)
 KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH: 4
+
+# Blob
+# ---------------------------------------------------------------
+# 2**6 (= 64)
+FIELD_ELEMENTS_PER_CELL: 64
+# 2**1 * FIELD_ELEMENTS_PER_BLOB (= 8,192)
+FIELD_ELEMENTS_PER_EXT_BLOB: 8192

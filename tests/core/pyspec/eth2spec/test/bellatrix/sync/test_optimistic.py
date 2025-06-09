@@ -1,12 +1,16 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_until_eip7732,
+    with_all_phases_from_except,
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+)
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+    EIP7732,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -16,11 +20,11 @@ from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step,
 )
 from eth2spec.test.helpers.optimistic_sync import (
-    PayloadStatusV1,
-    PayloadStatusV1Status,
-    MegaStore,
     add_optimistic_block,
     get_optimistic_store,
+    MegaStore,
+    PayloadStatusV1,
+    PayloadStatusV1Status,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -28,7 +32,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_bellatrix_until_eip7732
+@with_all_phases_from_except(BELLATRIX, [EIP7732])
 @spec_state_test
 def test_from_syncing_to_invalid(spec, state):
     test_steps = []

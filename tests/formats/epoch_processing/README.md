@@ -23,6 +23,14 @@ An SSZ-snappy encoded `BeaconState`, the state before running the epoch sub-tran
 
 An SSZ-snappy encoded `BeaconState`, the state after applying the epoch sub-transition. No value if the sub-transition processing is aborted.
 
+### `pre_epoch.ssz_snappy`
+
+An SSZ-snappy encoded `BeaconState`, the state before running the epoch transition.
+
+### `post_epoch.ssz_snappy`
+
+An SSZ-snappy encoded `BeaconState`, the state after applying the epoch transition. No value if the transition processing is aborted.
+
 ## Condition
 
 A handler of the `epoch_processing` test-runner should process these cases,
@@ -50,3 +58,15 @@ Sub-transitions:
 - `pending_deposits` (>=Electra)
 
 The resulting state should match the expected `post` state.
+
+## Condition (alternative)
+
+Instead of having a different handler for each sub-transition, a single handler for all cases should load `pre_full` state, call `process_epoch` and then assert that the result state should match `post_full` state.
+
+This has the advantages:
+
+- Less code to maintain for the epoch processing handler.
+- Works with single pass epoch processing.
+- Can detect bugs related to data dependencies between different sub-transitions.
+
+As a disadvantage this condition takes more resources to compute, but just a constant amount per test vector.
