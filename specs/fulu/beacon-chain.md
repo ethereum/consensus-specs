@@ -189,21 +189,21 @@ Blob-Parameter-Only forks.
 
 ```python
 def compute_fork_digest(
-    current_version: Version,
+    version: Version,  # [Renamed in Fulu:EIP7892]
     genesis_validators_root: Root,
-    current_epoch: Epoch,  # [New in Fulu:EIP7892]
+    epoch: Epoch,  # [New in Fulu:EIP7892]
 ) -> ForkDigest:
     """
-    Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``,
-    with a XOR bitmask of the big-endian byte representation of current max_blobs_per_block.
+    Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``, with a
+    XOR bitmask of the big-endian byte representation of current max_blobs_per_block.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
-    base_digest = compute_fork_data_root(current_version, genesis_validators_root)[:4]
+    base_digest = compute_fork_data_root(version, genesis_validators_root)[:4]
 
     # Find the blob parameters applicable to this epoch
-    max_blobs_per_block = get_max_blobs_per_block(current_epoch)
+    max_blobs_per_block = get_max_blobs_per_block(epoch)
 
     # Safely bitmask blob parameters into the digest. The downcasting from
     # uint64 to Bytes4 is safe because max_blobs_per_block is bounded by
