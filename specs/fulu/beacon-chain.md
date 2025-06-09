@@ -218,7 +218,7 @@ def compute_fork_digest(
 ```python
 def compute_proposer_indices(
     state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
-) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -247,7 +247,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 ```python
 def get_beacon_proposer_indices(
     state: BeaconState, epoch: Epoch
-) -> List[ValidatorIndex, SLOTS_PER_EPOCH]:
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
     """
     Return the proposer indices for the given ``epoch``.
     """
