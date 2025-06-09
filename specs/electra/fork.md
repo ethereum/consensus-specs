@@ -1,7 +1,5 @@
 # Electra -- Fork Logic
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -23,10 +21,10 @@ This document describes the process of the Electra upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name                   | Value                                 |
-| ---------------------- | ------------------------------------- |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`               |
-| `ELECTRA_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                         |
+| ---------------------- | --------------------------------------------- |
+| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`                       |
+| `ELECTRA_FORK_EPOCH`   | `Epoch(364032)` (May 7, 2025, 10:05:11am UTC) |
 
 ## Helper functions
 
@@ -58,12 +56,14 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 The fork is triggered at epoch `ELECTRA_FORK_EPOCH`.
 
-Note that for the pure Electra networks, we don't apply `upgrade_to_electra` since it starts with Electra version logic.
+Note that for the pure Electra networks, we don't apply `upgrade_to_electra`
+since it starts with Electra version logic.
 
 ### Upgrading the state
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == ELECTRA_FORK_EPOCH`,
-an irregular state change is made to upgrade to Electra.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == ELECTRA_FORK_EPOCH`, an irregular state
+change is made to upgrade to Electra.
 
 ```python
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:

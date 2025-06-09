@@ -1,13 +1,14 @@
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
-    with_presets,
     with_light_client,
+    with_presets,
 )
 from eth2spec.test.helpers.constants import (
     MINIMAL,
 )
 from eth2spec.test.helpers.light_client_data_collection import (
     add_new_block,
+    BlockID,
     finish_lc_data_collection_test,
     get_lc_bootstrap_block_id,
     get_lc_update_attested_block_id,
@@ -17,7 +18,6 @@ from eth2spec.test.helpers.light_client_data_collection import (
     get_light_client_update_for_period,
     select_new_head,
     setup_lc_data_collection_test,
-    BlockID,
 )
 
 

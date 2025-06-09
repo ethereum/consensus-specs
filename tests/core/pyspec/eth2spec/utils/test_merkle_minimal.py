@@ -1,6 +1,7 @@
 import pytest
-from .merkle_minimal import zerohashes, merkleize_chunks, get_merkle_root
+
 from .hash_function import hash
+from .merkle_minimal import get_merkle_root, merkleize_chunks, zerohashes
 
 
 def h(a: bytes, b: bytes) -> bytes:

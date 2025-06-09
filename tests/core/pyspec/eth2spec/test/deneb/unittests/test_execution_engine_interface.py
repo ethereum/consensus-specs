@@ -1,8 +1,8 @@
 from eth2spec.test.context import (
     DENEB,
     spec_state_test,
-    with_phases,
     with_deneb_and_later,
+    with_phases,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,

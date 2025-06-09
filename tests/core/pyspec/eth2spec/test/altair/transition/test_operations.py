@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
     with_presets,
 )
@@ -12,7 +12,6 @@ from eth2spec.test.helpers.fork_transition import (
     OperationType,
     run_transition_with_operation,
 )
-
 
 #
 # PROPOSER_SLASHING

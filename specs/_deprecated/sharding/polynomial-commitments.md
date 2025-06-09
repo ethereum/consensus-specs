@@ -41,7 +41,11 @@
 
 ## Introduction
 
-This document specifies basic polynomial operations and KZG polynomial commitment operations as they are needed for the sharding specification. The implementations are not optimized for performance, but readability. All practical implementations should optimize the polynomial operations, and hints what the best known algorithms for these implementations are included below.
+This document specifies basic polynomial operations and KZG polynomial
+commitment operations as they are needed for the sharding specification. The
+implementations are not optimized for performance, but readability. All
+practical implementations should optimize the polynomial operations, and hints
+what the best known algorithms for these implementations are included below.
 
 ## Constants
 
@@ -304,7 +308,8 @@ def evaluate_polynomial_in_evaluation_form(poly: BLSPolynomialByEvaluations, x: 
 
 ## KZG Operations
 
-We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).
+We are using the KZG10 polynomial commitment scheme (Kate, Zaverucha and
+Goldberg, 2010: https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf).
 
 ### Elliptic curve helper functions
 

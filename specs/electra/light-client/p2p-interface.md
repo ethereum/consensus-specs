@@ -1,7 +1,5 @@
 # Electra Light Client -- Networking
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Networking](#networking)
@@ -21,7 +19,9 @@
 
 ## Networking
 
-The [Deneb light client networking specification](../../deneb/light-client/p2p-interface.md) is extended to exchange [Electra light client data](./sync-protocol.md).
+The
+[Deneb light client networking specification](../../deneb/light-client/p2p-interface.md)
+is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ### The gossip domain: gossipsub
 

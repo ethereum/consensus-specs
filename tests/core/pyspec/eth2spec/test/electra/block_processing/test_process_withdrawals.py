@@ -12,9 +12,9 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
+    prepare_pending_withdrawal,
     run_withdrawals_processing,
     set_compounding_withdrawal_credential_with_balance,
-    prepare_pending_withdrawal,
 )
 
 
@@ -748,3 +748,79 @@ def test_partially_withdrawable_validator_compounding_min_minus_one(spec, state)
         partial_withdrawals_indices=[],
     )
     assert state.pending_partial_withdrawals == []
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_withdrawals_two_partial_withdrawals_same_validator_1(spec, state):
+    validator_index = 0
+
+    # Initialize a compounding validator
+    set_compounding_withdrawal_credential_with_balance(
+        spec,
+        state,
+        validator_index,
+        effective_balance=spec.Gwei(32_000_000_000),
+        balance=spec.Gwei(33_000_000_000),
+    )
+
+    # Add two pending withdrawals of 1 ETH each to the queue
+    withdrawal = spec.PendingPartialWithdrawal(
+        validator_index=validator_index,
+        amount=spec.Gwei(1_000_000_000),
+        withdrawable_epoch=spec.get_current_epoch(state),
+    )
+    state.pending_partial_withdrawals = [withdrawal, withdrawal]
+
+    # Ensure our two pending withdrawals are there
+    assert len(state.pending_partial_withdrawals) == 2
+
+    yield from run_withdrawals_processing(
+        spec,
+        state,
+        build_empty_execution_payload(spec, state),
+        num_expected_withdrawals=1,
+    )
+
+    # Ensure our two pending withdrawals were processed
+    assert state.pending_partial_withdrawals == []
+    # Ensure the validator's balance is the minimum
+    assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE
+
+
+@with_electra_and_later
+@spec_state_test
+def test_pending_withdrawals_two_partial_withdrawals_same_validator_2(spec, state):
+    validator_index = 0
+
+    # Initialize a compounding validator
+    set_compounding_withdrawal_credential_with_balance(
+        spec,
+        state,
+        validator_index,
+        effective_balance=spec.Gwei(2015_000_000_000),
+        balance=spec.Gwei(2015_000_000_000),
+    )
+
+    # Add two pending withdrawals of 1008 ETH each to the queue
+    withdrawal = spec.PendingPartialWithdrawal(
+        validator_index=validator_index,
+        amount=spec.Gwei(1008_000_000_000),
+        withdrawable_epoch=spec.get_current_epoch(state),
+    )
+    state.pending_partial_withdrawals = [withdrawal, withdrawal]
+
+    # Ensure our two pending withdrawals are there
+    assert len(state.pending_partial_withdrawals) == 2
+
+    yield from run_withdrawals_processing(
+        spec,
+        state,
+        build_empty_execution_payload(spec, state),
+        num_expected_withdrawals=2,
+    )
+
+    # Ensure our two pending withdrawals were processed
+    assert state.pending_partial_withdrawals == []
+    # Ensure the validator's balance is the minimum
+    assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE

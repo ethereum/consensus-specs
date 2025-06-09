@@ -1,4 +1,17 @@
 import random
+
+from eth2spec.test.context import (
+    default_activation_threshold,
+    default_balances_electra,
+    misc_balances,
+    misc_balances_electra,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_altair_and_later,
+    with_custom_state,
+    with_presets,
+)
 from eth2spec.test.helpers.constants import (
     MAINNET,
     MINIMAL,
@@ -15,18 +28,6 @@ from eth2spec.test.helpers.sync_committee import (
 )
 from eth2spec.test.helpers.voluntary_exits import (
     get_unslashed_exited_validators,
-)
-from eth2spec.test.context import (
-    with_altair_and_later,
-    spec_state_test,
-    default_activation_threshold,
-    misc_balances,
-    single_phase,
-    with_custom_state,
-    with_presets,
-    spec_test,
-    default_balances_electra,
-    misc_balances_electra,
 )
 
 
