@@ -11,11 +11,11 @@ from eth2spec.test.helpers.fulu.fork import (
     FULU_FORK_TEST_META_TAGS,
     run_fork_test,
 )
-from eth2spec.test.utils import with_meta_tags
-from tests.core.pyspec.eth2spec.test.helpers.state import next_epoch, simulate_lookahead
 from eth2spec.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
 )
+from eth2spec.test.utils import with_meta_tags
+from tests.core.pyspec.eth2spec.test.helpers.state import next_epoch, simulate_lookahead
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
@@ -38,6 +38,7 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
     # Check if the pre-fork simulation matches the post-fork `state.proposer_lookahead`
     assert pre_fork_proposers == state.proposer_lookahead
 
+
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
 @spec_test
 @with_state
@@ -49,7 +50,9 @@ def test_lookahead_consistency_with_effective_balance_change_at_fork(spec, phase
     next_epoch(spec, state)
 
     # Move to the penultimate slot of the current epoch
-    spec.process_slots(state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1)
+    spec.process_slots(
+        state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
+    )
     assert state.slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
 
     # Change the balances so the epoch processing will change the effective balances,
@@ -67,7 +70,7 @@ def test_lookahead_consistency_with_effective_balance_change_at_fork(spec, phase
     pre_fork_proposers = simulate_lookahead(spec, state)
 
     # This will run electra epoch processing
-    spec.process_slots(state, state.slot + 1) 
+    spec.process_slots(state, state.slot + 1)
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     # Upgrade to Fulu
     spec = phases[FULU]
