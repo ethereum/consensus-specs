@@ -1,45 +1,44 @@
-import pytest
+import importlib
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-import importlib
+from random import Random
+from typing import Any
+
+import pytest
+from lru import LRU
 
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
-    PHASE0,
+    ALL_PHASES,
+    ALLOWED_TEST_RUNNER_FORKS,
     ALTAIR,
     BELLATRIX,
     CAPELLA,
     DENEB,
+    EIP7441,
     ELECTRA,
     FULU,
-    EIP7441,
-    EIP7732,
-    MINIMAL,
-    ALL_PHASES,
-    POST_FORK_OF,
-    ALLOWED_TEST_RUNNER_FORKS,
     LIGHT_CLIENT_TESTING_FORKS,
+    MINIMAL,
+    PHASE0,
+    POST_FORK_OF,
 )
-from .helpers.forks import is_post_fork, is_post_electra
+from .helpers.forks import is_post_electra, is_post_fork
 from .helpers.genesis import create_genesis_state
+from .helpers.specs import (
+    spec_targets,
+)
 from .helpers.typing import (
     Spec,
     SpecForks,
-)
-from .helpers.specs import (
-    spec_targets,
 )
 from .utils import (
     vector_test,
     with_meta_tags,
 )
-
-from random import Random
-from typing import Any, Callable, Sequence, Dict
-
-from lru import LRU
 
 # Without pytest CLI arg or pyspec-test-generator 'preset' argument, this will be the config to apply.
 DEFAULT_TEST_PRESET = MINIMAL
@@ -431,25 +430,6 @@ def bls_switch(fn):
     return entry
 
 
-def disable_process_reveal_deadlines(fn):
-    """
-    Decorator to make a function execute with `process_reveal_deadlines` OFF.
-    This is for testing long-range epochs transition without considering the reveal-deadline slashing effect.
-    """
-
-    def entry(*args, spec: Spec, **kw):
-        if hasattr(spec, "process_reveal_deadlines"):
-            old_state = spec.process_reveal_deadlines
-            spec.process_reveal_deadlines = lambda state: None
-
-        yield from fn(*args, spec=spec, **kw)
-
-        if hasattr(spec, "process_reveal_deadlines"):
-            spec.process_reveal_deadlines = old_state
-
-    return with_meta_tags({"reveal_deadlines_setting": 1})(entry)
-
-
 def with_all_phases(fn):
     """
     A decorator for running a test with every phase
@@ -606,7 +586,10 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw["phase"]
                     _phases = [phase]
-                    _other_phases = [POST_FORK_OF[phase]]
+                    if phase in POST_FORK_OF:
+                        _other_phases = [POST_FORK_OF[phase]]
+                    else:
+                        _other_phases = None
                     ret = _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )
@@ -656,18 +639,12 @@ with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
-with_altair_until_eip7732 = with_all_phases_from_to(ALTAIR, EIP7732)
-with_bellatrix_until_eip7732 = with_all_phases_from_to(BELLATRIX, EIP7732)
-with_capella_until_eip7732 = with_all_phases_from_to(CAPELLA, EIP7732)
-with_deneb_until_eip7732 = with_all_phases_from_to(DENEB, EIP7732)
-with_electra_until_eip7732 = with_all_phases_from_to(ELECTRA, EIP7732)
-
 
 class quoted_str(str):
     pass
 
 
-def _get_basic_dict(ssz_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Get dict of basic types from a dict of SSZ objects.
     """

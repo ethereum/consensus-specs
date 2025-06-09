@@ -3,28 +3,25 @@
 # - https://github.com/asn-d6/kzgverify
 import json
 import os
-from typing import (
-    Tuple,
-    Sequence,
-)
+from collections.abc import Sequence
 from pathlib import Path
 
 from eth_utils import encode_hex
 from py_ecc.typing import (
     Optimized_Point3D,
 )
+
 from eth2spec.utils import bls
 from eth2spec.utils.bls import (
     BLS_MODULUS,
 )
-
 
 PRIMITIVE_ROOT_OF_UNITY = 7
 
 
 def generate_setup(
     generator: Optimized_Point3D, secret: int, length: int
-) -> Tuple[Optimized_Point3D]:
+) -> tuple[Optimized_Point3D]:
     """
     Generate trusted setup of ``generator`` in ``length``.
     """
@@ -60,7 +57,7 @@ def compute_root_of_unity(length: int) -> int:
     return pow(PRIMITIVE_ROOT_OF_UNITY, (BLS_MODULUS - 1) // length, BLS_MODULUS)
 
 
-def compute_roots_of_unity(field_elements_per_blob: int) -> Tuple[int]:
+def compute_roots_of_unity(field_elements_per_blob: int) -> tuple[int]:
     """
     Compute a list of roots of unity for a given order.
     The order must divide the BLS multiplicative group order, i.e. BLS_MODULUS - 1
@@ -77,7 +74,7 @@ def compute_roots_of_unity(field_elements_per_blob: int) -> Tuple[int]:
     return tuple(roots)
 
 
-def get_lagrange(setup: Sequence[Optimized_Point3D]) -> Tuple[bytes]:
+def get_lagrange(setup: Sequence[Optimized_Point3D]) -> tuple[bytes]:
     """
     Convert a G1 or G2 portion of a setup into the Lagrange basis.
     """

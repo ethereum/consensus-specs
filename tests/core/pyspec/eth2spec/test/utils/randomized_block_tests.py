@@ -4,34 +4,34 @@ Utility code to generate randomized block tests
 
 import sys
 import warnings
+from collections.abc import Callable
 from random import Random
-from typing import Callable
 
-from eth2spec.test.helpers.execution_payload import (
-    compute_el_block_hash_for_block,
-    build_randomized_execution_payload,
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
-from eth2spec.test.helpers.multi_operations import (
-    build_random_block_from_state_for_next_slot,
-    get_random_bls_to_execution_changes,
-    get_random_sync_aggregate,
-    prepare_state_and_get_random_deposits,
-    get_random_execution_requests,
+from eth2spec.test.helpers.execution_payload import (
+    build_randomized_execution_payload,
+    compute_el_block_hash_for_block,
 )
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
 )
-from eth2spec.test.helpers.random import (
-    randomize_state as randomize_state_helper,
-    patch_state_to_non_leaking,
+from eth2spec.test.helpers.multi_operations import (
+    build_random_block_from_state_for_next_slot,
+    get_random_bls_to_execution_changes,
+    get_random_execution_requests,
+    get_random_sync_aggregate,
+    prepare_state_and_get_random_deposits,
 )
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
+from eth2spec.test.helpers.random import (
+    patch_state_to_non_leaking,
+    randomize_state as randomize_state_helper,
 )
 from eth2spec.test.helpers.state import (
-    next_slot,
-    next_epoch,
     ensure_state_has_validators_across_lifecycle,
+    next_epoch,
+    next_slot,
     state_transition_and_sign_block,
 )
 
@@ -219,10 +219,7 @@ def random_block(spec, state, signed_blocks, scenario_state):
             )
             _warn_if_empty_operations(block)
             return block
-    else:
-        raise AssertionError(
-            "could not find a block with an unslashed proposer, check ``state`` input"
-        )
+    raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
 
 SYNC_AGGREGATE_PARTICIPATION_BUCKETS = 4
@@ -428,8 +425,7 @@ def _iter_temporal(spec, description):
     numeric = _resolve_ref(description)
     if isinstance(numeric, Callable):
         numeric = numeric(spec)
-    for i in range(numeric):
-        yield i
+    yield from range(numeric)
 
 
 def _compute_statistics(scenario):

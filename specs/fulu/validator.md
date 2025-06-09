@@ -26,16 +26,19 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an "honest validator" to implement Fulu.
+This document represents the changes to be made in the code of an "honest
+validator" to implement Fulu.
 
 ## Prerequisites
 
-This document is an extension of the [Electra -- Honest Validator](../electra/validator.md) guide.
-All behaviors and definitions defined in this document, and documents it extends, carry over unless
-explicitly noted or overridden.
+This document is an extension of the
+[Electra -- Honest Validator](../electra/validator.md) guide. All behaviors and
+definitions defined in this document, and documents it extends, carry over
+unless explicitly noted or overridden.
 
-All terminology, constants, functions, and protocol mechanics defined in [Fulu -- Beacon
-Chain](./beacon-chain.md) and [Fulu -- Data Availability Sampling Core] are requisite for this
+All terminology, constants, functions, and protocol mechanics defined in
+[Fulu -- Beacon Chain](./beacon-chain.md) and
+[Fulu -- Data Availability Sampling Core](./das-core.md) are requisite for this
 document and used throughout.
 
 ## Configuration
@@ -53,7 +56,8 @@ document and used throughout.
 
 *[Modified in Fulu:EIP7594]*
 
-The `BlobsBundle` object is modified to include cell KZG proofs instead of blob KZG proofs.
+The `BlobsBundle` object is modified to include cell KZG proofs instead of blob
+KZG proofs.
 
 ```python
 @dataclass
@@ -68,7 +72,8 @@ class BlobsBundle(object):
 
 *[Modified in Fulu:EIP7594]*
 
-The `GetPayloadResponse` object is modified to use the updated `BlobsBundle` object.
+The `GetPayloadResponse` object is modified to use the updated `BlobsBundle`
+object.
 
 ```python
 @dataclass
@@ -84,7 +89,8 @@ class GetPayloadResponse(object):
 
 #### Modified `get_payload`
 
-The `get_payload` method is modified to return the updated `GetPayloadResponse` object.
+The `get_payload` method is modified to return the updated `GetPayloadResponse`
+object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
@@ -101,15 +107,16 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
 
 *[New in Fulu:EIP7594]*
 
-A node with validators attached downloads and custodies a higher minimum of custody groups per slot,
-determined by `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is the
-latest finalized `BeaconState` and `validator_indices` is the list of indices corresponding to validators
-attached to the node. Any node with at least one validator attached, and with the sum of the
-effective balances of all attached validators being `total_node_balance`, downloads and custodies
-`total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per slot, with a minimum
-of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum of `NUMBER_OF_CUSTODY_GROUPS`. The node
-SHOULD dynamically adjust its custody groups following any changes to the effective balances of
-attached validators.
+A node with validators attached downloads and custodies a higher minimum of
+custody groups per slot, determined by
+`get_validators_custody_requirement(state, validator_indices)`. Here, `state` is
+the latest finalized `BeaconState` and `validator_indices` is the list of
+indices corresponding to validators attached to the node. Any node with at least
+one validator attached, and with the sum of the effective balances of all
+attached validators being `total_node_balance`, downloads and custodies
+`total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per
+slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum
+of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
 def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
@@ -118,18 +125,36 @@ def get_validators_custody_requirement(state: BeaconState, validator_indices: Se
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
-This higher custody is advertised in the node's Metadata by setting a higher `custody_group_count`
-and in the node's ENR by setting a higher `custody_group_count`. As with the regular custody
-requirement, a node with validators MAY still choose to custody, advertise and serve more than
-this minimum. As with the regular custody requirement, a node MUST backfill columns when syncing. In
-addition, when the validator custody requirement increases, due to an increase in the total
-effective balance of the attached validators, a node MUST backfill columns from the new custody
-groups. However, a node MAY wait to advertise a higher custody in its Metadata and ENR until
-backfilling is complete.
+This higher custody is advertised in the node's Metadata by setting a higher
+`custody_group_count` and in the node's ENR by setting a higher
+`custody_group_count`. As with the regular custody requirement, a node with
+validators MAY still choose to custody, advertise and serve more than this
+minimum. As with the regular custody requirement, a node MUST backfill columns
+when syncing.
 
-*Note*: The node SHOULD manage validator custody (and any changes during its lifetime) without any
-input from the user, for example by using existing signals about validator metadata to compute the
-required custody.
+A node SHOULD dynamically adjust its custody groups (without any input from the
+user) following any changes to the total effective balances of attached
+validators.
+
+If the node's custody requirements are increased, it MAY backfill custody groups
+as a result of this change. In such cases, it SHOULD delay advertising the
+updated `custody_group_count` until the backfill is complete. If the node opts
+not to perform a backfill, it SHOULD only advertise the updated
+`custody_group_count` after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs;
+after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to
+respond to any `DataColumnSidecar` request within the retention period. The
+updated `custody_group_count` SHOULD persist across node restarts.
+
+If a node's custody requirements decrease, it SHOULD NOT update the
+`custody_group_count` to reflect this reduction. The node SHOULD continue to
+custody and advertise the previous (highest) `custody_group_count`. The node
+SHOULD continue to respond to any `DataColumnSidecar` request corresponding to
+the previous (highest) `custody_group_count`. The previous (highest)
+`custody_group_count` SHOULD persist across node restarts.
+
+Nodes SHOULD be capable of handling multiple changes to custody requirements
+within the same retention period (e.g., an increase in one epoch followed by a
+decrease in the next).
 
 ### Block and sidecar proposal
 
@@ -137,21 +162,26 @@ required custody.
 
 *[New in Fulu:EIP7594]*
 
-For a block proposal, blobs associated with a block are packaged into many `DataColumnSidecar`
-objects for distribution to the associated sidecar topic, the `data_column_sidecar_{subnet_id}`
-pubsub topic. A `DataColumnSidecar` can be viewed as vertical slice of all blobs stacked on top of
-each other, with extra fields for the necessary context.
+For a block proposal, blobs associated with a block are packaged into many
+`DataColumnSidecar` objects for distribution to the associated sidecar topic,
+the `data_column_sidecar_{subnet_id}` pubsub topic. A `DataColumnSidecar` can be
+viewed as vertical slice of all blobs stacked on top of each other, with extra
+fields for the necessary context.
 
 ##### `get_data_column_sidecars`
 
-The sequence of sidecars associated with a block and can be obtained by first computing
-`cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]` and then calling
+The sequence of sidecars associated with a block and can be obtained by first
+computing
+`cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]`
+and then calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
 
-Moreover, the full sequence of sidecars can also be computed from `cells_and_kzg_proofs` and any single
-`sidecar`, by calling `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
-This can be used in distributed blob publishing, to reconstruct all sidecars from any sidecar received
-on the wire, assuming all cells and kzg proofs could be retrieved from the local execution layer client.
+Moreover, the full sequence of sidecars can also be computed from
+`cells_and_kzg_proofs` and any single `sidecar`, by calling
+`get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
+This can be used in distributed blob publishing, to reconstruct all sidecars
+from any sidecar received on the wire, assuming all cells and kzg proofs could
+be retrieved from the local execution layer client.
 
 ```python
 def get_data_column_sidecars(
@@ -245,13 +275,15 @@ The `subnet_id` for the `data_column_sidecar` is calculated with:
 - Let `column_index = data_column_sidecar.index`.
 - Let `subnet_id = compute_subnet_for_data_column_sidecar(column_index)`.
 
-After publishing all columns to their respective subnets, peers on the network may request the
-sidecar through sync-requests, or a local user may be interested.
+After publishing all columns to their respective subnets, peers on the network
+may request the sidecar through sync-requests, or a local user may be
+interested.
 
 #### Sidecar retention
 
-The validator MUST hold on to sidecars for `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs and
-serve when capable, to ensure the data-availability of these blobs throughout the network.
+The validator MUST hold on to sidecars for
+`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs and serve when capable, to
+ensure the data-availability of these blobs throughout the network.
 
-After `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` nodes MAY prune the sidecars and/or stop
-serving them.
+After `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` nodes MAY prune the
+sidecars and/or stop serving them.

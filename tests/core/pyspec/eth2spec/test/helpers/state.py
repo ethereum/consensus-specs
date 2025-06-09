@@ -42,15 +42,6 @@ def transition_to_slot_via_block(spec, state, slot):
     assert state.slot == slot
 
 
-def transition_to_valid_shard_slot(spec, state):
-    """
-    Transition to slot `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH) + 1`
-    and fork at `compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH)`.
-    """
-    transition_to(spec, state, spec.compute_epoch_at_slot(spec.config.SHARDING_FORK_EPOCH))
-    next_slot(spec, state)
-
-
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
@@ -212,3 +203,17 @@ def get_validator_index_by_pubkey(state, pubkey):
 def advance_finality_to(spec, state, epoch):
     while state.finalized_checkpoint.epoch < epoch:
         next_epoch_with_full_participation(spec, state)
+
+
+def simulate_lookahead(spec, state):
+    """
+    Simulate the lookahead by advancing the state forward with empty slots and
+    calling `get_beacon_proposer_index`.
+    """
+    lookahead = []
+    simulation_state = state.copy()
+    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
+        proposer_index = spec.get_beacon_proposer_index(simulation_state)
+        lookahead.append(proposer_index)
+        next_slot(spec, simulation_state)
+    return lookahead

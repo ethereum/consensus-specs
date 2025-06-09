@@ -91,8 +91,9 @@ def das_fft_extension(data: Sequence[Point]) -> Sequence[Point]:
 
 ### Data recovery
 
-See [Reed-Solomon erasure code recovery in `n*log^2(n)` time with FFTs](https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039) for theory.
-Implementations:
+See
+[Reed-Solomon erasure code recovery in `n*log^2(n)` time with FFTs](https://ethresear.ch/t/reed-solomon-erasure-code-recovery-in-n-log-2-n-time-with-ffts/3039)
+for theory. Implementations:
 
 - [Original Python](https://github.com/ethereum/research/blob/master/mimc_stark/recovery.py)
 - [New optimized approach in python](https://github.com/ethereum/research/tree/master/polynomial_reconstruction)

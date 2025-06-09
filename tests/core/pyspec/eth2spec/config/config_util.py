@@ -1,13 +1,15 @@
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, Union, BinaryIO, TextIO, Any
+from typing import Any, BinaryIO, TextIO
+
 from ruamel.yaml import YAML
 
 
-def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
+def parse_config_vars(conf: dict[str, Any]) -> dict[str, Any]:
     """
     Parses a dict of basic str/int/list types into more detailed python types
     """
-    out: Dict[str, Any] = dict()
+    out: dict[str, Any] = dict()
     for k, v in conf.items():
         if isinstance(v, list):
             # Clean up integer values. YAML parser renders lists of ints as list of str
@@ -21,7 +23,7 @@ def parse_config_vars(conf: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def load_preset(preset_files: Iterable[Union[Path, BinaryIO, TextIO]]) -> Dict[str, Any]:
+def load_preset(preset_files: Iterable[Path | BinaryIO | TextIO]) -> dict[str, Any]:
     """
     Loads a directory of preset files, merges the result into one preset.
     """
@@ -39,7 +41,7 @@ def load_preset(preset_files: Iterable[Union[Path, BinaryIO, TextIO]]) -> Dict[s
     return parse_config_vars(preset)
 
 
-def load_config_file(config_path: Union[Path, BinaryIO, TextIO]) -> Dict[str, Any]:
+def load_config_file(config_path: Path | BinaryIO | TextIO) -> dict[str, Any]:
     """
     Loads the given configuration file.
     """
@@ -48,8 +50,8 @@ def load_config_file(config_path: Union[Path, BinaryIO, TextIO]) -> Dict[str, An
     return parse_config_vars(config_data)
 
 
-mainnet_config_data: Dict[str, Any]
-minimal_config_data: Dict[str, Any]
+mainnet_config_data: dict[str, Any]
+minimal_config_data: dict[str, Any]
 loaded_defaults = False
 
 

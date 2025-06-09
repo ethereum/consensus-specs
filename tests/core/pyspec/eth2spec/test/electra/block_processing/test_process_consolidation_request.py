@@ -1,18 +1,18 @@
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
+    default_activation_threshold,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
     with_electra_and_later,
     with_presets,
-    spec_test,
-    single_phase,
-    with_custom_state,
-    scaled_churn_balances_exceed_activation_exit_churn_limit,
-    default_activation_threshold,
-    spec_state_test,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
-    set_compounding_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
+    set_compounding_withdrawal_credential_with_balance,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 #  ***********************
@@ -395,6 +395,55 @@ def test_basic_consolidation_source_has_less_than_max_effective_balance(spec, st
         state.consolidation_balance_to_consume
         == consolidation_churn_limit - source_effective_balance
     )
+    # Check exit epoch
+    assert state.validators[source_index].exit_epoch == expected_exit_epoch
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_basic_consolidation_target_has_less_than_min_activation_effective_balance(spec, state):
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+
+    # Set source to eth1 credentials
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index, address=source_address)
+
+    # Lower the target validator's effective balance
+    # This shouldn't prevent the consolidation from happening
+    target_effective_balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    state.validators[target_index].effective_balance = target_effective_balance
+
+    # Make consolidation with source address
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        source_pubkey=state.validators[source_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+
+    # Set target to compounding credentials
+    set_compounding_withdrawal_credential(spec, state, target_index)
+
+    # Set earliest consolidation epoch to the expected exit epoch
+    expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    state.earliest_consolidation_epoch = expected_exit_epoch
+    consolidation_churn_limit = spec.get_consolidation_churn_limit(state)
+    # Set the consolidation balance to consume equal to churn limit
+    state.consolidation_balance_to_consume = consolidation_churn_limit
+
+    yield from run_consolidation_processing(spec, state, consolidation)
+
     # Check exit epoch
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
@@ -944,6 +993,34 @@ def test_incorrect_source_address(spec, state):
         == consolidation.source_address
     )
 
+    yield from run_consolidation_processing(spec, state, consolidation, success=False)
+
+
+@with_electra_and_later
+@with_presets([MINIMAL], "need sufficient consolidation churn limit")
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_incorrect_source_pubkey_is_target_pubkey(spec, state):
+    # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # Set up an otherwise correct consolidation
+    current_epoch = spec.get_current_epoch(state)
+    source_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    target_index = spec.get_active_validator_indices(state, current_epoch)[1]
+    source_address = b"\x22" * 20
+    set_eth1_withdrawal_credential_with_balance(spec, state, source_index, address=source_address)
+    # Make consolidation with different source pubkey
+    consolidation = spec.ConsolidationRequest(
+        source_address=source_address,
+        # Use the target's pubkey instead
+        source_pubkey=state.validators[target_index].pubkey,
+        target_pubkey=state.validators[target_index].pubkey,
+    )
+    set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 

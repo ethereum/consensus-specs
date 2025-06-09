@@ -2,15 +2,15 @@
 
 # Misc
 # ---------------------------------------------------------------
-# `uint64(4)`
+# 2**2 (= 4)
 CURDLEPROOFS_N_BLINDERS: 4
-# `uint64(2**14)`
+# 2**14 (= 16,384)
 CANDIDATE_TRACKERS_COUNT: 16384
-# `uint64(2**13)` must be < CANDIDATE_TRACKERS_COUNT
+# 2**13 (= 8,192)
 PROPOSER_TRACKERS_COUNT: 8192
-# `uint64(2**7 - CURDLEPROOFS_N_BLINDERS)`
+# 2**7 - CURDLEPROOFS_N_BLINDERS (= 124)
 VALIDATORS_PER_SHUFFLE: 124
-# `uint64(2**15)` TODO: will be replaced by a fix format once there's a serialized format
+# 2**15 (= 32,768)
 MAX_SHUFFLE_PROOF_SIZE: 32768
-# `uint64(2**10)` TODO: will be replaced by a fix format once there's a serialized format
+# 2**10 (= 1,024)
 MAX_OPENING_PROOF_SIZE: 1024

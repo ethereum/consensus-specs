@@ -1,23 +1,23 @@
 from eth2spec.test.context import (
-    spec_state_test,
     always_bls,
-    never_bls,
-    with_all_phases,
-    spec_test,
     low_balances,
-    with_custom_state,
+    never_bls,
     single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
 )
 from eth2spec.test.helpers.attestations import (
-    run_attestation_processing,
+    compute_max_inclusion_slot,
     get_valid_attestation,
+    run_attestation_processing,
     sign_aggregate_attestation,
     sign_attestation,
-    compute_max_inclusion_slot,
 )
 from eth2spec.test.helpers.state import (
-    next_slots,
     next_epoch_via_block,
+    next_slots,
     transition_to_slot_via_block,
 )
 from eth2spec.utils.ssz.ssz_typing import Bitlist

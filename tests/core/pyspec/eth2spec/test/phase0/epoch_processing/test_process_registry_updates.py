@@ -1,17 +1,17 @@
-from eth2spec.test.helpers.deposits import mock_deposit
-from eth2spec.test.helpers.state import next_epoch, next_slots
-from eth2spec.test.helpers.forks import is_post_electra
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
-    spec_test,
-    spec_state_test,
-    with_all_phases,
+    scaled_churn_balances_min_churn_limit,
     single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
     with_custom_state,
     with_presets,
-    scaled_churn_balances_min_churn_limit,
 )
+from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.state import next_epoch, next_slots
 
 
 def run_process_registry_updates(spec, state):
@@ -292,9 +292,9 @@ def run_test_activation_queue_activation_and_ejection(spec, state, num_per_statu
     )
     for validator_index in activation_indices:
         mock_deposit(spec, state, validator_index)
-        state.validators[validator_index].activation_eligibility_epoch = (
-            state.finalized_checkpoint.epoch
-        )
+        state.validators[
+            validator_index
+        ].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
     # ready for ejection
     ejection_start_index = num_per_status * 2
