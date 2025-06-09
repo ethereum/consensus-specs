@@ -37,8 +37,8 @@ and is under active development.
 
 ### Blob schedule
 
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
-given epoch.
+*[New in Fulu:EIP7892]* This schedule defines the maximum blobs per block limit
+for a given epoch.
 
 *Note*: The blob schedule is to be determined.
 
@@ -168,8 +168,8 @@ class BeaconState(Container):
 
 #### New `get_max_blobs_per_block`
 
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
-given epoch.
+*[New in Fulu:EIP7892]* This schedule defines the maximum blobs per block limit
+for a given epoch.
 
 ```python
 def get_max_blobs_per_block(epoch: Epoch) -> uint64:
