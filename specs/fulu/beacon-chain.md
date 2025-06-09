@@ -16,7 +16,6 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [New `BlobScheduleEntry`](#new-blobscheduleentry)
     - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
     - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
@@ -167,15 +166,6 @@ class BeaconState(Container):
 
 ### Misc
 
-#### New `BlobScheduleEntry`
-
-```python
-@dataclass
-class BlobScheduleEntry(object):
-    epoch: Epoch
-    max_blobs_per_block: uint64
-```
-
 #### New `get_max_blobs_per_block`
 
 *[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
@@ -212,14 +202,12 @@ def compute_fork_digest(
     """
     base_digest = compute_fork_data_root(current_version, genesis_validators_root)[:4]
 
-    if current_epoch < FULU_FORK_EPOCH:
-        return base_digest
-
     # Find the blob parameters applicable to this epoch
     max_blobs_per_block = get_max_blobs_per_block(current_epoch)
 
     # Safely bitmask blob parameters into the digest
-    # If Fulu is deployed with no concurrent blob parameter changes, we'll bitmask Electra's value.
+    # Despite the downcasting from uint64 to Bytes4, max_blobs_per_block is bounded by the
+    # MAX_BLOB_COMMITMENTS_PER_BLOCK constant
     mask = max_blobs_per_block.to_bytes(4, "big")
     masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
     return ForkDigest(masked_digest)
