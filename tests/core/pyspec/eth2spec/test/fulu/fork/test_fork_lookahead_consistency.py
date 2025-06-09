@@ -49,7 +49,7 @@ def test_lookahead_consistency_with_effective_balance_change_at_fork(spec, phase
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    # Move to the penultimate slot of the current epoch
+    # Move to the last slot of the current epoch
     spec.process_slots(
         state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
     )
@@ -62,20 +62,20 @@ def test_lookahead_consistency_with_effective_balance_change_at_fork(spec, phase
     for validator_index in active_validator_indices:
         # Set compounding withdrawal credentials for the validator
         set_compounding_withdrawal_credential(spec, state, validator_index)
-        state.validators[validator_index].effective_balance = 32000000000
+        state.validators[validator_index].effective_balance = 32_000_000_000
         # Set balance to close the next hysteresis threshold
-        state.balances[validator_index] = 33250000000 - 1
+        state.balances[validator_index] = 33_250_000_000 - 1
 
     # Calculate the lookahead after the effective balance change, and before the Electra epoch processing
     pre_fork_proposers = simulate_lookahead(spec, state)
 
-    # This will run electra epoch processing
+    # This will run Electra epoch processing
     spec.process_slots(state, state.slot + 1)
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     # Upgrade to Fulu
     spec = phases[FULU]
     state = yield from run_fork_test(spec, state)
 
-    # Because the electra epoch processing is always run right before the fulu upgrade,
+    # Because the Electra epoch processing is always run right before the Fulu upgrade,
     # the proposers lookahead will change depending on the effective balance change.
     assert pre_fork_proposers != state.proposer_lookahead
