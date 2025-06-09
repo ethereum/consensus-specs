@@ -174,12 +174,22 @@ fields for the necessary context.
 
 ##### `get_data_column_sidecars`
 
-The sequence of sidecars associated with a block can be obtained by calling
-[`engine_getBlobsV2`](https://github.com/ethereum/execution-apis/blob/main/src/engine/osaka.md#engine_getblobsv2),
-then compiling a list cells and proofs with
-`cells_and_kzg_proofs = [(compute_cells(r.blob), r.proofs) for r in response]`,
-and then calling
+The sidecars associated with a block can be created by calling
+[`engine_getPayloadV5`](https://github.com/ethereum/execution-apis/blob/main/src/engine/osaka.md#engine_getpayloadv5),
+then constructing the list of cells and proofs for each blob (as defined in the
+example below) using the blobs bundle in the response, and finally by calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
+
+<!-- eth2spec: skip -->
+
+```python
+cells_and_kzg_proofs = []
+for i, blob in enumerate(blobs_bundle.blobs):
+    start = i * CELLS_PER_EXT_BLOB
+    end = (i + 1) * CELLS_PER_EXT_BLOB
+    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end])
+    cells_and_kzg_proofs.extend(cell_proofs)
+```
 
 Moreover, the full sequence of sidecars can also be computed from
 `cells_and_kzg_proofs` and any single `sidecar` by calling
