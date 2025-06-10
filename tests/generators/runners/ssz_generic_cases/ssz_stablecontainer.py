@@ -1,4 +1,4 @@
-from ssz_test_case import invalid_test_case, valid_test_case
+from .ssz_test_case import invalid_test_case, valid_test_case
 from eth2spec.utils.ssz.ssz_typing import (
     View,
     byte,
@@ -10,6 +10,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Vector,
     Bitvector,
     Bitlist,
+    ByteList,
     ProgressiveList,
     StableContainer,
 )
@@ -44,10 +45,17 @@ class ComplexTestStableStruct(StableContainer[8]):
     A: Optional[uint16]
     B: Optional[List[uint16, 128]]
     C: Optional[uint8]
-    D: Optional[ProgressiveList[byte]]
+    D: Optional[ByteList[256]]
     E: Optional[VarTestStableStruct]
     F: Optional[Vector[FixedTestStableStruct, 4]]
     G: Optional[Vector[VarTestStableStruct, 2]]
+
+
+class ProgressiveTestStableStruct(StableContainer[8]):
+    A: Optional[ProgressiveList[byte]]
+    B: Optional[ProgressiveList[uint64]]
+    C: Optional[ProgressiveList[SmallTestStableStruct]]
+    D: Optional[ProgressiveList[ProgressiveList[VarTestStableStruct]]]
 
 
 class BitsStableStruct(StableContainer[8]):
@@ -70,9 +78,10 @@ PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
     "SingleFieldTestStableStruct": (SingleFieldTestStableStruct, []),
     "SmallTestStableStruct": (SmallTestStableStruct, []),
     "FixedTestStableStruct": (FixedTestStableStruct, []),
-    "VarTestStableStruct": (VarTestStableStruct, [2]),
-    "ComplexTestStableStruct": (ComplexTestStableStruct, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
-    "BitsStableStruct": (BitsStableStruct, [0, 4 + 1 + 1, 4 + 1 + 1 + 4]),
+    "VarTestStableStruct": (VarTestStableStruct, []),
+    "ComplexTestStableStruct": (ComplexTestStableStruct, []),
+    "ProgressiveTestStableStruct": (ProgressiveTestStableStruct, []),
+    "BitsStableStruct": (BitsStableStruct, []),
 }
 
 
@@ -81,7 +90,7 @@ def valid_cases():
     for name, (typ, offsets) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f"{name}_{mode.to_name()}", valid_test_case(
-                lambda: stable_container_case_fn(rng, mode, typ)
+                lambda rng=rng, mode=mode, typ=typ: stable_container_case_fn(rng, mode, typ)
             )
 
         if len(offsets) == 0:
@@ -96,7 +105,7 @@ def valid_cases():
         for mode in modes:
             for variation in range(3):
                 yield f"{name}_{mode.to_name()}_chaos_{variation}", valid_test_case(
-                    lambda: stable_container_case_fn(rng, mode, typ, chaos=True)
+                    lambda rng=rng, mode=mode, typ=typ: stable_container_case_fn(rng, mode, typ, chaos=True)
                 )
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
@@ -105,7 +114,7 @@ def valid_cases():
         for mode in modes:
             for variation in range(10):
                 yield f"{name}_{mode.to_name()}_{variation}", valid_test_case(
-                    lambda: stable_container_case_fn(rng, mode, typ)
+                    lambda rng=rng, mode=mode, typ=typ: stable_container_case_fn(rng, mode, typ)
                 )
 
 
@@ -125,7 +134,7 @@ def invalid_cases():
     for name, (typ, offsets) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f"{name}_extra_byte", invalid_test_case(
-            lambda: serialize(stable_container_case_fn(rng, RandomizationMode.mode_max_count, typ))
+            lambda rng=rng, typ=typ: serialize(stable_container_case_fn(rng, RandomizationMode.mode_max_count, typ))
             + b"\xff"
         )
 
@@ -140,14 +149,14 @@ def invalid_cases():
             ]:
                 for index, offset_index in enumerate(offsets):
                     yield f"{name}_{mode.to_name()}_offset_{offset_index}_plus_one", invalid_test_case(
-                        lambda: mod_offset(
+                        lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                             b=serialize(stable_container_case_fn(rng, mode, typ)),
                             offset_index=offset_index,
                             change=lambda x: x + 1,
                         )
                     )
                     yield f"{name}_{mode.to_name()}_offset_{offset_index}_zeroed", invalid_test_case(
-                        lambda: mod_offset(
+                        lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                             b=serialize(stable_container_case_fn(rng, mode, typ)),
                             offset_index=offset_index,
                             change=lambda x: 0,
@@ -155,7 +164,7 @@ def invalid_cases():
                     )
                     if index == 0:
                         yield f"{name}_{mode.to_name()}_offset_{offset_index}_minus_one", invalid_test_case(
-                            lambda: mod_offset(
+                            lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                                 b=serialize(stable_container_case_fn(rng, mode, typ)),
                                 offset_index=offset_index,
                                 change=lambda x: x - 1,
@@ -163,13 +172,13 @@ def invalid_cases():
                         )
                     if mode == RandomizationMode.mode_max_count:
                         serialized = serialize(stable_container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:2]
+                        serialized = serialized + serialized[:3]
                         yield f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow", invalid_test_case(
-                            lambda: serialized
+                            lambda serialized=serialized: serialized
                         )
                     if mode == RandomizationMode.mode_one_count:
                         serialized = serialize(stable_container_case_fn(rng, mode, typ))
                         serialized = serialized + serialized[:1]
                         yield f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length", invalid_test_case(
-                            lambda: serialized
+                            lambda serialized=serialized: serialized
                         )

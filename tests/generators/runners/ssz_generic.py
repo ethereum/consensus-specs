@@ -4,17 +4,22 @@ from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import PHASE0
 
 from .ssz_generic_cases import (
+    ssz_basic_progressivelist,
     ssz_basic_vector,
     ssz_bitlist,
     ssz_bitvector,
     ssz_boolean,
     ssz_container,
     ssz_uints,
+    ssz_profile,
+    ssz_stablecontainer,
 )
 
 
 def get_test_cases() -> Iterable[TestCase]:
     test_case_fns = [
+        ("basic_progressivelist", "valid", ssz_basic_progressivelist.valid_cases),
+        ("basic_progressivelist", "invalid", ssz_basic_progressivelist.invalid_cases),
         ("basic_vector", "valid", ssz_basic_vector.valid_cases),
         ("basic_vector", "invalid", ssz_basic_vector.invalid_cases),
         ("bitlist", "valid", ssz_bitlist.valid_cases),
@@ -27,6 +32,10 @@ def get_test_cases() -> Iterable[TestCase]:
         ("uints", "invalid", ssz_uints.invalid_cases),
         ("containers", "valid", ssz_container.valid_cases),
         ("containers", "invalid", ssz_container.invalid_cases),
+        ("profiles", "valid", ssz_profile.valid_cases),
+        ("profiles", "invalid", ssz_profile.invalid_cases),
+        ("stablecontainers", "valid", ssz_stablecontainer.valid_cases),
+        ("stablecontainers", "invalid", ssz_stablecontainer.invalid_cases),
     ]
 
     test_cases = []

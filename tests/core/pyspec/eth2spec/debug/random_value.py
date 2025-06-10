@@ -121,6 +121,7 @@ def get_random_ssz_object(
             length = 0
 
         elem_type = boolean if issubclass(typ, Bitlist) else typ.element_cls()
+        max_list_length = (1 << (max_list_length.bit_length() >> 1))
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)

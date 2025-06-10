@@ -193,10 +193,17 @@ class ComplexTestStruct(Container):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]
+
+
+class ProgressiveTestStruct(Container):
+    A: ProgressiveList[byte]
+    B: ProgressiveList[uint64]
+    C: ProgressiveList[SmallTestStruct]
+    D: ProgressiveList[ProgressiveList[VarTestStruct]]
 
 
 class BitsStruct(Container):
@@ -245,10 +252,17 @@ class ComplexTestStableStruct(StableContainer[8]):
     A: Optional[uint16]
     B: Optional[List[uint16, 128]]
     C: Optional[uint8]
-    D: Optional[ProgressiveList[byte]]
+    D: Optional[ByteList[256]]
     E: Optional[VarTestStableStruct]
     F: Optional[Vector[FixedTestStableStruct, 4]]
     G: Optional[Vector[VarTestStableStruct, 2]]
+
+
+class ProgressiveTestStableStruct(StableContainer[8]):
+    A: Optional[ProgressiveList[byte]]
+    B: Optional[ProgressiveList[uint64]]
+    C: Optional[ProgressiveList[SmallTestStableStruct]]
+    D: Optional[ProgressiveList[ProgressiveList[VarTestStableStruct]]]
 
 
 class BitsStableStruct(StableContainer[8]):
@@ -328,7 +342,7 @@ class ComplexTestProfile1(Profile[ComplexTestStableStruct]):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     E: VarTestStableStruct
     F: Vector[FixedTestStableStruct, 4]
     G: Vector[VarTestStableStruct, 2]
@@ -338,7 +352,7 @@ class ComplexTestProfile2(Profile[ComplexTestStableStruct]):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     E: VarTestStableStruct
 
 
@@ -351,7 +365,7 @@ class ComplexTestProfile3(Profile[ComplexTestStableStruct]):
 
 class ComplexTestProfile4(Profile[ComplexTestStableStruct]):
     B: List[uint16, 128]
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     F: Vector[FixedTestStableStruct, 4]
 
 

@@ -1,4 +1,4 @@
-from ssz_test_case import valid_test_case
+from .ssz_test_case import valid_test_case
 from eth2spec.utils.ssz.ssz_typing import (
     boolean,
     uint8,

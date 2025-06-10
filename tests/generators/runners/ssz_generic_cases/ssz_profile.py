@@ -1,4 +1,4 @@
-from ssz_test_case import invalid_test_case, valid_test_case
+from .ssz_test_case import invalid_test_case, valid_test_case
 from eth2spec.utils.ssz.ssz_typing import (
     View,
     byte,
@@ -10,19 +10,21 @@ from eth2spec.utils.ssz.ssz_typing import (
     Vector,
     Bitvector,
     Bitlist,
+    ByteList,
     Profile,
     ProgressiveList,
 )
 from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
-from typing import Dict, Tuple, Sequence, Callable, Type
+from typing import Dict, Tuple, Sequence, Callable, Type, Optional
 from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
-from ssz_stablecontainer import (
+from .ssz_stablecontainer import (
     SingleFieldTestStableStruct,
     SmallTestStableStruct,
     FixedTestStableStruct,
     VarTestStableStruct,
     ComplexTestStableStruct,
+    ProgressiveTestStableStruct,
     BitsStableStruct,
 )
 
@@ -83,7 +85,7 @@ class ComplexTestProfile1(Profile[ComplexTestStableStruct]):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     E: VarTestStableStruct
     F: Vector[FixedTestStableStruct, 4]
     G: Vector[VarTestStableStruct, 2]
@@ -93,7 +95,7 @@ class ComplexTestProfile2(Profile[ComplexTestStableStruct]):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     E: VarTestStableStruct
 
 
@@ -106,7 +108,7 @@ class ComplexTestProfile3(Profile[ComplexTestStableStruct]):
 
 class ComplexTestProfile4(Profile[ComplexTestStableStruct]):
     B: List[uint16, 128]
-    D: ProgressiveList[byte]
+    D: ByteList[256]
     F: Vector[FixedTestStableStruct, 4]
 
 
@@ -114,6 +116,19 @@ class ComplexTestProfile5(Profile[ComplexTestStableStruct]):
     E: VarTestStableStruct
     F: Vector[FixedTestStableStruct, 4]
     G: Vector[VarTestStableStruct, 2]
+
+
+class ProgressiveTestProfile1(Profile[ProgressiveTestStableStruct]):
+    A: ProgressiveList[byte]
+    B: Optional[ProgressiveList[uint64]]
+    C: ProgressiveList[SmallTestStableStruct]
+    D: ProgressiveList[ProgressiveList[VarTestStableStruct]]
+
+
+class ProgressiveTestProfile2(Profile[ProgressiveTestStableStruct]):
+    A: ProgressiveList[byte]
+    B: ProgressiveList[uint64]
+    D: ProgressiveList[ProgressiveList[VarTestStableStruct]]
 
 
 class BitsProfile1(Profile[BitsStableStruct]):
@@ -153,13 +168,15 @@ PRESET_CONTAINERS: Dict[str, Tuple[Type[View], Sequence[int]]] = {
     "FixedTestProfile3": (FixedTestProfile3, []),
     "FixedTestProfile4": (FixedTestProfile4, []),
     "VarTestProfile1": (VarTestProfile1, [2]),
-    "VarTestProfile2": (VarTestProfile2, [2]),
-    "VarTestProfile3": (VarTestProfile3, [2]),
+    "VarTestProfile2": (VarTestProfile2, [0]),
+    "VarTestProfile3": (VarTestProfile3, [0]),
     "ComplexTestProfile1": (ComplexTestProfile1, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
     "ComplexTestProfile2": (ComplexTestProfile2, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
-    "ComplexTestProfile3": (ComplexTestProfile3, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
-    "ComplexTestProfile4": (ComplexTestProfile4, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
-    "ComplexTestProfile5": (ComplexTestProfile5, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
+    "ComplexTestProfile3": (ComplexTestProfile3, [3, 3 + 4]),
+    "ComplexTestProfile4": (ComplexTestProfile4, [0, 4, 8]),
+    "ComplexTestProfile5": (ComplexTestProfile5, [0, 4, 8]),
+    "ProgressiveTestProfile1": (ProgressiveTestProfile1, [0, 4, 8, 12]),
+    "ProgressiveTestProfile2": (ProgressiveTestProfile2, [0, 4, 8]),
     "BitsProfile1": (BitsProfile1, [0, 4 + 1 + 1, 4 + 1 + 1 + 4]),
     "BitsProfile2": (BitsProfile2, [0, 4 + 1 + 1, 4 + 1 + 1 + 4]),
     "BitsProfile3": (BitsProfile3, [0, 4 + 1 + 1, 4 + 1 + 1 + 4]),
@@ -171,7 +188,8 @@ def valid_cases():
     for name, (typ, offsets) in PRESET_CONTAINERS.items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield f"{name}_{mode.to_name()}", valid_test_case(
-                lambda: profile_case_fn(rng, mode, typ)
+                lambda rng=rng, mode=mode, typ=typ: profile_case_fn(
+                    rng, mode, typ)
             )
 
         if len(offsets) == 0:
@@ -186,7 +204,8 @@ def valid_cases():
         for mode in modes:
             for variation in range(3):
                 yield f"{name}_{mode.to_name()}_chaos_{variation}", valid_test_case(
-                    lambda: profile_case_fn(rng, mode, typ, chaos=True)
+                    lambda rng=rng, mode=mode, typ=typ: profile_case_fn(
+                        rng, mode, typ, chaos=True)
                 )
         # Notes: Below is the second wave of iteration, and only the random mode is selected
         # for container without offset since ``RandomizationMode.mode_zero`` and ``RandomizationMode.mode_max``
@@ -195,8 +214,8 @@ def valid_cases():
         for mode in modes:
             for variation in range(10):
                 yield f"{name}_{mode.to_name()}_{variation}", valid_test_case(
-                    lambda: profile_case_fn(rng, mode, typ)
-                )
+                    lambda rng=rng, mode=mode, typ=typ: profile_case_fn(
+                        rng, mode, typ))
 
 
 def mod_offset(b: bytes, offset_index: int, change: Callable[[int], int]):
@@ -215,7 +234,7 @@ def invalid_cases():
     for name, (typ, offsets) in PRESET_CONTAINERS.items():
         # using mode_max_count, so that the extra byte cannot be picked up as normal list content
         yield f"{name}_extra_byte", invalid_test_case(
-            lambda: serialize(profile_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b"\xff"
+            lambda rng=rng, typ=typ: serialize(profile_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b"\xff"
         )
 
         if len(offsets) != 0:
@@ -229,14 +248,14 @@ def invalid_cases():
             ]:
                 for index, offset_index in enumerate(offsets):
                     yield f"{name}_{mode.to_name()}_offset_{offset_index}_plus_one", invalid_test_case(
-                        lambda: mod_offset(
+                        lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                             b=serialize(profile_case_fn(rng, mode, typ)),
                             offset_index=offset_index,
                             change=lambda x: x + 1,
                         )
                     )
                     yield f"{name}_{mode.to_name()}_offset_{offset_index}_zeroed", invalid_test_case(
-                        lambda: mod_offset(
+                        lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                             b=serialize(profile_case_fn(rng, mode, typ)),
                             offset_index=offset_index,
                             change=lambda x: 0,
@@ -244,7 +263,7 @@ def invalid_cases():
                     )
                     if index == 0:
                         yield f"{name}_{mode.to_name()}_offset_{offset_index}_minus_one", invalid_test_case(
-                            lambda: mod_offset(
+                            lambda rng=rng, mode=mode, typ=typ, offset_index=offset_index: mod_offset(
                                 b=serialize(profile_case_fn(rng, mode, typ)),
                                 offset_index=offset_index,
                                 change=lambda x: x - 1,
@@ -252,13 +271,13 @@ def invalid_cases():
                         )
                     if mode == RandomizationMode.mode_max_count:
                         serialized = serialize(profile_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:2]
+                        serialized = serialized + serialized[:3]
                         yield f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow", invalid_test_case(
-                            lambda: serialized
+                            lambda serialized=serialized: serialized
                         )
                     if mode == RandomizationMode.mode_one_count:
                         serialized = serialize(profile_case_fn(rng, mode, typ))
                         serialized = serialized + serialized[:1]
                         yield f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length", invalid_test_case(
-                            lambda: serialized
+                            lambda serialized=serialized: serialized
                         )
