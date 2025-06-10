@@ -542,8 +542,9 @@ def gen_block_tree_test_data(spec,
             break
 
         new_seed = rnd.randint(1, 10000)
-        print('\nUnsatisfiable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(
-            seed) + ', will retry with seed=' + str(new_seed))
+        if debug:
+            print('\nUnsatisfiable constraints: sm_links: ' + str(sm_links) + ', seed=' + str(
+                seed) + ', will retry with seed=' + str(new_seed))
         seed = new_seed
 
     # Block tree model

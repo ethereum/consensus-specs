@@ -168,8 +168,9 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     anchor_state = state
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
 
-    print('\nseed:', seed)
-    print('model_params:', str(model_params))
+    if debug:
+        print('\nseed:', seed)
+        print('model_params:', str(model_params))
 
     block_epochs = model_params['block_epochs']
     parents = model_params['parents']
