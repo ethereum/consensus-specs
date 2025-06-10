@@ -87,7 +87,7 @@ def _create_new_branch_tip(spec, branch_tips: dict[SmLink:BranchTip], sm_link: S
     )
 
 
-def _sample_validator_partition(spec, state, epoch, participation_rate, rnd) -> []:
+def _sample_validator_partition(spec, state, epoch, participation_rate, rnd):
     active_validator_indices = spec.get_active_validator_indices(state, epoch)
     participants_count = len(active_validator_indices) * participation_rate // 100
     return rnd.sample(active_validator_indices, participants_count)
@@ -95,7 +95,7 @@ def _sample_validator_partition(spec, state, epoch, participation_rate, rnd) -> 
 
 def _compute_validator_partitions(
     spec, branch_tips, current_links, current_epoch, rnd: random.Random
-) -> dict[SmLink:[int]]:
+) -> dict[SmLink, list[int]]:
     """
     Note: O(N) complex (N is a number of validators) and might be inefficient with large validator sets
 

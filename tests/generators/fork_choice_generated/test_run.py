@@ -1,9 +1,9 @@
 import argparse
 import os
 from collections import namedtuple
+from collections.abc import Iterable
 from glob import glob
 from pathlib import Path
-from typing import Iterable
 
 from pathos.multiprocessing import ProcessingPool as Pool
 from ruamel.yaml import YAML
