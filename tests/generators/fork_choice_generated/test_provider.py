@@ -1,6 +1,7 @@
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any
 
 from instantiators.block_cover import gen_block_cover_test_data
 from instantiators.block_tree import gen_block_tree_test_data

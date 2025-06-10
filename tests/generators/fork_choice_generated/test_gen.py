@@ -3,7 +3,7 @@ from test_provider import enumerate_test_cases, prepare_bls
 
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
-from eth2spec.test.helpers.constants import ALTAIR, DENEB, ELECTRA, MAINNET, MINIMAL
+from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
 
 forks = [ELECTRA]
 presets = [MINIMAL]
