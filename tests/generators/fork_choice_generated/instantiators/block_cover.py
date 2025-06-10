@@ -310,9 +310,9 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
             "block_vse_eq_store_je not satisfied"
         )
     else:
-        assert (
-            voting_source.epoch != store.justified_checkpoint.epoch
-        ), "block_vse_eq_store_je not satisfied"
+        assert voting_source.epoch != store.justified_checkpoint.epoch, (
+            "block_vse_eq_store_je not satisfied"
+        )
 
     if predicates["block_vse_plus_two_ge_curr_e"]:
         assert voting_source.epoch + 2 >= current_epoch, (
