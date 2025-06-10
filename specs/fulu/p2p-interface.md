@@ -305,13 +305,13 @@ During the deprecation transition period:
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root, fork_epoch)`:
+`context = compute_fork_digest(genesis_validators_root, fork_epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `fork_epoch`      | Chunk SSZ type           |
+| ----------------- | ------------------------ |
+| `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -410,13 +410,13 @@ the request.
 *[New in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root, fork_epoch)`:
+`context = compute_fork_digest(genesis_validators_root, fork_epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `fork_epoch`      | Chunk SSZ type           |
+| ----------------- | ------------------------ |
+| `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
