@@ -52,16 +52,15 @@ class MessageScheduler:
         for item in self.drain_queue():
             if self.is_early_message(item):
                 self.enque_message(item)
+            elif item.is_attestation:
+                if self.process_attestation(item.message):
+                    applied_events.append(("attestation", item.message, True))
             else:
-                if item.is_attestation:
-                    if self.process_attestation(item.message):
-                        applied_events.append(("attestation", item.message, True))
-                else:
-                    updated_, events_ = self.process_block(item.message, recovery=True)
-                    if updated_:
-                        updated = True
-                        applied_events.extend(events_)
-                        assert ("block", item.message, True) in events_
+                updated_, events_ = self.process_block(item.message, recovery=True)
+                if updated_:
+                    updated = True
+                    applied_events.extend(events_)
+                    assert ("block", item.message, True) in events_
         return updated, applied_events
 
     def purge_queue(self) -> list:
