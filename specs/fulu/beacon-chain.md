@@ -196,27 +196,27 @@ Blob-Parameter-Only forks.
 def compute_fork_digest(
     version: Version,  # [Renamed in Fulu:EIP7892]
     genesis_validators_root: Root,
-    epoch: Epoch,  # [New in Fulu:EIP7892]
+    fork_epoch: Epoch,  # [New in Fulu:EIP7892]
 ) -> ForkDigest:
     """
     Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
-    XOR'd with the hash of the ``epoch`` and hash of ``max_blobs_per_block``.
+    XOR'd with the hash of the ``fork_epoch`` and hash of ``max_blobs_per_block``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
     base_digest = compute_fork_data_root(version, genesis_validators_root)
 
-    # Get the blob limit for this epoch
-    max_blobs_per_block = get_max_blobs_per_block(epoch)
+    # Get the blob limit for the fork epoch
+    max_blobs_per_block = get_max_blobs_per_block(fork_epoch)
 
-    # Bitmask epoch and blob limit into the digest
+    # Bitmask fork epoch and blob limit into the digest
     return ForkDigest(
         bytes(
             xor(
                 base_digest,
                 xor(
-                    hash(uint_to_bytes(uint64(epoch))),
+                    hash(uint_to_bytes(uint64(fork_epoch))),
                     hash(uint_to_bytes(uint64(max_blobs_per_block))),
                 ),
             )
