@@ -91,7 +91,6 @@ def run_test(test_info):
         elif 'attester_slashing' in step:
             slashing_id = step['attester_slashing']
             valid = step.get('valid', True)
-            recovery = step.get('recovery', False)
             assert valid
             slashing = slashings[slashing_id]
             spec.on_attester_slashing(store, slashing)

@@ -180,8 +180,6 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     store_justified_epoch = model_params['store_justified_epoch']
     target_block = model_params['target_block']
 
-    anchor_epoch = block_epochs[0]
-
     # Ensure that there is no attempt to justify GENESIS_EPOCH + 1 as it is not supported by the protocol
     assert store_justified_epoch != spec.GENESIS_EPOCH + 1, 'Justification of epoch 1 is not supported by the protocol'
 

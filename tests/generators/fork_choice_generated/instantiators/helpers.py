@@ -299,7 +299,7 @@ def filter_out_duplicate_messages(fn):
                 yield data
             else:
                 (key, value) = data
-                if value is not None and isinstance(value, (bytes, View)):
+                if value is not None and isinstance(value, bytes | View):
                     # skip already processed ssz parts
                     if key not in processed_keys:
                         processed_keys.add(key)
