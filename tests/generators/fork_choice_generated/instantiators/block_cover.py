@@ -46,9 +46,9 @@ def _generate_filter_block_tree(
     # Run constraint checks before starting to generate blocks
     for epoch in range(anchor_epoch + 1, max(block_epochs) + 1):
         current_blocks = [i for i, e in enumerate(block_epochs) if e == epoch]
-        assert (
-            len(current_blocks) <= spec.SLOTS_PER_EPOCH
-        ), "Number of blocks does not fit into an epoch=" + str(epoch)
+        assert len(current_blocks) <= spec.SLOTS_PER_EPOCH, (
+            "Number of blocks does not fit into an epoch=" + str(epoch)
+        )
 
         justifying_blocks = [
             b
@@ -57,9 +57,9 @@ def _generate_filter_block_tree(
         ]
 
         # There should be enough slots to propose all blocks that are required to justify the epoch
-        assert (
-            len(justifying_blocks) <= JUSTIFYING_SLOT_COUNT
-        ), "Not enough slots to accommodate blocks justifying epoch=" + str(epoch)
+        assert len(justifying_blocks) <= JUSTIFYING_SLOT_COUNT, (
+            "Not enough slots to accommodate blocks justifying epoch=" + str(epoch)
+        )
 
     signed_blocks, anchor_tip = advance_state_to_anchor_epoch(
         spec, genesis_state, anchor_epoch, debug
@@ -75,9 +75,9 @@ def _generate_filter_block_tree(
             continue
 
         # Case 2. Blocks are from disjoint subtrees -- not supported yet
-        assert (
-            len(set([a for i, a in enumerate(parents) if i in current_blocks])) == 1
-        ), "Disjoint trees are not supported"
+        assert len(set([a for i, a in enumerate(parents) if i in current_blocks])) == 1, (
+            "Disjoint trees are not supported"
+        )
 
         # Case 1. Blocks have common ancestor
         a = parents[current_blocks[0]]
@@ -291,9 +291,9 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
     # Check predicates
     predicates = model_params["predicates"]
     if predicates["store_je_eq_zero"]:
-        assert (
-            store.justified_checkpoint.epoch == spec.GENESIS_EPOCH
-        ), "store_je_eq_zero not satisfied"
+        assert store.justified_checkpoint.epoch == spec.GENESIS_EPOCH, (
+            "store_je_eq_zero not satisfied"
+        )
 
     if predicates["block_is_leaf"]:
         assert not any(
