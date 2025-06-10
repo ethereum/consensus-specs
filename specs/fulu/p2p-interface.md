@@ -26,6 +26,7 @@
         - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [Status v2](#status-v2)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -265,6 +266,27 @@ gossip. In particular, clients MUST:
 ### The Req/Resp domain
 
 #### Messages
+
+##### Status v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/status/2/`
+
+Request and Response remain unchanged unless explicitly noted here.
+
+```
+(
+  fork_digest: ForkDigest
+  finalized_root: Root
+  finalized_epoch: Epoch
+  head_root: Root
+  head_slot: Slot
+  lowest_slot: Slot # [New in Fulu:EIP7594]
+)
+```
+
+The added fields are, as seen by the client at the time of sending the message:
+
+- `lowest_slot`: The slot of oldest available block (`BeaconBlock`)
 
 ##### BlobSidecarsByRange v1
 
