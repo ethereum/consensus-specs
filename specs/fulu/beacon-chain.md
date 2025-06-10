@@ -16,7 +16,8 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
-    - [New `get_max_blobs_per_block`](#new-get_max_blobs_per_block)
+    - [New `BlobParameters`](#new-blobparameters)
+    - [New `get_blob_parameters`](#new-get_blob_parameters)
     - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -73,7 +74,10 @@ def process_execution_payload(
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # [Modified in Fulu:EIP7892] Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
+    assert (
+        len(body.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
@@ -171,53 +175,58 @@ class BeaconState(Container):
 
 ### Misc
 
-#### New `get_max_blobs_per_block`
-
-*[New in Fulu:EIP7892]* This schedule defines the maximum blobs per block limit
-for a given epoch.
+#### New `BlobParameters`
 
 ```python
-def get_max_blobs_per_block(epoch: Epoch) -> uint64:
+@dataclass
+class BlobParameters:
+    epoch: Epoch
+    max_blobs_per_block: uint64
+```
+
+#### New `get_blob_parameters`
+
+```python
+def get_blob_parameters(epoch: Epoch) -> BlobParameters:
     """
-    Return the maximum number of blobs that can be included in a block for a given epoch.
+    Return the blob parameters at a given epoch.
     """
     for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
         if epoch >= entry["EPOCH"]:
-            return entry["MAX_BLOBS_PER_BLOCK"]
-    return MAX_BLOBS_PER_BLOCK_ELECTRA
+            return BlobParameters(entry["EPOCH"], entry["MAX_BLOBS_PER_BLOCK"])
+    return BlobParameters(ELECTRA_FORK_EPOCH, MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
 #### Modified `compute_fork_digest`
 
 *Note:* The `compute_fork_digest` helper is updated to account for
-Blob-Parameter-Only forks.
+Blob-Parameter-Only forks. Also, the `fork_version` parameter has been removed
+and is now computed for the given epoch with `compute_fork_version`.
 
 ```python
 def compute_fork_digest(
-    fork_version: Version,  # [Renamed in Fulu:EIP7892]
     genesis_validators_root: Root,
-    fork_epoch: Epoch,  # [New in Fulu:EIP7892]
+    epoch: Epoch,  # [New in Fulu:EIP7892]
 ) -> ForkDigest:
     """
     Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
-    XOR'd with the hash of the ``fork_epoch`` and hash of ``max_blobs_per_block``.
+    XOR'd with the hash of the blob parameters for ``epoch``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
+    fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+    blob_parameters = get_blob_parameters(epoch)
 
-    # Get the blob limit for the fork epoch
-    max_blobs_per_block = get_max_blobs_per_block(fork_epoch)
-
-    # Bitmask fork epoch and blob limit into the digest
+    # Bitmask digest with hash of blob parameters
     return ForkDigest(
         bytes(
             xor(
                 base_digest,
-                xor(
-                    hash(uint_to_bytes(uint64(fork_epoch))),
-                    hash(uint_to_bytes(uint64(max_blobs_per_block))),
+                hash(
+                    uint_to_bytes(uint64(blob_parameters.epoch))
+                    + uint_to_bytes(uint64(blob_parameters.max_blobs_per_block))
                 ),
             )
         )[:4]

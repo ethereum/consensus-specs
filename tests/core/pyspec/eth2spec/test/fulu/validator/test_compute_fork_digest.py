@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     single_phase,
     spec_test,
+    with_config_overrides,
     with_fulu_and_later,
 )
 
@@ -8,118 +9,129 @@ from eth2spec.test.context import (
 @with_fulu_and_later
 @spec_test
 @single_phase
+@with_config_overrides(
+    {
+        "ELECTRA_FORK_EPOCH": 9,
+        "FULU_FORK_EPOCH": 100,
+        "BLOB_SCHEDULE": [
+            {"EPOCH": 9, "MAX_BLOBS_PER_BLOCK": 9},
+            {"EPOCH": 100, "MAX_BLOBS_PER_BLOCK": 100},
+            {"EPOCH": 150, "MAX_BLOBS_PER_BLOCK": 175},
+            {"EPOCH": 200, "MAX_BLOBS_PER_BLOCK": 200},
+            {"EPOCH": 250, "MAX_BLOBS_PER_BLOCK": 275},
+            {"EPOCH": 300, "MAX_BLOBS_PER_BLOCK": 300},
+        ],
+    },
+    emit=False,
+)
 def test_compute_fork_digest(spec):
     test_cases = [
-        # Different fork versions:
+        # Different epochs and blob limits:
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000001",
+            "epoch": 9,
             "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x539df823",
+            "expected_fork_digest": "0x39f8e7c3",
         },
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x07000000",
+            "epoch": 10,
             "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x6757cfd1",
+            "expected_fork_digest": "0x39f8e7c3",
         },
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x07000001",
+            "epoch": 11,
             "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x0d0c9c09",
+            "expected_fork_digest": "0x39f8e7c3",
+        },
+        {
+            "epoch": 99,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x39f8e7c3",
+        },
+        {
+            "epoch": 100,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x44a571e8",
+        },
+        {
+            "epoch": 101,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x44a571e8",
+        },
+        {
+            "epoch": 150,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x1171afca",
+        },
+        {
+            "epoch": 199,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x1171afca",
+        },
+        {
+            "epoch": 200,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x427a30ab",
+        },
+        {
+            "epoch": 201,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x427a30ab",
+        },
+        {
+            "epoch": 250,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0xd5310ef1",
+        },
+        {
+            "epoch": 299,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0xd5310ef1",
+        },
+        {
+            "epoch": 300,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x51d229f7",
+        },
+        {
+            "epoch": 301,
+            "genesis_validators_root": b"\x00" * 32,
+            "expected_fork_digest": "0x51d229f7",
         },
         # Different genesis validators roots:
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
+            "epoch": 9,
             "genesis_validators_root": b"\x01" * 32,
-            "expected_fork_digest": "0xea022b69",
+            "expected_fork_digest": "0xe41615ba",
         },
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
+            "epoch": 9,
             "genesis_validators_root": b"\x02" * 32,
-            "expected_fork_digest": "0x97fe345c",
+            "expected_fork_digest": "0x46790ef9",
         },
         {
-            "epoch": 1,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
+            "epoch": 9,
             "genesis_validators_root": b"\x03" * 32,
-            "expected_fork_digest": "0xe5317437",
-        },
-        # Different fork epochs:
-        {
-            "epoch": 2,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x6caefc94",
+            "expected_fork_digest": "0xa072c2f5",
         },
         {
-            "epoch": 3,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x817e4fab",
+            "epoch": 100,
+            "genesis_validators_root": b"\x01" * 32,
+            "expected_fork_digest": "0xbfe98545",
         },
         {
-            "epoch": 4,
-            "max_blobs_per_block": 128,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x44605a08",
-        },
-        # Different max blobs per block limits:
-        {
-            "epoch": 1,
-            "max_blobs_per_block": 0,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0xd6ba12a0",
+            "epoch": 100,
+            "genesis_validators_root": b"\x02" * 32,
+            "expected_fork_digest": "0x9b7e4788",
         },
         {
-            "epoch": 1,
-            "max_blobs_per_block": 1,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0x0570c363",
-        },
-        {
-            "epoch": 1,
-            "max_blobs_per_block": 15,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0xdd52eb85",
-        },
-        {
-            "epoch": 1,
-            "max_blobs_per_block": 4095,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0xf79d2d35",
-        },
-        {
-            "epoch": 1,
-            "max_blobs_per_block": 4096,
-            "fork_version": "0x06000000",
-            "genesis_validators_root": b"\x00" * 32,
-            "expected_fork_digest": "0xd9c58740",
+            "epoch": 100,
+            "genesis_validators_root": b"\x03" * 32,
+            "expected_fork_digest": "0x8b5ce4af",
         },
     ]
 
     for case in test_cases:
-        # Override helper function to return our blob limit
-        spec.get_max_blobs_per_block = lambda _: case["max_blobs_per_block"]
         # Compute the fork digest given the inputs from the test case
-        fork_digest = spec.compute_fork_digest(
-            case["fork_version"], case["genesis_validators_root"], case["epoch"]
-        )
+        fork_digest = spec.compute_fork_digest(case["genesis_validators_root"], case["epoch"])
         # Check that the computed fork digest matches our expected value
         assert f"0x{fork_digest.hex()}" == case["expected_fork_digest"]
