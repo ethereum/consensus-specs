@@ -194,7 +194,7 @@ Blob-Parameter-Only forks.
 
 ```python
 def compute_fork_digest(
-    version: Version,  # [Renamed in Fulu:EIP7892]
+    fork_version: Version,  # [Renamed in Fulu:EIP7892]
     genesis_validators_root: Root,
     fork_epoch: Epoch,  # [New in Fulu:EIP7892]
 ) -> ForkDigest:
@@ -205,7 +205,7 @@ def compute_fork_digest(
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
-    base_digest = compute_fork_data_root(version, genesis_validators_root)
+    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
 
     # Get the blob limit for the fork epoch
     max_blobs_per_block = get_max_blobs_per_block(fork_epoch)
