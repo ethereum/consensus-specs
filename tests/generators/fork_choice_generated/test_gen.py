@@ -3,59 +3,12 @@ from eth2spec.test.helpers.constants import MINIMAL, MAINNET
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from ruamel.yaml import YAML
-from typing import Iterable
 
-from test_provider import BlockCoverTestKind, BlockTreeTestKind, create_providers
+from test_provider import enumerate_test_cases, prepare_bls
 
 
 forks = [ELECTRA]
 presets = [MINIMAL]
-
-
-def _load_instances(instance_path: str) -> Iterable[dict]:
-    yaml = YAML(typ='safe')
-    solutions = yaml.load(open(instance_path, 'r'))
-    return solutions
-
-
-def run_test_group(test_name, test_type, instances_path,
-                   initial_seed, nr_variations, nr_mutations,
-                   with_attester_slashings, with_invalid_messages,
-                   debug=False, args=None):
-    if test_type == 'block_tree':
-        test_kind = BlockTreeTestKind(with_attester_slashings, with_invalid_messages)
-    elif test_type == 'block_cover':
-        test_kind = BlockCoverTestKind()
-    else:
-        raise ValueError(f'Unsupported test type: {test_type}')
-
-    solutions = _load_instances(instances_path)
-
-    providers = create_providers(test_name, forks, presets, debug, initial_seed,
-                                    solutions, nr_variations, nr_mutations, test_kind)
-    def test_cases_fn():
-        for p in providers:
-            p.prepare()
-            yield from p.make_cases()
-
-    gen_runner.run_generator(test_cases_fn(), args)
-
-
-def run_test_config(test_gen_config, debug=False, args=None):
-    for test_name, params in test_gen_config.items():
-        print(test_name)
-        test_type = params['test_type']
-        instances_path = params['instances']
-        initial_seed = params['seed']
-        nr_variations = params['nr_variations']
-        nr_mutations = params['nr_mutations']
-        with_attester_slashings = params.get('with_attester_slashings', False)
-        with_invalid_messages = params.get('with_invalid_messages', False)
-
-        run_test_group(test_name, test_type, instances_path,
-                       initial_seed, nr_variations, nr_mutations,
-                       with_attester_slashings, with_invalid_messages,
-                       debug=debug, args=args)
 
 
 def main():
@@ -103,7 +56,10 @@ def main():
         args.threads = 1
         print('generating tests in single process mode')
 
-    run_test_config(test_gen_config, debug = args.fc_gen_debug, args=args)
+    prepare_bls()
+    test_cases = enumerate_test_cases(test_gen_config, forks, presets, args.fc_gen_debug)
+    gen_runner.run_generator(test_cases, args)
+
 
 if __name__ == "__main__":
     main()
