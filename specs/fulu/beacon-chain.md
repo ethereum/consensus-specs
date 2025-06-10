@@ -216,8 +216,8 @@ def compute_fork_digest(
             xor(
                 base_digest,
                 xor(
-                    hash(epoch.to_bytes(8, "little")),
-                    hash(max_blobs_per_block.to_bytes(8, "little")),
+                    hash(uint_to_bytes(uint64(epoch))),
+                    hash(uint_to_bytes(uint64(max_blobs_per_block))),
                 ),
             )
         )[:4]
