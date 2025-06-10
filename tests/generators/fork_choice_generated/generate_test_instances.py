@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from itertools import product
-from typing import Iterable
 
 from minizinc import Instance, Model, Solver
 from ruamel.yaml import YAML
