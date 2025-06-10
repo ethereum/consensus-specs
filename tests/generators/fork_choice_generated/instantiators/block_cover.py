@@ -100,7 +100,7 @@ def _generate_filter_block_tree(spec, genesis_state, block_epochs, parents, prev
         common_state = state
 
         # Assumption: one block is enough to satisfy previous_justifications[b] and current_justifications[b],
-        # i.e. block capacity is enough to accommodate attestations to justify previus and current epoch checkpoints
+        # i.e. block capacity is enough to accommodate attestations to justify previous and current epoch checkpoints
         # if that needed. Considering that most of attestations were already included into the common chain prefix,
         # we assume it is possible
         empty_slot_count = spec.SLOTS_PER_EPOCH - common_prefix_len - len(current_blocks)

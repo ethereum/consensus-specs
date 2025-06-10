@@ -1,8 +1,8 @@
 include "globals.mzn";
 
-int: NoE = 4;
-int: maxE = NoE - 1;
-set of int: EPOCH = 0..maxE;
+int: numOfEpochs = 4;
+int: maxEpoch = numOfEpochs - 1;
+set of int: EPOCH = 0..maxEpoch;
 
 type BS = record(EPOCH: e, EPOCH: je, EPOCH: uje);
 

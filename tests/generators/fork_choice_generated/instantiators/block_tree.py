@@ -155,7 +155,7 @@ def _compute_validator_partitions(spec, branch_tips, current_links, current_epoc
         active_validator_per_branch[l] = spec.get_active_validator_indices(state, current_epoch)
         all_active_validators.update(active_validator_per_branch[l])
 
-    # Remove validators selected for justifying brach from the pool of active participants
+    # Remove validators selected for justifying branch from the pool of active participants
     all_active_validators = all_active_validators.difference(justifying_participants)
 
     # For each index:
