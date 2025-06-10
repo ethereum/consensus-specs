@@ -30,7 +30,7 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.utils import bls
 
 BLS_ACTIVE = False
-GENERATOR_NAME = "fork_choice_generated"
+GENERATOR_NAME = "fork_choice_compliance"
 SUITE_NAME = "pyspec_tests"
 
 
