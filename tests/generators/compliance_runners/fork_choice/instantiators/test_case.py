@@ -12,8 +12,8 @@ from instantiators.helpers import (
     yield_fork_choice_test_events,
 )
 from instantiators.mutation_operators import MutationOps
+from instantiators.scheduler import MessageScheduler
 from ruamel.yaml import YAML
-from scheduler import MessageScheduler
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.context import (
