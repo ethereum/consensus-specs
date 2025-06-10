@@ -42,7 +42,7 @@ def main():
 
     args = arg_parser.parse_args()
 
-    with open(args.fc_gen_config, "r") as f:
+    with open(args.fc_gen_config) as f:
         yaml = YAML(typ="safe")
         test_gen_config = yaml.load(f)
 

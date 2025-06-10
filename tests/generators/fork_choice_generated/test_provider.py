@@ -54,7 +54,7 @@ class FCTestDNA:
     kind: FCTestKind
     solution: Any
     variation_seed: int
-    mutation_seed: Optional[int]
+    mutation_seed: int | None
 
 
 @dataclass(init=False)
@@ -302,11 +302,11 @@ def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
 
 def _load_instances(instance_path: str) -> Iterable[dict]:
     yaml = YAML(typ="safe")
-    solutions = yaml.load(open(instance_path, "r"))
+    solutions = yaml.load(open(instance_path))
     return solutions
 
 
-def enumerate_test_dnas(test_name, params) -> Iterable[Tuple[str, FCTestData]]:
+def enumerate_test_dnas(test_name, params) -> Iterable[tuple[str, FCTestData]]:
     test_type = params["test_type"]
     instances_path = params["instances"]
     initial_seed = params["seed"]
