@@ -219,9 +219,9 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     target_block = model_params["target_block"]
 
     # Ensure that there is no attempt to justify GENESIS_EPOCH + 1 as it is not supported by the protocol
-    assert (
-        store_justified_epoch != spec.GENESIS_EPOCH + 1
-    ), "Justification of epoch 1 is not supported by the protocol"
+    assert store_justified_epoch != spec.GENESIS_EPOCH + 1, (
+        "Justification of epoch 1 is not supported by the protocol"
+    )
 
     # Ensure that epoch(block) == epoch(parent) + 1
     for b in range(1, len(block_epochs)):
@@ -296,28 +296,28 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
         )
 
     if predicates["block_is_leaf"]:
-        assert not any(
-            b for b in store.blocks.values() if b.parent_root == target_block_root
-        ), "block_is_leaf not satisfied"
+        assert not any(b for b in store.blocks.values() if b.parent_root == target_block_root), (
+            "block_is_leaf not satisfied"
+        )
     else:
-        assert any(
-            b for b in store.blocks.values() if b.parent_root == target_block_root
-        ), "block_is_leaf not satisfied"
+        assert any(b for b in store.blocks.values() if b.parent_root == target_block_root), (
+            "block_is_leaf not satisfied"
+        )
 
     voting_source = spec.get_voting_source(store, target_block_root)
     if predicates["block_vse_eq_store_je"]:
-        assert (
-            voting_source.epoch == store.justified_checkpoint.epoch
-        ), "block_vse_eq_store_je not satisfied"
+        assert voting_source.epoch == store.justified_checkpoint.epoch, (
+            "block_vse_eq_store_je not satisfied"
+        )
     else:
         assert (
             voting_source.epoch != store.justified_checkpoint.epoch
         ), "block_vse_eq_store_je not satisfied"
 
     if predicates["block_vse_plus_two_ge_curr_e"]:
-        assert (
-            voting_source.epoch + 2 >= current_epoch
-        ), "block_vse_plus_two_ge_curr_e not satisfied"
+        assert voting_source.epoch + 2 >= current_epoch, (
+            "block_vse_plus_two_ge_curr_e not satisfied"
+        )
     else:
         assert voting_source.epoch + 2 < current_epoch, "block_vse_plus_two_ge_curr_e not satisfied"
 
