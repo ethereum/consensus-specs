@@ -1,29 +1,36 @@
+import random
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Tuple
+
+from instantiators.block_cover import gen_block_cover_test_data
+from instantiators.block_tree import gen_block_tree_test_data
+from instantiators.helpers import (
+    FCTestData,
+    filter_out_duplicate_messages,
+    make_events,
+    yield_fork_choice_test_events,
+)
+from instantiators.mutation_operators import MutationOps
+from ruamel.yaml import YAML
+from scheduler import MessageScheduler
+
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.context import (
     spec_state_test,
     with_altair_and_later,
 )
 from eth2spec.test.helpers.fork_choice import (
-    on_tick_and_append_step, output_store_checks,
-    get_block_file_name,
     get_attestation_file_name,
     get_attester_slashing_file_name,
+    get_block_file_name,
+    on_tick_and_append_step,
+    output_store_checks,
 )
 from eth2spec.utils import bls
-from scheduler import MessageScheduler
-from instantiators.block_cover import gen_block_cover_test_data
-from instantiators.block_tree import gen_block_tree_test_data
-from instantiators.helpers import FCTestData, make_events, yield_fork_choice_test_events, filter_out_duplicate_messages
-from instantiators.mutation_operators import MutationOps
-import random
-from ruamel.yaml import YAML
-
 
 BLS_ACTIVE = False
-GENERATOR_NAME = 'fork_choice_generated'
-SUITE_NAME = 'pyspec_tests'
+GENERATOR_NAME = "fork_choice_generated"
+SUITE_NAME = "pyspec_tests"
 
 
 @dataclass(eq=True, frozen=True)
@@ -55,11 +62,17 @@ class PlainFCTestCase(TestCase):
     test_dna: FCTestDNA
     bls_active: bool
     debug: bool
+
     def __init__(self, test_dna, bls_active=False, debug=False, **kwds):
-        super().__init__(fork_name=kwds['fork_name'], preset_name=kwds['preset_name'],
-                         runner_name=kwds['runner_name'], handler_name=kwds['handler_name'],
-                         suite_name=kwds['suite_name'], case_name=kwds['case_name'],
-                         case_fn=self.mutation_case_fn)
+        super().__init__(
+            fork_name=kwds["fork_name"],
+            preset_name=kwds["preset_name"],
+            runner_name=kwds["runner_name"],
+            handler_name=kwds["handler_name"],
+            suite_name=kwds["suite_name"],
+            case_name=kwds["case_name"],
+            case_fn=self.mutation_case_fn,
+        )
         self.test_dna = test_dna
         self.bls_active = bls_active
         self.debug = debug
@@ -71,30 +84,39 @@ class PlainFCTestCase(TestCase):
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
         mut_seed = self.test_dna.mutation_seed
         return yield_mutation_test_case(
-                    generator_mode=True,
-                    phase=phase,
-                    preset=preset,
-                    bls_active=bls_active,
-                    debug=debug,
-                    seed=seed,
-                    mut_seed=mut_seed,
-                    test_kind=test_kind,
-                    solution=solution)
+            generator_mode=True,
+            phase=phase,
+            preset=preset,
+            bls_active=bls_active,
+            debug=debug,
+            seed=seed,
+            mut_seed=mut_seed,
+            test_kind=test_kind,
+            solution=solution,
+        )
 
 
 def get_test_data(spec, state, test_kind, solution, debug, seed):
     if isinstance(test_kind, BlockTreeTestKind):
         with_attester_slashings = test_kind.with_attester_slashings
         with_invalid_messages = test_kind.with_invalid_messages
-        sm_links = solution['sm_links']
-        block_parents = solution['block_parents']
-        test_data = gen_block_tree_test_data(spec, state, debug, seed, sm_links, block_parents,
-                                            with_attester_slashings, with_invalid_messages)
+        sm_links = solution["sm_links"]
+        block_parents = solution["block_parents"]
+        test_data = gen_block_tree_test_data(
+            spec,
+            state,
+            debug,
+            seed,
+            sm_links,
+            block_parents,
+            with_attester_slashings,
+            with_invalid_messages,
+        )
     elif isinstance(test_kind, BlockCoverTestKind):
         model_params = solution
         test_data, _ = gen_block_cover_test_data(spec, state, model_params, debug, seed)
     else:
-        raise ValueError(f'Unknown FC test kind {test_kind}')
+        raise ValueError(f"Unknown FC test kind {test_kind}")
     return test_data
 
 
@@ -112,8 +134,8 @@ def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_
         mops = MutationOps(store.time, spec.config.SECONDS_PER_SLOT)
         mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
-        test_data.meta['mut_seed'] = mut_seed
-        test_data.meta['mutations'] = mutations
+        test_data.meta["mut_seed"] = mut_seed
+        test_data.meta["mutations"] = mutations
 
         mutated_events = test_vector_to_events(mutated_vector)
 
@@ -124,15 +146,15 @@ def events_to_test_vector(events) -> list[Any]:
     test_vector = []
     current_time = None
     for event in events:
-        event_kind, data, _  = event
-        if event_kind == 'tick':
+        event_kind, data, _ = event
+        if event_kind == "tick":
             current_time = data
         else:
-            if event_kind == 'block':
+            if event_kind == "block":
                 event_id = data
-            elif event_kind == 'attestation':
+            elif event_kind == "attestation":
                 event_id = data
-            elif event_kind == 'attester_slashing':
+            elif event_kind == "attester_slashing":
                 event_id = data
             else:
                 assert False, event_kind
@@ -146,121 +168,123 @@ def test_vector_to_events(test_vector):
     for time, (event_kind, data) in test_vector:
         if time != current_time:
             current_time = time
-            events.append(('tick', time, None))
+            events.append(("tick", time, None))
         events.append((event_kind, data, None))
     return events
 
 
 @filter_out_duplicate_messages
 def yield_test_parts(spec, store, test_data: FCTestData, events):
-        record_recovery_messages = True
+    record_recovery_messages = True
 
-        for k,v in test_data.meta.items():
-            yield k, 'meta', v
+    for k, v in test_data.meta.items():
+        yield k, "meta", v
 
-        yield 'anchor_state', test_data.anchor_state
-        yield 'anchor_block', test_data.anchor_block
+    yield "anchor_state", test_data.anchor_state
+    yield "anchor_block", test_data.anchor_block
 
-        for message in test_data.blocks:
-            block = message.payload
-            yield get_block_file_name(block), block
+    for message in test_data.blocks:
+        block = message.payload
+        yield get_block_file_name(block), block
 
-        for message in test_data.atts:
-            attestation = message.payload
-            yield get_attestation_file_name(attestation), attestation
+    for message in test_data.atts:
+        attestation = message.payload
+        yield get_attestation_file_name(attestation), attestation
 
-        for message in test_data.slashings:
-            attester_slashing = message.payload
-            yield get_attester_slashing_file_name(attester_slashing), attester_slashing
+    for message in test_data.slashings:
+        attester_slashing = message.payload
+        yield get_attester_slashing_file_name(attester_slashing), attester_slashing
 
-        test_steps = []
-        scheduler = MessageScheduler(spec, store)
+    test_steps = []
+    scheduler = MessageScheduler(spec, store)
 
-        # record first tick
-        on_tick_and_append_step(spec, store, store.time, test_steps)
+    # record first tick
+    on_tick_and_append_step(spec, store, store.time, test_steps)
 
-        for (kind, data, _) in events:
-            if kind == 'tick':
-                time = data
-                if time > store.time:
-                    applied_events = scheduler.process_tick(time)
-                    if record_recovery_messages:
-                        for (event_kind, event_data, recovery) in applied_events:
-                            if event_kind == 'tick':
-                                test_steps.append({'tick': int(event_data)})
-                            elif event_kind == 'block':
-                                assert recovery
-                                _block_id = get_block_file_name(event_data)
-                                test_steps.append({'block': _block_id, 'valid': True})
-                            elif event_kind == 'attestation':
-                                assert recovery
-                                _attestation_id = get_attestation_file_name(event_data)
-                                if _attestation_id not in test_data.atts:
-                                    yield _attestation_id, event_data
-                                test_steps.append({'attestation': _attestation_id, 'valid': True})
-                            else:
-                                assert False
-                    else:
-                        assert False
-                    if time > store.time:
-                        # inside a slot
-                        on_tick_and_append_step(spec, store, time, test_steps)
-                    else:
-                        assert time == store.time
-                        output_store_checks(spec, store, test_steps)
-            elif kind == 'block':
-                block = data
-                block_id = get_block_file_name(block)
-                valid, applied_events = scheduler.process_block(block)
+    for kind, data, _ in events:
+        if kind == "tick":
+            time = data
+            if time > store.time:
+                applied_events = scheduler.process_tick(time)
                 if record_recovery_messages:
-                    if valid:
-                        for (event_kind, event_data, recovery) in applied_events:
-                            if event_kind == 'block':
-                                _block_id = get_block_file_name(event_data)
-                                if recovery:
-                                    test_steps.append({'block': _block_id, 'valid': True})
-                                else:
-                                    test_steps.append({'block': _block_id, 'valid': True})
-                            elif event_kind == 'attestation':
-                                _attestation_id = get_attestation_file_name(event_data)
-                                if recovery:
-                                    if _attestation_id not in test_data.atts:
-                                        yield _attestation_id, event_data
-                                    test_steps.append({'attestation': _attestation_id, 'valid': True})
-                                else:
-                                    assert False
-                                    test_steps.append({'attestation': _attestation_id, 'valid': True})
-                            else:
-                                assert False
-                    else:
-                        assert len(applied_events) == 0
-                        test_steps.append({'block': block_id, 'valid': valid})
+                    for event_kind, event_data, recovery in applied_events:
+                        if event_kind == "tick":
+                            test_steps.append({"tick": int(event_data)})
+                        elif event_kind == "block":
+                            assert recovery
+                            _block_id = get_block_file_name(event_data)
+                            test_steps.append({"block": _block_id, "valid": True})
+                        elif event_kind == "attestation":
+                            assert recovery
+                            _attestation_id = get_attestation_file_name(event_data)
+                            if _attestation_id not in test_data.atts:
+                                yield _attestation_id, event_data
+                            test_steps.append({"attestation": _attestation_id, "valid": True})
+                        else:
+                            assert False
                 else:
                     assert False
-                    test_steps.append({'block': block_id, 'valid': valid})
-                block_root = block.message.hash_tree_root()
-                assert valid == (block_root in store.blocks)
-
-                output_store_checks(spec, store, test_steps)
-            elif kind == 'attestation':
-                attestation = data
-                att_id = get_attestation_file_name(attestation)
-                valid = scheduler.process_attestation(attestation, is_from_block=False)
-                test_steps.append({'attestation': att_id, 'valid': valid})
-                output_store_checks(spec, store, test_steps)
-            elif kind == 'attester_slashing':
-                attester_slashing = data
-                slashing_id = get_attester_slashing_file_name(attester_slashing)
-                valid = scheduler.process_slashing(attester_slashing)
-                test_steps.append({'attester_slashing': slashing_id, 'valid': valid})
-                output_store_checks(spec, store, test_steps)
+                if time > store.time:
+                    # inside a slot
+                    on_tick_and_append_step(spec, store, time, test_steps)
+                else:
+                    assert time == store.time
+                    output_store_checks(spec, store, test_steps)
+        elif kind == "block":
+            block = data
+            block_id = get_block_file_name(block)
+            valid, applied_events = scheduler.process_block(block)
+            if record_recovery_messages:
+                if valid:
+                    for event_kind, event_data, recovery in applied_events:
+                        if event_kind == "block":
+                            _block_id = get_block_file_name(event_data)
+                            if recovery:
+                                test_steps.append({"block": _block_id, "valid": True})
+                            else:
+                                test_steps.append({"block": _block_id, "valid": True})
+                        elif event_kind == "attestation":
+                            _attestation_id = get_attestation_file_name(event_data)
+                            if recovery:
+                                if _attestation_id not in test_data.atts:
+                                    yield _attestation_id, event_data
+                                test_steps.append({"attestation": _attestation_id, "valid": True})
+                            else:
+                                assert False
+                                test_steps.append({"attestation": _attestation_id, "valid": True})
+                        else:
+                            assert False
+                else:
+                    assert len(applied_events) == 0
+                    test_steps.append({"block": block_id, "valid": valid})
             else:
-                raise ValueError(f'not implemented {kind}')
-        next_slot_time = store.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
-        on_tick_and_append_step(spec, store, next_slot_time, test_steps)
-        output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+                assert False
+                test_steps.append({"block": block_id, "valid": valid})
+            block_root = block.message.hash_tree_root()
+            assert valid == (block_root in store.blocks)
 
-        yield 'steps', test_steps
+            output_store_checks(spec, store, test_steps)
+        elif kind == "attestation":
+            attestation = data
+            att_id = get_attestation_file_name(attestation)
+            valid = scheduler.process_attestation(attestation, is_from_block=False)
+            test_steps.append({"attestation": att_id, "valid": valid})
+            output_store_checks(spec, store, test_steps)
+        elif kind == "attester_slashing":
+            attester_slashing = data
+            slashing_id = get_attester_slashing_file_name(attester_slashing)
+            valid = scheduler.process_slashing(attester_slashing)
+            test_steps.append({"attester_slashing": slashing_id, "valid": valid})
+            output_store_checks(spec, store, test_steps)
+        else:
+            raise ValueError(f"not implemented {kind}")
+    next_slot_time = (
+        store.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
+    )
+    on_tick_and_append_step(spec, store, next_slot_time, test_steps)
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+
+    yield "steps", test_steps
 
 
 def prepare_bls():
@@ -268,28 +292,28 @@ def prepare_bls():
 
 
 def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
-    if test_type == 'block_tree':
+    if test_type == "block_tree":
         return BlockTreeTestKind(with_attester_slashings, with_invalid_messages)
-    elif test_type == 'block_cover':
+    elif test_type == "block_cover":
         return BlockCoverTestKind()
     else:
-        raise ValueError(f'Unsupported test type: {test_type}')
+        raise ValueError(f"Unsupported test type: {test_type}")
 
 
 def _load_instances(instance_path: str) -> Iterable[dict]:
-    yaml = YAML(typ='safe')
-    solutions = yaml.load(open(instance_path, 'r'))
+    yaml = YAML(typ="safe")
+    solutions = yaml.load(open(instance_path, "r"))
     return solutions
 
 
 def enumerate_test_dnas(test_name, params) -> Iterable[Tuple[str, FCTestData]]:
-    test_type = params['test_type']
-    instances_path = params['instances']
-    initial_seed = params['seed']
-    nr_variations = params['nr_variations']
-    nr_mutations = params['nr_mutations']
-    with_attester_slashings = params.get('with_attester_slashings', False)
-    with_invalid_messages = params.get('with_invalid_messages', False)
+    test_type = params["test_type"]
+    instances_path = params["instances"]
+    initial_seed = params["seed"]
+    nr_variations = params["nr_variations"]
+    nr_mutations = params["nr_mutations"]
+    with_attester_slashings = params.get("with_attester_slashings", False)
+    with_invalid_messages = params.get("with_invalid_messages", False)
 
     solutions = _load_instances(instances_path)
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
@@ -301,11 +325,11 @@ def enumerate_test_dnas(test_name, params) -> Iterable[Tuple[str, FCTestData]]:
         seeds[0] = initial_seed
 
     for i, solution in enumerate(solutions):
-            for seed in seeds:
-                for j in range(1 + nr_mutations):
-                    test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                    case_name = test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j)
-                    yield case_name, test_dna
+        for seed in seeds:
+            for j in range(1 + nr_mutations):
+                test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
+                case_name = test_name + "_" + str(i) + "_" + str(seed) + "_" + str(j)
+                yield case_name, test_dna
 
 
 def enumerate_test_cases(test_gen_config, forks, presets, debug):

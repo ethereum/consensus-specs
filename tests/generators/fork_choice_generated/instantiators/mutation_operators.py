@@ -5,7 +5,7 @@ def mut_shift_(tv, idx, delta):
     time, event = tv[idx]
     new_time = int(time) + delta
     if new_time >= 0:
-        return sorted(tv[:idx] + [(new_time, event)] + tv[idx+1:], key=lambda x: x[0])
+        return sorted(tv[:idx] + [(new_time, event)] + tv[idx + 1 :], key=lambda x: x[0])
     else:
         return idx
 
@@ -22,7 +22,7 @@ def mut_shift(tv, rnd: random.Random):
 
 
 def mut_drop_(tv, idx):
-    return tv[:idx] + tv[idx+1:]
+    return tv[:idx] + tv[idx + 1 :]
 
 
 def mut_drop(tv, rnd: random.Random):
@@ -76,7 +76,7 @@ def mutate_test_vector(rnd, initial_tv, cnt, debug=False):
 
 
 class MutationOps:
-    def __init__(self, start_time, seconds_per_slot, shift_bounds=(-2,4)):
+    def __init__(self, start_time, seconds_per_slot, shift_bounds=(-2, 4)):
         self.start_time = int(start_time)
         self.seconds_per_slot = int(seconds_per_slot)
         self.shift_bounds = shift_bounds
@@ -91,11 +91,11 @@ class MutationOps:
         return mut_dup_(tv, idx, delta)
 
     def apply_mutation(self, tv, op_kind, *params):
-        if op_kind == 'shift':
+        if op_kind == "shift":
             return self.apply_shift(tv, *params)
-        elif op_kind == 'dup_shift':
+        elif op_kind == "dup_shift":
             return self.apply_dup_shift(tv, *params)
-        elif op_kind == 'drop':
+        elif op_kind == "drop":
             return self.apply_drop(tv, *params)
         else:
             assert False
@@ -112,12 +112,12 @@ class MutationOps:
 
     def rand_mutation(self, tv, rnd: random.Random):
         idx = rnd.choice(range(len(tv)))
-        op_kind = rnd.choice(['shift', 'drop', 'dup_shift'])
-        if op_kind == 'shift' or op_kind == 'dup_shift':
+        op_kind = rnd.choice(["shift", "drop", "dup_shift"])
+        if op_kind == "shift" or op_kind == "dup_shift":
             evt_time = int(tv[idx][0])
             params = idx, self.rand_shift(evt_time, rnd)
         else:
-            params = idx,
+            params = (idx,)
         return op_kind, *params
 
     def rand_mutations(self, tv, num, rnd: random.Random):

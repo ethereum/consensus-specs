@@ -1,9 +1,5 @@
 from dataclasses import dataclass, field
-from .debug_helpers import print_epoch
-from eth2spec.utils.ssz.ssz_typing import View
-from eth2spec.test.helpers.state import (
-    next_slot,
-)
+
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
 )
@@ -12,19 +8,25 @@ from eth2spec.test.helpers.block import (
     sign_block,
 )
 from eth2spec.test.helpers.fork_choice import (
-    on_tick_and_append_step,
     add_attestation,
     add_attester_slashing,
     add_block,
+    get_attestation_file_name,
+    get_attester_slashing_file_name,
+    get_block_file_name,
+    on_tick_and_append_step,
     output_store_checks,
     run_on_attestation,
     run_on_attester_slashing,
     run_on_block,
-    get_block_file_name,
-    get_attestation_file_name,
-    get_attester_slashing_file_name,
 )
-from .debug_helpers import print_head
+from eth2spec.test.helpers.state import (
+    next_slot,
+)
+from eth2spec.utils.ssz.ssz_typing import View
+
+from .debug_helpers import print_epoch, print_head
+
 
 @dataclass
 class ProtocolMessage:
@@ -51,10 +53,12 @@ class BranchTip:
         self.eventually_justified_checkpoint = eventually_justified_checkpoint
 
     def copy(self):
-        return BranchTip(self.beacon_state.copy(),
-                         self.attestations.copy(),
-                         self.participants.copy(),
-                         self.eventually_justified_checkpoint)
+        return BranchTip(
+            self.beacon_state.copy(),
+            self.attestations.copy(),
+            self.participants.copy(),
+            self.eventually_justified_checkpoint,
+        )
 
 
 def _get_eligible_attestations(spec, state, attestations) -> []:
@@ -64,9 +68,12 @@ def _get_eligible_attestations(spec, state, attestations) -> []:
         else:
             return state.previous_justified_checkpoint
 
-    return [a for a in attestations if
-            state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
-            and a.data.source == _get_voting_source(a.data.target)]
+    return [
+        a
+        for a in attestations
+        if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
+        and a.data.source == _get_voting_source(a.data.target)
+    ]
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
@@ -88,7 +95,8 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
     # Create a block with attestations
     block = build_empty_block(spec, state)
     block.body.randao_reveal = _compute_pseudo_randao_reveal(
-        spec, block.proposer_index, spec.get_current_epoch(state))
+        spec, block.proposer_index, spec.get_current_epoch(state)
+    )
 
     # Prepare attestations
     limit = type(block.body.attestations).limit()
@@ -98,7 +106,7 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
         block.body.attestations.append(a)
 
     # Add attester slashings
-    attester_slashings_in_block = attester_slashings[:spec.MAX_ATTESTER_SLASHINGS]
+    attester_slashings_in_block = attester_slashings[: spec.MAX_ATTESTER_SLASHINGS]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)
 
@@ -119,7 +127,9 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
     not_included_attester_slashings = attester_slashings
     if valid:
         not_included_attestations = [a for a in attestations if a not in attestation_in_block]
-        not_included_attester_slashings = [s for s in attester_slashings if s not in attester_slashings_in_block]
+        not_included_attester_slashings = [
+            s for s in attester_slashings if s not in attester_slashings_in_block
+        ]
 
     # Return a pre state if the block is invalid
     if not valid:
@@ -136,11 +146,17 @@ def attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
 
     assert slot_to_attest <= state.slot
 
-    committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot_to_attest))
+    committees_per_slot = spec.get_committee_count_per_slot(
+        state, spec.compute_epoch_at_slot(slot_to_attest)
+    )
     attestations_in_slot = []
     for index in range(committees_per_slot):
         beacon_committee = spec.get_beacon_committee(state, slot_to_attest, index)
-        participants = beacon_committee if participants_filter is None else participants_filter(beacon_committee)
+        participants = (
+            beacon_committee
+            if participants_filter is None
+            else participants_filter(beacon_committee)
+        )
         if any(participants):
             attestation = get_valid_attestation(
                 spec,
@@ -148,7 +164,7 @@ def attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
                 slot_to_attest,
                 index=index,
                 signed=True,
-                filter_participant_set=participants_filter
+                filter_participant_set=participants_filter,
             )
             attestations_in_slot.append(attestation)
 
@@ -160,10 +176,14 @@ def _compute_eventually_justified_epoch(spec, state, attestations, participants)
     # and attestation.data.target.epoch > beacon_state.current_justified_checkpoint.epoch
     # compute eventually_justified_checkpoint, a would be state.current_justified_checkpoint if all attestations
     # were included; this computation respects the validator partition that was building the branch
-    if len(attestations) > 0 \
-            and attestations[0].data.target.epoch > state.current_justified_checkpoint.epoch \
-            and attestations[0].data.target.epoch > spec.GENESIS_EPOCH:
-        branch_tip = BranchTip(state, attestations, participants, state.current_justified_checkpoint)
+    if (
+        len(attestations) > 0
+        and attestations[0].data.target.epoch > state.current_justified_checkpoint.epoch
+        and attestations[0].data.target.epoch > spec.GENESIS_EPOCH
+    ):
+        branch_tip = BranchTip(
+            state, attestations, participants, state.current_justified_checkpoint
+        )
         _, new_branch_tip = advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=False)
 
         return new_branch_tip.beacon_state.current_justified_checkpoint
@@ -206,20 +226,27 @@ def advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
         next_slot(spec, state)
 
     # Cleanup attestations by removing outdated ones
-    attestations = [a for a in attestations if
-                    a.data.target.epoch in (spec.get_previous_epoch(state), spec.get_current_epoch(state))]
+    attestations = [
+        a
+        for a in attestations
+        if a.data.target.epoch in (spec.get_previous_epoch(state), spec.get_current_epoch(state))
+    ]
 
-    eventually_justified_checkpoint = _compute_eventually_justified_epoch(spec, state, attestations,
-                                                                          branch_tip.participants)
+    eventually_justified_checkpoint = _compute_eventually_justified_epoch(
+        spec, state, attestations, branch_tip.participants
+    )
 
-    return signed_blocks, BranchTip(state, attestations, branch_tip.participants, eventually_justified_checkpoint)
+    return signed_blocks, BranchTip(
+        state, attestations, branch_tip.participants, eventually_justified_checkpoint
+    )
 
 
 def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], BranchTip):
     signed_blocks = []
 
-    genesis_tip = BranchTip(state.copy(), [], [*range(0, len(state.validators))],
-                            state.current_justified_checkpoint)
+    genesis_tip = BranchTip(
+        state.copy(), [], [*range(0, len(state.validators))], state.current_justified_checkpoint
+    )
 
     # Advance the state to the anchor_epoch
     anchor_tip = genesis_tip
@@ -229,23 +256,40 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
         signed_blocks = signed_blocks + new_signed_blocks
         if debug:
             post_state = anchor_tip.beacon_state
-            print('\nepoch', str(epoch) + ':')
-            print('branch(*, *):', print_epoch(spec, pre_state, new_signed_blocks))
-            print('              ', len(anchor_tip.participants), 'participants:', anchor_tip.participants)
-            print('              ', 'state.current_justified_checkpoint:',
-                  '(epoch=' + str(post_state.current_justified_checkpoint.epoch) +
-                  ', root=' + str(post_state.current_justified_checkpoint.root)[:6] + ')')
-            print('              ', 'eventually_justified_checkpoint:',
-                  '(epoch=' + str(anchor_tip.eventually_justified_checkpoint.epoch) +
-                  ', root=' + str(anchor_tip.eventually_justified_checkpoint.root)[:6] + ')')
+            print("\nepoch", str(epoch) + ":")
+            print("branch(*, *):", print_epoch(spec, pre_state, new_signed_blocks))
+            print(
+                "              ",
+                len(anchor_tip.participants),
+                "participants:",
+                anchor_tip.participants,
+            )
+            print(
+                "              ",
+                "state.current_justified_checkpoint:",
+                "(epoch="
+                + str(post_state.current_justified_checkpoint.epoch)
+                + ", root="
+                + str(post_state.current_justified_checkpoint.root)[:6]
+                + ")",
+            )
+            print(
+                "              ",
+                "eventually_justified_checkpoint:",
+                "(epoch="
+                + str(anchor_tip.eventually_justified_checkpoint.epoch)
+                + ", root="
+                + str(anchor_tip.eventually_justified_checkpoint.root)[:6]
+                + ")",
+            )
 
     return signed_blocks, anchor_tip
 
 
 def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     """
-        Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
-        Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
+    Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
+    Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
     """
     genesis_time = test_data.anchor_state.genesis_time
     test_events = []
@@ -254,7 +298,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         return slot * spec.config.SECONDS_PER_SLOT + genesis_time
 
     def add_tick_step(time):
-        test_events.append(('tick', time, None))
+        test_events.append(("tick", time, None))
 
     def add_message_step(kind, message):
         test_events.append((kind, message.payload, message.valid))
@@ -264,18 +308,20 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
 
     def get_seffective_slot(message):
         event_kind, data, _ = message
-        if event_kind == 'block':
+        if event_kind == "block":
             return data.message.slot
-        elif event_kind == 'attestation':
+        elif event_kind == "attestation":
             return data.data.slot + 1
-        elif event_kind == 'attester_slashing':
+        elif event_kind == "attester_slashing":
             return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
         else:
             assert False
 
-    messages = [('attestation', m.payload, m.valid) for m in test_data.atts] \
-               + [('attester_slashing', m.payload, m.valid) for m in test_data.slashings] \
-               + [('block', m.payload, m.valid) for m in test_data.blocks]
+    messages = (
+        [("attestation", m.payload, m.valid) for m in test_data.atts]
+        + [("attester_slashing", m.payload, m.valid) for m in test_data.slashings]
+        + [("block", m.payload, m.valid) for m in test_data.blocks]
+    )
 
     for event in sorted(messages, key=get_seffective_slot):
         event_kind, message, valid = event
@@ -306,6 +352,7 @@ def filter_out_duplicate_messages(fn):
                         yield data
                 else:
                     yield data
+
     return wrapper
 
 
@@ -320,7 +367,7 @@ def _add_block(spec, store, signed_block, test_steps):
     except AssertionError:
         valid = False
 
-    test_steps.append({'block': get_block_file_name(signed_block), 'valid': valid})
+    test_steps.append({"block": get_block_file_name(signed_block), "valid": valid})
 
     if valid:
         # An on_block step implies receiving block's attestations
@@ -341,14 +388,16 @@ def _add_block(spec, store, signed_block, test_steps):
 
 
 @filter_out_duplicate_messages
-def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_events: list, debug: bool):
+def yield_fork_choice_test_events(
+    spec, store, test_data: FCTestData, test_events: list, debug: bool
+):
     # Yield meta
     for k, v in test_data.meta.items():
-        yield k, 'meta', v
+        yield k, "meta", v
 
     # Yield anchor state and block initialization
-    yield 'anchor_state', test_data.anchor_state
-    yield 'anchor_block', test_data.anchor_block
+    yield "anchor_state", test_data.anchor_state
+    yield "anchor_block", test_data.anchor_block
 
     for message in test_data.blocks:
         block = message.payload
@@ -376,12 +425,12 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
 
     for event in test_events:
         event_kind = event[0]
-        if event_kind == 'tick':
+        if event_kind == "tick":
             _, time, _ = event
             if time > store.time:
                 on_tick_and_append_step(spec, store, time, test_steps)
                 assert store.time == time
-        elif event_kind == 'block':
+        elif event_kind == "block":
             _, signed_block, valid = event
             if valid is None:
                 yield from _add_block(spec, store, signed_block, test_steps)
@@ -394,24 +443,26 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
                 else:
                     assert block_root not in store.blocks.values()
             output_store_checks(spec, store, test_steps)
-        elif event_kind == 'attestation':
+        elif event_kind == "attestation":
             _, attestation, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attestation, attestation)
             yield from add_attestation(spec, store, attestation, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
-        elif event_kind == 'attester_slashing':
+        elif event_kind == "attester_slashing":
             _, attester_slashing, valid = event
             if valid is None:
                 valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
-            yield from add_attester_slashing(spec, store, attester_slashing, test_steps, valid=valid)
+            yield from add_attester_slashing(
+                spec, store, attester_slashing, test_steps, valid=valid
+            )
             output_store_checks(spec, store, test_steps)
         else:
-            raise ValueError('Unknown event ' + str(event_kind))
+            raise ValueError("Unknown event " + str(event_kind))
 
     if debug:
-        print('               head: ' + print_head(spec, store))
+        print("               head: " + print_head(spec, store))
 
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
