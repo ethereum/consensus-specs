@@ -29,9 +29,25 @@ class TestProvider:
     make_cases: callable
 
 
+@dataclass(eq=True, frozen=True)
+class FCTestKind:
+    pass
+
+
+@dataclass(eq=True, frozen=True)
+class BlockTreeTestKind(FCTestKind):
+    with_attester_slashings: bool
+    with_invalid_messages: bool
+
+
+@dataclass(eq=True, frozen=True)
+class BlockCoverTestKind(FCTestKind):
+    pass
+
+
 @dataclass
 class FCTestDNA:
-    kind: str
+    kind: FCTestKind
     solution: Any
     variation_seed: int
     mutation_seed: Optional[int]
@@ -83,12 +99,13 @@ class PlainFCTestCase(TestCase):
         yield from self.call_instantiator(test_data_only=False)
 
     def call_instantiator(self, test_data_only) -> Iterable[TestCasePart]:
+        test_kind = self.test_dna.kind
         phase, preset = self.fork_name, self.preset_name
         bls_active, debug = self.bls_active, self.debug
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
-        if self.test_dna.kind in ['block_tree_test', 'attester_slashing_test', 'invalid_message_test']:
-            with_attester_slashings = self.test_dna.kind == 'attester_slashing_test'
-            with_invalid_messages = self.test_dna.kind == 'invalid_message_test'
+        if isinstance(test_kind, BlockTreeTestKind):
+            with_attester_slashings = test_kind.with_attester_slashings
+            with_invalid_messages = test_kind.with_invalid_messages
             instantiator_fn = yield_block_tree_test_data if test_data_only else yield_block_tree_test_case
             return instantiator_fn(
                 generator_mode=True,
@@ -96,7 +113,7 @@ class PlainFCTestCase(TestCase):
                 bls_active=bls_active, debug=debug,
                 seed=seed, sm_links=solution['sm_links'], block_parents=solution['block_parents'],
                 with_attester_slashings=with_attester_slashings, with_invalid_messages=with_invalid_messages)
-        elif self.test_dna.kind == 'block_cover_test':
+        elif isinstance(test_kind, BlockCoverTestKind):
             instantiator_fn = yield_block_cover_test_data if test_data_only else yield_block_cover_test_case
             return instantiator_fn(
                 generator_mode=True,
@@ -104,7 +121,7 @@ class PlainFCTestCase(TestCase):
                 bls_active=bls_active, debug=debug,
                 seed=seed, model_params=solution)
         else:
-            raise ValueError(f'Unknown FC test kind {self.test_dna.kind}')
+            raise ValueError(f'Unknown FC test kind {test_kind}')
 
 
 def events_to_test_vector(events) -> list[Any]:
@@ -258,7 +275,7 @@ def create_providers(test_name: str, /,
         solutions,
         number_of_variations: int,
         number_of_mutations: int,
-        test_kind: str,
+        test_kind: FCTestKind,
         ) -> Iterable[TestProvider]:
     def prepare_fn() -> None:
         bls.use_milagro()

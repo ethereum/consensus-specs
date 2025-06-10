@@ -5,7 +5,7 @@ from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from ruamel.yaml import YAML
 from typing import Iterable
 
-from test_provider import create_providers
+from test_provider import BlockCoverTestKind, BlockTreeTestKind, create_providers
 
 
 forks = [ELECTRA]
@@ -23,20 +23,13 @@ def run_test_group(test_name, test_type, instances_path,
                    with_attester_slashings, with_invalid_messages,
                    debug=False, args=None):
     if test_type == 'block_tree':
-        solutions = _load_instances(instances_path)
-        if not with_attester_slashings and not with_invalid_messages:
-            test_kind = 'block_tree_test'
-        elif with_attester_slashings and not with_invalid_messages:
-            test_kind = 'attester_slashing_test'
-        elif not with_attester_slashings and with_invalid_messages:
-            test_kind = 'invalid_message_test'
-        else:
-            test_kind = 'attestet_slashing_and_invalid_message_test'
+        test_kind = BlockTreeTestKind(with_attester_slashings, with_invalid_messages)
     elif test_type == 'block_cover':
-        solutions = _load_instances(instances_path)
-        test_kind = 'block_cover_test'
+        test_kind = BlockCoverTestKind()
     else:
         raise ValueError(f'Unsupported test type: {test_type}')
+
+    solutions = _load_instances(instances_path)
 
     providers = create_providers(test_name, forks, presets, debug, initial_seed,
                                     solutions, nr_variations, nr_mutations, test_kind)
