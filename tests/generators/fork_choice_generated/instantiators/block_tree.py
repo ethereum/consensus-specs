@@ -336,7 +336,7 @@ def _generate_sm_link_tree(
             # If the fork won't be advanced in the future epochs
             # ensure 1) all yet not included attestations are included on chain by advancing it to epoch N+1
             #        2) justification is realized by advancing it to epoch N+2
-            is_fork_advanced_in_future = any((l for l in sm_links if l.source == sm_link.target))
+            is_fork_advanced_in_future = any(l for l in sm_links if l.source == sm_link.target)
             if sm_link.target == current_epoch and not is_fork_advanced_in_future:
                 advanced_branch_tip = new_branch_tip
 
