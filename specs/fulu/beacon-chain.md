@@ -40,6 +40,11 @@ and is under active development.
 *[New in Fulu:EIP7892]* This schedule defines the maximum blobs per block limit
 for a given epoch.
 
+There MUST NOT exist multiple blob schedule entries with the same epoch value.
+The maximum blobs per block limit for blob schedules entries MUST be less than
+or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries SHOULD
+be sorted by epoch in ascending order. The blob schedule MAY be empty.
+
 *Note*: The blob schedule is to be determined.
 
 <!-- list-of-records:blob_schedule -->
