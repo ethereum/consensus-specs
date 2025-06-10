@@ -200,17 +200,23 @@ def compute_fork_digest(
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
-    base_digest = compute_fork_data_root(version, genesis_validators_root)[:4]
+    base_digest = compute_fork_data_root(version, genesis_validators_root)
 
     # Find the blob parameters applicable to this epoch
     max_blobs_per_block = get_max_blobs_per_block(epoch)
 
-    # Safely bitmask blob parameters into the digest. The downcasting from
-    # uint64 to Bytes4 is safe because max_blobs_per_block is bounded by
-    # MAX_BLOB_COMMITMENTS_PER_BLOCK which will always fit in Bytes4.
-    mask = max_blobs_per_block.to_bytes(4, "big")
-    masked_digest = bytes(a ^ b for a, b in zip(base_digest, mask))
-    return ForkDigest(masked_digest)
+    # Bitmask epoch & blob limit into the digest
+    return ForkDigest(
+        bytes(
+            xor(
+                base_digest,
+                xor(
+                    hash(epoch.to_bytes(8, "little")),
+                    hash(max_blobs_per_block.to_bytes(8, "little")),
+                ),
+            )
+        )[:4]
+    )
 ```
 
 #### New `compute_proposer_indices`
