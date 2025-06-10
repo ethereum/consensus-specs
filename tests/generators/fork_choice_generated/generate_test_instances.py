@@ -1,11 +1,9 @@
-from dataclasses import dataclass, field
 from itertools import product
 from typing import Iterable
 
 from minizinc import Instance, Model, Solver
 from ruamel.yaml import YAML
 from toolz.dicttoolz import merge
-from typing_extensions import TypedDict
 
 
 def solve_sm_links(
