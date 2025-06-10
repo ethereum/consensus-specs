@@ -8,7 +8,7 @@ from typing_extensions import TypedDict
 
 
 def solve_sm_links(anchor_epoch: int, number_of_epochs: int, number_of_links: int, number_of_solutions: int):
-    sm_links = Model('./model/minizinc/SM_links.mzn')
+    sm_links = Model('./model/SM_links.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, sm_links)
     instance['AE'] = anchor_epoch  # anchor epoch
@@ -33,7 +33,7 @@ def generate_sm_links(params):
 def solve_block_tree(number_of_blocks: int,
                     max_children: int,
                     number_of_solutions: int) -> Iterable[dict]:
-    model = Model('./model/minizinc/Block_tree.mzn')
+    model = Model('./model/Block_tree.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
     instance['NB'] = number_of_blocks
@@ -60,7 +60,7 @@ def solve_block_cover(anchor_epoch: int,
                       block_voting_source_epoch_plus_two_greater_or_equal_current_epoch: bool,
                       block_is_leaf: bool,
                       number_of_solutions: int):
-    block_cover3 = Model('./model/minizinc/Block_cover3.mzn')
+    block_cover3 = Model('./model/Block_cover3.mzn')
     solver = Solver.lookup("gecode")
     instance = Instance(solver, block_cover3)
     instance['AE'] = anchor_epoch
@@ -101,8 +101,8 @@ def generate_block_cover(params):
 
 
 # models = {
-#     'sm_links': ModelKind('SMLinks', './model/minizinc/SM_links.mzn', {'AE': int, 'NE': int, 'NL': int}),
-#     'block_cover': ModelKind('BlockCover', './model/minizinc/Block_cover3.mzn',
+#     'sm_links': ModelKind('SMLinks', './model/SM_links.mzn', {'AE': int, 'NE': int, 'NL': int}),
+#     'block_cover': ModelKind('BlockCover', './model/Block_cover3.mzn',
 #                              {
 #                                  'AE': int,
 #                                  'store_je_eq_zero': bool,
