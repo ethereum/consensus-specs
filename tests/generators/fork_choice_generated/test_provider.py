@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Tuple
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase, TestCasePart
-from eth2spec.test.context import spec_test
-from eth2spec.test.helpers.specs import spec_targets
+from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
+from eth2spec.test.context import (
+    spec_state_test,
+    with_altair_and_later,
+)
 from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step, output_store_checks,
     get_block_file_name,
@@ -12,8 +14,8 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from eth2spec.utils import bls
 from scheduler import MessageScheduler
-from instantiators.block_cover import yield_block_cover_test_case, yield_block_cover_test_data
-from instantiators.block_tree import yield_block_tree_test_case, yield_block_tree_test_data
+from instantiators.block_cover import gen_block_cover_test_data
+from instantiators.block_tree import gen_block_tree_test_data
 from instantiators.helpers import FCTestData, make_events, yield_fork_choice_test_events, filter_out_duplicate_messages
 from instantiators.mutation_operators import MutationOps
 import random
@@ -68,60 +70,59 @@ class PlainFCTestCase(TestCase):
         self.debug = debug
 
     def mutation_case_fn(self):
-        spec = spec_targets[self.preset_name][self.fork_name]
-
-        mut_seed = self.test_dna.mutation_seed
-        test_data = list(self.call_instantiator(test_data_only=True))[0][2]
-        events = make_events(spec, test_data)
-        store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
-        start_time = store.time
-        seconds_per_slot = spec.config.SECONDS_PER_SLOT
-
-        if mut_seed is None:
-            return (spec_test(yield_fork_choice_test_events))(
-                spec, store, test_data, events, self.debug, generator_mode=True, bls_active=self.bls_active)
-        else:
-            test_vector = events_to_test_vector(events)
-            mops = MutationOps(start_time, seconds_per_slot)
-            mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
-
-            test_data.meta['mut_seed'] = mut_seed
-            test_data.meta['mutations'] = mutations
-
-            mutated_events = test_vector_to_events(mutated_vector)
-
-            # return (spec_test(yield_fork_choice_test_events))(
-            #     spec, store, test_data, mutated_events, self.debug, generator_mode=True, bls_active=self.bls_active)
-            return (spec_test(yield_test_parts))(
-                spec, store, test_data, mutated_events, generator_mode=True, bls_active=self.bls_active)
-
-    def plain_case_fn(self) -> Iterable[TestCasePart]:
-        yield from self.call_instantiator(test_data_only=False)
-
-    def call_instantiator(self, test_data_only) -> Iterable[TestCasePart]:
         test_kind = self.test_dna.kind
         phase, preset = self.fork_name, self.preset_name
         bls_active, debug = self.bls_active, self.debug
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
-        if isinstance(test_kind, BlockTreeTestKind):
-            with_attester_slashings = test_kind.with_attester_slashings
-            with_invalid_messages = test_kind.with_invalid_messages
-            instantiator_fn = yield_block_tree_test_data if test_data_only else yield_block_tree_test_case
-            return instantiator_fn(
-                generator_mode=True,
-                phase=phase, preset=preset,
-                bls_active=bls_active, debug=debug,
-                seed=seed, sm_links=solution['sm_links'], block_parents=solution['block_parents'],
-                with_attester_slashings=with_attester_slashings, with_invalid_messages=with_invalid_messages)
-        elif isinstance(test_kind, BlockCoverTestKind):
-            instantiator_fn = yield_block_cover_test_data if test_data_only else yield_block_cover_test_case
-            return instantiator_fn(
-                generator_mode=True,
-                phase=phase, preset=preset,
-                bls_active=bls_active, debug=debug,
-                seed=seed, model_params=solution)
-        else:
-            raise ValueError(f'Unknown FC test kind {test_kind}')
+        mut_seed = self.test_dna.mutation_seed
+        return yield_mutation_test_case(
+                    generator_mode=True,
+                    phase=phase,
+                    preset=preset,
+                    bls_active=bls_active,
+                    debug=debug,
+                    seed=seed,
+                    mut_seed=mut_seed,
+                    test_kind=test_kind,
+                    solution=solution)
+
+
+def get_test_data(spec, state, test_kind, solution, debug, seed):
+    if isinstance(test_kind, BlockTreeTestKind):
+        with_attester_slashings = test_kind.with_attester_slashings
+        with_invalid_messages = test_kind.with_invalid_messages
+        sm_links = solution['sm_links']
+        block_parents = solution['block_parents']
+        test_data = gen_block_tree_test_data(spec, state, debug, seed, sm_links, block_parents,
+                                            with_attester_slashings, with_invalid_messages)
+    elif isinstance(test_kind, BlockCoverTestKind):
+        model_params = solution
+        test_data, _ = gen_block_cover_test_data(spec, state, model_params, debug, seed)
+    else:
+        raise ValueError(f'Unknown FC test kind {test_kind}')
+    return test_data
+
+
+@with_altair_and_later
+@spec_state_test
+def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_seed):
+    test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
+    events = make_events(spec, test_data)
+    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
+
+    if mut_seed is None:
+        return yield_fork_choice_test_events(spec, store, test_data, events, debug)
+    else:
+        test_vector = events_to_test_vector(events)
+        mops = MutationOps(store.time, spec.config.SECONDS_PER_SLOT)
+        mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
+
+        test_data.meta['mut_seed'] = mut_seed
+        test_data.meta['mutations'] = mutations
+
+        mutated_events = test_vector_to_events(mutated_vector)
+
+        return yield_test_parts(spec, store, test_data, mutated_events)
 
 
 def events_to_test_vector(events) -> list[Any]:

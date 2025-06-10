@@ -1,8 +1,4 @@
 import random
-from eth2spec.test.context import (
-    spec_state_test,
-    with_altair_and_later,
-)
 from eth2spec.test.helpers.state import (
     transition_to,
     next_slot,
@@ -16,7 +12,6 @@ from .helpers import (
     advance_state_to_anchor_epoch,
     produce_block,
     attest_to_slot,
-    yield_fork_choice_test_case,
 )
 from eth2spec.utils import bls
 
@@ -266,21 +261,3 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
                  or predicates['block_vse_eq_store_je']
                  or predicates['block_vse_plus_two_ge_curr_e'])):
         assert target_block_root in spec.get_filtered_block_tree(store).keys()
-
-
-@with_altair_and_later
-@spec_state_test
-def yield_block_cover_test_case(spec, state, model_params=None, debug=False, seed=1):
-    test_data, target_block_root = gen_block_cover_test_data(spec, state, model_params, debug, seed)
-    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
-    yield from yield_fork_choice_test_case(spec, store, test_data, debug)
-    # Run sanity checks against model params
-    run_sanity_checks(spec, store, model_params, target_block_root)
-
-@with_altair_and_later
-@spec_state_test
-def yield_block_cover_test_data(spec, state, model_params=None, debug=False, seed=1):
-    test_data, _ = gen_block_cover_test_data(spec, state, model_params, debug, seed)
-    yield 'test_data', test_data
-    # Run sanity checks against model params
-    # run_sanity_checks(spec, store, model_params, target_block_root)
