@@ -489,7 +489,8 @@ are unchanged from the Altair p2p networking document.
 ##### Custody group count
 
 A new field is added to the ENR under the key `cgc` to facilitate custody data
-column discovery.
+column discovery. This new field MUST be added once `FULU_FORK_EPOCH` is
+assigned any value other than `FAR_FUTURE_EPOCH`.
 
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
