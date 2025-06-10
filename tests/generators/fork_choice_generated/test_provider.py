@@ -11,7 +11,6 @@ from eth2spec.test.helpers.fork_choice import (
     get_attestation_file_name,
     get_attester_slashing_file_name,
 )
-from eth2spec.test.helpers.typing import SpecForkName, PresetBaseName
 from eth2spec.utils import bls
 from scheduler import MessageScheduler
 from instantiators.block_cover import gen_block_cover_test_data
@@ -19,16 +18,12 @@ from instantiators.block_tree import gen_block_tree_test_data
 from instantiators.helpers import FCTestData, make_events, yield_fork_choice_test_events, filter_out_duplicate_messages
 from instantiators.mutation_operators import MutationOps
 import random
+from ruamel.yaml import YAML
 
 
 BLS_ACTIVE = False
 GENERATOR_NAME = 'fork_choice_generated'
-
-
-@dataclass
-class TestProvider:
-    prepare: callable
-    make_cases: callable
+SUITE_NAME = 'pyspec_tests'
 
 
 @dataclass(eq=True, frozen=True)
@@ -268,43 +263,65 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
         yield 'steps', test_steps
 
 
-def create_providers(test_name: str, /,
-        forks: Iterable[SpecForkName],
-        presets: Iterable[PresetBaseName],
-        debug: bool,
-        initial_seed: int,
-        solutions,
-        number_of_variations: int,
-        number_of_mutations: int,
-        test_kind: FCTestKind,
-        ) -> Iterable[TestProvider]:
-    def prepare_fn() -> None:
-        bls.use_milagro()
-        return
+def prepare_bls():
+    bls.use_milagro()
+
+
+def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
+    if test_type == 'block_tree':
+        return BlockTreeTestKind(with_attester_slashings, with_invalid_messages)
+    elif test_type == 'block_cover':
+        return BlockCoverTestKind()
+    else:
+        raise ValueError(f'Unsupported test type: {test_type}')
+
+
+def _load_instances(instance_path: str) -> Iterable[dict]:
+    yaml = YAML(typ='safe')
+    solutions = yaml.load(open(instance_path, 'r'))
+    return solutions
+
+
+def enumerate_test_dnas(test_name, params) -> Iterable[Tuple[str, FCTestData]]:
+    test_type = params['test_type']
+    instances_path = params['instances']
+    initial_seed = params['seed']
+    nr_variations = params['nr_variations']
+    nr_mutations = params['nr_mutations']
+    with_attester_slashings = params.get('with_attester_slashings', False)
+    with_invalid_messages = params.get('with_invalid_messages', False)
+
+    solutions = _load_instances(instances_path)
+    test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
     seeds = [initial_seed]
-    if number_of_variations > 1:
+    if nr_variations > 1:
         rnd = random.Random(initial_seed)
-        seeds = [rnd.randint(1, 10000) for _ in range(number_of_variations)]
+        seeds = [rnd.randint(1, 10000) for _ in range(nr_variations)]
         seeds[0] = initial_seed
 
-    for fork_name in forks:
-        for preset_name in presets:
-            for i, solution in enumerate(solutions):
-                def make_cases_fn() -> Iterable[TestCase]:
-                    for seed in seeds:
-                        for j in range(1 + number_of_mutations):
-                            test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                            yield PlainFCTestCase(
-                                test_dna=test_dna,
-                                bls_active=BLS_ACTIVE,
-                                debug=debug,
-                                fork_name=fork_name,
-                                preset_name=preset_name,
-                                runner_name=GENERATOR_NAME,
-                                handler_name=test_name,
-                                suite_name='pyspec_tests',
-                                case_name=test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j),
-                            )
+    for i, solution in enumerate(solutions):
+            for seed in seeds:
+                for j in range(1 + nr_mutations):
+                    test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
+                    case_name = test_name + '_' + str(i) + '_' + str(seed) + '_' + str(j)
+                    yield case_name, test_dna
 
-                yield TestProvider(prepare=prepare_fn, make_cases=make_cases_fn)
+
+def enumerate_test_cases(test_gen_config, forks, presets, debug):
+    for test_name, params in test_gen_config.items():
+        print(test_name)
+        for fork_name in forks:
+            for preset_name in presets:
+                for case_name, test_dna in enumerate_test_dnas(test_name, params):
+                    yield PlainFCTestCase(
+                        test_dna=test_dna,
+                        bls_active=BLS_ACTIVE,
+                        debug=debug,
+                        fork_name=fork_name,
+                        preset_name=preset_name,
+                        runner_name=GENERATOR_NAME,
+                        handler_name=test_name,
+                        suite_name=SUITE_NAME,
+                        case_name=case_name,
+                    )
