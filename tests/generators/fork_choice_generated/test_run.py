@@ -55,7 +55,6 @@ def run_test(test_info):
         elif 'block' in step:
             block_id = step['block']
             valid = step.get('valid', True)
-            recovery = step.get('recovery', False)
             signed_block = blocks[block_id]
             if valid:
                 spec.on_block(store, signed_block)
@@ -78,7 +77,6 @@ def run_test(test_info):
         elif 'attestation' in step:
             att_id = step['attestation']
             valid = step.get('valid', True)
-            recovery = step.get('recovery', False)
             attestation = atts[att_id]
             if valid:
                 spec.on_attestation(store, attestation, is_from_block=False)
