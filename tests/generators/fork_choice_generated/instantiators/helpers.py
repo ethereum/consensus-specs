@@ -415,8 +415,3 @@ def yield_fork_choice_test_events(spec, store, test_data: FCTestData, test_event
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield 'steps', test_steps
-
-
-def yield_fork_choice_test_case(spec, store, test_data: FCTestData, debug: bool):
-    test_events = make_events(spec, test_data)
-    yield from yield_fork_choice_test_events(spec, store, test_data, test_events, debug)

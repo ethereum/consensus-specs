@@ -1,8 +1,4 @@
 import random
-from eth2spec.test.context import (
-    spec_state_test,
-    with_altair_and_later,
-)
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
@@ -20,7 +16,6 @@ from .helpers import (
     advance_state_to_anchor_epoch,
     produce_block,
     attest_to_slot,
-    yield_fork_choice_test_case,
 )
 from .debug_helpers import (
     attesters_in_block,
@@ -570,46 +565,3 @@ def gen_block_tree_test_data(spec,
 
     return FCTestData(meta, anchor_block, anchor_state,
                       signed_block_messages, attestation_messages, attester_slashing_messages)
-
-
-@with_altair_and_later
-@spec_state_test
-def yield_block_tree_test_case(spec,
-                               state,
-                               debug=False,
-                               seed=1,
-                               sm_links=None,
-                               block_parents=None,
-                               with_attester_slashings=False,
-                               with_invalid_messages=False):
-    # This test is mainly used for the test generation purposes
-    # Thus seed, sm_links and block_parents are provided by the generator
-    # Define sm_links, seed and block_parents explicitly to execute a certain run of this test
-    if sm_links is None or block_parents is None:
-        return
-
-    test_data = gen_block_tree_test_data(spec, state, debug, seed, sm_links, block_parents,
-                                         with_attester_slashings, with_invalid_messages)
-
-    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
-    yield from yield_fork_choice_test_case(spec, store, test_data, debug)
-
-@with_altair_and_later
-@spec_state_test
-def yield_block_tree_test_data(spec,
-                               state,
-                               debug=False,
-                               seed=1,
-                               sm_links=None,
-                               block_parents=None,
-                               with_attester_slashings=False,
-                               with_invalid_messages=False):
-    # This test is mainly used for the test generation purposes
-    # Thus seed, sm_links and block_parents are provided by the generator
-    # Define sm_links, seed and block_parents explicitly to execute a certain run of this test
-    if sm_links is None or block_parents is None:
-        return
-
-    test_data = gen_block_tree_test_data(spec, state, debug, seed, sm_links, block_parents,
-                                         with_attester_slashings, with_invalid_messages)
-    yield 'test_data', test_data
