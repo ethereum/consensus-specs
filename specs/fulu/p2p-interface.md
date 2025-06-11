@@ -287,7 +287,7 @@ Request, Response Content:
 The added fields are, as seen by the client at the time of sending the message:
 
 - `earliest_available_slot`: The slot of earliest available block
-(`BeaconBlock`)
+  (`BeaconBlock`).
 
 ##### BlobSidecarsByRange v1
 
