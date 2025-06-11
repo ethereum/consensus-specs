@@ -280,13 +280,14 @@ Request, Response Content:
   finalized_epoch: Epoch
   head_root: Root
   head_slot: Slot
-  lowest_slot: Slot  # [New in Fulu:EIP7594]
+  earliest_available_slot: Slot  # [New in Fulu:EIP7594]
 )
 ```
 
 The added fields are, as seen by the client at the time of sending the message:
 
-- `lowest_slot`: The slot of oldest available block (`BeaconBlock`)
+- `earliest_available_slot`: The slot of earliest available block
+(`BeaconBlock`)
 
 ##### BlobSidecarsByRange v1
 

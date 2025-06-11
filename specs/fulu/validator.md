@@ -155,13 +155,13 @@ Nodes SHOULD be capable of handling multiple changes to custody requirements
 within the same retention period (e.g., an increase in one epoch followed by a
 decrease in the next).
 
-When a value for `custody_group_count` is set, the `lowest_slot` field in the
-status RPC message SHOULD reflect the slot at which the `custody_group_count`
-was updated.
+When a value for `custody_group_count` is set, the `earliest_available_slot`
+field in the status RPC message SHOULD reflect the slot at which the
+`custody_group_count` was updated.
 
 If the node decides to backfill due to the `custody_group_count` change, the
-`lowest_slot` field in the status RPC message MAY be updated with progressively lower
-values as the backfill process advances.
+`earliest_available_slot` field in the status RPC message MAY be updated with
+progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
