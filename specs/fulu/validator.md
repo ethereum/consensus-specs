@@ -160,7 +160,7 @@ status RPC message SHOULD reflect the slot at which the `custody_group_count`
 was updated.
 
 If the node decides to backfill due to the `custody_group_count` change, the
-`lowest_slot` in the status RPC message MAY be updated with progressively lower
+`lowest_slot` field in the status RPC message MAY be updated with progressively lower
 values as the backfill process advances.
 
 ### Block and sidecar proposal
