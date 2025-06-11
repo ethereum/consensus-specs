@@ -140,14 +140,9 @@ A node SHOULD dynamically adjust its custody groups (without any input from the
 user) following any changes to the total effective balances of attached
 validators.
 
-If the node's custody requirements are increased, it MAY backfill custody groups
-as a result of this change. In such cases, it SHOULD delay advertising the
-updated `custody_group_count` until the backfill is complete. If the node opts
-not to perform a backfill, it SHOULD only advertise the updated
-`custody_group_count` after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs;
-after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to
-respond to any `DataColumnSidecar` request within the retention period. The
-updated `custody_group_count` SHOULD persist across node restarts.
+If the node's custody requirements are increased, it SHOULD immediately
+advertise the updated `custody_group_count`. It MAY backfill custody groups as a
+result of this change.
 
 If a node's custody requirements decrease, it SHOULD NOT update the
 `custody_group_count` to reflect this reduction. The node SHOULD continue to
@@ -159,6 +154,14 @@ the previous (highest) `custody_group_count`. The previous (highest)
 Nodes SHOULD be capable of handling multiple changes to custody requirements
 within the same retention period (e.g., an increase in one epoch followed by a
 decrease in the next).
+
+When a value for `custody_group_count` is set, the `earliest_available_slot`
+field in the status RPC message SHOULD reflect the slot at which the
+`custody_group_count` was updated.
+
+If the node decides to backfill due to the `custody_group_count` change, the
+`earliest_available_slot` field in the status RPC message MAY be updated with
+progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
