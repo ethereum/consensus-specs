@@ -34,6 +34,7 @@
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody group count](#custody-group-count)
+      - [Next fork digest](#next-fork-digest)
 
 <!-- mdformat-toc end -->
 
@@ -304,13 +305,13 @@ During the deprecation transition period:
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+`context = compute_fork_digest(genesis_validators_root, epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `epoch`              | Chunk SSZ type           |
+| -------------------- | ------------------------ |
+| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -409,13 +410,13 @@ the request.
 *[New in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+`context = compute_fork_digest(genesis_validators_root, epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `epoch`              | Chunk SSZ type           |
+| -------------------- | ------------------------ |
+| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -495,3 +496,29 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
 | `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+
+##### Next fork digest
+
+A new entry is added to the ENR under the key `nfd`, short for _next fork
+digest_. This entry communicates the digest of the next scheduled fork,
+regardless of whether it is a regular or a Blob-Parameters-Only fork.
+
+If no next fork is scheduled, the `nfd` entry contains the default value for the
+type (i.e., the SSZ representation of a zero-filled array).
+
+| Key   | Value                   |
+| :---- | :---------------------- |
+| `nfd` | SSZ Bytes4 `ForkDigest` |
+
+Furthermore, the existing `next_fork_epoch` field under the `eth2` entry MUST be
+set to the epoch of the next fork, whether a regular fork, _or a BPO fork_.
+
+When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
+their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
+key, to form a more accurate view of the peer's intended next fork for the
+purposes of sustained peering. A mismatch indicates that the node MUST
+disconnect from such peers at the fork boundary, but not sooner.
+
+Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+However, their existing comparison of `eth2` entries (concretely
+`next_fork_epoch`) is sufficient to detect upcoming divergence.

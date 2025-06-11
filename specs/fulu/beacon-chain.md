@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+  - [Blob schedule](#blob-schedule)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -15,6 +16,9 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Misc](#misc)
+    - [New `BlobParameters`](#new-blobparameters)
+    - [New `get_blob_parameters`](#new-get_blob_parameters)
+    - [Modified `compute_fork_digest`](#modified-compute_fork_digest)
     - [New `compute_proposer_indices`](#new-compute_proposer_indices)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_beacon_proposer_index`](#modified-get_beacon_proposer_index)
@@ -31,6 +35,23 @@
 and is under active development.
 
 ## Configuration
+
+### Blob schedule
+
+*[New in Fulu:EIP7892]* This schedule defines the maximum blobs per block limit
+for a given epoch.
+
+There MUST NOT exist multiple blob schedule entries with the same epoch value.
+The maximum blobs per block limit for blob schedules entries MUST be less than
+or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries SHOULD
+be sorted by epoch in ascending order. The blob schedule MAY be empty.
+
+*Note*: The blob schedule is to be determined.
+
+<!-- list-of-records:blob_schedule -->
+
+| Epoch | Max Blobs Per Block | Description |
+| ----- | ------------------- | ----------- |
 
 ## Beacon chain state transition function
 
@@ -53,7 +74,10 @@ def process_execution_payload(
     # Verify timestamp
     assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
     # [Modified in Fulu:EIP7892] Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))
+    assert (
+        len(body.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
@@ -150,6 +174,64 @@ class BeaconState(Container):
 ## Helper functions
 
 ### Misc
+
+#### New `BlobParameters`
+
+```python
+@dataclass
+class BlobParameters:
+    epoch: Epoch
+    max_blobs_per_block: uint64
+```
+
+#### New `get_blob_parameters`
+
+```python
+def get_blob_parameters(epoch: Epoch) -> BlobParameters:
+    """
+    Return the blob parameters at a given epoch.
+    """
+    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return BlobParameters(entry["EPOCH"], entry["MAX_BLOBS_PER_BLOCK"])
+    return BlobParameters(ELECTRA_FORK_EPOCH, MAX_BLOBS_PER_BLOCK_ELECTRA)
+```
+
+#### Modified `compute_fork_digest`
+
+*Note:* The `compute_fork_digest` helper is updated to account for
+Blob-Parameters-Only forks. Also, the `fork_version` parameter has been removed
+and is now computed for the given epoch with `compute_fork_version`.
+
+```python
+def compute_fork_digest(
+    genesis_validators_root: Root,
+    epoch: Epoch,  # [New in Fulu:EIP7892]
+) -> ForkDigest:
+    """
+    Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
+    XOR'd with the hash of the blob parameters for ``epoch``.
+
+    This is a digest primarily used for domain separation on the p2p layer.
+    4-bytes suffices for practical separation of forks/chains.
+    """
+    fork_version = compute_fork_version(epoch)
+    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+    blob_parameters = get_blob_parameters(epoch)
+
+    # Bitmask digest with hash of blob parameters
+    return ForkDigest(
+        bytes(
+            xor(
+                base_digest,
+                hash(
+                    uint_to_bytes(uint64(blob_parameters.epoch))
+                    + uint_to_bytes(uint64(blob_parameters.max_blobs_per_block))
+                ),
+            )
+        )[:4]
+    )
+```
 
 #### New `compute_proposer_indices`
 
