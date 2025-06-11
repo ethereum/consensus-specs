@@ -280,7 +280,7 @@ Request, Response Content:
   finalized_epoch: Epoch
   head_root: Root
   head_slot: Slot
-  lowest_slot: Slot # [New in Fulu:EIP7594]
+  lowest_slot: Slot  # [New in Fulu:EIP7594]
 )
 ```
 
