@@ -271,7 +271,7 @@ gossip. In particular, clients MUST:
 
 **Protocol ID:** `/eth2/beacon_chain/req/status/2/`
 
-Request and Response remain unchanged unless explicitly noted here.
+Request, Response Content:
 
 ```
 (
