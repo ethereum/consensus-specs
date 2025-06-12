@@ -119,8 +119,12 @@ slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum
 of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
-def get_validators_custody_requirement(state: BeaconState, validator_indices: Sequence[ValidatorIndex]) -> uint64:
-    total_node_balance = sum(state.validators[index].effective_balance for index in validator_indices)
+def get_validators_custody_requirement(
+    state: BeaconState, validator_indices: Sequence[ValidatorIndex]
+) -> uint64:
+    total_node_balance = sum(
+        state.validators[index].effective_balance for index in validator_indices
+    )
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
@@ -136,14 +140,9 @@ A node SHOULD dynamically adjust its custody groups (without any input from the
 user) following any changes to the total effective balances of attached
 validators.
 
-If the node's custody requirements are increased, it MAY backfill custody groups
-as a result of this change. In such cases, it SHOULD delay advertising the
-updated `custody_group_count` until the backfill is complete. If the node opts
-not to perform a backfill, it SHOULD only advertise the updated
-`custody_group_count` after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs;
-after `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` epochs, the node will be able to
-respond to any `DataColumnSidecar` request within the retention period. The
-updated `custody_group_count` SHOULD persist across node restarts.
+If the node's custody requirements are increased, it SHOULD immediately
+advertise the updated `custody_group_count`. It MAY backfill custody groups as a
+result of this change.
 
 If a node's custody requirements decrease, it SHOULD NOT update the
 `custody_group_count` to reflect this reduction. The node SHOULD continue to
@@ -155,6 +154,14 @@ the previous (highest) `custody_group_count`. The previous (highest)
 Nodes SHOULD be capable of handling multiple changes to custody requirements
 within the same retention period (e.g., an increase in one epoch followed by a
 decrease in the next).
+
+When a value for `custody_group_count` is set, the `earliest_available_slot`
+field in the status RPC message SHOULD reflect the slot at which the
+`custody_group_count` was updated.
+
+If the node decides to backfill due to the `custody_group_count` change, the
+`earliest_available_slot` field in the status RPC message MAY be updated with
+progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
@@ -170,14 +177,25 @@ fields for the necessary context.
 
 ##### `get_data_column_sidecars`
 
-The sequence of sidecars associated with a block and can be obtained by first
-computing
-`cells_and_kzg_proofs = [compute_cells_and_kzg_proofs(blob) for blob in blobs]`
-and then calling
+The sidecars associated with a block can be created by calling
+[`engine_getPayloadV5`](https://github.com/ethereum/execution-apis/blob/main/src/engine/osaka.md#engine_getpayloadv5),
+then constructing the list of cells and proofs for each blob (as defined in the
+example below) using the blobs bundle in the response, and finally by calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
 
+<!-- eth2spec: skip -->
+
+```python
+cells_and_kzg_proofs = []
+for i, blob in enumerate(blobs_bundle.blobs):
+    start = i * CELLS_PER_EXT_BLOB
+    end = (i + 1) * CELLS_PER_EXT_BLOB
+    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end])
+    cells_and_kzg_proofs.extend(cell_proofs)
+```
+
 Moreover, the full sequence of sidecars can also be computed from
-`cells_and_kzg_proofs` and any single `sidecar`, by calling
+`cells_and_kzg_proofs` and any single `sidecar` by calling
 `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
 This can be used in distributed blob publishing, to reconstruct all sidecars
 from any sidecar received on the wire, assuming all cells and kzg proofs could
@@ -188,10 +206,9 @@ def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
@@ -205,14 +222,16 @@ def get_data_column_sidecars(
         for cells, proofs in cells_and_kzg_proofs:
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
-        sidecars.append(DataColumnSidecar(
-            index=column_index,
-            column=column_cells,
-            kzg_commitments=kzg_commitments,
-            kzg_proofs=column_proofs,
-            signed_block_header=signed_block_header,
-            kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
-        ))
+        sidecars.append(
+            DataColumnSidecar(
+                index=column_index,
+                column=column_cells,
+                kzg_commitments=kzg_commitments,
+                kzg_proofs=column_proofs,
+                signed_block_header=signed_block_header,
+                kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
+            )
+        )
     return sidecars
 ```
 
@@ -221,10 +240,9 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
@@ -234,13 +252,13 @@ def get_data_column_sidecars_from_block(
     signed_block_header = compute_signed_block_header(signed_block)
     kzg_commitments_inclusion_proof = compute_merkle_proof(
         signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'),
+        get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"),
     )
     return get_data_column_sidecars(
         signed_block_header,
         blob_kzg_commitments,
         kzg_commitments_inclusion_proof,
-        cells_and_kzg_proofs
+        cells_and_kzg_proofs,
     )
 ```
 
@@ -249,10 +267,9 @@ def get_data_column_sidecars_from_block(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[Tuple[
-        Vector[Cell, CELLS_PER_EXT_BLOB],
-        Vector[KZGProof, CELLS_PER_EXT_BLOB]
-    ]]
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
@@ -264,7 +281,7 @@ def get_data_column_sidecars_from_column_sidecar(
         sidecar.signed_block_header,
         sidecar.kzg_commitments,
         sidecar.kzg_commitments_inclusion_proof,
-        cells_and_kzg_proofs
+        cells_and_kzg_proofs,
     )
 ```
 

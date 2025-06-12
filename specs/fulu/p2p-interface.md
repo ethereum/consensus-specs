@@ -26,6 +26,7 @@
         - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [Status v2](#status-v2)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -34,6 +35,7 @@
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [Custody group count](#custody-group-count)
+      - [Next fork digest](#next-fork-digest)
 
 <!-- mdformat-toc end -->
 
@@ -90,7 +92,9 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
         return False
 
     # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+        sidecar.kzg_proofs
+    ):
         return False
 
     return True
@@ -122,7 +126,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     """
     Verify if the given KZG commitments included in the given beacon block.
     """
-    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'))
+    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"))
     return is_valid_merkle_branch(
         leaf=hash_tree_root(sidecar.kzg_commitments),
         branch=sidecar.kzg_commitments_inclusion_proof,
@@ -264,6 +268,28 @@ gossip. In particular, clients MUST:
 
 #### Messages
 
+##### Status v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/status/2/`
+
+Request, Response Content:
+
+```
+(
+  fork_digest: ForkDigest
+  finalized_root: Root
+  finalized_epoch: Epoch
+  head_root: Root
+  head_slot: Slot
+  earliest_available_slot: Slot  # [New in Fulu:EIP7594]
+)
+```
+
+The added fields are, as seen by the client at the time of sending the message:
+
+- `earliest_available_slot`: The slot of earliest available block
+  (`BeaconBlock`).
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
@@ -302,13 +328,13 @@ During the deprecation transition period:
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+`context = compute_fork_digest(genesis_validators_root, epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `epoch`              | Chunk SSZ type           |
+| -------------------- | ------------------------ |
+| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -407,13 +433,13 @@ the request.
 *[New in Fulu:EIP7594]*
 
 The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+`context = compute_fork_digest(genesis_validators_root, epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
+| `epoch`              | Chunk SSZ type           |
+| -------------------- | ------------------------ |
+| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -487,8 +513,35 @@ are unchanged from the Altair p2p networking document.
 ##### Custody group count
 
 A new field is added to the ENR under the key `cgc` to facilitate custody data
-column discovery.
+column discovery. This new field MUST be added once `FULU_FORK_EPOCH` is
+assigned any value other than `FAR_FUTURE_EPOCH`.
 
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
 | `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+
+##### Next fork digest
+
+A new entry is added to the ENR under the key `nfd`, short for _next fork
+digest_. This entry communicates the digest of the next scheduled fork,
+regardless of whether it is a regular or a Blob-Parameters-Only fork.
+
+If no next fork is scheduled, the `nfd` entry contains the default value for the
+type (i.e., the SSZ representation of a zero-filled array).
+
+| Key   | Value                   |
+| :---- | :---------------------- |
+| `nfd` | SSZ Bytes4 `ForkDigest` |
+
+Furthermore, the existing `next_fork_epoch` field under the `eth2` entry MUST be
+set to the epoch of the next fork, whether a regular fork, _or a BPO fork_.
+
+When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
+their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
+key, to form a more accurate view of the peer's intended next fork for the
+purposes of sustained peering. A mismatch indicates that the node MUST
+disconnect from such peers at the fork boundary, but not sooner.
+
+Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+However, their existing comparison of `eth2` entries (concretely
+`next_fork_epoch`) is sufficient to detect upcoming divergence.
