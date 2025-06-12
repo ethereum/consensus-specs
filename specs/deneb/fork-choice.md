@@ -38,15 +38,24 @@ class PayloadAttributes(object):
 
 *[New in Deneb:EIP4844]*
 
-The implementation of `is_data_available` will become more sophisticated during later scaling upgrades.
-Initially, verification requires every verifying actor to retrieve all matching `Blob`s and `KZGProof`s, and validate them with `verify_blob_kzg_proof_batch`.
+The implementation of `is_data_available` will become more sophisticated during
+later scaling upgrades. Initially, verification requires every verifying actor
+to retrieve all matching `Blob`s and `KZGProof`s, and validate them with
+`verify_blob_kzg_proof_batch`.
 
-The block MUST NOT be considered valid until all valid `Blob`s have been downloaded. Blocks that have been previously validated as available SHOULD be considered available even if the associated `Blob`s have subsequently been pruned.
+The block MUST NOT be considered valid until all valid `Blob`s have been
+downloaded. Blocks that have been previously validated as available SHOULD be
+considered available even if the associated `Blob`s have subsequently been
+pruned.
 
-*Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced valid blobs) received on the p2p network MUST NOT invalidate a block that is otherwise valid and available.
+*Note*: Extraneous or invalid Blobs (in addition to KZG expected/referenced
+valid blobs) received on the p2p network MUST NOT invalidate a block that is
+otherwise valid and available.
 
 ```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+def is_data_available(
+    beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]
+) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of
@@ -60,7 +69,8 @@ def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZ
 
 ### `on_block`
 
-*Note*: The only modification is the addition of the blob data availability check.
+*Note*: The only modification is the addition of the blob data availability
+check.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:

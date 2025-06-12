@@ -11,9 +11,13 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec for Data Availability Sampling. The only change that we add from phase 0 is that we add a concept of "data dependencies";
-a block is only eligible for consideration in the fork choice after a data availability test has been successfully completed for all dependencies.
-The "root" of a shard block for data dependency purposes is considered to be a `DataCommitment` object, which is a pair of a Kate commitment and a length.
+This document is the beacon chain fork choice spec for Data Availability
+Sampling. The only change that we add from phase 0 is that we add a concept of
+"data dependencies"; a block is only eligible for consideration in the fork
+choice after a data availability test has been successfully completed for all
+dependencies. The "root" of a shard block for data dependency purposes is
+considered to be a `DataCommitment` object, which is a pair of a Kate commitment
+and a length.
 
 ## Dependency calculation
 
@@ -21,11 +25,18 @@ The "root" of a shard block for data dependency purposes is considered to be a `
 def get_new_dependencies(state: BeaconState) -> Set[DataCommitment]:
     return set(
         # Already confirmed during this epoch
-        [c.commitment for c in state.current_epoch_pending_headers if c.confirmed] +
+        [c.commitment for c in state.current_epoch_pending_headers if c.confirmed]
+        +
         # Already confirmed during previous epoch
-        [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed] +
+        [c.commitment for c in state.previous_epoch_pending_headers if c.confirmed]
+        +
         # Confirmed in the epoch before the previous
-        [c for c in shard for shard in state.grandparent_epoch_confirmed_commitments if c != DataCommitment()]
+        [
+            c
+            for c in shard
+            for shard in state.grandparent_epoch_confirmed_commitments
+            if c != DataCommitment()
+        ]
     )
 ```
 

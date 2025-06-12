@@ -12,13 +12,15 @@
 
 ## Introduction
 
-This document is an extension of the [Phase 0 -- Weak Subjectivity
-Guide](../phase0/weak-subjectivity.md). All behaviors and definitions defined in this document, and
-documents it extends, carry over unless explicitly noted or overridden.
+This document is an extension of the
+[Phase 0 -- Weak Subjectivity Guide](../phase0/weak-subjectivity.md). All
+behaviors and definitions defined in this document, and documents it extends,
+carry over unless explicitly noted or overridden.
 
-This document is a guide for implementing Weak Subjectivity protections in Electra. The Weak
-Subjectivity Period (WSP) calculations have changed in Electra due to EIP-7251, which increases the
-maximum effective balance for validators and allows validators to consolidate.
+This document is a guide for implementing Weak Subjectivity protections in
+Electra. The Weak Subjectivity Period (WSP) calculations have changed in Electra
+due to EIP-7251, which increases the maximum effective balance for validators
+and allows validators to consolidate.
 
 ## Weak Subjectivity Period
 
@@ -41,8 +43,8 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
 ```
 
-A brief reference for what these values look like in practice ([reference
-script](https://gist.github.com/jtraglia/457fd9ae7d2080fef1e4034a39b80c46)):
+A brief reference for what these values look like in practice
+([reference script](https://gist.github.com/jtraglia/457fd9ae7d2080fef1e4034a39b80c46)):
 
 | Safety Decay | Total Active Balance (ETH) | Weak Sub. Period (Epochs) |
 | -----------: | -------------------------: | ------------------------: |
@@ -56,7 +58,9 @@ script](https://gist.github.com/jtraglia/457fd9ae7d2080fef1e4034a39b80c46)):
 #### Modified `is_within_weak_subjectivity_period`
 
 ```python
-def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
+def is_within_weak_subjectivity_period(
+    store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint
+) -> bool:
     # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
     assert ws_state.latest_block_header.state_root == ws_checkpoint.root
     assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch

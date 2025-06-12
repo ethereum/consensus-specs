@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
 )
 from eth2spec.test.helpers.attestations import (
@@ -13,18 +13,17 @@ from eth2spec.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
     DENEB,
 )
+from eth2spec.test.helpers.fork_transition import (
+    do_fork,
+    OperationType,
+    run_transition_with_operation,
+    transition_until_fork,
+)
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,
     state_transition_and_sign_block,
     transition_to,
 )
-from eth2spec.test.helpers.fork_transition import (
-    OperationType,
-    do_fork,
-    run_transition_with_operation,
-    transition_until_fork,
-)
-
 
 #
 # BLSToExecutionChange

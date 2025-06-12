@@ -18,9 +18,12 @@
 
 ## Introduction
 
-This is the beacon chain specification to assign new deposits to existing validator records. Refers to [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
+This is the beacon chain specification to assign new deposits to existing
+validator records. Refers to
+[EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 
-*Note*: This specification is built upon [Capella](../../capella/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon
+[Capella](../../capella/beacon-chain.md) and is under active development.
 
 ## Preset
 
@@ -41,10 +44,7 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     """
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
-    return (
-        epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX
-        and balance == 0
-    )
+    return epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX and balance == 0
 ```
 
 ## Beacon chain state transition function

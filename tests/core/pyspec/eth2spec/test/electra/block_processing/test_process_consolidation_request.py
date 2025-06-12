@@ -1,18 +1,18 @@
-from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.context import (
+    default_activation_threshold,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
     with_electra_and_later,
     with_presets,
-    spec_test,
-    single_phase,
-    with_custom_state,
-    scaled_churn_balances_exceed_activation_exit_churn_limit,
-    default_activation_threshold,
-    spec_state_test,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
-    set_compounding_withdrawal_credential_with_balance,
     set_compounding_withdrawal_credential,
+    set_compounding_withdrawal_credential_with_balance,
+    set_eth1_withdrawal_credential_with_balance,
 )
 
 #  ***********************

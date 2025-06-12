@@ -1,24 +1,24 @@
 from random import Random
 
 from eth2spec.test.context import spec_state_test, with_altair_and_later
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
     zero_inactivity_scores,
 )
-from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_epoch_via_block,
-    set_full_participation,
-    set_empty_participation,
-)
-from eth2spec.test.helpers.voluntary_exits import exit_validators, get_exited_validators
-from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.random import (
     randomize_attestation_participation,
     randomize_previous_epoch_participation,
     randomize_state,
 )
 from eth2spec.test.helpers.rewards import leaking
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_epoch_via_block,
+    set_empty_participation,
+    set_full_participation,
+)
+from eth2spec.test.helpers.voluntary_exits import exit_validators, get_exited_validators
 
 
 def run_process_inactivity_updates(spec, state):

@@ -1,22 +1,22 @@
-from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.context import (
+    always_bls,
+    default_activation_threshold,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    single_phase,
     spec_state_test,
+    spec_test,
+    with_custom_state,
     with_electra_and_later,
     with_presets,
-    spec_test,
-    single_phase,
-    with_custom_state,
-    scaled_churn_balances_exceed_activation_exit_churn_limit,
-    default_activation_threshold,
-    always_bls,
-)
-from eth2spec.test.helpers.deposits import prepare_pending_deposit
-from eth2spec.test.helpers.state import (
-    next_epoch_with_full_participation,
-    advance_finality_to,
-    set_full_participation,
 )
 from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.deposits import prepare_pending_deposit
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
+from eth2spec.test.helpers.state import (
+    advance_finality_to,
+    next_epoch_with_full_participation,
+    set_full_participation,
+)
 
 
 def run_process_pending_deposits(spec, state):

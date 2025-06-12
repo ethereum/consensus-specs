@@ -1,9 +1,16 @@
 import random
 
+from eth2spec.debug.random_value import (
+    get_random_ssz_object,
+    RandomizationMode,
+)
 from eth2spec.test.context import (
     spec_state_test,
     with_deneb_and_later,
     with_test_suite_name,
+)
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -13,13 +20,6 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.forks import is_post_eip7732
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
-from eth2spec.debug.random_value import (
-    RandomizationMode,
-    get_random_ssz_object,
-)
 
 
 def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
@@ -75,11 +75,14 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
             spec.BeaconBlockBody, "blob_kzg_commitments", blob_index
         )
 
-    yield "proof", {
-        "leaf": "0x" + blob_sidecar.kzg_commitment.hash_tree_root().hex(),
-        "leaf_index": gindex,
-        "branch": ["0x" + root.hex() for root in kzg_commitment_inclusion_proof],
-    }
+    yield (
+        "proof",
+        {
+            "leaf": "0x" + blob_sidecar.kzg_commitment.hash_tree_root().hex(),
+            "leaf_index": gindex,
+            "branch": ["0x" + root.hex() for root in kzg_commitment_inclusion_proof],
+        },
+    )
 
     assert spec.is_valid_merkle_branch(
         leaf=blob_sidecar.kzg_commitment.hash_tree_root(),

@@ -2,8 +2,8 @@ from copy import deepcopy
 
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
-    with_presets,
     with_light_client,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,

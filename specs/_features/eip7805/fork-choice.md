@@ -8,6 +8,7 @@
 - [Fork choice](#fork-choice)
   - [Helpers](#helpers)
     - [Modified `Store`](#modified-store)
+  - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
     - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
     - [New `get_attester_head`](#new-get_attester_head)
       - [Modified `get_proposer_head`](#modified-get_proposer_head)
@@ -33,7 +34,8 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 #### Modified `Store`
 
-*Note*: `Store` is modified to track the seen inclusion lists and inclusion list equivocators.
+*Note*: `Store` is modified to track the seen inclusion lists and inclusion list
+equivocators.
 
 ```python
 @dataclass
@@ -54,25 +56,57 @@ class Store(object):
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in EIP-7805]
     inclusion_lists: Dict[Tuple[Slot, Root], Set[InclusionList]] = field(default_factory=dict)
-    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
+    inclusion_list_equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(
+        default_factory=dict
+    )
     unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)
+```
+
+### Modified `get_forkchoice_store`
+
+```python
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_epoch = get_current_epoch(anchor_state)
+    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
+    return Store(
+        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
+        genesis_time=anchor_state.genesis_time,
+        justified_checkpoint=justified_checkpoint,
+        finalized_checkpoint=finalized_checkpoint,
+        unrealized_justified_checkpoint=justified_checkpoint,
+        unrealized_finalized_checkpoint=finalized_checkpoint,
+        proposer_boost_root=proposer_boost_root,
+        equivocating_indices=set(),
+        blocks={anchor_root: copy(anchor_block)},
+        block_states={anchor_root: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        unrealized_justifications={anchor_root: justified_checkpoint},
+        # [New in EIP-7805]
+        unsatisfied_inclusion_list_blocks=set(),
+    )
 ```
 
 #### New `validate_inclusion_lists`
 
 ```python
-def validate_inclusion_lists(store: Store,
-                             inclusion_list_transactions: Sequence[Transaction],
-                             execution_payload: ExecutionPayload) -> None:
+def validate_inclusion_lists(
+    _store: Store,
+    inclusion_list_transactions: Sequence[Transaction],
+    execution_payload: ExecutionPayload,
+) -> None:
     """
     The ``execution_payload`` satisfies ``inclusion_list_transactions`` validity conditions either
     when all transactions are present in payload or when any missing transactions are found to be
     invalid when appended to the end of the payload unless the block is full.
     """
-    # pylint: disable=unused-argument
-
     # Verify inclusion list transactions are present in the execution payload
-    contains_all_txs = all(tx in execution_payload.transactions for tx in inclusion_list_transactions)
+    contains_all_txs = all(
+        tx in execution_payload.transactions for tx in inclusion_list_transactions
+    )
     if contains_all_txs:
         return
 
@@ -88,12 +122,12 @@ def get_attester_head(store: Store, head_root: Root) -> Root:
     if head_root in store.unsatisfied_inclusion_list_blocks:
         return head_block.parent_root
     return head_root
-
 ```
 
 ##### Modified `get_proposer_head`
 
-The implementation of `get_proposer_head` is modified to also account for `store.unsatisfied_inclusion_list_blocks`.
+The implementation of `get_proposer_head` is modified to also account for
+`store.unsatisfied_inclusion_list_blocks`.
 
 ```python
 def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
@@ -128,11 +162,22 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
-    reorg_prerequisites = all([shuffling_stable, ffg_competitive, finalization_ok,
-                               proposing_on_time, single_slot_reorg, head_weak, parent_strong])
+    reorg_prerequisites = all(
+        [
+            shuffling_stable,
+            ffg_competitive,
+            finalization_ok,
+            proposing_on_time,
+            single_slot_reorg,
+            head_weak,
+            parent_strong,
+        ]
+    )
 
     # Check that the head block is in the unsatisfied inclusion list blocks
-    inclusion_list_not_satisfied = head_root in store.unsatisfied_inclusion_list_blocks  # [New in EIP-7805]
+    inclusion_list_not_satisfied = (
+        head_root in store.unsatisfied_inclusion_list_blocks
+    )  # [New in EIP-7805]
 
     if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
         return parent_root
@@ -142,14 +187,16 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 
 #### New `on_inclusion_list`
 
-`on_inclusion_list` is called to import `signed_inclusion_list` to the fork choice store.
+`on_inclusion_list` is called to import `signed_inclusion_list` to the fork
+choice store.
 
 ```python
 def on_inclusion_list(
-        store: Store,
-        state: BeaconState,
-        signed_inclusion_list: SignedInclusionList,
-        inclusion_list_committee: Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]) -> None:
+    store: Store,
+    state: BeaconState,
+    signed_inclusion_list: SignedInclusionList,
+    inclusion_list_committee: Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE],
+) -> None:
     """
     Verify the inclusion list and import it into the fork choice store. If there exists more than
     one inclusion list in the store with the same slot and validator index, add the equivocator to
@@ -162,11 +209,11 @@ def on_inclusion_list(
     assert get_current_slot(store) in [message.slot, message.slot + 1]
 
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
 
     # If the inclusion list is from the previous slot, ignore it if already past the attestation deadline
     if get_current_slot(store) == message.slot + 1:
-        assert is_before_attesting_interval
+        assert is_before_late_block_cutoff
 
     # Sanity check that the given `inclusion_list_committee` matches the root in the inclusion list
     root = message.inclusion_list_committee_root
@@ -179,13 +226,18 @@ def on_inclusion_list(
     # Verify inclusion list signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    is_before_freeze_deadline = get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    is_before_freeze_deadline = (
+        get_current_slot(store) == message.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    )
 
     # Do not process inclusion lists from known equivocators
     if validator_index not in store.inclusion_list_equivocators[(message.slot, root)]:
-        if validator_index in [il.validator_index for il in store.inclusion_lists[(message.slot, root)]]:
+        if validator_index in [
+            il.validator_index for il in store.inclusion_lists[(message.slot, root)]
+        ]:
             validator_inclusion_list = [
-                il for il in store.inclusion_lists[(message.slot, root)]
+                il
+                for il in store.inclusion_lists[(message.slot, root)]
                 if il.validator_index == validator_index
             ][0]
             if validator_inclusion_list != message:

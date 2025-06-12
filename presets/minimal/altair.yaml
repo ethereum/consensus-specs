@@ -23,7 +23,6 @@ MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
 # [customized] SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8) epochs
 UPDATE_TIMEOUT: 64
 
-
 # Validator duties
 # ---------------------------------------------------------------
 # [customized] 2000ms
