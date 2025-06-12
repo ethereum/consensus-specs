@@ -97,10 +97,9 @@ handlers must not modify `store`.
 
 ### Presets
 
-| Name                       | Value  |
-| -------------------------- | ------ |
-| `PROPOSER_REORG_CUTOFF_MS` | `2000` |
-| `LATE_BLOCK_CUTOFF_MS`     | `4000` |
+| Name                   | Value  |
+| ---------------------- | ------ |
+| `LATE_BLOCK_CUTOFF_MS` | `4000` |
 
 ### Configuration
 
@@ -479,9 +478,9 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
+    # Use half `LATE_BLOCK_CUTOFF_MS` as the proposer reorg deadline
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    return time_into_slot * 1000 <= PROPOSER_REORG_CUTOFF_MS
+    return time_into_slot * 1000 <= LATE_BLOCK_CUTOFF_MS // 2
 ```
 
 ##### `is_head_weak`
