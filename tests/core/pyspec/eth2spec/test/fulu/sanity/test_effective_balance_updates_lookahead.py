@@ -5,7 +5,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.forks import is_post_fulu
 from eth2spec.test.helpers.state import (
     cause_effective_balance_decrease_below_threshold,
-    next_epoch,
     simulate_lookahead,
     simulate_lookahead_with_thresholds,
     transition_to,
@@ -19,11 +18,6 @@ def test_effective_balance_updates_lookahead(spec, state):
     """
     Test that effective balance updates change the proposer lookahead with EIP-7917.
     """
-    # Advance few epochs to adjust the RANDAO
-    randao_setup_epochs = 4
-    for _ in range(randao_setup_epochs):
-        next_epoch(spec, state)
-
     # Calculate the lookahead of next epoch, including the thresholds of effective balance that
     # make a validator be a proposer at each slot.
     next_epoch_lookahead_threshold = simulate_lookahead_with_thresholds(spec, state)[
