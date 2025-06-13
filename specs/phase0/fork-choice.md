@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
+  - [Presets](#presets)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
@@ -95,11 +95,11 @@ handlers must not modify `store`.
    computation, space, or any other resource. A number of optimized alternatives
    can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Constant
+### Presets
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `INTERVALS_PER_SLOT` | `uint64(3)` |
+| Name                   | Value  |
+| ---------------------- | ------ |
+| `LATE_BLOCK_CUTOFF_MS` | `4000` |
 
 ### Configuration
 
@@ -478,10 +478,9 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
+    # Use half `LATE_BLOCK_CUTOFF_MS` as the proposer reorg deadline
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
-    return time_into_slot <= proposer_reorg_cutoff
+    return time_into_slot * 1000 <= LATE_BLOCK_CUTOFF_MS // 2
 ```
 
 ##### `is_head_weak`
@@ -731,8 +730,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add block timeliness to the store
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
+    is_timely = get_current_slot(store) == block.slot and is_before_late_block_cutoff
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
     # Add proposer score boost if the block is timely and not conflicting with an existing block
