@@ -13,3 +13,9 @@ KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732: 14
 # ---------------------------------------------------------------
 # [customized] 1500ms
 ATTESTATION_DUE_MS_EIP7732: 1500
+# [customized] 1500ms
+SYNC_MESSAGE_DUE_MS_EIP7732: 1500
+# [customized] 3000ms
+CONTRIBUTION_DUE_MS_EIP7732: 3000
+# [customized] 4500ms
+PAYLOAD_ATTESTATION_MESSAGE_DUE_MS: 4500
