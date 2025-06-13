@@ -114,10 +114,13 @@ def tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_dat
     yield from with_blob_data(spec, blob_data, run_func)
 
 
-def add_attestation(spec, store, attestation, test_steps, is_from_block=False):
-    spec.on_attestation(store, attestation, is_from_block=is_from_block)
+def add_attestation(spec, store, attestation, test_steps, is_from_block=False, valid=True):
+    run_on_attestation(spec, store, attestation, is_from_block=is_from_block, valid=valid)
     yield get_attestation_file_name(attestation), attestation
-    test_steps.append({"attestation": get_attestation_file_name(attestation)})
+    if valid:
+        test_steps.append({"attestation": get_attestation_file_name(attestation)})
+    else:
+        test_steps.append({"attestation": get_attestation_file_name(attestation), "valid": False})
 
 
 def add_attestations(spec, store, attestations, test_steps, is_from_block=False):
@@ -348,24 +351,39 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def output_store_checks(spec, store, test_steps):
-    test_steps.append(
-        {
-            "checks": {
-                "time": int(store.time),
-                "head": get_formatted_head_output(spec, store),
-                "justified_checkpoint": {
-                    "epoch": int(store.justified_checkpoint.epoch),
-                    "root": encode_hex(store.justified_checkpoint.root),
-                },
-                "finalized_checkpoint": {
-                    "epoch": int(store.finalized_checkpoint.epoch),
-                    "root": encode_hex(store.finalized_checkpoint.root),
-                },
-                "proposer_boost_root": encode_hex(store.proposer_boost_root),
+def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
+    checks = {
+        "time": int(store.time),
+        "head": get_formatted_head_output(spec, store),
+        "justified_checkpoint": {
+            "epoch": int(store.justified_checkpoint.epoch),
+            "root": encode_hex(store.justified_checkpoint.root),
+        },
+        "finalized_checkpoint": {
+            "epoch": int(store.finalized_checkpoint.epoch),
+            "root": encode_hex(store.finalized_checkpoint.root),
+        },
+        "proposer_boost_root": encode_hex(store.proposer_boost_root),
+    }
+
+    if with_viable_for_head_weights:
+        filtered_block_roots = spec.get_filtered_block_tree(store).keys()
+        leaves_viable_for_head = [
+            root
+            for root in filtered_block_roots
+            if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
+        ]
+
+        viable_for_head_roots_and_weights = [
+            {
+                "root": encode_hex(viable_for_head_root),
+                "weight": int(spec.get_weight(store, viable_for_head_root)),
             }
-        }
-    )
+            for viable_for_head_root in leaves_viable_for_head
+        ]
+        checks["viable_for_head_roots_and_weights"] = viable_for_head_roots_and_weights
+
+    test_steps.append({"checks": checks})
 
 
 def apply_next_epoch_with_attestations(
