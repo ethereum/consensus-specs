@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-- [Presets](#presets)
 - [Containers](#containers)
   - [New `ChildNode`](#new-childnode)
 - [Helpers](#helpers)
@@ -48,12 +47,6 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 | `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
 | `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
 | `PAYLOAD_REVEAL_BOOST`         | `40`                          |
-
-## Presets
-
-| Name                         | Value |
-| ---------------------------- | ----- |
-| `ATTESTATION_DUE_MS_EIP7732` | 3000  |
 
 ## Containers
 

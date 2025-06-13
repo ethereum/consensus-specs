@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Presets](#presets)
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -23,6 +24,16 @@
 
 This document represents the changes and additions to the Honest validator guide
 included in the EIP-7732 fork.
+
+## Presets
+
+| Name                                 | Value  |
+| ------------------------------------ | ------ |
+| `ATTESTATION_DUE_MS_EIP7732`         | `3000` |
+| `AGGREGATE_DUE_MS_EIP7732`           | `6000` |
+| `SYNC_MESSAGE_DUE_MS_EIP7732`        | `3000` |
+| `CONTRIBUTION_DUE_MS_EIP7732`        | `6000` |
+| `PAYLOAD_ATTESTATION_MESSAGE_DUE_MS` | `9000` |
 
 ## Validator assignment
 
