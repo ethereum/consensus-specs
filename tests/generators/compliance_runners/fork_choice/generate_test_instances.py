@@ -63,7 +63,7 @@ def solve_block_cover(
     block_is_leaf: bool,
     number_of_solutions: int,
 ):
-    block_cover3 = Model("./model/Block_cover3.mzn")
+    block_cover3 = Model("./model/Block_cover.mzn")
     solver = Solver.lookup("gecode")
     instance = Instance(solver, block_cover3)
     instance["AE"] = anchor_epoch
