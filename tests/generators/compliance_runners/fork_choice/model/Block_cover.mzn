@@ -65,7 +65,3 @@ constraint block_vse_eq_store_je <-> get_vse(target_block) == store_je;
 constraint block_vse_plus_two_ge_curr_e <-> get_vse(target_block) + 2 >= curr_e;
 constraint block_is_leaf <-> is_leaf(target_block);
 constraint store_je_eq_zero <-> store_je == 0;
-% constraint block_is_justified_descendant <-> common_ancestor(target_block, store_jb) == store_jb;
-
-% constraint store_fe_eq_zero <-> store_fe == 0;
-% constraint block_is_finalized_descendant <-> common_ancestor(target_block, store_fb) == store_fb;
