@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_phases,
     with_electra_and_later,
+    with_phases,
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
@@ -9,10 +9,10 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.constants import ELECTRA, FULU
 from eth2spec.test.helpers.forks import is_post_fulu
 from eth2spec.test.helpers.state import (
+    cause_effective_balance_decrease_below_threshold,
     next_epoch,
     simulate_lookahead,
     simulate_lookahead_with_thresholds,
-    cause_effective_balance_decrease_below_threshold,
     transition_to,
 )
 from eth2spec.test.helpers.withdrawals import (
@@ -93,6 +93,7 @@ def test_effective_balance_increase_changes_lookahead(spec, state):
             # then try again in the next iteration
             pass
     assert False, "The test should have succeeded with one of the iterations."
+
 
 @with_electra_and_later
 @spec_state_test
