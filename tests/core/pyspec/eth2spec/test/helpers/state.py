@@ -230,7 +230,8 @@ def cause_effective_balance_decrease_below_threshold(
     spec, state, validator_index: uint64, threshold: uint64
 ) -> None:
     """
-    Cause an effective balance decrease change for the validator at `validator_index` below a threshold
+    Cause an effective balance decrease change for the validator at
+    `validator_index` below a threshold
     """
     HYSTERESIS_INCREMENT = uint64(spec.EFFECTIVE_BALANCE_INCREMENT // spec.HYSTERESIS_QUOTIENT)
     DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * spec.HYSTERESIS_DOWNWARD_MULTIPLIER
@@ -255,7 +256,8 @@ def simulate_lookahead_with_thresholds(spec, state) -> Sequence[tuple[uint64, ui
 
 def get_beacon_proposer_index_and_threshold(spec, state) -> tuple[uint64, uint64]:
     """
-    Return the beacon proposer index at the current slot, along with the threshold for that index.
+    Return the beacon proposer index at the current slot,
+    along with the threshold for that index.
     """
     epoch = spec.get_current_epoch(state)
     seed = hash(
@@ -270,7 +272,8 @@ def electra_compute_proposer_index_and_threshold(
 ) -> tuple[uint64, uint64]:
     """
     Return from ``indices`` a random index sampled by effective balance,
-    along with the threshold for that index."""
+    along with the threshold for that index.
+    """
     assert len(indices) > 0
     MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
     i = uint64(0)
