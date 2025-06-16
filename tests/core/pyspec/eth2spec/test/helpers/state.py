@@ -1,7 +1,14 @@
+from collections.abc import Sequence
+
+from remerkleable.basic import uint64
+from remerkleable.byte_arrays import Bytes32
+
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
 from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7732
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
+from eth2spec.utils.hash_function import hash
+from eth2spec.utils.ssz.ssz_impl import uint_to_bytes
 
 
 def get_balance(state, index):
@@ -217,3 +224,73 @@ def simulate_lookahead(spec, state):
         lookahead.append(proposer_index)
         next_slot(spec, simulation_state)
     return lookahead
+
+
+def cause_effective_balance_decrease_below_threshold(
+    spec, state, validator_index: uint64, threshold: uint64
+) -> None:
+    """
+    Cause an effective balance decrease change for the validator at
+    `validator_index` below a threshold
+    """
+    HYSTERESIS_INCREMENT = uint64(spec.EFFECTIVE_BALANCE_INCREMENT // spec.HYSTERESIS_QUOTIENT)
+    DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * spec.HYSTERESIS_DOWNWARD_MULTIPLIER
+    state.balances[validator_index] = (
+        min(threshold, state.validators[validator_index].effective_balance - DOWNWARD_THRESHOLD) - 1
+    )
+
+
+def simulate_lookahead_with_thresholds(spec, state) -> Sequence[tuple[uint64, uint64]]:
+    """
+    Simulate the lookahead by advancing the state forward with empty slots and
+    calling `get_beacon_proposer_index`. Returns along, the lookaheads.
+    """
+    lookahead = []
+    simulation_state = state.copy()
+    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
+        proposer_index = get_beacon_proposer_index_and_threshold(spec, simulation_state)
+        lookahead.append(proposer_index)
+        next_slot(spec, simulation_state)
+    return lookahead
+
+
+def get_beacon_proposer_index_and_threshold(spec, state) -> tuple[uint64, uint64]:
+    """
+    Return the beacon proposer index at the current slot,
+    along with the threshold for that index.
+    """
+    epoch = spec.get_current_epoch(state)
+    seed = hash(
+        spec.get_seed(state, epoch, spec.DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot)
+    )
+    indices = spec.get_active_validator_indices(state, epoch)
+    return electra_compute_proposer_index_and_threshold(spec, state, indices, seed)
+
+
+def electra_compute_proposer_index_and_threshold(
+    spec, state, indices: Sequence[uint64], seed: Bytes32
+) -> tuple[uint64, uint64]:
+    """
+    Return from ``indices`` a random index sampled by effective balance,
+    along with the threshold for that index.
+    """
+    assert len(indices) > 0
+    MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
+    i = uint64(0)
+    total = uint64(len(indices))
+    while True:
+        candidate_index = indices[spec.compute_shuffled_index(i % total, total, seed)]
+        # [Modified in Electra]
+        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        offset = i % 16 * 2
+        random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
+        effective_balance = state.validators[candidate_index].effective_balance
+        # [Modified in Electra:EIP7251]
+        if (
+            effective_balance * MAX_RANDOM_VALUE
+            >= spec.MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+        ):
+            return candidate_index, (
+                spec.MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+            ) // MAX_RANDOM_VALUE
+        i += 1
