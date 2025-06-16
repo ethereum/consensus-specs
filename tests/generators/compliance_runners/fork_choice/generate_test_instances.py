@@ -107,19 +107,6 @@ def generate_block_cover(params):
         yield from solve_block_cover(anchor_epoch, *ps, number_of_solutions)
 
 
-# models = {
-#     'sm_links': ModelKind('SMLinks', './model/SM_links.mzn', {'AE': int, 'NE': int, 'NL': int}),
-#     'block_cover': ModelKind('BlockCover', './model/Block_cover3.mzn',
-#                              {
-#                                  'AE': int,
-#                                  'store_je_eq_zero': bool,
-#                                  'block_vse_eq_store_je': bool,
-#                                  'block_vse_plus_two_ge_curr_e': bool,
-#                                  'block_is_leaf': bool,
-#                                  'block_is_justified_descendant': bool
-#                              })
-# }
-
 gen_params = {
     ###################
     # tiny instances #
@@ -278,43 +265,6 @@ gen_params = {
             ({"anchor_epoch": 2, "number_of_solutions": 5},),
         ],
     },
-    #############
-    # old stuff #
-    #############
-    # 'attester_slashings_test': {
-    #     'out_path': 'attester_slashings.yaml',
-    #     'models': ['sm_link', 'block_tree'],
-    #     'params': [
-    #         ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
-    #         ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-    #         ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-    #     ]
-    # },
-    # 'invalid_messages_test': {
-    #     'out_path': 'invalid_messages.yaml',
-    #     'models': ['sm_link', 'block_tree'],
-    #     'params': [
-    #         ([{'sm_links': [[0, 1], [0, 2], [2, 3], [3, 4]]}], {'number_of_blocks': 16, 'max_children': 3, 'number_of_solutions': 4}),
-    #         ({'anchor_epoch': 0, 'number_of_epochs': 4, 'number_of_links': 3}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-    #         ({'anchor_epoch': 0, 'number_of_epochs': 5, 'number_of_links': 4}, {'number_of_blocks': 4, 'max_children': 3, 'number_of_solutions': 4}),
-    #     ]
-    # },
-    # 'block_cover_1': {
-    #     'out_path': 'block_cover_1.yaml',
-    #     'models': ['block_cover'],
-    #     'params': [
-    #         ({'anchor_epoch': 0, 'number_of_solutions': 1},),
-    #         ({'anchor_epoch': 2, 'number_of_solutions': 1},),
-    #     ]
-    # },
-    # 'block_cover_100': {
-    #     'out_path': 'block_cover_100.yaml',
-    #     'models': ['block_cover'],
-    #     'params': [
-    #         ({'anchor_epoch': 0, 'number_of_solutions': 100},),
-    #         ({'anchor_epoch': 2, 'number_of_solutions': 100},),
-    #     ]
-    # }
 }
 
 
