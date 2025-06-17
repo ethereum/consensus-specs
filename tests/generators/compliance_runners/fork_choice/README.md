@@ -27,7 +27,7 @@ From the root directory:
 ```
 where `config` can be either: `tiny`, `small` or `standard.
 
-Or specify path to the configuration file directrly:
+Or specify path to the configuration file directly:
 
 ```
 > python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config-path ${config_path}
