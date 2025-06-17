@@ -1,11 +1,10 @@
 from collections.abc import Iterable
 from itertools import product
+from os import path
 
 from minizinc import Instance, Model, Solver
-from os import path
 from ruamel.yaml import YAML
 from toolz.dicttoolz import merge
-
 
 base_dir = path.dirname(__file__)
 model_dir = path.join(base_dir, "model")
