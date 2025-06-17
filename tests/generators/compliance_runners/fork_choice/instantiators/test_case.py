@@ -340,7 +340,8 @@ def enumerate_test_cases(config_path, forks, presets, debug):
     test_gen_config = _load_yaml(config_path)
 
     for test_name, params in test_gen_config.items():
-        print(test_name)
+        if debug:
+            print(test_name)
         for fork_name in forks:
             for preset_name in presets:
                 for case_name, test_dna in enumerate_test_dnas(config_dir, test_name, params):
