@@ -48,7 +48,9 @@ def valid_cases():
         for length in [0, 1, 2, 3, 4, 5, 8, 20, 21, 22, 85, 86, 341, 342, 1365, 1366]:
             for mode in random_modes:
                 yield f"proglist_{name}_{mode.to_name()}_{length}", valid_test_case(
-                    lambda: progressive_list_case_fn(rng, mode, typ, length)
+                    lambda rng=rng, mode=mode, typ=typ, length=length: progressive_list_case_fn(
+                        rng, mode, typ, length
+                    )
                 )
 
 
