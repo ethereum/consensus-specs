@@ -3,17 +3,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from os import path
 from typing import Any
-
-from .block_cover import gen_block_cover_test_data
-from .block_tree import gen_block_tree_test_data
-from .helpers import (
-    FCTestData,
-    filter_out_duplicate_messages,
-    make_events,
-    yield_fork_choice_test_events,
-)
-from .mutation_operators import MutationOps
-from .scheduler import MessageScheduler
 from ruamel.yaml import YAML
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
@@ -29,6 +18,18 @@ from eth2spec.test.helpers.fork_choice import (
     output_store_checks,
 )
 from eth2spec.utils import bls
+
+from .block_cover import gen_block_cover_test_data
+from .block_tree import gen_block_tree_test_data
+from .helpers import (
+    FCTestData,
+    filter_out_duplicate_messages,
+    make_events,
+    yield_fork_choice_test_events,
+)
+from .mutation_operators import MutationOps
+from .scheduler import MessageScheduler
+
 
 BLS_ACTIVE = False
 GENERATOR_NAME = "fork_choice_compliance"
