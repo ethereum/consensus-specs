@@ -12,42 +12,35 @@ This work was supported by a grant from the Ethereum Foundation.
 
 # Pre-requisites
 
-Install requirements (preferably, in a dedicated Python environment)
+Install pyspec using the top-level Makefile, this will install necessary pre-requiesites.
 
 ```
-> pip install -r requirements.txt
-```
-
-In order to run tests, install `tqdm` additionally.
-```
-> pip install tqdm
+> make pyspec
 ```
 
 # Generating tests
 
+From the root directory:
+
 ```
-> python test_gen.py -o ${test_dir} --fc-gen-config ${config_dir}/test_gen.yaml
+> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config ${config_dir}/test_gen.yaml
 ```
 
 There are three configurations in the repo: [tiny](tiny/), [small](small/) and [standard](standard/).
 
 # Running tests
 
-Install `tqdm` library (to show progress)
-```
-> pip install tqdm
-```
+From the root directory:
 
-and then
 ```
-> python test_run.py -i ${test_dir}
+> python -m tests.generators.compliance_runners.fork_choice.test_run -i ${test_dir}
 ```
 
 # Generating configurations
 
 Files in [tiny](tiny/), [small](small/) and [standard](standard/) are generated with [generate_test_instances.py](generate_test_instances.py), e.g.
 ```
-> python generate_test_instances.py
+> python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
 ```
 
 But one normally doesn't need to generate them.
