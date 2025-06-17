@@ -1,6 +1,7 @@
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
+from os import path
 from typing import Any
 
 from .block_cover import gen_block_cover_test_data
@@ -301,13 +302,13 @@ def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
         raise ValueError(f"Unsupported test type: {test_type}")
 
 
-def _load_instances(instance_path: str) -> Iterable[dict]:
-    yaml = YAML(typ="safe")
-    solutions = yaml.load(open(instance_path))
-    return solutions
+def _load_yaml(path: str):
+    with open(path) as f:
+        yaml = YAML(typ="safe")
+        return yaml.load(f)
 
 
-def enumerate_test_dnas(test_name, params) -> Iterable[tuple[str, FCTestData]]:
+def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FCTestData]]:
     test_type = params["test_type"]
     instances_path = params["instances"]
     initial_seed = params["seed"]
@@ -316,7 +317,7 @@ def enumerate_test_dnas(test_name, params) -> Iterable[tuple[str, FCTestData]]:
     with_attester_slashings = params.get("with_attester_slashings", False)
     with_invalid_messages = params.get("with_invalid_messages", False)
 
-    solutions = _load_instances(instances_path)
+    solutions = _load_yaml(path.join(config_dir, instances_path))
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
     seeds = [initial_seed]
@@ -333,12 +334,15 @@ def enumerate_test_dnas(test_name, params) -> Iterable[tuple[str, FCTestData]]:
                 yield case_name, test_dna
 
 
-def enumerate_test_cases(test_gen_config, forks, presets, debug):
+def enumerate_test_cases(config_path, forks, presets, debug):
+    config_dir = path.dirname(config_path)
+    test_gen_config = _load_yaml(config_path)
+
     for test_name, params in test_gen_config.items():
         print(test_name)
         for fork_name in forks:
             for preset_name in presets:
-                for case_name, test_dna in enumerate_test_dnas(test_name, params):
+                for case_name, test_dna in enumerate_test_dnas(config_dir, test_name, params):
                     yield PlainFCTestCase(
                         test_dna=test_dna,
                         bls_active=BLS_ACTIVE,

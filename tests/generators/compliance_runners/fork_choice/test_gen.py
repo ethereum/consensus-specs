@@ -1,5 +1,4 @@
 from .instantiators.test_case import enumerate_test_cases, prepare_bls
-from ruamel.yaml import YAML
 
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
@@ -42,10 +41,6 @@ def main():
 
     args = arg_parser.parse_args()
 
-    with open(args.fc_gen_config) as f:
-        yaml = YAML(typ="safe")
-        test_gen_config = yaml.load(f)
-
     if args.fc_gen_multi_processing or args.threads != 0:
         if args.threads == 0:
             args.threads = default_threads
@@ -55,7 +50,7 @@ def main():
         print("generating tests in single process mode")
 
     prepare_bls()
-    test_cases = enumerate_test_cases(test_gen_config, forks, presets, args.fc_gen_debug)
+    test_cases = enumerate_test_cases(args.fc_gen_config, forks, presets, args.fc_gen_debug)
     gen_runner.run_generator(test_cases, args)
 
 
