@@ -37,7 +37,7 @@ NORM = $(shell tput sgr0)
 # Print target descriptions.
 help:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
-	@echo "make $(BOLD)comptests$(NORM)  -- generate complaince tests"
+	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
 	@echo "make $(BOLD)kzg_setups$(NORM) -- generate trusted setups"
 	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
