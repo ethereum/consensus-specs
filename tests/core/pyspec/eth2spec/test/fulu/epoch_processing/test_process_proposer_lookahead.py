@@ -57,10 +57,9 @@ def test_proposer_lookahead_does_not_contain_exited_validators(spec, state):
     while spec.get_current_epoch(state) < min_exit_epoch - 1:
         next_epoch(spec, state)
 
-    yield "pre", state
-
     # Run epoch processing, many validators will exit in this epoch
     yield from run_epoch_processing_with(spec, state, "process_proposer_lookahead")
+
     # run_epoch_processing_with does not increment the slot
     state.slot += 1
 
@@ -69,5 +68,3 @@ def test_proposer_lookahead_does_not_contain_exited_validators(spec, state):
         assert spec.is_active_validator(
             state.validators[validator_index], spec.get_current_epoch(state)
         ), f"Validator {validator_index} in lookahead should be active"
-
-    yield "post", state
