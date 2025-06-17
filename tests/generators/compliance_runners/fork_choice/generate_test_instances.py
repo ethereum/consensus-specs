@@ -2,14 +2,19 @@ from collections.abc import Iterable
 from itertools import product
 
 from minizinc import Instance, Model, Solver
+from os import path
 from ruamel.yaml import YAML
 from toolz.dicttoolz import merge
+
+
+base_dir = path.dirname(__file__)
+model_dir = path.join(base_dir, "model")
 
 
 def solve_sm_links(
     anchor_epoch: int, number_of_epochs: int, number_of_links: int, number_of_solutions: int
 ):
-    sm_links = Model("./model/SM_links.mzn")
+    sm_links = Model(path.join(model_dir, "SM_links.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, sm_links)
     instance["AE"] = anchor_epoch  # anchor epoch
@@ -34,7 +39,7 @@ def generate_sm_links(params):
 def solve_block_tree(
     number_of_blocks: int, max_children: int, number_of_solutions: int
 ) -> Iterable[dict]:
-    model = Model("./model/Block_tree.mzn")
+    model = Model(path.join(model_dir, "Block_tree.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
     instance["NB"] = number_of_blocks
@@ -63,7 +68,7 @@ def solve_block_cover(
     block_is_leaf: bool,
     number_of_solutions: int,
 ):
-    block_cover3 = Model("./model/Block_cover.mzn")
+    block_cover3 = Model(path.join(model_dir, "Block_cover.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, block_cover3)
     instance["AE"] = anchor_epoch
@@ -274,7 +279,7 @@ if __name__ == "__main__":
 
     for model_name, parameters in gen_params.items():
         print(f"processing {model_name}")
-        out_path = parameters["out_path"]
+        out_path = path.join(base_dir, parameters["out_path"])
         models = parameters["models"]
         solutions = []
         for params in parameters["params"]:
