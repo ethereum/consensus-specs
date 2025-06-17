@@ -1,4 +1,4 @@
-from instantiators.test_case import enumerate_test_cases, prepare_bls
+from .instantiators.test_case import enumerate_test_cases, prepare_bls
 from ruamel.yaml import YAML
 
 from eth2spec.gen_helpers.gen_base import gen_runner

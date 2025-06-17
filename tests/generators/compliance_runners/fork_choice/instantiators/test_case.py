@@ -3,16 +3,16 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from instantiators.block_cover import gen_block_cover_test_data
-from instantiators.block_tree import gen_block_tree_test_data
-from instantiators.helpers import (
+from .block_cover import gen_block_cover_test_data
+from .block_tree import gen_block_tree_test_data
+from .helpers import (
     FCTestData,
     filter_out_duplicate_messages,
     make_events,
     yield_fork_choice_test_events,
 )
-from instantiators.mutation_operators import MutationOps
-from instantiators.scheduler import MessageScheduler
+from .mutation_operators import MutationOps
+from .scheduler import MessageScheduler
 from ruamel.yaml import YAML
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
