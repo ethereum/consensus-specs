@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from os import path
 from typing import Any
+
 from ruamel.yaml import YAML
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
@@ -29,7 +30,6 @@ from .helpers import (
 )
 from .mutation_operators import MutationOps
 from .scheduler import MessageScheduler
-
 
 BLS_ACTIVE = False
 GENERATOR_NAME = "fork_choice_compliance"

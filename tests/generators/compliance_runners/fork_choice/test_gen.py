@@ -4,7 +4,6 @@ from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
 
 from .instantiators.test_case import enumerate_test_cases, prepare_bls
 
-
 forks = [ELECTRA]
 presets = [MINIMAL]
 
