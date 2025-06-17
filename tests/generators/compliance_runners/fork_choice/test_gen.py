@@ -1,3 +1,5 @@
+from os import path
+
 from eth2spec.gen_helpers.gen_base import gen_runner
 from eth2spec.gen_helpers.gen_base.args import create_arg_parser
 from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
@@ -23,7 +25,15 @@ def main():
         "--fc-gen-config",
         dest="fc_gen_config",
         type=str,
-        required=True,
+        required=False,
+        choices=["tiny", "small", "standard"],
+        help="Name of test generator configuration: tiny, small or standard",
+    )
+    arg_parser.add_argument(
+        "--fc-gen-config-path",
+        dest="fc_gen_config_path",
+        type=str,
+        required=False,
         help="Path to a file with test generator configurations",
     )
     arg_parser.add_argument(
@@ -52,8 +62,15 @@ def main():
     forks = default_forks if args.forks == [] else args.forks
     presets = default_presets if args.presets == [] else args.presets
 
+    if args.fc_gen_config_path is not None:
+        config_path = args.fc_gen_config_path
+    elif args.fc_gen_config is not None:
+        config_path = path.join(path.dirname(__file__), args.fc_gen_config, "test_gen.yaml")
+    else:
+        raise ValueError("Neither neither fc-gen-config not fc-gen-config-path specified")
+
     prepare_bls()
-    test_cases = enumerate_test_cases(args.fc_gen_config, forks, presets, args.fc_gen_debug)
+    test_cases = enumerate_test_cases(config_path, forks, presets, args.fc_gen_debug)
     gen_runner.run_generator(test_cases, args)
 
 

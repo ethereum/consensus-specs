@@ -23,7 +23,14 @@ Install pyspec using the top-level Makefile, this will install necessary pre-req
 From the root directory:
 
 ```
-> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config ${config_dir}/test_gen.yaml
+> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config ${config}
+```
+where `config` can be either: `tiny`, `small` or `standard.
+
+Or specify path to the configuration file directrly:
+
+```
+> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config-path ${config_path}
 ```
 
 There are three configurations in the repo: [tiny](tiny/), [small](small/) and [standard](standard/).
