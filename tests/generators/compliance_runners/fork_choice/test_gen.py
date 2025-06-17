@@ -4,8 +4,8 @@ from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
 
 from .instantiators.test_case import enumerate_test_cases, prepare_bls
 
-forks = [ELECTRA]
-presets = [MINIMAL]
+default_forks = [ELECTRA]
+default_presets = [MINIMAL]
 
 
 def main():
@@ -48,6 +48,9 @@ def main():
     else:
         args.threads = 1
         print("generating tests in single process mode")
+
+    forks = default_forks if args.forks == [] else args.forks
+    presets = default_presets if args.presets == [] else args.presets
 
     prepare_bls()
     test_cases = enumerate_test_cases(args.fc_gen_config, forks, presets, args.fc_gen_debug)
