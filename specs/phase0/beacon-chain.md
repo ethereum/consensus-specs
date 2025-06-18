@@ -73,6 +73,7 @@
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
+    - [`compute_time_at_slot`](#compute_time_at_slot)
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
@@ -871,6 +872,13 @@ def compute_committee(
         indices[compute_shuffled_index(uint64(i), uint64(len(indices)), seed)]
         for i in range(start, end)
     ]
+```
+
+#### `compute_time_at_slot`
+
+```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
+    return uint64(state.genesis_time + slot * SECONDS_PER_SLOT)
 ```
 
 #### `compute_epoch_at_slot`
