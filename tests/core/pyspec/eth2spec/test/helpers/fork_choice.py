@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Optional
 
 from eth_utils import encode_hex
 
@@ -9,11 +9,12 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import (is_post_eip7732, is_post_fulu)
 from eth2spec.test.helpers.state import (
     payload_state_transition,
     payload_state_transition_no_store,
 )
+from eth2spec.fulu.mainnet import DataColumnSidecar
 
 
 def check_head_against_root(spec, store, root):
@@ -30,16 +31,33 @@ class BlobData(NamedTuple):
     """
 
     blobs: Sequence[Any]
-    proofs: Sequence[bytes]
+    proofs: Optional[Sequence[bytes]] = None
+    sidecars: Optional[Sequence[DataColumnSidecar]] = None
 
 
-def with_blob_data(spec, blob_data, func):
+def with_blob_data(spec, blob_data: BlobData, func):
+
+    if not is_post_fulu(spec):
+        if blob_data.proofs is None:
+            raise ValueError(
+                "blob_data.proofs must be provided when pre FULU fork"
+            )
+        yield from with_blob_data_deneb(spec, blob_data, func)
+    else:
+        if blob_data.sidecars is None:
+            raise ValueError(
+                "blob_data.sidecars must be provided when post FULU fork"
+            )
+        yield from with_blob_data_fulu(spec, blob_data, func)
+
+
+def with_blob_data_deneb(spec, blob_data: BlobData, func):
     """
     This helper runs the given ``func`` with monkeypatched ``retrieve_blobs_and_proofs``
     that returns ``blob_data.blobs, blob_data.proofs``.
     """
-
-    def retrieve_blobs_and_proofs(beacon_block_root):
+    def retrieve_blobs_and_proofs(_):
+        assert blob_data.proofs is not None, "blob_data.proofs must be provided"
         return blob_data.blobs, blob_data.proofs
 
     retrieve_blobs_and_proofs_backup = spec.retrieve_blobs_and_proofs
@@ -60,6 +78,32 @@ def with_blob_data(spec, blob_data, func):
         spec.retrieve_blobs_and_proofs = retrieve_blobs_and_proofs_backup
     assert is_called.value
 
+def with_blob_data_fulu(spec, blob_data: BlobData, func):
+    """
+    This helper runs the given ``func`` with monkeypatched ``retrieve_column_sidecars``
+    that returns ``blob_data``.
+    """
+    def retrieve_column_sidecars(_):
+        assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
+        return blob_data.sidecars
+
+    retrieve_column_sidecars_backup = spec.retrieve_column_sidecars
+    spec.retrieve_column_sidecars = retrieve_column_sidecars
+
+    class AtomicBoolean:
+        value = False
+
+    is_called = AtomicBoolean()
+
+    def wrap(flag: AtomicBoolean):
+        yield from func()
+        flag.value = True
+
+    try:
+        yield from wrap(is_called)
+    finally:
+        spec.retrieve_column_sidecars = retrieve_column_sidecars_backup
+    assert is_called.value
 
 def get_anchor_root(spec, state):
     anchor_block_header = state.latest_block_header.copy()
@@ -77,7 +121,7 @@ def tick_and_add_block(
     merge_block=False,
     block_not_found=False,
     is_optimistic=False,
-    blob_data=None,
+    blob_data: Optional[BlobData] =None,
 ):
     pre_state = get_store_full_state(spec, store, signed_block.message.parent_root)
     if merge_block:
@@ -185,6 +229,21 @@ def get_blobs_file_name(blobs=None, blobs_root=None):
     else:
         return f"blobs_{encode_hex(blobs_root)}"
 
+def get_sidecars_file_names(sidecars: Sequence[DataColumnSidecar]) -> Sequence[str]:
+    """
+    Returns the file names for sidecars.
+    """
+    return [
+        get_sidecar_file_name(sidecar) for sidecar in sidecars
+    ]
+
+def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
+    """
+    Returns the file name for a single sidecar.
+    """
+    return f"sidecar_{encode_hex(sidecar.hash_tree_root())}"
+
+
 
 def on_tick_and_append_step(spec, store, time, test_steps):
     assert time >= store.time
@@ -234,18 +293,25 @@ def add_block(
         blobs_root = blobs.hash_tree_root()
         yield get_blobs_file_name(blobs_root=blobs_root), blobs
 
+        if blob_data.sidecars is not None:
+            for sidecar in blob_data.sidecars:
+                yield get_sidecar_file_name(sidecar), sidecar
+
     is_blob_data_test = blob_data is not None
 
-    def _append_step(is_blob_data_test, valid=True):
-        if is_blob_data_test:
-            test_steps.append(
-                {
+    def _append_step(valid=True):
+        if blob_data is not None:
+            step = {
                     "block": get_block_file_name(signed_block),
                     "blobs": get_blobs_file_name(blobs_root=blobs_root),
-                    "proofs": [encode_hex(proof) for proof in blob_data.proofs],
                     "valid": valid,
                 }
-            )
+            if blob_data.proofs is not None:
+                step["proofs"] = [encode_hex(proof) for proof in blob_data.proofs]
+            if blob_data.sidecars is not None:
+                step["sidecars"] = get_sidecars_file_names(blob_data.sidecars)
+
+            test_steps.append(step)
         else:
             test_steps.append(
                 {
@@ -257,20 +323,20 @@ def add_block(
     if not valid:
         if is_optimistic:
             run_on_block(spec, store, signed_block, valid=True)
-            _append_step(is_blob_data_test, valid=False)
+            _append_step(valid=False)
         else:
             try:
                 run_on_block(spec, store, signed_block, valid=True)
             except (AssertionError, BlockNotFoundException) as e:
                 if isinstance(e, BlockNotFoundException) and not block_not_found:
                     assert False
-                _append_step(is_blob_data_test, valid=False)
+                _append_step(valid=False)
                 return
             else:
                 assert False
     else:
         run_on_block(spec, store, signed_block, valid=True)
-        _append_step(is_blob_data_test)
+        _append_step()
 
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
