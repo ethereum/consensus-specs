@@ -18,7 +18,7 @@
 - [Modified attester duty](#modified-attester-duty)
   - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
 - [Modified sync committee duty](#modified-sync-committee-duty)
-  - [Modified beacon block root](#modified-beacon-block-root)
+  - [Modified `get_sync_committee_message`](#modified-get_sync_committee_message)
 
 <!-- mdformat-toc end -->
 
@@ -43,9 +43,10 @@ continuing and use them as a reference throughout.
 
 ### Time parameters
 
-| Name                              | Value                  |  Unit   |  Duration  |
-| --------------------------------- | ---------------------- | :-----: | :--------: |
-| `PROPOSER_INCLUSION_LIST_CUT_OFF` | `SECONDS_PER_SLOT - 1` | seconds | 11 seconds |
+| Name                                 | Value                       |  Unit   |  Duration  |
+| ------------------------------------ | --------------------------- | :-----: | :--------: |
+| `INCLUSION_LIST_SUBMISSION_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3` | seconds | 8 seconds  |
+| `PROPOSER_INCLUSION_LIST_CUT_OFF`    | `SECONDS_PER_SLOT - 1`      | seconds | 11 seconds |
 
 ## Protocols
 
@@ -108,14 +109,17 @@ lists that gathered up to `PROPOSER_INCLUSION_LIST_CUT_OFF`.
 
 ## New inclusion list committee duty
 
-Some validators are selected to submit signed inclusion list. Validators should
-call `get_inclusion_committee_assignment` at the beginning of an epoch to be
-prepared to submit their inclusion list during the next epoch.
+Some validators are selected to submit `signed_inclusion_list`. Validators
+should call `get_inclusion_committee_assignment` at the beginning of an epoch to
+be prepared to submit their inclusion list during the next epoch.
 
 A validator should create and broadcast the `signed_inclusion_list` to the
-global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into
-the slot, unless a block for the current slot has been processed and is the head
-of the chain and broadcast to the network.
+global `inclusion_list` subnet by `INCLUSION_LIST_SUBMISSION_DEADLINE` seconds
+into the slot after processing the block for the current slot and confirming it
+as the head. If no block is received by `INCLUSION_LIST_SUBMISSION_DEADLINE - 1`
+seconds into the slot, the validator should run `get_head` to determine the
+local head and construct and broadcast the inclusion list based on this local
+head by `INCLUSION_LIST_SUBMISSION_DEADLINE` seconds into the slot.
 
 #### Constructing a signed inclusion list
 
@@ -153,7 +157,10 @@ Set `attestation_data.beacon_block_root = get_attester_head(store, head_root)`.
 
 ## Modified sync committee duty
 
-#### Modified beacon block root
+#### Modified `get_sync_committee_message`
+
+*Note*: The function `get_sync_committee_message` is modified to include the
+additional `store` parameter for EIP-7805.
 
 ```python
 def get_sync_committee_message(
@@ -161,7 +168,7 @@ def get_sync_committee_message(
     block_root: Root,
     validator_index: ValidatorIndex,
     privkey: int,
-    store: Store,
+    store: Store,  # [New in EIP-7805]
 ) -> SyncCommitteeMessage:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
@@ -170,7 +177,7 @@ def get_sync_committee_message(
 
     return SyncCommitteeMessage(
         slot=state.slot,
-        beacon_block_root=get_attester_head(store, block_root),
+        beacon_block_root=get_attester_head(store, block_root),  # [Modified in EIP-7805]
         validator_index=validator_index,
         signature=signature,
     )
