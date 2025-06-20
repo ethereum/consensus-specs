@@ -11,6 +11,12 @@ from eth2spec.test.helpers.blob import (
     get_sample_blob,
 )
 
+from tests.core.pyspec.eth2spec.test.context import spec_state_test
+from tests.core.pyspec.eth2spec.test.deneb.fork_choice.test_on_block import get_block_with_blob
+from tests.core.pyspec.eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
+from tests.core.pyspec.eth2spec.test.helpers.state import state_transition_and_sign_block
+from tests.core.pyspec.eth2spec.utils.ssz.ssz_impl import hash_tree_root
+
 
 def chunks(lst, n):
     """Helper that splits a list into N sized chunks."""
@@ -149,3 +155,42 @@ def test_get_extended_sample_count__table_in_spec(spec):
             spec.get_extended_sample_count(allowed_failures=allowed_failures)
             == expected_extended_sample_count
         )
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas(spec, state):
+    rng = random.Random(1234)
+
+    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
+    # We need a signed block to call `get_data_column_sidecars_from_block`
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = spec.get_data_column_sidecars_from_block(signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs])
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    def callback():
+        yield spec.is_data_available(hash_tree_root(signed_block))
+
+    result = next(with_blob_data(spec, blob_data, callback))
+
+    assert result is True, "Data should be available for the block with blob data"
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas_not_avail(spec, state):
+    rng = random.Random(1234)
+
+    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
+
+    # Empty sidecars will trigger the simulation of not enough columns being available
+    blob_data = BlobData(blobs, blob_kzg_proofs, [])
+
+    def callback():
+        try:
+            spec.is_data_available(hash_tree_root(block))
+            yield False
+        except ValueError:
+            yield True
+
+    result = next(with_blob_data(spec, blob_data, callback))
+
+    assert result is True, "Should throw an exception when data is not available"
