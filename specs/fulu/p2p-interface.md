@@ -36,6 +36,8 @@
     - [ENR structure](#enr-structure)
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
+- [Peer Scoring](#peer-scoring)
+- [DAS providers](#das-providers)
 
 <!-- mdformat-toc end -->
 
@@ -545,3 +547,26 @@ disconnect from such peers at the fork boundary, but not sooner.
 Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
+
+## Peer scoring
+
+Due to the deterministic custody functions, a node knows exactly what a peer
+should be able to respond to. In the event that a peer does not respond to
+samples of their custodied rows/columns, a node may downscore or disconnect from
+a peer.
+
+## DAS providers
+
+A DAS provider is a consistently-available-for-DAS-queries, super-full (or high
+capacity) node. To the p2p, these look just like other nodes but with high
+advertised capacity, and they should generally be able to be latently found via
+normal discovery.
+
+DAS providers can also be found out-of-band and configured into a node to
+connect to directly and prioritize. Nodes can add some set of these to their
+local configuration for persistent connection to bolster their DAS quality of
+service.
+
+Such direct peering utilizes a feature supported out of the box today on all
+nodes and can complement (and reduce attackability and increase
+quality-of-service) alternative peer discovery mechanisms.
