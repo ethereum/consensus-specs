@@ -10,6 +10,8 @@ def handler_name_fn(mod):
         return "blocks"
     if handler_name == "test_lookahead":
         return "blocks"
+    if handler_name == "test_lookahead_slots":
+        return "slots"
     return handler_name.replace("test_", "")
 
 
