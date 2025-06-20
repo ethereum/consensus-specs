@@ -548,7 +548,7 @@ Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
 
-## Peer scoring
+## Peer Scoring
 
 Due to the deterministic custody functions, a node knows exactly what a peer
 should be able to respond to. In the event that a peer does not respond to
