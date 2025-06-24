@@ -84,6 +84,7 @@ The parameter that is required for executing `on_block(store, block)`.
     blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
                                The blobs file content is a `List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]` SSZ object.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
+    sidecars: string        -- optional, array of the names of the `sidecar_<32-byte-root>.ssz_snappy` files.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
 }
