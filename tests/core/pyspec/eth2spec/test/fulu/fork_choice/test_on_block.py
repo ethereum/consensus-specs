@@ -1,16 +1,18 @@
-
 from random import Random
-
-from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store_and_block
 
 from eth2spec.test.context import (
     spec_state_test,
     with_fulu_and_later,
 )
-
 from eth2spec.test.deneb.fork_choice.test_on_block import get_block_with_blob
-from eth2spec.test.helpers.fork_choice import BlobData, on_tick_and_append_step, tick_and_add_block_with_data
+from eth2spec.test.helpers.fork_choice import (
+    BlobData,
+    get_genesis_forkchoice_store_and_block,
+    on_tick_and_append_step,
+    tick_and_add_block_with_data,
+)
 from eth2spec.test.helpers.state import state_transition_and_sign_block
+
 
 @with_fulu_and_later
 @spec_state_test
@@ -34,7 +36,9 @@ def test_simple_blob_data_peerdas(spec, state):
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_data_column_sidecars_from_block(signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs])
+    sidecars = spec.get_data_column_sidecars_from_block(
+        signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    )
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
@@ -44,7 +48,9 @@ def test_simple_blob_data_peerdas(spec, state):
     # On receiving a block of next epoch
     block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_data_column_sidecars_from_block(signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs])
+    sidecars = spec.get_data_column_sidecars_from_block(
+        signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    )
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)

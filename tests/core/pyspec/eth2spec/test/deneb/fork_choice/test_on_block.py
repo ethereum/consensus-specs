@@ -41,6 +41,7 @@ def get_block_with_blob(spec, state, rng=None, blob_count=1):
     block.body.blob_kzg_commitments = blob_kzg_commitments
     return block, blobs, blob_kzg_proofs
 
+
 def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     state = state.copy()
 
@@ -50,10 +51,9 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     # We need a signed block to call `get_data_column_sidecars_from_block`
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    sidecars = spec.get_data_column_sidecars_from_block(
-        signed_block, cells_and_kzg_proofs
-    )
+    sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     return block, blobs, blob_kzg_proofs, signed_block, sidecars
+
 
 # TODO(jtraglia): Use with_all_phases_from_to_except after EIP7732 is based on Fulu.
 # This applies to every other test in this file too.
