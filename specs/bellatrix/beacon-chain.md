@@ -21,8 +21,6 @@
     - [`is_merge_transition_complete`](#is_merge_transition_complete)
     - [`is_merge_transition_block`](#is_merge_transition_block)
     - [`is_execution_enabled`](#is_execution_enabled)
-  - [Misc](#misc)
-    - [`compute_timestamp_at_slot`](#compute_timestamp_at_slot)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -223,18 +221,6 @@ def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
     return is_merge_transition_block(state, body) or is_merge_transition_complete(state)
 ```
 
-### Misc
-
-#### `compute_timestamp_at_slot`
-
-*Note*: This function is unsafe with respect to overflows and underflows.
-
-```python
-def compute_timestamp_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
-```
-
 ### Beacon state accessors
 
 #### Modified `get_inactivity_penalty_deltas`
@@ -406,7 +392,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload)

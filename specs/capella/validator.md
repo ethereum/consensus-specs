@@ -92,7 +92,7 @@ def prepare_execution_payload(
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_timestamp_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),  # [New in Capella]
