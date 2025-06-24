@@ -539,8 +539,8 @@ set to the epoch of the next fork, whether a regular fork, _or a BPO fork_.
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
 their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
 key, to form a more accurate view of the peer's intended next fork for the
-purposes of sustained peering. A mismatch indicates that the node MAY
-disconnect from such peers at the fork boundary, but not sooner.
+purposes of sustained peering. A mismatch indicates that the node MAY disconnect
+from such peers at the fork boundary, but not sooner.
 
 Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
