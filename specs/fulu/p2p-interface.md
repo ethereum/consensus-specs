@@ -573,7 +573,11 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 
 A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,
-regardless of whether it is a regular or a Blob-Parameters-Only fork.
+regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
+entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
+cause disconnnects.
 
 If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
