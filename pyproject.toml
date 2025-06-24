@@ -34,7 +34,7 @@ dependencies = [
 test = [
   "pytest-cov==6.2.1",
   "pytest-xdist==3.7.0",
-  "pytest==8.4.0",
+  "pytest==8.4.1",
 ]
 lint = [
   "codespell==2.4.1",
@@ -44,13 +44,13 @@ lint = [
   "mdformat-toc==0.3.0",
   "mdformat==0.7.22",
   "mypy==1.16.1",
-  "ruff==0.11.13",
+  "ruff==0.12.0",
 ]
 generator = [
   "filelock==3.18.0",
   "minizinc==0.10.0",
   "pathos==0.3.4",
-  "pytest==8.4.0",
+  "pytest==8.4.1",
   "python-snappy==0.7.3",
   "rich==14.0.0",
   "tqdm==4.67.1",
