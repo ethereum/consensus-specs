@@ -35,6 +35,7 @@ test = [
   "pytest-cov==6.1.1",
   "pytest-xdist==3.7.0",
   "pytest==8.4.0",
+  "deepdiff==8.5.0",
 ]
 lint = [
   "codespell==2.4.1",

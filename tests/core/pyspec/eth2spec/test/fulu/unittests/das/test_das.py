@@ -1,5 +1,6 @@
 import random
 
+from deepdiff import DeepDiff
 from eth2spec.test.context import (
     expect_assertion_error,
     single_phase,
@@ -11,11 +12,9 @@ from eth2spec.test.helpers.blob import (
     get_sample_blob,
 )
 
-from tests.core.pyspec.eth2spec.test.context import spec_state_test
-from tests.core.pyspec.eth2spec.test.deneb.fork_choice.test_on_block import get_block_with_blob
-from tests.core.pyspec.eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
-from tests.core.pyspec.eth2spec.test.helpers.state import state_transition_and_sign_block
-from tests.core.pyspec.eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.test.context import spec_state_test
+from eth2spec.test.deneb.fork_choice.test_on_block import get_block_with_blob, get_block_with_blob_and_sidecars
+from eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
 
 
 def chunks(lst, n):
@@ -156,41 +155,268 @@ def test_get_extended_sample_count__table_in_spec(spec):
             == expected_extended_sample_count
         )
 
+
+def run_is_data_available_peerdas_test(spec, blob_data):
+    def callback():
+        yield spec.is_data_available(spec.Root(b"\x00" * 32))
+
+    return next(with_blob_data(spec, blob_data, callback))
+
 @with_fulu_and_later
 @spec_state_test
-def test_is_data_available_peerdas(spec, state):
+def test_is_data_available_peerdas__valid(spec, state):
     rng = random.Random(1234)
-
-    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
-    # We need a signed block to call `get_data_column_sidecars_from_block`
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_data_column_sidecars_from_block(signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs])
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
 
-    def callback():
-        yield spec.is_data_available(hash_tree_root(signed_block))
-
-    result = next(with_blob_data(spec, blob_data, callback))
+    result = run_is_data_available_peerdas_test(spec, blob_data)
 
     assert result is True, "Data should be available for the block with blob data"
 
 @with_fulu_and_later
 @spec_state_test
-def test_is_data_available_peerdas_not_avail(spec, state):
+def test_is_data_available_peerdas__not_avail(spec, state):
     rng = random.Random(1234)
+    _, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng, blob_count=2)
 
-    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
-
-    # Empty sidecars will trigger the simulation of not enough columns being available
+    # Empty sidecars will trigger the simulation of not enough columns being sampled
     blob_data = BlobData(blobs, blob_kzg_proofs, [])
 
-    def callback():
-        try:
-            spec.is_data_available(hash_tree_root(block))
-            yield False
-        except ValueError:
-            yield True
-
-    result = next(with_blob_data(spec, blob_data, callback))
+    try:
+        run_is_data_available_peerdas_test(spec, blob_data)
+        result = False
+    except ValueError:
+        result = True
 
     assert result is True, "Should throw an exception when data is not available"
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_zero_blobs(spec, state):
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].column = []
+    sidecars[0].kzg_commitments = []
+    sidecars[0].kzg_proofs = []
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have zero blobs"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_index(spec, state):
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].index = 128 # Invalid index
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have invalid index"
+
+    sidecars[1].index = 256 # Invalid index
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have invalid index"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_mismatch_len_column(spec, state):
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].column = sidecars[0].column[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in column"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].column = sidecars[1].column[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in column"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_mismatch_len_kzg_commitments(spec, state):
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].kzg_commitments = sidecars[0].kzg_commitments[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in kzg_commitments"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].kzg_commitments = sidecars[1].kzg_commitments[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in kzg_commitments"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_mismatch_len_kzg_proofs(spec, state):
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].kzg_proofs = sidecars[0].kzg_proofs[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in kzg_proofs"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].kzg_proofs = sidecars[1].kzg_proofs[1:]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have mismatched length in kzg_proofs"
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_wrong_column(spec, state):
+    def flip_one_bit_in_bytes(data: bytes, index: int = 0) -> bytes:
+        """Flip one bit in a byte at the specified index."""
+        constr = data.__class__
+
+        byte_index = index // 8
+        bit_index = 7 - (index % 8)
+        byte = data[byte_index]
+        flipped_byte = byte ^ (1 << bit_index)
+        return constr(bytes(data[:byte_index]) + bytes([flipped_byte]) + bytes(data[byte_index + 1:]))
+
+    rng = random.Random(1234)
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].column[0] = flip_one_bit_in_bytes(sidecars[0].column[0], 80)
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong column data"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].column[1] = flip_one_bit_in_bytes(sidecars[1].column[1], 20)
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong column data"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_wrong_commitment(spec, state):
+    # Let's get an alternative blobs to use wrong commitments
+    rng = random.Random(4321)
+
+    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    rng = random.Random(1234)
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].kzg_commitments[0] = alt_sidecars[0].kzg_commitments[0]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong kzg_commitment data"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].kzg_commitments[1] = alt_sidecars[1].kzg_commitments[1]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong kzg_commitment data"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas__invalid_wrong_proof(spec, state):
+    # Let's get an alternative blobs to use wrong proofs
+    rng = random.Random(4321)
+
+    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    rng = random.Random(1234)
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[0].kzg_proofs[0] = alt_sidecars[0].kzg_proofs[0]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong kzg_commitment data"
+
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars[1].kzg_proofs[1] = alt_sidecars[1].kzg_proofs[1]
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is False, "Should return False when sidecars have wrong kzg_commitment data"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars(spec, state):
+    rng = random.Random(1234)
+    _, blobs, _, signed_block, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars_result = spec.get_data_column_sidecars(
+        signed_block_header= spec.compute_signed_block_header(signed_block),
+        kzg_commitments=sidecars[0].kzg_commitments,
+        kzg_commitments_inclusion_proof= sidecars[0].kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs= [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    )
+
+    assert len(sidecars_result) == len(sidecars), "Should return the same number of sidecars as input"
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars_from_column_sidecar(spec, state):
+    rng = random.Random(1234)
+    _, blobs, _, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
+        sidecar= sidecars[0],
+        cells_and_kzg_proofs= [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    )
+
+    assert len(sidecars_result) == len(sidecars), "Should return the same number of sidecars as input"
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"
+

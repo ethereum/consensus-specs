@@ -29,10 +29,10 @@ from eth2spec.test.helpers.state import (
 )
 
 
-def get_block_with_blob(spec, state, rng=None):
+def get_block_with_blob(spec, state, rng=None, blob_count=1):
     block = build_empty_block_for_next_slot(spec, state)
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
-        spec, blob_count=1, rng=rng
+        spec, blob_count=blob_count, rng=rng
     )
     block.body.execution_payload.transactions = [opaque_tx]
     block.body.execution_payload.block_hash = compute_el_block_hash(
@@ -41,6 +41,19 @@ def get_block_with_blob(spec, state, rng=None):
     block.body.blob_kzg_commitments = blob_kzg_commitments
     return block, blobs, blob_kzg_proofs
 
+def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
+    state = state.copy()
+
+    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng, blob_count=blob_count)
+    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+
+    # We need a signed block to call `get_data_column_sidecars_from_block`
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    sidecars = spec.get_data_column_sidecars_from_block(
+        signed_block, cells_and_kzg_proofs
+    )
+    return block, blobs, blob_kzg_proofs, signed_block, sidecars
 
 # TODO(jtraglia): Use with_all_phases_from_to_except after EIP7732 is based on Fulu.
 # This applies to every other test in this file too.
