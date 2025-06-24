@@ -551,13 +551,15 @@ where the fields of `ENRForkID` are defined as
     `state.genesis_validators_root`
   - `epoch` is the node's current epoch defined by the wall-clock time (not
     necessarily the epoch to which the node is sync)
-- `next_fork_version` is the fork version corresponding to the next planned hard
-  fork at a future epoch. If no future fork is planned, set
+- `next_fork_version` is the fork version corresponding to the next planned fork
+  at a future epoch. The fork version will only change for regular forks, _not a
+  BPO forks_. Note that it is possible for the blob schedule to define a change
+  at the same epoch as a regular fork; this situation would be considered a
+  regular fork. If no future fork is planned, set
   `next_fork_version = current_fork_version` to signal this fact
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
-  _or a BPO fork_) is planned and the `current_fork_version` will be updated. If
-  no future fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal
-  this fact
+  _or a BPO fork_) is planned. If no future fork is planned, set
+  `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
 
 ##### Custody group count
 
