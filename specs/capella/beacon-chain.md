@@ -85,9 +85,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### Withdrawals processing
 
-| Name                                   | Value                |
-| -------------------------------------- | -------------------- |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2\*\*14 ) |
+| Name                                   | Value              |
+| -------------------------------------- | ------------------ |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
 ## Containers
 
