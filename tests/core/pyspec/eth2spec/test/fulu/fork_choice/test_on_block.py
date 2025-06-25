@@ -18,7 +18,7 @@ from eth2spec.test.helpers.state import state_transition_and_sign_block
 @spec_state_test
 def test_simple_blob_data_peerdas(spec, state):
     """
-    Similar to test_simple_blob_data, but in PeerDAS version that is from FULU onwards.
+    Similar to test_simple_blob_data, but in PeerDAS version that is from Fulu onwards.
     It covers code related to the blob sidecars because on_block calls `is_data_available`
     and we are calling `get_data_column_sidecars_from_block` in the test itself.
     """
