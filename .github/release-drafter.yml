@@ -1,0 +1,42 @@
+categories:
+  # Forks
+  - title: Phase0
+    label: phase0
+  - title: Altair
+    label: altair
+  - title: Bellatrix
+    label: bellatrix
+  - title: Capella
+    label: capella
+  - title: Deneb
+    label: deneb
+  - title: Electra
+    label: electra
+  - title: Fulu
+    label: fulu
+
+  # Features
+  - title: EIP-6110
+    label: eip6110
+  - title: EIP-7441
+    label: eip7441
+  - title: EIP-7594
+    label: eip7594
+  - title: EIP-7732
+    label: eip7732
+  - title: EIP-7805
+    label: eip7805
+
+  # Testing
+  - title: Testing
+    label: testing
+
+  # Fallback
+  - title: Other
+
+sort-by: number
+sort-direction: ascending
+change-title-escapes: '\<*_&'
+change-template: '- $TITLE (#$NUMBER)'
+template: |
+  $CHANGES
