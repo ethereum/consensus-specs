@@ -182,7 +182,7 @@ def test_is_data_available_peerdas__valid(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
-def test_is_data_available_peerdas__not_avail(spec, state):
+def test_is_data_available_peerdas__not_available(spec, state):
     rng = random.Random(1234)
     _, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng, blob_count=2)
 
