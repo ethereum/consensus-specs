@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_fulu_and_later,
 )
-from eth2spec.test.deneb.fork_choice.test_on_block import get_block_with_blob
+from eth2spec.test.helpers.blob import get_block_with_blob
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
     get_genesis_forkchoice_store_and_block,

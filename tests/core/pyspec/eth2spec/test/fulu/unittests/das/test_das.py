@@ -10,7 +10,7 @@ from eth2spec.test.context import (
     with_config_overrides,
     with_fulu_and_later,
 )
-from eth2spec.test.deneb.fork_choice.test_on_block import (
+from eth2spec.test.helpers.blob import (
     get_block_with_blob,
     get_block_with_blob_and_sidecars,
 )
