@@ -34,6 +34,7 @@
       - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
+      - [`eth2` field](#eth2-field)
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
 - [Peer Scoring](#peer-scoring)
@@ -292,6 +293,11 @@ The added fields are, as seen by the client at the time of sending the message:
 - `earliest_available_slot`: The slot of earliest available block
   (`BeaconBlock`).
 
+*Note*: `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)`
+where `genesis_validators_root` is the static `Root` found in
+`state.genesis_validators_root` and `epoch` is the node's current epoch defined
+by the wall-clock time (not necessarily the epoch to which the node is sync).
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
@@ -512,6 +518,51 @@ are unchanged from the Altair p2p networking document.
 
 #### ENR structure
 
+##### `eth2` field
+
+*[Updated in Fulu:EIP7892]*
+
+*Note*: The structure of `ENRForkID` has not changed but the field value
+computations have changed. Unless explicitly mentioned here, all specifications
+from [phase0/p2p-interface.md#eth2-field](../phase0/p2p-interface.md#eth2-field)
+carry over.
+
+ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
+fork digest, next fork version, and next fork epoch to ensure connections are
+made with peers on the intended Ethereum network.
+
+| Key    | Value           |
+| :----- | :-------------- |
+| `eth2` | SSZ `ENRForkID` |
+
+Specifically, the value of the `eth2` key MUST be the following SSZ encoded
+object (`ENRForkID`):
+
+```
+(
+  fork_digest: ForkDigest
+  next_fork_version: Version
+  next_fork_epoch: Epoch
+)
+```
+
+Where the fields of `ENRForkID` are defined as:
+
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
+  - `genesis_validators_root` is the static `Root` found in
+    `state.genesis_validators_root`.
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
+- `next_fork_version` is the fork version corresponding to the next planned fork
+  at a future epoch. The fork version will only change for regular forks, _not
+  BPO forks_. Note that it is possible for the blob schedule to define a change
+  at the same epoch as a regular fork; this situation would be considered a
+  regular fork. If no future fork is planned, set
+  `next_fork_version = current_fork_version` to signal this fact.
+- `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
+  _or a BPO fork_) is planned. If no future fork is planned, set
+  `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
 ##### Custody group count
 
 A new field is added to the ENR under the key `cgc` to facilitate custody data
@@ -526,7 +577,11 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 
 A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,
-regardless of whether it is a regular or a Blob-Parameters-Only fork.
+regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
+entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
+cause disconnnects.
 
 If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
@@ -534,9 +589,6 @@ type (i.e., the SSZ representation of a zero-filled array).
 | Key   | Value                   |
 | :---- | :---------------------- |
 | `nfd` | SSZ Bytes4 `ForkDigest` |
-
-Furthermore, the existing `next_fork_epoch` field under the `eth2` entry MUST be
-set to the epoch of the next fork, whether a regular fork, _or a BPO fork_.
 
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
 their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
