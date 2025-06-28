@@ -11,16 +11,20 @@
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
     - [`SignedInclusionList`](#signedinclusionlist)
+    - [`InclusionListStore`](#inclusionliststore)
+- [Helper functions](#helper-functions)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
+    - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
+    - [New `store_inclusion_list`](#new-store_inclusion_list)
+    - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
     - [Request data](#request-data)
       - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
-      - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -76,6 +80,17 @@ class SignedInclusionList(Container):
     signature: BLSSignature
 ```
 
+#### `InclusionListStore`
+
+```python
+@dataclass
+class InclusionListStore(object):
+    inclusion_lists: Dict[Tuple[Slot, Root], Set[InclusionList]] = field(default_factory=dict)
+    equivocators: Dict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(default_factory=dict)
+```
+
+## Helper functions
+
 ### Predicates
 
 #### New `is_valid_inclusion_list_signature`
@@ -108,10 +123,83 @@ def get_inclusion_list_committee(
     indices = get_active_validator_indices(state, epoch)
     start = (slot % SLOTS_PER_EPOCH) * INCLUSION_LIST_COMMITTEE_SIZE
     end = start + INCLUSION_LIST_COMMITTEE_SIZE
-    return [
-        indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
-        for i in range(start, end)
-    ]
+    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE](
+        [
+            indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
+            for i in range(start, end)
+        ]
+    )
+```
+
+#### New `get_inclusion_list_store`
+
+```python
+def get_inclusion_list_store() -> InclusionListStore:
+    # `cached_or_new_inclusion_list_store` is implementation and context dependent.
+    # It returns the cached `InclusionListStore`; if none exists,
+    # it initializes a new instance, caches it and returns it.
+    inclusion_list_store = cached_or_new_inclusion_list_store()
+
+    return inclusion_list_store
+```
+
+#### New `store_inclusion_list`
+
+```python
+def store_inclusion_list(inclusion_list: InclusionList) -> None:
+    inclusion_list_store = get_inclusion_list_store()
+
+    validator_index = inclusion_list.validator_index
+    key = (inclusion_list.slot, inclusion_list.inclusion_list_committee_root)
+
+    inclusion_lists = inclusion_list_store.inclusion_lists.setdefault(key, set())
+    equivocators = inclusion_list_store.equivocators.setdefault(key, set())
+
+    if validator_index in equivocators:
+        return
+
+    for stored_inclusion_list in inclusion_lists:
+        if stored_inclusion_list.validator_index != validator_index:
+            continue
+
+        if stored_inclusion_list != inclusion_list:
+            equivocators.add(validator_index)
+            inclusion_lists.remove(stored_inclusion_list)
+
+        # Whether it was an equivocation or not, we have processed this `inclusion_list`.
+        return
+
+    # Store this first `inclusion_list` from `validator_index`.
+    inclusion_lists.add(inclusion_list)
+```
+
+#### New `get_inclusion_list_transactions`
+
+*Note*: `get_inclusion_list_transactions` returns a list of unique transactions
+from all valid and non-equivocating `InclusionList`s that were received in a
+timely manner on the p2p network for the given slot and for which the
+`inclusion_list_committee_root` in the `InclusionList` matches the one
+calculated based on the current state.
+
+```python
+def get_inclusion_list_transactions(state: BeaconState, slot: Slot) -> Sequence[Transaction]:
+    inclusion_list_store = get_inclusion_list_store()
+
+    inclusion_list_committee = get_inclusion_list_committee(state, slot)
+    inclusion_list_committee_root = hash_tree_root(inclusion_list_committee)
+    key = (slot, inclusion_list_committee_root)
+
+    inclusion_lists = inclusion_list_store.inclusion_lists.setdefault(key, set())
+    equivocators = inclusion_list_store.equivocators.setdefault(key, set())
+
+    inclusion_list_transactions = {
+        transaction
+        for inclusion_list in inclusion_lists
+        if inclusion_list.validator_index not in equivocators
+        for transaction in inclusion_list.transactions
+    }
+
+    return list(inclusion_list_transactions)
 ```
 
 ## Beacon chain state transition function
@@ -134,29 +222,12 @@ class NewPayloadRequest(object):
 
 #### Engine APIs
 
-##### Modified `is_valid_block_hash`
-
-*Note*: The function `is_valid_block_hash` is modified to include the additional
-`inclusion_list_transactions`.
-
-```python
-def is_valid_block_hash(
-    self: ExecutionEngine,
-    execution_payload: ExecutionPayload,
-    parent_beacon_block_root: Root,
-    execution_requests_list: Sequence[bytes],
-    inclusion_list_transactions: Sequence[Transaction],
-) -> bool:
-    """
-    Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
-    """
-    ...
-```
-
 ##### Modified `notify_new_payload`
 
 *Note*: The function `notify_new_payload` is modified to include the additional
-`inclusion_list_transactions`.
+`inclusion_list_transactions`. If the payload is valid but fails to satisfy the
+inclusion list constraints, it raises
+`AssertionError("INVALID_INCLUSION_LIST")`.
 
 ```python
 def notify_new_payload(
@@ -168,11 +239,12 @@ def notify_new_payload(
 ) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
-    are valid with respect to ``self.execution_state``.
+    are valid with respect to ``self.execution_state``, and ``execution_payload`` satisfies
+    the inclusion list constraints.
+
+    Raise ``AssertionError("INVALID_INCLUSION_LIST")`` if ``execution_payload`` is valid but
+    fails to satisfy the inclusion list constraints.
     """
-    # TODO: move this outside of notify_new_payload.
-    # If execution client returns block does not satisfy inclusion list transactions, cache the block
-    # store.unsatisfied_inclusion_list_blocks.add(execution_payload.block_root)
     ...
 ```
 
@@ -192,7 +264,6 @@ def verify_and_notify_new_payload(
     execution_payload = new_payload_request.execution_payload
     parent_beacon_block_root = new_payload_request.parent_beacon_block_root
     execution_requests_list = get_execution_requests_list(new_payload_request.execution_requests)
-    # [New in EIP-7805]
     inclusion_list_transactions = new_payload_request.inclusion_list_transactions
 
     if b"" in execution_payload.transactions:
@@ -238,16 +309,16 @@ def process_execution_payload(
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
-    # Verify inclusion list transactions
-    inclusion_list_transactions: Sequence[Transaction] = []  # TODO: where do we get this?
-    # Verify the payload with the execution engine
+    inclusion_list_transactions = get_inclusion_list_transactions(
+        state, state.slot
+    )  # [New in EIP-7805]
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=body.execution_requests,
-            inclusion_list_transactions=inclusion_list_transactions,
+            inclusion_list_transactions=inclusion_list_transactions,  # [New in EIP-7805]
         )
     )
     # Cache execution payload header
