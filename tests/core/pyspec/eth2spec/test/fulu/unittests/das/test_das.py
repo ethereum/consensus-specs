@@ -1,13 +1,18 @@
 import random
 
+from deepdiff import DeepDiff
+
 from eth2spec.test.context import (
     single_phase,
+    spec_state_test,
     spec_test,
     with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
+    get_block_with_blob_and_sidecars,
     get_sample_blob,
 )
+from eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
 
 
 def chunks(lst, n):
@@ -65,3 +70,62 @@ def test_recover_matrix(spec):
 
     # Ensure that the recovered matrix matches the original matrix
     assert recovered_matrix == matrix
+
+
+def run_is_data_available_peerdas_test(spec, blob_data):
+    def callback():
+        yield spec.is_data_available(spec.Root(b"\x00" * 32))
+
+    return next(with_blob_data(spec, blob_data, callback))
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_is_data_available_peerdas(spec, state):
+    rng = random.Random(1234)
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
+    )
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is True, "Data should be available for the block with blob data"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars(spec, state):
+    rng = random.Random(1234)
+    _, blobs, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
+    )
+
+    sidecars_result = spec.get_data_column_sidecars(
+        signed_block_header=spec.compute_signed_block_header(signed_block),
+        kzg_commitments=sidecars[0].kzg_commitments,
+        kzg_commitments_inclusion_proof=sidecars[0].kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+    )
+
+    assert len(sidecars_result) == len(sidecars), (
+        "Should return the same number of sidecars as input"
+    )
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars_from_column_sidecar(spec, state):
+    rng = random.Random(1234)
+    _, blobs, _, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
+        sidecar=sidecars[0],
+        cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+    )
+
+    assert len(sidecars_result) == len(sidecars), (
+        "Should return the same number of sidecars as input"
+    )
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"

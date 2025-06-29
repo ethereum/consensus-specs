@@ -32,6 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+  "deepdiff==8.5.0",
   "pytest-cov==6.2.1",
   "pytest-xdist==3.7.0",
   "pytest==8.4.1",
