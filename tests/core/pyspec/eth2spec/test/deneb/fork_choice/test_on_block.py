@@ -4,6 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_all_phases_from_except,
 )
+from eth2spec.test.helpers.blob import get_block_with_blob
 from eth2spec.test.helpers.constants import (
     DENEB,
     EIP7732,
@@ -18,7 +19,6 @@ from eth2spec.test.helpers.fork_choice import (
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.helpers.blob import get_block_with_blob
 
 
 # TODO(jtraglia): Use with_all_phases_from_to_except after EIP7732 is based on Fulu.

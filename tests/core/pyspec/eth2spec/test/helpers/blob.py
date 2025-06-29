@@ -1,4 +1,5 @@
 import random
+from functools import cache
 from random import Random
 
 from rlp import encode, Serializable
@@ -146,13 +147,16 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
 
 
 def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
-    state = state.copy()
-
     block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng, blob_count=blob_count)
-    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
 
     # We need a signed block to call `get_data_column_sidecars_from_block`
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     return block, blobs, blob_kzg_proofs, signed_block, sidecars
+
+
+@cache
+def _cached_compute_cells_and_kzg_proofs(spec, blob):
+    return spec.compute_cells_and_kzg_proofs(blob)

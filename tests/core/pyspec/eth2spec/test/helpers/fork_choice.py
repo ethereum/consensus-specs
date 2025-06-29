@@ -84,7 +84,7 @@ def with_blob_data_fulu(spec, blob_data: BlobData, func):
     def retrieve_column_sidecars(_):
         assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
         if len(blob_data.sidecars) == 0:
-            raise ValueError("Simulation: not all required columns have been sampled")
+            assert False, "Simulation: not all required columns have been sampled"
         return blob_data.sidecars
 
     retrieve_column_sidecars_backup = spec.retrieve_column_sidecars

@@ -4,19 +4,40 @@ from eth2spec.test.context import (
     spec_state_test,
     with_fulu_and_later,
 )
-from eth2spec.test.helpers.blob import get_block_with_blob
+from eth2spec.test.helpers.blob import get_block_with_blob_and_sidecars
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block_with_data,
 )
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+
+
+def flip_one_bit_in_bytes(data: bytes, index: int = 0) -> bytes:
+    """
+    Flip one bit in a bytes object at the given index.
+    """
+    constr = data.__class__
+    byte_index = index // 8
+    bit_index = 7 - (index % 8)
+    byte = data[byte_index]
+    flipped_byte = byte ^ (1 << bit_index)
+
+    return constr(bytes(data[:byte_index]) + bytes([flipped_byte]) + bytes(data[byte_index + 1 :]))
+
+
+def get_alt_sidecars(spec, state):
+    """
+    Get alternative sidecars for negative test cases.
+    """
+    rng = Random(4321)
+    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+    return alt_sidecars
 
 
 @with_fulu_and_later
 @spec_state_test
-def test_simple_blob_data_peerdas(spec, state):
+def test_on_block_peerdas__ok(spec, state):
     """
     Similar to test_simple_blob_data, but in PeerDAS version that is from Fulu onwards.
     It covers code related to the blob sidecars because on_block calls `is_data_available`
@@ -34,10 +55,8 @@ def test_simple_blob_data_peerdas(spec, state):
     assert store.time == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_data_column_sidecars_from_block(
-        signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
     )
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
 
@@ -46,10 +65,8 @@ def test_simple_blob_data_peerdas(spec, state):
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
-    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_data_column_sidecars_from_block(
-        signed_block, [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
     )
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
 
@@ -58,3 +75,263 @@ def test_simple_blob_data_peerdas(spec, state):
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
+
+
+def run_on_block_peerdas_invalid_test(spec, state, fn):
+    """
+    Run a invalid PeerDAS on_block test with a sidecars mutation function.
+    """
+    rng = Random(1234)
+
+    test_steps = []
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+    assert store.time == current_time
+
+    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
+    )
+    sidecars = fn(sidecars)
+    blob_data = BlobData(blobs, blob_kzg_proofs, [])
+
+    yield from tick_and_add_block_with_data(
+        spec, store, signed_block, test_steps, blob_data, valid=False
+    )
+    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+
+    yield "steps", test_steps
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__not_available(spec, state):
+    """
+    Test is_data_available throws an exception when not enough columns are sampled.
+    """
+    yield from run_on_block_peerdas_invalid_test(
+        spec,
+        state,
+        # Empty sidecars will trigger the simulation of not enough columns being sampled
+        lambda _: [],
+    )
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_zero_blobs(spec, state):
+    """
+    Test is_data_available returns false when there are no blobs in the sidecars.
+    """
+
+    def invalid_zero_blobs(sidecars):
+        sidecars[0].column = []
+        sidecars[0].kzg_commitments = []
+        sidecars[0].kzg_proofs = []
+        return sidecars
+
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_zero_blobs)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_index_1(spec, state):
+    """
+    Test invalid index in sidecars for negative PeerDAS on_block test.
+    """
+
+    def invalid_index(sidecars):
+        sidecars[0].index = 128  # Invalid index
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_index)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_index_2(spec, state):
+    """
+    Test invalid index in sidecars for negative PeerDAS on_block test.
+    """
+
+    def invalid_index(sidecars):
+        sidecars[0].index = 256  # Invalid index
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_index)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
+    """
+    Test mismatch length in column for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_column(sidecars):
+        sidecars[0].column = sidecars[0].column[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
+    """
+    Test mismatch length in column for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_column(sidecars):
+        sidecars[1].column = sidecars[1].column[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
+    """
+    Test mismatch length in kzg_commitments for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_kzg_commitments(sidecars):
+        sidecars[0].kzg_commitments = sidecars[0].kzg_commitments[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
+    """
+    Test mismatch length in kzg_commitments for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_kzg_commitments(sidecars):
+        sidecars[1].kzg_commitments = sidecars[1].kzg_commitments[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
+    """
+    Test mismatch length in kzg_proofs for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_kzg_proofs(sidecars):
+        sidecars[0].kzg_proofs = sidecars[0].kzg_proofs[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
+    """
+    Test mismatch length in kzg_proofs for negative PeerDAS on_block test.
+    """
+
+    def invalid_mismatch_len_kzg_proofs(sidecars):
+        sidecars[1].kzg_proofs = sidecars[1].kzg_proofs[1:]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
+    """
+    Test wrong column for negative PeerDAS on_block test.
+    """
+
+    def invalid_wrong_column(sidecars):
+        sidecars[0].column[0] = flip_one_bit_in_bytes(sidecars[0].column[0], 80)
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
+    """
+    Test wrong column for negative PeerDAS on_block test.
+    """
+
+    def invalid_wrong_column(sidecars):
+        sidecars[1].column[1] = flip_one_bit_in_bytes(sidecars[1].column[1], 20)
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
+    """
+    Test wrong commitment for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_commitment(sidecars):
+        sidecars[0].kzg_commitments[0] = alt_sidecars[0].kzg_commitments[0]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
+    """
+    Test wrong commitment for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_commitment(sidecars):
+        sidecars[1].kzg_commitments[1] = alt_sidecars[1].kzg_commitments[1]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
+    """
+    Test wrong proof for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_proof(sidecars):
+        sidecars[0].kzg_proofs[0] = alt_sidecars[0].kzg_proofs[0]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
+    """
+    Test wrong proof for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_proof(sidecars):
+        sidecars[1].kzg_proofs[1] = alt_sidecars[1].kzg_proofs[1]
+        return sidecars
+
+    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
