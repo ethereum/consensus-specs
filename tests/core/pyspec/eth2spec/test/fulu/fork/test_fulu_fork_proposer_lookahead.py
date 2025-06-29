@@ -46,6 +46,36 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
+def test_proposer_lookahead_init_at_fork_only_contains_active_validators(spec, phases, state):
+    """
+    Test proposer lookahead does not contain exited validators at Fulu fork activation.
+    """
+    current_epoch = spec.get_current_epoch(state)
+
+    # Change the active validator set by exiting half of the validators in future epochs
+    # within the MIN_SEED_LOOKAHEAD range
+    for validator_index in range(len(state.validators) // 2):
+        validator = state.validators[validator_index]
+        # Set exit_epoch to a future epoch within MIN_SEED_LOOKAHEAD + 1 range
+        # This makes the validator active at current_epoch but exited in future epochs
+        validator.exit_epoch = current_epoch + 1
+
+    # Upgrade to Fulu
+    spec = phases[FULU]
+    state = yield from run_fork_test(spec, state)
+
+    # Check that the proposer lookahead does not contain inactive validators
+    for slot_index, validator_index in enumerate(state.proposer_lookahead):
+        epoch_for_slot = current_epoch + (slot_index // spec.SLOTS_PER_EPOCH)
+        assert spec.is_active_validator(state.validators[validator_index], epoch_for_slot), (
+            f"Validator {validator_index} in lookahead at slot {slot_index} (epoch {epoch_for_slot}) should be active"
+        )
+
+
+@with_phases(phases=[ELECTRA], other_phases=[FULU])
+@spec_test
+@with_state
+@with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_lookahead_consistency_with_effective_balance_change_at_fork(spec, phases, state):
     # Move to the last slot of the current epoch
     spec.process_slots(

@@ -11,8 +11,6 @@ from eth2spec.test.context import (
 @single_phase
 @with_config_overrides(
     {
-        "ELECTRA_FORK_EPOCH": 9,
-        "FULU_FORK_EPOCH": 100,
         "BLOB_SCHEDULE": [
             {"EPOCH": 9, "MAX_BLOBS_PER_BLOCK": 9},
             {"EPOCH": 100, "MAX_BLOBS_PER_BLOCK": 100},
