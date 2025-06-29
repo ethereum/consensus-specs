@@ -234,7 +234,7 @@ def prepare_execution_payload(
     withdrawals, _ = get_expected_withdrawals(state)  # [Modified in EIP-7251]
 
     payload_attributes = PayloadAttributes(
-        timestamp=compute_timestamp_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,

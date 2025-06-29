@@ -122,7 +122,19 @@ class MarkdownToSpec:
 
         # AST element for each top level definition of the module
         for element in module.body:
-            element_source = ast.unparse(element)
+            # Extract source preserving decorators and comments
+            lines = source.split("\n")
+
+            # Determine start line - include decorators if present
+            if hasattr(element, "decorator_list") and element.decorator_list:
+                start_line = element.decorator_list[0].lineno - 1
+            else:
+                start_line = element.lineno - 1
+
+            # Extract the source
+            end_line = element.end_lineno
+            element_source = "\n".join(lines[start_line:end_line])
+
             clean_source = "\n".join(line.rstrip() for line in element_source.splitlines())
 
             if isinstance(element, ast.FunctionDef):

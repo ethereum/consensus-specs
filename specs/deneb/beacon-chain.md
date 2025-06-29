@@ -437,7 +437,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state, state.slot)
 
     # [New in Deneb:EIP4844] Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK

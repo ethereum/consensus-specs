@@ -1,3 +1,5 @@
+import pytest
+
 from eth2spec.test import context
 from eth2spec.test.helpers.constants import ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
 from eth2spec.utils import bls as bls_utils
@@ -17,8 +19,6 @@ def module_exists(module_name):
 
 def fixture(*args, **kwargs):
     if module_exists("pytest"):
-        import pytest
-
         return pytest.fixture(*args, **kwargs)
     else:
 

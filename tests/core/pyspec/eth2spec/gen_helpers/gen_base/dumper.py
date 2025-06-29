@@ -30,6 +30,7 @@ def get_cfg_yaml():
     # Spec config is using a YAML subset
     cfg_yaml = YAML(pure=True)
     cfg_yaml.default_flow_style = False  # Emit separate line for each key
+    cfg_yaml.width = 1024  # Do not wrap long lines
 
     def cfg_represent_bytes(self, data):
         return self.represent_int(encode_hex(data))

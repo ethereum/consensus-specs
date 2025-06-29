@@ -309,7 +309,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
     latest = state.latest_execution_payload_header
-    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+    timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     if randao_mix is None:

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from pysetup.md_to_spec import MarkdownToSpec
+from pysetup.typing import SpecObject
 
 
 @pytest.fixture
@@ -49,7 +50,6 @@ def test_run_returns_spec_object(dummy_file, dummy_preset, dummy_config):
     )
     spec_obj = m2s.run()
     # Check that the result is of the expected type
-    from pysetup.typing import SpecObject
 
     assert isinstance(spec_obj, SpecObject)
 

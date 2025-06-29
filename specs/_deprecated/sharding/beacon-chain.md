@@ -412,7 +412,7 @@ def process_execution_payload(
         # Verify random
         assert payload.random == get_randao_mix(state, get_current_epoch(state))
         # Verify timestamp
-        assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+        assert payload.timestamp == compute_time_at_slot(state, state.slot)
 
         # Get sharded data commitments
         sharded_commitments_container = block.body.sharded_commitments_container

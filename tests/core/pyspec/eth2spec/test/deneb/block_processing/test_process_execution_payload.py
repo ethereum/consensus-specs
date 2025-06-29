@@ -122,7 +122,7 @@ attempting to do a validation of its own.
 @spec_state_test
 def test_incorrect_blob_tx_type(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction type is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -145,7 +145,7 @@ def test_incorrect_blob_tx_type(spec, state):
 @spec_state_test
 def test_incorrect_transaction_length_1_extra_byte(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -167,7 +167,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
 @spec_state_test
 def test_incorrect_transaction_length_1_byte_short(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -189,7 +189,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
 @spec_state_test
 def test_incorrect_transaction_length_empty(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -211,7 +211,7 @@ def test_incorrect_transaction_length_empty(spec, state):
 @spec_state_test
 def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -233,7 +233,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
 @spec_state_test
 def test_no_transactions_with_commitments(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are provided without blob transactions, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -254,7 +254,7 @@ def test_no_transactions_with_commitments(spec, state):
 @spec_state_test
 def test_incorrect_commitment(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -276,7 +276,7 @@ def test_incorrect_commitment(spec, state):
 @spec_state_test
 def test_no_commitments_for_transactions(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The blob transactions are provided without commitments, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -298,7 +298,7 @@ def test_no_commitments_for_transactions(spec, state):
 @spec_state_test
 def test_incorrect_commitments_order(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are provided in wrong order, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -320,7 +320,7 @@ def test_incorrect_commitments_order(spec, state):
 @spec_state_test
 def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The blob transaction is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -344,6 +344,9 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_block_hash(spec, state):
+    """
+    The block hash is wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
@@ -364,7 +367,7 @@ def test_incorrect_block_hash(spec, state):
 @spec_state_test
 def test_zeroed_commitment(spec, state):
     """
-    The blob is invalid, but the commitment is in correct form.
+    The commitment is in correct form but the blob is invalid, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -388,7 +391,7 @@ def test_zeroed_commitment(spec, state):
 @spec_state_test
 def test_invalid_correct_input__execution_invalid(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The blob transaction and commitments are correct, but the testing ExecutionEngine returns INVALID.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -408,6 +411,9 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 @with_deneb_and_later
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
+    """
+    The blob transaction and commitments are correct but the number of blobs exceeds the `MAX_BLOBS_PER_BLOCK`.
+    """
     execution_payload = build_empty_execution_payload(spec, state)
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(

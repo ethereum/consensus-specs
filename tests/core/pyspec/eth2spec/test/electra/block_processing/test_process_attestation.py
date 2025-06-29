@@ -118,9 +118,6 @@ def test_multiple_committees(spec, state):
     """
     EIP-7549 test
     """
-    attestation_data = build_attestation_data(spec, state, slot=state.slot, index=0)
-    attestation = spec.Attestation(data=attestation_data)
-
     # a single attestation with all committees of a slot
     attestation = get_valid_attestation_at_slot(state, spec, state.slot)
 

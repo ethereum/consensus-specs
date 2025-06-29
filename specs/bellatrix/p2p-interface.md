@@ -87,7 +87,7 @@ If the execution is enabled for the block -- i.e.
 
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
-  `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+  `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
 - If `execution_payload` verification of block's parent by an execution node is
   *not* complete:
   - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes all

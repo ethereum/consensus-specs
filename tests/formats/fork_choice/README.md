@@ -84,6 +84,7 @@ The parameter that is required for executing `on_block(store, block)`.
     blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
                                The blobs file content is a `List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]` SSZ object.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
+    sidecars: string        -- optional, array of the names of the `sidecar_<32-byte-root>.ssz_snappy` files.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
 }
@@ -173,6 +174,10 @@ finalized_checkpoint: {
     root: string,             -- Encoded 32-byte value from store.finalized_checkpoint.root
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
+viable_for_head_roots_and_weights: [{
+    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks
+    weight: int               -- Integer value from get_weight(store, viable_block_root)
+}]
 ```
 
 Additionally, these fields if `get_proposer_head` and `should_override_forkchoice_update` features are implemented:
@@ -196,6 +201,10 @@ For example:
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
     get_proposer_head: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
     should_override_forkchoice_update: {validator_is_connected: false, result: false}
+    viable_for_head_roots_and_weights: [
+      {root: '0x533290b6f44d31c925acd08dfc8448624979d48c40b877d4e6714648866c9ddb', weight: 192000000000},
+      {root: '0x5cfb9d9099cdf1d8ab68ce96cdae9f0fa6eef16914a01070580dfdc1d2d59ec3', weight: 544000000000}
+    ]
 ```
 
 *Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.

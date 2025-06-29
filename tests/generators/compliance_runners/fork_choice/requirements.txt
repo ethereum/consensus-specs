@@ -1,0 +1,3 @@
+pytest>=4.4
+minizinc>=0.9.0
+../../../../[generator]
