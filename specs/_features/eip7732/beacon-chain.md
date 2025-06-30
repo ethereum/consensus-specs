@@ -185,6 +185,7 @@ class ExecutionPayloadEnvelope(Container):
     execution_requests: ExecutionRequests
     builder_index: ValidatorIndex
     beacon_block_root: Root
+    slot: Slot
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     payload_withheld: boolean
     state_root: Root
@@ -715,6 +716,7 @@ def process_execution_payload(
 
     # Verify consistency with the beacon block
     assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
+    assert envelope.slot == state.slot
 
     # Verify consistency with the committed header
     committed_header = state.latest_execution_payload_header

@@ -189,6 +189,7 @@ Let `block` be the block with `envelope.beacon_block_root`. Let `header` alias
 obtained from the `state.signed_execution_payload_header`)
 
 - _[REJECT]_ `block` passes validation.
+- _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - if `envelope.payload_withheld == False` then
   - _[REJECT]_ `payload.block_hash == header.block_hash`
