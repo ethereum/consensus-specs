@@ -33,7 +33,7 @@ For example, if the latest fork is Capella, use `./specs/capella` content as you
 
 ### 3. Write down your proposed `beacon-chain.md` change
 
-- You can either use [Beacon Chain Spec Template](./templates/beacon-chain-template.md), or make a copy of the latest fork content and then edit it.
+- Make a copy of the latest fork content and then edit it.
 - Tips:
     - The differences between "Constants", "Configurations", and "Presets":
         - Constants: The constant that should never be changed.
