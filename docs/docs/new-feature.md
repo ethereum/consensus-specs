@@ -85,8 +85,9 @@ We use `create_genesis_state` to create the default `state` in tests.
 ```python
 def create_genesis_state(spec, validator_balances, activation_threshold):
     ...
+
     if is_post_eip9999(spec):
-        state.<NEW_FIELD> = <value>
+        state.new_field = value
 
     return state
 ```
