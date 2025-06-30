@@ -181,9 +181,7 @@ MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 
 # Check for mistakes.
 lint: pyspec
-	@$(MDFORMAT_VENV) --number --wrap=80 \
-		--exclude="tests/README.md" \
-		$(MARKDOWN_FILES)
+	@$(MDFORMAT_VENV) --number --wrap=80 $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(PYTHON_VENV) -m ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
