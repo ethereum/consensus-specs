@@ -23,24 +23,26 @@ execution_payload_header: bool  -- `execution_payload_header` field is filled or
 
 ### `deposits_<index>.ssz_snappy`
 
-A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
-Each file is a SSZ-snappy encoded `Deposit` object.
+A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need
+to be processed in order. Each file is a SSZ-snappy encoded `Deposit` object.
 
-###  `execution_payload_header.ssz_snappy`
+### `execution_payload_header.ssz_snappy`
 
 *Note*: Param added only for Bellatrix and subsequent forks.
 
-The execution payload header that state is initialized with. An SSZ-snappy encoded `BeaconState` object.
+The execution payload header that state is initialized with. An SSZ-snappy
+encoded `BeaconState` object.
 
-###  `state.ssz_snappy`
+### `state.ssz_snappy`
 
 The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
 
 ## Processing
 
-To process this test, build a genesis state with the provided `eth1_block_hash`, `eth1_timestamp` and `deposits`:
+To process this test, build a genesis state with the provided `eth1_block_hash`,
+`eth1_timestamp` and `deposits`:
 `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`,
- as described in the Beacon Chain specification.
+as described in the Beacon Chain specification.
 
 ## Condition
 

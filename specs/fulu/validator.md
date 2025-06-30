@@ -81,6 +81,7 @@ class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
     blobs_bundle: BlobsBundle  # [Modified in Fulu:EIP7594]
+    execution_requests: Sequence[bytes]
 ```
 
 ## Protocol

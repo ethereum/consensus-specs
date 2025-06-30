@@ -85,9 +85,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### Withdrawals processing
 
-| Name                                   | Value                |
-| -------------------------------------- | -------------------- |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `16384` (= 2\*\*14 ) |
+| Name                                   | Value              |
+| -------------------------------------- | ------------------ |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
 ## Containers
 
@@ -415,7 +415,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload)

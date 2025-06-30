@@ -14,11 +14,15 @@ input:
 output: bool  --  true (VALID) or false (INVALID)
 ```
 
-- `BLS Pubkey` here is encoded as a string: hexadecimal encoding of 48 bytes (96 nibbles), prefixed with `0x`.
-- `BLS Signature` here is encoded as a string: hexadecimal encoding of 96 bytes (192 nibbles), prefixed with `0x`.
+- `BLS Pubkey` here is encoded as a string: hexadecimal encoding of 48 bytes (96
+  nibbles), prefixed with `0x`.
+- `BLS Signature` here is encoded as a string: hexadecimal encoding of 96 bytes
+  (192 nibbles), prefixed with `0x`.
 
-All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
+All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with
+`0x`.
 
 ## Condition
 
-The `fast_aggregate_verify` handler should verify the signature with pubkeys and message in the `input`, and the result should match the expected `output`.
+The `fast_aggregate_verify` handler should verify the signature with pubkeys and
+message in the `input`, and the result should match the expected `output`.

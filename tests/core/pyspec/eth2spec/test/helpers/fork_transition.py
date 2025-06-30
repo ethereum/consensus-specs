@@ -224,6 +224,43 @@ def do_fork(
         return state, None
 
 
+def do_fork_generate(
+    state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None
+):
+    spec.process_slots(state, state.slot + 1)
+
+    assert state.slot % spec.SLOTS_PER_EPOCH == 0
+    assert spec.get_current_epoch(state) == fork_epoch
+
+    yield "pre", state
+
+    state = get_upgrade_fn(post_spec, post_spec.fork)(state)
+
+    yield "post", state
+
+    assert state.fork.epoch == fork_epoch
+
+    previous_fork = PREVIOUS_FORK_OF[post_spec.fork]
+    if previous_fork == PHASE0:
+        previous_version = spec.config.GENESIS_FORK_VERSION
+    else:
+        previous_version = getattr(post_spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+    current_version = getattr(post_spec.config, f"{post_spec.fork.upper()}_FORK_VERSION")
+
+    assert state.fork.previous_version == previous_version
+    assert state.fork.current_version == current_version
+
+    if with_block:
+        return state, _state_transition_and_sign_block_at_slot(
+            post_spec,
+            state,
+            sync_aggregate=sync_aggregate,
+            operation_dict=operation_dict,
+        )
+    else:
+        return state, None
+
+
 def transition_until_fork(spec, state, fork_epoch):
     to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, to_slot)
